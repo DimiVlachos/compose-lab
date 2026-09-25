@@ -9,9 +9,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -22,6 +24,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class AnimatedNavBarUiTest {
     private val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+    private val isButton = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
 
     @Test
     fun clickingATabReportsItsIndex() = runComposeUiTest {
@@ -64,6 +67,70 @@ class AnimatedNavBarUiTest {
     }
 
     @Test
+    fun actionButtonExistsOnlyWhenTheSelectedTabHasAnActionAndTheLayerIsOn() = runComposeUiTest {
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selectedIndex = 3,
+                onSelect = {},
+                layers = NavBarLayers(action = true),
+            )
+        }
+        onNodeWithContentDescription("Edit profile").assertExists()
+    }
+
+    @Test
+    fun actionButtonDoesNotExistOnATabWithoutAnAction() = runComposeUiTest {
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selectedIndex = 0,
+                onSelect = {},
+                layers = NavBarLayers(action = true),
+            )
+        }
+        onNodeWithContentDescription("Edit profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun actionButtonDoesNotExistWhenTheLayerIsOff() = runComposeUiTest {
+        setContent {
+            AnimatedNavBar(testItems, selectedIndex = 3, onSelect = {}, layers = NavBarLayers())
+        }
+        onNodeWithContentDescription("Edit profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun clickingTheActionButtonReportsTheSelectedIndex() = runComposeUiTest {
+        var clicked = -1
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selectedIndex = 3,
+                onSelect = {},
+                onActionClick = { clicked = it },
+                layers = NavBarLayers(action = true),
+            )
+        }
+        onNodeWithContentDescription("Edit profile").performClick()
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(3, clicked)
+    }
+
+    @Test
+    fun actionButtonHasButtonRole() = runComposeUiTest {
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selectedIndex = 3,
+                onSelect = {},
+                layers = NavBarLayers(action = true),
+            )
+        }
+        onNodeWithContentDescription("Edit profile").assert(isButton)
+    }
+
+    @Test
     fun barDoesNotRecomposeWhileAnimating() = runComposeUiTest {
         mainClock.autoAdvance = false
         var compositions = 0
@@ -89,6 +156,7 @@ class AnimatedNavBarUiTest {
         val afterSelection = compositions
         mainClock.advanceTimeBy(2_000)
 
+        onNodeWithContentDescription("Edit profile").assertExists()
         assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
     }

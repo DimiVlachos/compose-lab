@@ -24,6 +24,21 @@ internal fun barWidth(fullWidth: Int, collapsedWidth: Int, collapse: Float): Int
 internal fun clampNotchCenter(centerX: Float, barWidth: Float): Float =
     centerX.coerceIn(0f, barWidth)
 
+internal class BarLayout(val width: Int, val left: Int)
+
+internal fun barLayout(
+    containerWidth: Int,
+    collapsedWidth: Int,
+    collapse: Float,
+    actionInset: Int,
+    actionReveal: Float,
+): BarLayout {
+    val groupWidth = barWidth(containerWidth, collapsedWidth, collapse)
+    val width = groupWidth - (actionInset * actionReveal).roundToInt()
+    val left = (containerWidth - groupWidth) / 2
+    return BarLayout(width, left)
+}
+
 internal class BubbleGeometry(val centerY: Float, val halfHeight: Float)
 
 internal fun bubbleGeometry(

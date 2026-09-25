@@ -8,8 +8,16 @@ data class NavBarLayers(
     val icons: Boolean = false,
     val scrollAware: Boolean = false,
     val cutout: Boolean = false,
+    val action: Boolean = false,
 ) {
     companion object {
-        val All = NavBarLayers(indicator = true, icons = true, scrollAware = true, cutout = true)
+        val All =
+            NavBarLayers(
+                indicator = true,
+                icons = true,
+                scrollAware = true,
+                cutout = true,
+                action = true,
+            )
     }
 }

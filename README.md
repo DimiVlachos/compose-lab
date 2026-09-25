@@ -13,6 +13,7 @@ One bar, four layers that can each be switched on or off. Nothing recomposes whi
 | ![](docs/media/navbar.scroll.gif) | **Collapse on scroll.** A nested-scroll observer turns the bar into a floating pill. |
 | ![](docs/media/navbar.cutout.gif) | **Moving cutout.** A notch cut with `Path.combine`, following the bubble. |
 | ![](docs/media/navbar.cutoutmorph.gif) | **Cutout morph.** The notch shrinks in place and the bubble melts into an in-bar pill as the bar collapses. |
+| ![](docs/media/navbar.action.gif) | **Action button.** A jelly button squirts out of the bar on tabs that have one, and shrinks the bar to make room. |
 | ![](docs/media/navbar.all.gif) | **Everything together.** |
 | ![](docs/media/navbar.recompositions.gif) | **Frames vs recompositions.** Frames climb; the bar recomposes only on a tap. |
 

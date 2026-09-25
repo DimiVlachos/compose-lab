@@ -35,7 +35,10 @@ internal fun RecompositionDemo(state: DemoState) {
     val probe = remember { { recompositions += 1 } }
     Box(Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalNavBarCompositionProbe provides probe) {
-            NavBarDemo(state, NavBarLayers(indicator = true, icons = true, cutout = true))
+            NavBarDemo(
+                state,
+                NavBarLayers(indicator = true, icons = true, cutout = true, action = true),
+            )
         }
         Column(
             Modifier.align(Alignment.TopCenter)

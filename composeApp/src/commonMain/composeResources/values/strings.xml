@@ -12,11 +12,14 @@
     <string name="demo_navbar_scroll">Collapse on scroll</string>
     <string name="demo_navbar_cutout">Moving cutout</string>
     <string name="demo_navbar_cutoutmorph">Cutout morph</string>
+    <string name="demo_navbar_action">Action button</string>
     <string name="demo_navbar_all">Everything together</string>
     <string name="demo_navbar_recompositions">Zero recompositions while animating</string>
     <string name="action_back">Back</string>
     <string name="action_stop">Stop</string>
     <string name="action_replay">Replay</string>
+    <string name="action_new_post">New post</string>
+    <string name="action_edit_profile">Edit profile</string>
     <string name="recompositions_frames">frames drawn  %1$d</string>
     <string name="recompositions_count">nav bar recompositions  %1$d</string>
 </resources>
