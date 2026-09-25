@@ -24,7 +24,7 @@ class EdgeArrivalMonotonicityTest {
     private val framesPerArrival = 60
     private val frameNanos = 16_000_000L
     private val tipMarginPx = 10f
-    private val monotonicTolerancePx = 0.8f
+    private val monotonicTolerancePx = 0.5f
     private val maxFrameToFrameDeltaPx = 9f
 
     private class Transition(val from: Int, val to: Int)
@@ -64,10 +64,10 @@ class EdgeArrivalMonotonicityTest {
 
                     val state = IndicatorState(combo.transition.from)
                     val job = launch {
-                        state.animateTo(combo.transition.to, stretch = true, itemCount = itemCount)
+                        state.animateTo(combo.transition.to, stretch = true)
                     }
 
-                    var previousSamples: List<Offset>? = null
+                    var previousSamples: Tip? = null
                     var previousDeviation = Float.MAX_VALUE
                     for (frame in 0 until framesPerArrival) {
                         frameClock.sendFrame(frame * frameNanos)
@@ -147,20 +147,38 @@ class EdgeArrivalMonotonicityTest {
     private fun restPath(target: Int, width: Float, m: Float): Path =
         framePath(target + 0.5f, width, m)
 
-    private fun tipSamples(path: Path, width: Float, right: Boolean): List<Offset> {
+    private fun tipSamples(path: Path, width: Float, right: Boolean): Tip {
         val measure = PathMeasure()
         measure.setPath(path, false)
         val length = measure.length
-        val steps = 2000
-        val all = (0 until steps).map { measure.getPosition(length * it / steps) }
-        return if (right) all.filter { it.x >= width - tipMarginPx }
-        else all.filter { it.x <= tipMarginPx }
+        val all = (0 until SampleSteps).map { measure.getPosition(length * it / SampleSteps) }
+        fun inTip(point: Offset) =
+            if (right) point.x >= width - tipMarginPx else point.x <= tipMarginPx
+        val segments =
+            all.indices
+                .map { all[it] to all[(it + 1) % all.size] }
+                .filter { (start, end) -> inTip(start) || inTip(end) }
+        return Tip(points = all.filter(::inTip), segments = segments)
     }
 
-    private fun hausdorff(a: List<Offset>, b: List<Offset>): Float {
-        if (a.isEmpty() || b.isEmpty()) return 0f
-        return b.maxOf { p -> a.minOf { r -> (r - p).getDistance() } }
+    private fun hausdorff(reference: Tip, sample: Tip): Float {
+        if (reference.segments.isEmpty() || sample.points.isEmpty()) return 0f
+        return sample.points.maxOf { point ->
+            reference.segments.minOf { (start, end) -> distanceToSegment(point, start, end) }
+        }
     }
+
+    private fun distanceToSegment(point: Offset, start: Offset, end: Offset): Float {
+        val segment = end - start
+        val lengthSquared = segment.x * segment.x + segment.y * segment.y
+        if (lengthSquared == 0f) return (point - start).getDistance()
+        val t =
+            (((point - start).x * segment.x + (point - start).y * segment.y) / lengthSquared)
+                .coerceIn(0f, 1f)
+        return (point - (start + segment * t)).getDistance()
+    }
+
+    private class Tip(val points: List<Offset>, val segments: List<Pair<Offset, Offset>>)
 
     private val BubbleSizePx = NavBarDimens.BubbleSize.value
     private val BubbleOverhangPx = NavBarDimens.BubbleOverhang.value
@@ -170,4 +188,5 @@ class EdgeArrivalMonotonicityTest {
     private val FilletRadius = NavBarDimens.NotchFillet.value
     private val Gap = NavBarDimens.NotchGap.value
     private val HandoffM = NavBarDimens.BubbleHandoff
+    private val SampleSteps = 2000
 }
