@@ -11,7 +11,7 @@ internal object NavBarDimens {
     val BubbleOverhang = 20.dp
     val NotchCenterY = BubbleSize / 2 - BubbleOverhang
     val NotchRadius = BubbleSize / 2 + 6.dp
-    val NotchFillet = 10.dp
+    val NotchFillet = 16.dp
     val FloatLift = 12.dp
     val IconSize = 26.dp
     val LabelShift = 8.dp

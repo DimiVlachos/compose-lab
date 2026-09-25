@@ -5,6 +5,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class BarGeometryTest {
     @Test
@@ -28,61 +30,40 @@ class BarGeometryTest {
 
     @Test
     fun filletCentersSitAtNotchRadiusPlusFilletRadiusFromTheNotchCenter() {
-        val notch =
-            filletedNotch(centerX = 200f, centerY = 6f, notchRadius = 32f, filletRadius = 10f)
-        assertEquals(42f, (notch.leftFilletCenter - notch.notchCenter).getDistance(), 0.01f)
-        assertEquals(42f, (notch.rightFilletCenter - notch.notchCenter).getDistance(), 0.01f)
+        val notch = straightSegmentNotch()
+        assertEquals(48f, (notch.leftFilletCenter - notch.notchCenter).getDistance(), 0.01f)
+        assertEquals(48f, (notch.rightFilletCenter - notch.notchCenter).getDistance(), 0.01f)
     }
 
     @Test
-    fun filletCentersSitAtYEqualsFilletRadius() {
-        val notch =
-            filletedNotch(centerX = 200f, centerY = 6f, notchRadius = 32f, filletRadius = 10f)
-        assertEquals(10f, notch.leftFilletCenter.y, 0.01f)
-        assertEquals(10f, notch.rightFilletCenter.y, 0.01f)
+    fun filletCentersSitAtYEqualsFilletRadiusInTheStraightSegment() {
+        val notch = straightSegmentNotch()
+        assertEquals(16f, notch.leftFilletCenter.y, 0.01f)
+        assertEquals(16f, notch.rightFilletCenter.y, 0.01f)
+    }
+
+    @Test
+    fun straightSegmentFilletsAreStillTangentToTheTopEdge() {
+        val notch = straightSegmentNotch()
+        assertEquals(0f, notch.leftOuterTangent.y)
+        assertEquals(0f, notch.rightOuterTangent.y)
     }
 
     @Test
     fun notchTangentPointsLieOnBothCircles() {
-        val notch =
-            filletedNotch(centerX = 200f, centerY = 6f, notchRadius = 32f, filletRadius = 10f)
-        assertEquals(
-            32f,
-            (notch.leftNotchTangent - notch.notchCenter).getDistance(),
-            0.01f,
-        )
-        assertEquals(
-            10f,
-            (notch.leftNotchTangent - notch.leftFilletCenter).getDistance(),
-            0.01f,
-        )
-        assertEquals(
-            32f,
-            (notch.rightNotchTangent - notch.notchCenter).getDistance(),
-            0.01f,
-        )
-        assertEquals(
-            10f,
-            (notch.rightNotchTangent - notch.rightFilletCenter).getDistance(),
-            0.01f,
-        )
+        val notch = straightSegmentNotch()
+        assertEquals(32f, (notch.leftNotchTangent - notch.notchCenter).getDistance(), 0.01f)
+        assertEquals(16f, (notch.leftNotchTangent - notch.leftFilletCenter).getDistance(), 0.01f)
+        assertEquals(32f, (notch.rightNotchTangent - notch.notchCenter).getDistance(), 0.01f)
+        assertEquals(16f, (notch.rightNotchTangent - notch.rightFilletCenter).getDistance(), 0.01f)
     }
 
     @Test
     fun theShapeIsSymmetricAboutTheNotchCenterX() {
-        val notch =
-            filletedNotch(centerX = 200f, centerY = 6f, notchRadius = 32f, filletRadius = 10f)
+        val notch = straightSegmentNotch()
         val cx = notch.notchCenter.x
-        assertEquals(
-            cx - notch.leftFilletCenter.x,
-            notch.rightFilletCenter.x - cx,
-            0.01f,
-        )
-        assertEquals(
-            cx - notch.leftNotchTangent.x,
-            notch.rightNotchTangent.x - cx,
-            0.01f,
-        )
+        assertEquals(cx - notch.leftFilletCenter.x, notch.rightFilletCenter.x - cx, 0.01f)
+        assertEquals(cx - notch.leftNotchTangent.x, notch.rightNotchTangent.x - cx, 0.01f)
         assertEquals(notch.leftFilletCenter.y, notch.rightFilletCenter.y, 0.01f)
         assertEquals(notch.leftNotchTangent.y, notch.rightNotchTangent.y, 0.01f)
     }
@@ -90,9 +71,110 @@ class BarGeometryTest {
     @Test
     fun barBoundsAreUnchangedByTheNotch() {
         val size = Size(400f, 72f)
-        val notch =
-            filletedNotch(centerX = 200f, centerY = 6f, notchRadius = 32f, filletRadius = 10f)
+        val notch = straightSegmentNotch()
         val bounds = barPath(size, cornerRadius = 36f, notch = notch).getBounds()
         assertEquals(Rect(Offset.Zero, size), bounds)
     }
+
+    @Test
+    fun cutterPathBoundsSpanTheNotchAndCloseAboveTheBar() {
+        val notch = straightSegmentNotch()
+        val bounds = notchCutterPath(notch).getBounds()
+        assertEquals(6f + 32f, bounds.bottom, 0.5f)
+        assertEquals(notch.leftOuterTangent.x, bounds.left, 0.5f)
+        assertEquals(-(32f + 16f), bounds.top, 0.5f)
+    }
+
+    @Test
+    fun outerFilletIsCapTangentAtAnEdgeTab() {
+        val notch =
+            filletedNotch(
+                centerX = 32f,
+                centerY = 6f,
+                notchRadius = 32f,
+                filletRadius = 16f,
+                barWidth = 256f,
+                cornerRadius = 36f,
+            )
+        val capCenter = Offset(36f, 36f)
+        assertEquals(36f - 16f, (notch.leftFilletCenter - capCenter).getDistance(), 0.01f)
+        assertEquals(32f + 16f, (notch.leftFilletCenter - notch.notchCenter).getDistance(), 0.01f)
+        assertEquals(36f, (notch.leftOuterTangent - capCenter).getDistance(), 0.01f)
+    }
+
+    @Test
+    fun notchArcStillDipsThroughTheBottomWhenTheFilletIsSmallerThanCenterY() {
+        val notch =
+            filletedNotch(
+                centerX = 200f,
+                centerY = 16f,
+                notchRadius = 32f,
+                filletRadius = 6f,
+                barWidth = 400f,
+                cornerRadius = 36f,
+            )
+        val bounds = notchCutterPath(notch).getBounds()
+        assertEquals(16f + 32f, bounds.bottom, 0.5f)
+    }
+
+    @Test
+    fun edgeTabAtRealNavBarWidthStaysCapTangentAndDoesNotEatTheCapSilhouette() {
+        val size = Size(371f, 72f)
+        val notch =
+            filletedNotch(
+                centerX = 46.5f,
+                centerY = 6f,
+                notchRadius = 32f,
+                filletRadius = 16f,
+                barWidth = size.width,
+                cornerRadius = 36f,
+            )
+        assertTrue(notch.leftIsCapTangent)
+        val bounds = barPath(size, cornerRadius = 36f, notch = notch).getBounds()
+        assertEquals(0f, bounds.top)
+        assertEquals(0f, bounds.left, 3f)
+        assertEquals(size.width, bounds.right, 0.01f)
+        assertEquals(size.height, bounds.bottom, 0.01f)
+    }
+
+    @Test
+    fun mirroredEdgeTabAtRealNavBarWidthStaysCapTangent() {
+        val size = Size(371f, 72f)
+        val notch =
+            filletedNotch(
+                centerX = size.width - 46.5f,
+                centerY = 6f,
+                notchRadius = 32f,
+                filletRadius = 16f,
+                barWidth = size.width,
+                cornerRadius = 36f,
+            )
+        assertTrue(notch.rightIsCapTangent)
+        val bounds = barPath(size, cornerRadius = 36f, notch = notch).getBounds()
+        assertEquals(size.width, bounds.right, 3f)
+    }
+
+    @Test
+    fun filletRadiusMustBePositive() {
+        assertFailsWith<IllegalArgumentException> {
+            filletedNotch(
+                centerX = 200f,
+                centerY = 6f,
+                notchRadius = 32f,
+                filletRadius = 0f,
+                barWidth = 400f,
+                cornerRadius = 36f,
+            )
+        }
+    }
+
+    private fun straightSegmentNotch() =
+        filletedNotch(
+            centerX = 200f,
+            centerY = 6f,
+            notchRadius = 32f,
+            filletRadius = 16f,
+            barWidth = 400f,
+            cornerRadius = 36f,
+        )
 }
