@@ -11,6 +11,7 @@
     <string name="demo_navbar_icons">Animated icons</string>
     <string name="demo_navbar_scroll">Collapse on scroll</string>
     <string name="demo_navbar_cutout">Moving cutout</string>
+    <string name="demo_navbar_cutoutmorph">Cutout morph</string>
     <string name="demo_navbar_all">Everything together</string>
     <string name="demo_navbar_recompositions">Zero recompositions while animating</string>
     <string name="action_back">Back</string>

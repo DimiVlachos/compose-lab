@@ -8,6 +8,7 @@ import dev.dimvlachos.lab.navbardemo.presentation.components.RecompositionDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_navbar_all
 import dev.dimvlachos.lab.resources.demo_navbar_cutout
+import dev.dimvlachos.lab.resources.demo_navbar_cutoutmorph
 import dev.dimvlachos.lab.resources.demo_navbar_icons
 import dev.dimvlachos.lab.resources.demo_navbar_indicator
 import dev.dimvlachos.lab.resources.demo_navbar_recompositions
@@ -42,6 +43,13 @@ internal object NavBarDemos {
             },
             Demo("navbar.cutout", Res.string.demo_navbar_cutout, tabTour) {
                 NavBarDemo(it, NavBarLayers(cutout = true))
+            },
+            Demo("navbar.cutoutmorph", Res.string.demo_navbar_cutoutmorph, scrollTour) {
+                NavBarDemo(
+                    it,
+                    NavBarLayers(indicator = true, cutout = true, scrollAware = true),
+                    scrollingContent = true,
+                )
             },
             Demo("navbar.all", Res.string.demo_navbar_all, scrollTour) {
                 NavBarDemo(it, NavBarLayers.All, scrollingContent = true)

@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.PathMeasure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BarGeometryTest {
@@ -195,6 +197,73 @@ class BarGeometryTest {
                 barWidth = 400f,
                 cornerRadius = 36f,
             )
+        }
+    }
+
+    @Test
+    fun morphedNotchParamsAtRestReturnsTheRestValues() {
+        val morphed =
+            morphedNotchParams(m = 0f, restCenterY = 6f, notchRadius = 32f, filletRadius = 16f)
+        assertNotNull(morphed)
+        assertEquals(32f, morphed.notchRadius)
+        assertEquals(16f, morphed.filletRadius)
+        assertEquals(6f, morphed.centerY)
+    }
+
+    @Test
+    fun morphedNotchParamsIsNullAtFullMorph() {
+        assertNull(
+            morphedNotchParams(m = 1f, restCenterY = 6f, notchRadius = 32f, filletRadius = 16f)
+        )
+    }
+
+    @Test
+    fun morphedNotchParamsDepthIsMonotonicallyDecreasingAndReachesZero() {
+        val restCenterY = 6f
+        val notchRadius = 32f
+        val filletRadius = 16f
+        var previousDepth = Float.MAX_VALUE
+        var becameNullAtStep: Int? = null
+        for (step in 0..1000) {
+            val m = step / 1000f
+            val morphed = morphedNotchParams(m, restCenterY, notchRadius, filletRadius)
+            if (morphed == null) {
+                if (becameNullAtStep == null) becameNullAtStep = step
+                continue
+            }
+            assertNull(becameNullAtStep, "must not un-morph after the notch has gone")
+            val depth = morphed.centerY + morphed.notchRadius
+            assertTrue(depth <= previousDepth + 0.0001f, "depth must not increase as m grows")
+            previousDepth = depth
+        }
+        assertNotNull(becameNullAtStep, "the notch must fully close before m reaches 1")
+    }
+
+    @Test
+    fun filletedNotchNeverThrowsThroughTheMorphAtRealBarWidthsAndTabCentres() {
+        val restCenterY = 6f
+        val notchRadius = 32f
+        val filletRadius = 16f
+        val cornerRadius = 36f
+        val itemCount = 4
+        for (barWidthPx in listOf(256f, 300f, 371f)) {
+            val slot = barWidthPx / itemCount
+            val tabCenters = listOf(0.5f * slot, 2f * slot, 3.5f * slot)
+            for (centerX in tabCenters) {
+                for (step in 0..200) {
+                    val m = step / 200f
+                    val morphed =
+                        morphedNotchParams(m, restCenterY, notchRadius, filletRadius) ?: continue
+                    filletedNotch(
+                        centerX = clampNotchCenter(centerX, barWidthPx),
+                        centerY = morphed.centerY,
+                        notchRadius = morphed.notchRadius,
+                        filletRadius = morphed.filletRadius,
+                        barWidth = barWidthPx,
+                        cornerRadius = cornerRadius,
+                    )
+                }
+            }
         }
     }
 
