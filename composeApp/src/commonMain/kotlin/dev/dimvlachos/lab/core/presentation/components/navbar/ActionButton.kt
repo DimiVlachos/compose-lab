@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -95,6 +96,7 @@ internal fun ActionButton(
                 alpha = state.revealValue
                 scaleX = state.scaleXValue
                 scaleY = state.scaleYValue
+                transformOrigin = TransformOrigin(0f, 0.5f)
             }
             .clip(CircleShape)
             .background(colors.accent)

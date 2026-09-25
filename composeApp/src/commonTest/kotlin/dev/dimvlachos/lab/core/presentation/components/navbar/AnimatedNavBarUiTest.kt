@@ -14,7 +14,9 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -138,6 +140,50 @@ class AnimatedNavBarUiTest {
             )
         }
         onNodeWithContentDescription("Edit profile").assert(isButton)
+    }
+
+    @Test
+    fun actionButtonNeverOverlapsTheBarAcrossCollapse() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val scrollState = NavBarScrollState(collapseDistancePx = 100f)
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selectedIndex = 3,
+                onSelect = {},
+                layers = NavBarLayers(action = true, scrollAware = true),
+                scrollState = scrollState,
+            )
+        }
+        mainClock.advanceTimeBy(2_000)
+
+        fun assertButtonAdjacentToBar() {
+            mainClock.advanceTimeBy(32)
+            val barBounds = onNodeWithTag(NavBarRowTestTag).getBoundsInRoot()
+            val buttonBounds = onNodeWithContentDescription("Edit profile").getBoundsInRoot()
+            assertTrue(
+                buttonBounds.left >= barBounds.right + 8.dp - 1.dp,
+                "collapse=${scrollState.collapse} barRight=${barBounds.right} " +
+                    "buttonLeft=${buttonBounds.left}",
+            )
+            assertEquals(
+                (barBounds.bottom - barBounds.top).value,
+                (buttonBounds.bottom - buttonBounds.top).value,
+                1f,
+                "collapse=${scrollState.collapse}",
+            )
+        }
+
+        assertButtonAdjacentToBar()
+
+        runOnUiThread { scrollState.onScroll(-50f) }
+        Snapshot.sendApplyNotifications()
+        assertButtonAdjacentToBar()
+
+        runOnUiThread { scrollState.onScroll(-50f) }
+        Snapshot.sendApplyNotifications()
+        assertEquals(1f, scrollState.collapse)
+        assertButtonAdjacentToBar()
     }
 
     @Test
