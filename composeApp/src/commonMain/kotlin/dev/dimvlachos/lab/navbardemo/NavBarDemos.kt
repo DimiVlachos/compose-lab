@@ -19,8 +19,8 @@ import kotlin.time.Duration.Companion.seconds
 internal object NavBarDemos {
     private val tabTour = demoScript {
         at(0.8.seconds) { select(2) }
-        at(2.0.seconds) { select(3) }
-        at(3.2.seconds) { select(1) }
+        at(2.0.seconds) { select(1) }
+        at(3.2.seconds) { select(2) }
         at(4.4.seconds) { select(0) }
     }
 

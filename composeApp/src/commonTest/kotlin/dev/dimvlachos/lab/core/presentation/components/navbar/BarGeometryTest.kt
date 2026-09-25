@@ -54,11 +54,31 @@ class BarGeometryTest {
     }
 
     @Test
-    fun barLayoutCentersTheGroupEnvelopeWhenTheBarIsNarrowerThanTheContainer() {
-        val full = barLayout(1000, 256, 1f, actionInset = 80, actionReveal = 0f)
-        val revealed = barLayout(1000, 256, 1f, actionInset = 80, actionReveal = 1f)
-        assertEquals(full.left, revealed.left)
-        assertEquals(full.width - 80, revealed.width)
+    fun barLayoutKeepsTheCollapsedBarAtFullSlotWidthAndCentersTheGroup() {
+        val layout = barLayout(1000, 256, 1f, actionInset = 80, actionReveal = 1f)
+        assertEquals(256, layout.width)
+        assertEquals(332, layout.left)
+        assertEquals(80, layout.inset)
+    }
+
+    @Test
+    fun barLayoutNeverLetsTheGroupSpillPastTheContainer() {
+        val containerWidth = 1000
+        val collapsedWidth = 256
+        val actionInset = 80
+        var c = 0f
+        while (c <= 1f) {
+            var r = 0f
+            while (r <= 1f) {
+                val layout = barLayout(containerWidth, collapsedWidth, c, actionInset, r)
+                assertTrue(
+                    layout.width + layout.inset <= containerWidth,
+                    "c=$c r=$r width=${layout.width} inset=${layout.inset}",
+                )
+                r += 0.1f
+            }
+            c += 0.1f
+        }
     }
 
     @Test

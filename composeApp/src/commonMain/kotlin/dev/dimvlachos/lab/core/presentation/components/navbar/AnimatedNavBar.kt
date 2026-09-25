@@ -1,7 +1,5 @@
 package dev.dimvlachos.lab.core.presentation.components.navbar
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
@@ -13,10 +11,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -28,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -45,7 +41,6 @@ import dev.dimvlachos.lab.resources.nav_saved
 import dev.dimvlachos.lab.resources.nav_search
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -82,35 +77,16 @@ fun AnimatedNavBar(
         }
     }
 
-    var displayedAction by remember {
-        mutableStateOf(if (layers.action) items[selected].action else null)
-    }
-    val actionReveal = remember { Animatable(if (displayedAction != null) 1f else 0f) }
-    val actionScaleX = remember { Animatable(1f) }
-    val actionScaleY = remember { Animatable(1f) }
-    val actionRevealValue: () -> Float = { actionReveal.value }
+    val target = if (layers.action) items[selected].action else null
+    // Plain, non-snapshot holder: keeps the button composed (icon frozen on the last shown
+    // action) through the fade-out instead of a state write that would recompose a second time.
+    val lastShown = remember { Ref(target) }
+    if (target != null) lastShown.value = target
+    val renderedAction = lastShown.value
+    val actionState = remember { ActionRevealState(target) }
+    val actionRevealValue: () -> Float = { actionState.revealValue }
 
-    LaunchedEffect(selected, layers) {
-        val target = if (layers.action) items[selected].action else null
-        when {
-            target == displayedAction -> Unit
-            displayedAction == null -> {
-                displayedAction = target
-                launch { actionReveal.animateTo(1f, tween(200)) }
-                jellyIn(actionScaleX, actionScaleY)
-            }
-            target == null -> {
-                launch { actionReveal.animateTo(0f, tween(150)) }
-                launch { actionScaleX.animateTo(0.6f, tween(150)) }
-                actionScaleY.animateTo(0.6f, tween(150))
-                displayedAction = null
-            }
-            else -> {
-                displayedAction = target
-                squash(actionScaleX, actionScaleY)
-            }
-        }
-    }
+    LaunchedEffect(selected, layers) { actionState.animateTo(target) }
 
     Box(
         modifier
@@ -147,13 +123,12 @@ fun AnimatedNavBar(
                 colors = colors,
             )
         }
-        displayedAction?.let { action ->
+        renderedAction?.let { action ->
             ActionButton(
                 action = action,
                 selectedIndex = selected,
-                reveal = actionReveal,
-                scaleX = actionScaleX,
-                scaleY = actionScaleY,
+                isActive = target != null,
+                state = actionState,
                 collapse = collapse,
                 onActionClick = onActionClick,
                 colors = colors,
@@ -165,17 +140,25 @@ fun AnimatedNavBar(
     }
 }
 
+private class Ref<T>(var value: T)
+
+private fun Density.actionInsetPx(collapse: Float): Int {
+    val scaledSize = NavBarDimens.ActionSize.toPx() * (1f - 0.15f * collapse)
+    return (NavBarDimens.ActionGap.toPx() + scaledSize).roundToInt()
+}
+
 private fun Modifier.barRowPlacement(
     itemCount: Int,
     collapse: () -> Float,
     actionReveal: () -> Float,
 ): Modifier = layout { measurable, constraints ->
+    val c = collapse()
     val info =
         barLayout(
             containerWidth = constraints.maxWidth,
             collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-            collapse = collapse(),
-            actionInset = (NavBarDimens.ActionSize + NavBarDimens.ActionGap).roundToPx(),
+            collapse = c,
+            actionInset = actionInsetPx(c),
             actionReveal = actionReveal(),
         )
     val barHeightPx = NavBarDimens.BarHeight.roundToPx()
@@ -190,19 +173,20 @@ private fun Modifier.actionButtonPlacement(
     collapse: () -> Float,
     actionReveal: () -> Float,
 ): Modifier = layout { measurable, constraints ->
+    val c = collapse()
     val info =
         barLayout(
             containerWidth = constraints.maxWidth,
             collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-            collapse = collapse(),
-            actionInset = (NavBarDimens.ActionSize + NavBarDimens.ActionGap).roundToPx(),
+            collapse = c,
+            actionInset = actionInsetPx(c),
             actionReveal = actionReveal(),
         )
     val sizePx = NavBarDimens.ActionSize.roundToPx()
-    val gapPx = NavBarDimens.ActionGap.roundToPx()
     val placeable = measurable.measure(Constraints.fixed(sizePx, sizePx))
     layout(constraints.maxWidth, constraints.maxHeight) {
-        placeable.place(info.left + info.width + gapPx, NavBarDimens.BubbleOverhang.roundToPx())
+        val right = info.left + info.width + info.inset
+        placeable.place(right - sizePx, NavBarDimens.BubbleOverhang.roundToPx())
     }
 }
 
@@ -291,8 +275,7 @@ private fun BoxScope.Bubble(
                         containerWidth = constraints.maxWidth,
                         collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
                         collapse = m,
-                        actionInset =
-                            (NavBarDimens.ActionSize + NavBarDimens.ActionGap).roundToPx(),
+                        actionInset = actionInsetPx(m),
                         actionReveal = actionReveal(),
                     )
                 val barWidthPx = info.width
