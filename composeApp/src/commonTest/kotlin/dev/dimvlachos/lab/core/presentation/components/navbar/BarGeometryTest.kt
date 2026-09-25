@@ -266,6 +266,21 @@ class BarGeometryTest {
     }
 
     @Test
+    fun capTangentFilletFitsTheExactRadiusAtTheTableCase() {
+        val notch =
+            filletedNotch(
+                centerX = 46.5f,
+                centerY = 6f,
+                notchRadius = 34.6f,
+                filletRadius = 100f,
+                barWidth = 371f,
+                cornerRadius = 36f,
+            )
+        assertTrue(notch.leftIsCapTangent)
+        assertEquals(16.59f, notch.leftFilletRadius, 0.01f)
+    }
+
+    @Test
     fun filletRadiusMustBePositive() {
         assertFailsWith<IllegalArgumentException> {
             filletedNotch(
