@@ -22,6 +22,24 @@ internal fun barWidth(fullWidth: Int, collapsedWidth: Int, collapse: Float): Int
 internal fun clampNotchCenter(centerX: Float, barWidth: Float): Float =
     centerX.coerceIn(0f, barWidth)
 
+internal class MorphedNotch(val notchRadius: Float, val filletRadius: Float, val centerY: Float)
+
+internal fun morphedNotchParams(
+    m: Float,
+    restCenterY: Float,
+    notchRadius: Float,
+    filletRadius: Float,
+): MorphedNotch? {
+    val shrink = 1f - m
+    val scaledRadius = notchRadius * shrink
+    if (m >= 0.999f || scaledRadius < 0.5f) return null
+    return MorphedNotch(
+        notchRadius = scaledRadius,
+        filletRadius = filletRadius * shrink,
+        centerY = restCenterY * shrink,
+    )
+}
+
 internal class FilletedNotch(
     val leftFilletCenter: Offset,
     val rightFilletCenter: Offset,

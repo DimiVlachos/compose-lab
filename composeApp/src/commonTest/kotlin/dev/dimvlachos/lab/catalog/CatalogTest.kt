@@ -13,7 +13,7 @@ import kotlinx.coroutines.test.runTest
 
 class CatalogTest {
     @Test
-    fun containsTheSixNavBarDemosWithUniqueIds() {
+    fun containsTheSevenNavBarDemosWithUniqueIds() {
         val ids = Catalog.demos.map { it.id }
         assertEquals(
             listOf(
@@ -21,6 +21,7 @@ class CatalogTest {
                 "navbar.icons",
                 "navbar.scroll",
                 "navbar.cutout",
+                "navbar.cutoutmorph",
                 "navbar.all",
                 "navbar.recompositions",
             ),

@@ -92,4 +92,43 @@ class AnimatedNavBarUiTest {
         assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
     }
+
+    @Test
+    fun barDoesNotRecomposeWhileTheScrollMorphAnimates() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        var selected by mutableIntStateOf(0)
+        val scrollState = NavBarScrollState(collapseDistancePx = 100f)
+        setContent {
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(
+                    testItems,
+                    selected,
+                    onSelect = {},
+                    layers = NavBarLayers(indicator = true, cutout = true, scrollAware = true),
+                    scrollState = scrollState,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val beforeScroll = compositions
+
+        repeat(20) {
+            runOnUiThread { scrollState.onScroll(-5f) }
+            Snapshot.sendApplyNotifications()
+            mainClock.advanceTimeBy(16)
+        }
+        val afterScroll = compositions
+        assertEquals(1f, scrollState.collapse)
+        assertEquals(beforeScroll, afterScroll, "scroll-driven morph frames must not recompose")
+
+        runOnUiThread { selected = 3 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(32)
+        val afterSelection = compositions
+        mainClock.advanceTimeBy(2_000)
+
+        assertTrue(afterSelection > afterScroll, "the selection change itself must recompose")
+        assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
+    }
 }
