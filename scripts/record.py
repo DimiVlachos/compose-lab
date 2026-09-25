@@ -26,6 +26,8 @@ ACTIVITY = f"{APP_ID}/.MainActivity"
 DEVICE_FILE = "/sdcard/compose-lab-demo.mp4"
 MAX_BYTES = 5 * 1024 * 1024
 MARKER_TIMEOUT_S = 60
+# screenrecord captures its first frame about this long before the file has any bytes (measured on a Galaxy S23 Ultra).
+ANDROID_CAPTURE_LEAD_S = 0.08
 
 
 def run(cmd):
@@ -79,16 +81,21 @@ def android_record_size():
 
 
 def wait_for_recording_file(deadline_s=5.0, poll_s=0.05):
-    """Poll the device recording file until it exists with a nonzero size, or exit with a clear message."""
+    """Poll until the device recording file is non-empty and return when that poll was sent.
+
+    The send time, not the reply time, is the closer estimate of when recording began; the rest
+    of the gap is ANDROID_CAPTURE_LEAD_S.
+    """
     deadline = time.monotonic() + deadline_s
     while time.monotonic() < deadline:
+        asked = time.monotonic()
         result = subprocess.run(
             ["adb", "shell", "stat", "-c", "%s", DEVICE_FILE], capture_output=True, text=True
         )
         if result.returncode == 0:
             try:
                 if int(result.stdout.strip()) > 0:
-                    return
+                    return asked
             except ValueError:
                 pass
         time.sleep(poll_s)
@@ -103,14 +110,13 @@ def record_android(demo_id, label, raw):
     )
     failed = True
     try:
-        wait_for_recording_file()
+        t0 = wait_for_recording_file() - ANDROID_CAPTURE_LEAD_S
         failed = False
     finally:
         if failed:
             subprocess.run(["adb", "shell", "pkill", "-INT", "screenrecord"])
             recorder.wait()
             subprocess.run(["adb", "shell", "rm", "-f", DEVICE_FILE])
-    t0 = time.monotonic()
     log = subprocess.Popen(
         ["adb", "logcat", "-v", "raw", "-s", "LabRecorder:V"], stdout=subprocess.PIPE, text=True
     )
@@ -165,14 +171,21 @@ def record_ios(demo_id, label, raw):
 
 
 def encode(raw, start, done, dest):
-    """Cut [start, done], crop the centred 4:5 stage and raise the CRF until the clip fits in MAX_BYTES."""
+    """Cut [start, done], crop the centred 4:5 stage and raise the CRF until the clip fits in MAX_BYTES.
+
+    Recorders only write a frame when the screen changes, so still holds are gaps in the raw file.
+    fps=60 runs over the whole stream first to fill those gaps with the frame on screen, then the
+    window is trimmed; tpad covers a still tail after the last written frame.
+    """
     crf = 18
     while True:
         run([
             "ffmpeg", "-loglevel", "error", "-y",
-            "-ss", f"{start:.3f}", "-i", str(raw),
-            "-vf", "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350:flags=lanczos,"
-                   "tpad=stop_mode=clone:stop_duration=3,fps=60,format=yuv420p",
+            "-i", str(raw),
+            "-map", "0:v:0",
+            "-vf", f"fps=60,trim=start={start:.3f},setpts=PTS-STARTPTS,"
+                   "tpad=stop_mode=clone:stop_duration=3,"
+                   "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350:flags=lanczos,format=yuv420p",
             "-t", f"{done - start:.3f}",
             "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-movflags", "+faststart", "-an", str(dest),
         ])
