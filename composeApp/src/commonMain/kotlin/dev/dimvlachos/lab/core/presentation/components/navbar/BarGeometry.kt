@@ -267,6 +267,8 @@ private fun edgeTangentFillet(
     return OuterFillet(center, Offset(center.x, 0f), filletRadius, isCapTangent = false)
 }
 
+private const val CapFilletSafetyMarginPx = 0.01f
+
 private fun capTangentFillet(
     notchCenter: Offset,
     notchRadius: Float,
@@ -275,18 +277,14 @@ private fun capTangentFillet(
     cornerRadius: Float,
     outwardSign: Float,
 ): OuterFillet? {
-    // Largest fillet that still fits between the notch and the cap: it touches the cap at the
-    // cap's bottom point. A larger one has no tangent point on the bar's outer arc.
-    val bx = capCenter.x - notchCenter.x
-    val by = capCenter.y + cornerRadius - notchCenter.y
-    val fittingRadius = (bx * bx + by * by - notchRadius * notchRadius) / (2f * (by + notchRadius))
+    val delta = capCenter - notchCenter
+    val d = delta.getDistance()
+    val fittingRadius = (d - notchRadius + cornerRadius) / 2f - CapFilletSafetyMarginPx
     val radius = min(filletRadius, fittingRadius)
     if (radius <= 0f) return null
     val outerRadius = notchRadius + radius
     val innerRadius = cornerRadius - radius
     if (innerRadius <= 0f) return null
-    val delta = capCenter - notchCenter
-    val d = delta.getDistance()
     if (d <= 0f) return null
     if (d > outerRadius + innerRadius) return null
 
