@@ -85,7 +85,7 @@ fun AnimatedNavBar(
             Modifier.align(Alignment.BottomCenter)
                 .collapsingWidth(itemCount, collapse)
                 .height(NavBarDimens.BarHeight)
-                .drawBehind { drawBar(itemCount, indicator, layers, collapse(), colors) }
+                .drawBehind { drawBar(itemCount, indicator, layers, colors) }
                 .selectableGroup()
         ) {
             items.forEachIndexed { index, item ->
@@ -129,17 +129,17 @@ private fun DrawScope.drawBar(
     itemCount: Int,
     indicator: IndicatorState,
     layers: NavBarLayers,
-    collapse: Float,
     colors: AppColors,
 ) {
-    val corner = barCornerRadius(collapse, size.height, NavBarDimens.ExpandedCorner.toPx())
+    val corner = size.height / 2f
     val slot = size.width / itemCount
     val notch =
         if (layers.cutout) {
-            Notch(
+            filletedNotch(
                 centerX = clampNotchCenter(indicator.centerSlot * slot, size.width),
                 centerY = NavBarDimens.NotchCenterY.toPx(),
-                radius = NavBarDimens.NotchRadius.toPx(),
+                notchRadius = NavBarDimens.NotchRadius.toPx(),
+                filletRadius = NavBarDimens.NotchFillet.toPx(),
             )
         } else {
             null
