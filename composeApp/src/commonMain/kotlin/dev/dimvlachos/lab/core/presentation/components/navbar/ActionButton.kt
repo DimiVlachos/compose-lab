@@ -19,7 +19,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -84,7 +83,6 @@ internal fun ActionButton(
     selectedIndex: Int,
     isActive: Boolean,
     state: ActionRevealState,
-    collapse: () -> Float,
     onActionClick: (Int) -> Unit,
     colors: AppColors,
     modifier: Modifier = Modifier,
@@ -95,10 +93,8 @@ internal fun ActionButton(
         modifier
             .graphicsLayer {
                 alpha = state.revealValue
-                val collapseScale = 1f - 0.15f * collapse()
-                scaleX = state.scaleXValue * collapseScale
-                scaleY = state.scaleYValue * collapseScale
-                transformOrigin = TransformOrigin(0f, 0.5f)
+                scaleX = state.scaleXValue
+                scaleY = state.scaleYValue
             }
             .clip(CircleShape)
             .background(colors.accent)

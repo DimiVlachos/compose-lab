@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -283,7 +284,7 @@ class BarGeometryTest {
 
     @Test
     fun morphedNotchParamsIsNullAtAndAfterHandoff() {
-        for (m in listOf(HandoffM, 0.8f, 0.9f, 1f)) {
+        for (m in listOf(HandoffM, 0.85f, 0.9f, 1f)) {
             val geometry = restBubbleGeometry(m)
             assertNull(
                 morphedNotchParams(
@@ -361,24 +362,105 @@ class BarGeometryTest {
         }
     }
 
+    @Test
+    fun barHeightInterpolatesFromExpandedToCollapsed() {
+        assertEquals(72f, barHeightPx(collapse = 0f, expandedHeight = 72f, collapsedHeight = 56f))
+        assertEquals(64f, barHeightPx(collapse = 0.5f, expandedHeight = 72f, collapsedHeight = 56f))
+        assertEquals(56f, barHeightPx(collapse = 1f, expandedHeight = 72f, collapsedHeight = 56f))
+    }
+
+    @Test
+    fun pillHeightTracksTheCurrentBarHeightMinusTwiceTheInset() {
+        assertEquals(56f, pillHeightPx(barHeight = 72f, pillInset = 8f))
+        assertEquals(40f, pillHeightPx(barHeight = 56f, pillInset = 8f))
+    }
+
+    @Test
+    fun bubbleHandoffMovesWhenTheBarActuallyShrinks() {
+        val flatHandoff =
+            bubbleHandoff(
+                bubbleOverhang = 20f,
+                barHeight = 72f,
+                collapsedBarHeight = 72f,
+                pillInset = 8f,
+            )
+        val shrinkingHandoff =
+            bubbleHandoff(
+                bubbleOverhang = 20f,
+                barHeight = 72f,
+                collapsedBarHeight = 56f,
+                pillInset = 8f,
+            )
+        assertEquals(20f / 28f, flatHandoff, 0.0001f)
+        assertEquals(0.8043f, shrinkingHandoff, 0.001f)
+        assertTrue(shrinkingHandoff != flatHandoff)
+    }
+
+    @Test
+    fun bubbleHandoffIsARatioOfDpValuesSoItDoesNotDependOnDensity() {
+        val handoff =
+            bubbleHandoff(
+                bubbleOverhang = 20f,
+                barHeight = 72f,
+                collapsedBarHeight = 56f,
+                pillInset = 8f,
+            )
+        val scaled =
+            bubbleHandoff(
+                bubbleOverhang = 20f * 3f,
+                barHeight = 72f * 3f,
+                collapsedBarHeight = 56f * 3f,
+                pillInset = 8f * 3f,
+            )
+        assertEquals(handoff, scaled, 0.0001f)
+    }
+
+    @Test
+    fun actionButtonLeftEdgeNeverOverlapsTheBarsRightEdge() {
+        val containerWidth = 1000
+        val collapsedWidth = 256
+        val gap = 8f
+        for (c in listOf(0f, 0.5f, 1f)) {
+            val size = barHeightPx(c, BarHeightPx, CollapsedBarHeightPx)
+            val sizePx = size.roundToInt()
+            val inset = (gap + size).roundToInt()
+            val layout = barLayout(containerWidth, collapsedWidth, c, inset, actionReveal = 1f)
+            val barRight = layout.left + layout.width
+            val buttonLeft = layout.left + layout.width + layout.inset - sizePx
+            assertTrue(
+                buttonLeft >= barRight + gap - 0.5f,
+                "c=$c barRight=$barRight buttonLeft=$buttonLeft",
+            )
+        }
+    }
+
     private val BubbleSizePx = 52f
     private val BubbleOverhangPx = 20f
     private val BarHeightPx = 72f
-    private val PillHeightPx = 56f
+    private val CollapsedBarHeightPx = 56f
+    private val PillInsetPx = 8f
     private val FilletRadius = 16f
     private val Gap = 6f
     private val HandoffM =
-        BubbleOverhangPx / (BubbleOverhangPx + BarHeightPx / 2f - PillHeightPx / 2f)
+        bubbleHandoff(
+            bubbleOverhang = BubbleOverhangPx,
+            barHeight = BarHeightPx,
+            collapsedBarHeight = CollapsedBarHeightPx,
+            pillInset = PillInsetPx,
+        )
 
-    private fun restBubbleGeometry(m: Float) =
-        bubbleGeometry(
+    private fun restBubbleGeometry(m: Float): BubbleGeometry {
+        val currentBarHeight = barHeightPx(m, BarHeightPx, CollapsedBarHeightPx)
+        return bubbleGeometry(
             m = m,
             stretchFactor = 1f,
             bubbleSize = BubbleSizePx,
             bubbleOverhang = BubbleOverhangPx,
-            barHeight = BarHeightPx,
-            pillHeight = PillHeightPx,
+            restBarHeight = BarHeightPx,
+            barHeight = currentBarHeight,
+            pillHeight = pillHeightPx(currentBarHeight, PillInsetPx),
         )
+    }
 
     private fun straightSegmentNotch() =
         filletedNotch(

@@ -129,7 +129,6 @@ fun AnimatedNavBar(
                 selectedIndex = selected,
                 isActive = target != null,
                 state = actionState,
-                collapse = collapse,
                 onActionClick = onActionClick,
                 colors = colors,
                 modifier =
@@ -142,10 +141,14 @@ fun AnimatedNavBar(
 
 private class Ref<T>(var value: T)
 
-private fun Density.actionInsetPx(collapse: Float): Int {
-    val scaledSize = NavBarDimens.ActionSize.toPx() * (1f - 0.15f * collapse)
-    return (NavBarDimens.ActionGap.toPx() + scaledSize).roundToInt()
-}
+private fun Density.currentBarHeightPx(collapse: Float): Float =
+    barHeightPx(collapse, NavBarDimens.BarHeight.toPx(), NavBarDimens.CollapsedBarHeight.toPx())
+
+private fun Density.outerHeightPx(): Int =
+    (NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight).roundToPx()
+
+private fun Density.actionInsetPx(collapse: Float): Int =
+    (NavBarDimens.ActionGap.toPx() + currentBarHeightPx(collapse)).roundToInt()
 
 private fun Modifier.barRowPlacement(
     itemCount: Int,
@@ -161,10 +164,10 @@ private fun Modifier.barRowPlacement(
             actionInset = actionInsetPx(c),
             actionReveal = actionReveal(),
         )
-    val barHeightPx = NavBarDimens.BarHeight.roundToPx()
-    val placeable = measurable.measure(Constraints.fixed(info.width, barHeightPx))
+    val barHeightPxInt = currentBarHeightPx(c).roundToInt()
+    val placeable = measurable.measure(Constraints.fixed(info.width, barHeightPxInt))
     layout(constraints.maxWidth, constraints.maxHeight) {
-        placeable.place(info.left, NavBarDimens.BubbleOverhang.roundToPx())
+        placeable.place(info.left, outerHeightPx() - barHeightPxInt)
     }
 }
 
@@ -182,11 +185,12 @@ private fun Modifier.actionButtonPlacement(
             actionInset = actionInsetPx(c),
             actionReveal = actionReveal(),
         )
-    val sizePx = NavBarDimens.ActionSize.roundToPx()
+    val sizePx = currentBarHeightPx(c).roundToInt()
     val placeable = measurable.measure(Constraints.fixed(sizePx, sizePx))
     layout(constraints.maxWidth, constraints.maxHeight) {
         val right = info.left + info.width + info.inset
-        placeable.place(right - sizePx, NavBarDimens.BubbleOverhang.roundToPx())
+        val barTop = outerHeightPx() - sizePx
+        placeable.place(right - sizePx, barTop)
     }
 }
 
@@ -199,6 +203,7 @@ private fun DrawScope.drawBar(
 ) {
     val corner = size.height / 2f
     val slot = size.width / itemCount
+    val pillHeight = pillHeightPx(size.height, NavBarDimens.PillInset.toPx())
     val notch =
         if (layers.cutout) {
             val m = collapse()
@@ -214,8 +219,9 @@ private fun DrawScope.drawBar(
                     stretchFactor = stretchFactor,
                     bubbleSize = NavBarDimens.BubbleSize.toPx(),
                     bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
-                    barHeight = NavBarDimens.BarHeight.toPx(),
-                    pillHeight = NavBarDimens.PillHeight.toPx(),
+                    restBarHeight = NavBarDimens.BarHeight.toPx(),
+                    barHeight = size.height,
+                    pillHeight = pillHeight,
                 )
             val morphed =
                 morphedNotchParams(
@@ -242,7 +248,6 @@ private fun DrawScope.drawBar(
     drawPath(barPath(size, corner, notch), colors.bar)
 
     if (layers.indicator && !layers.cutout) {
-        val pillHeight = NavBarDimens.PillHeight.toPx()
         val inset = NavBarDimens.PillInset.toPx()
         val left = indicator.leftSlot * slot + inset
         val right = max(indicator.rightSlot * slot - inset, left + pillHeight)
@@ -286,14 +291,16 @@ private fun BoxScope.Bubble(
                     } else {
                         1f
                     }
+                val currentBarHeight = currentBarHeightPx(m)
                 val geometry =
                     bubbleGeometry(
                         m = m,
                         stretchFactor = stretchFactor,
                         bubbleSize = NavBarDimens.BubbleSize.toPx(),
                         bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
-                        barHeight = NavBarDimens.BarHeight.toPx(),
-                        pillHeight = NavBarDimens.PillHeight.toPx(),
+                        restBarHeight = NavBarDimens.BarHeight.toPx(),
+                        barHeight = currentBarHeight,
+                        pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
                     )
                 val height = geometry.halfHeight * 2f
                 val bubbleWidth = NavBarDimens.BubbleSize.toPx() * stretchFactor
@@ -307,7 +314,8 @@ private fun BoxScope.Bubble(
                     val barLeft = info.left.toFloat()
                     val center =
                         clampNotchCenter(indicator.centerSlot * slotWidth, barWidthPx.toFloat())
-                    val centerYAbsolute = geometry.centerY + NavBarDimens.BubbleOverhang.toPx()
+                    val barTop = outerHeightPx() - currentBarHeight.roundToInt()
+                    val centerYAbsolute = geometry.centerY + barTop
                     placeable.place(
                         (barLeft + center - width / 2f).roundToInt(),
                         (centerYAbsolute - height / 2f).roundToInt(),

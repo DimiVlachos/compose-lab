@@ -39,6 +39,24 @@ internal fun barLayout(
     return BarLayout(width, left, inset)
 }
 
+internal fun barHeightPx(collapse: Float, expandedHeight: Float, collapsedHeight: Float): Float =
+    lerp(expandedHeight, collapsedHeight, collapse)
+
+internal fun pillHeightPx(barHeight: Float, pillInset: Float): Float = barHeight - 2f * pillInset
+
+internal fun bubbleHandoff(
+    bubbleOverhang: Float,
+    barHeight: Float,
+    collapsedBarHeight: Float,
+    pillInset: Float,
+): Float {
+    val shrink = barHeight - collapsedBarHeight
+    if (shrink <= 0f) return bubbleOverhang / (bubbleOverhang + pillInset)
+    val b = bubbleOverhang + pillInset - shrink
+    val discriminant = b * b + 4f * shrink * bubbleOverhang
+    return (-b + sqrt(discriminant)) / (2f * shrink)
+}
+
 internal class BubbleGeometry(val centerY: Float, val halfHeight: Float)
 
 internal fun bubbleGeometry(
@@ -46,13 +64,17 @@ internal fun bubbleGeometry(
     stretchFactor: Float,
     bubbleSize: Float,
     bubbleOverhang: Float,
+    restBarHeight: Float,
     barHeight: Float,
     pillHeight: Float,
 ): BubbleGeometry {
     val bubbleHeight = bubbleSize * (2f - stretchFactor).coerceIn(0.75f, 1.1f)
     val height = lerp(bubbleHeight, pillHeight, m)
-    val centerYAbsolute = lerp(bubbleSize / 2f, bubbleOverhang + barHeight / 2f, m)
-    return BubbleGeometry(centerY = centerYAbsolute - bubbleOverhang, halfHeight = height / 2f)
+    val barBottom = bubbleOverhang + restBarHeight
+    val barCenterAbsolute = barBottom - barHeight / 2f
+    val centerYAbsolute = lerp(bubbleSize / 2f, barCenterAbsolute, m)
+    val barTop = barBottom - barHeight
+    return BubbleGeometry(centerY = centerYAbsolute - barTop, halfHeight = height / 2f)
 }
 
 internal class MorphedNotch(val notchRadius: Float, val filletRadius: Float, val centerY: Float)
