@@ -5,6 +5,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -203,7 +206,7 @@ class BarGeometryTest {
                 barWidth = 256f,
                 cornerRadius = 36f,
             )
-        assertTrue(notch.leftFilletCenter.x - notch.filletRadius >= 0f)
+        assertTrue(notch.leftFilletCenter.x - notch.leftFilletRadius >= 0f)
     }
 
     @Test
@@ -219,7 +222,7 @@ class BarGeometryTest {
                 cornerRadius = 36f,
             )
         assertTrue(notch.leftIsCapTangent)
-        val leftmost = notch.leftFilletCenter.x - notch.filletRadius
+        val leftmost = notch.leftFilletCenter.x - notch.leftFilletRadius
         assertTrue(leftmost >= 0f)
         assertEquals(1.93f, leftmost, 0.05f)
     }
@@ -237,9 +240,29 @@ class BarGeometryTest {
                 cornerRadius = 36f,
             )
         assertTrue(notch.rightIsCapTangent)
-        val rightmost = notch.rightFilletCenter.x + notch.filletRadius
+        val rightmost = notch.rightFilletCenter.x + notch.rightFilletRadius
         assertTrue(rightmost <= size.width)
         assertEquals(size.width - 1.93f, rightmost, 0.05f)
+    }
+
+    @Test
+    fun edgeTabOutlineHasNoSpikeWhenTheSquashedBubbleOvershootsTowardsTheCapCentre() {
+        val size = Size(264f, 72f)
+        for (centerX in listOf(35.66f, 39.54f)) {
+            for (x in listOf(centerX, size.width - centerX)) {
+                val notch =
+                    filletedNotch(
+                        centerX = x,
+                        centerY = 6f,
+                        notchRadius = 34.6f,
+                        filletRadius = 16f,
+                        barWidth = size.width,
+                        cornerRadius = 36f,
+                    )
+                val turn = maxOutlineTurnDegrees(barPath(size, 36f, notch))
+                assertTrue(turn < 25f, "centerX=$x turns $turn degrees in one step")
+            }
+        }
     }
 
     @Test
@@ -464,6 +487,19 @@ class BarGeometryTest {
             barWidth = 400f,
             cornerRadius = 36f,
         )
+
+    private fun maxOutlineTurnDegrees(path: Path, steps: Int = 4000): Float {
+        val measure = PathMeasure()
+        measure.setPath(path, false)
+        val length = measure.length
+        val ring = (0 until steps).map { measure.getPosition(length * it / steps) }
+        return ring.indices.maxOf { i ->
+            val a = ring[i] - ring[(i - 1 + steps) % steps]
+            val b = ring[(i + 1) % steps] - ring[i]
+            val turn = abs(atan2(a.x * b.y - a.y * b.x, a.x * b.x + a.y * b.y))
+            turn * 180f / PI.toFloat()
+        }
+    }
 
     private fun samplePath(path: Path, steps: Int = 500): List<Offset> {
         val measure = PathMeasure()
