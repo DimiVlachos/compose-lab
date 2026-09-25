@@ -3,7 +3,6 @@ package dev.dimvlachos.lab.core.presentation.components.navbar
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.MutatorMutex
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -17,8 +16,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 private val SettleSpec =
     spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
@@ -28,7 +28,6 @@ class NavBarScrollState internal constructor(private val collapseDistancePx: Flo
     var collapse: Float by mutableFloatStateOf(0f)
         private set
 
-    private val settleMutex = MutatorMutex()
     private var settleJob: Job? = null
     private var lastDeltaY = 0f
 
@@ -52,7 +51,7 @@ class NavBarScrollState internal constructor(private val collapseDistancePx: Flo
         lastDeltaY = deltaY
     }
 
-    suspend fun settle() {
+    internal suspend fun settle() {
         val start = collapse
         if (start <= 0f || start >= 1f) return
         val target =
@@ -62,13 +61,18 @@ class NavBarScrollState internal constructor(private val collapseDistancePx: Flo
                 lastDeltaY < 0f -> 1f
                 else -> 0f
             }
-        settleJob = coroutineContext[Job]
-        settleMutex.mutate {
-            animate(initialValue = start, targetValue = target, animationSpec = SettleSpec) {
-                value,
-                _ ->
-                collapse = value
+        settleJob?.cancel()
+        coroutineScope {
+            val job = launch {
+                animate(initialValue = start, targetValue = target, animationSpec = SettleSpec) {
+                    value,
+                    _ ->
+                    collapse = value
+                }
             }
+            settleJob = job
+            job.join()
+            if (settleJob === job) settleJob = null
         }
     }
 }
