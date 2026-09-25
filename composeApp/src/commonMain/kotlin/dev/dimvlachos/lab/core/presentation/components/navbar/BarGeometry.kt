@@ -139,35 +139,27 @@ internal fun filletedNotch(
     require(filletRadius > 0f) { "filletRadius must be positive" }
     val notchCenter = Offset(centerX, centerY)
 
-    val leftEdge = edgeTangentFillet(notchCenter, notchRadius, filletRadius, xSign = -1f)
     val leftFillet =
-        if (leftEdge.outerTangent.x < cornerRadius) {
-            capTangentFillet(
-                notchCenter = notchCenter,
-                notchRadius = notchRadius,
-                filletRadius = filletRadius,
-                capCenter = Offset(cornerRadius, cornerRadius),
-                cornerRadius = cornerRadius,
-                outwardSign = -1f,
-            ) ?: leftEdge
-        } else {
-            leftEdge
-        }
+        blendedFillet(
+            notchCenter = notchCenter,
+            notchRadius = notchRadius,
+            filletRadius = filletRadius,
+            xSign = -1f,
+            capCenter = Offset(cornerRadius, cornerRadius),
+            cornerRadius = cornerRadius,
+            edgeThreshold = cornerRadius,
+        )
 
-    val rightEdge = edgeTangentFillet(notchCenter, notchRadius, filletRadius, xSign = 1f)
     val rightFillet =
-        if (rightEdge.outerTangent.x > barWidth - cornerRadius) {
-            capTangentFillet(
-                notchCenter = notchCenter,
-                notchRadius = notchRadius,
-                filletRadius = filletRadius,
-                capCenter = Offset(barWidth - cornerRadius, cornerRadius),
-                cornerRadius = cornerRadius,
-                outwardSign = 1f,
-            ) ?: rightEdge
-        } else {
-            rightEdge
-        }
+        blendedFillet(
+            notchCenter = notchCenter,
+            notchRadius = notchRadius,
+            filletRadius = filletRadius,
+            xSign = 1f,
+            capCenter = Offset(barWidth - cornerRadius, cornerRadius),
+            cornerRadius = cornerRadius,
+            edgeThreshold = barWidth - cornerRadius,
+        )
 
     return FilletedNotch(
         leftFilletCenter = leftFillet.center,
@@ -249,6 +241,43 @@ private class OuterFillet(
     val radius: Float,
     val isCapTangent: Boolean,
 )
+
+private const val BranchBlendWindowPx = 16f
+
+private fun blendedFillet(
+    notchCenter: Offset,
+    notchRadius: Float,
+    filletRadius: Float,
+    xSign: Float,
+    capCenter: Offset,
+    cornerRadius: Float,
+    edgeThreshold: Float,
+): OuterFillet {
+    val edge = edgeTangentFillet(notchCenter, notchRadius, filletRadius, xSign)
+    val penetration = xSign * (edge.outerTangent.x - edgeThreshold)
+    if (penetration <= 0f) return edge
+    val cap =
+        capTangentFillet(
+            notchCenter = notchCenter,
+            notchRadius = notchRadius,
+            filletRadius = filletRadius,
+            capCenter = capCenter,
+            cornerRadius = cornerRadius,
+            outwardSign = xSign,
+        ) ?: return edge
+    val window = BranchBlendWindowPx
+    val t = (penetration / window).coerceIn(0f, 1f)
+    if (t >= 1f) return cap
+    return OuterFillet(
+        center = lerpOffset(edge.center, cap.center, t),
+        outerTangent = lerpOffset(edge.outerTangent, cap.outerTangent, t),
+        radius = lerp(edge.radius, cap.radius, t),
+        isCapTangent = true,
+    )
+}
+
+private fun lerpOffset(start: Offset, stop: Offset, fraction: Float): Offset =
+    Offset(lerp(start.x, stop.x, fraction), lerp(start.y, stop.y, fraction))
 
 private fun edgeTangentFillet(
     notchCenter: Offset,
