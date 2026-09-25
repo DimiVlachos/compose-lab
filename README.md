@@ -12,14 +12,19 @@ One bar, five layers that can each be switched on or off. Nothing recomposes whi
 | ![](docs/media/navbar.icons.gif) | **Animated icons.** A circular reveal of the filled icon, with a squash and bounce. |
 | ![](docs/media/navbar.scroll.gif) | **Collapse on scroll.** A nested-scroll observer turns the bar into a floating pill. |
 | ![](docs/media/navbar.cutout.gif) | **Moving cutout.** A notch cut with `Path.combine`, following the bubble. |
-| ![](docs/media/navbar.cutoutmorph.gif) | **Cutout morph.** The notch shrinks in place and the bubble melts into an in-bar pill as the bar collapses. |
+| ![](docs/media/navbar.cutoutmorph.gif) | **Cutout morph.** The notch hugs the bubble as it sinks into the bar, then hands off to an in-bar pill. |
 | ![](docs/media/navbar.action.gif) | **Action button.** A jelly button squirts out of the bar on tabs that have one, and shrinks the bar to make room. |
 | ![](docs/media/navbar.all.gif) | **Everything together.** |
 | ![](docs/media/navbar.recompositions.gif) | **Frames vs recompositions.** Frames climb; the bar recomposes only on a tap. |
 
 ```kotlin
 val items = listOf(
-    NavItem(label = "Home", icon = Res.drawable.ic_home, selectedIcon = Res.drawable.ic_home_filled),
+    NavItem(
+        label = "Home",
+        icon = Res.drawable.ic_home,
+        selectedIcon = Res.drawable.ic_home_filled,
+        action = NavAction(Res.drawable.ic_add, "New post"),
+    ),
     NavItem(label = "Search", icon = Res.drawable.ic_search, selectedIcon = Res.drawable.ic_search),
     NavItem(label = "Saved", icon = Res.drawable.ic_saved, selectedIcon = Res.drawable.ic_saved_filled),
     NavItem(label = "Profile", icon = Res.drawable.ic_profile, selectedIcon = Res.drawable.ic_profile_filled),
@@ -31,6 +36,7 @@ AnimatedNavBar(
     items = items,
     selectedIndex = selected,
     onSelect = { selected = it },
+    onActionClick = { index -> /* the tapped tab's action fired */ },
     layers = NavBarLayers.All,
     scrollState = scrollState, // also add Modifier.nestedScroll(scrollState.nestedScrollConnection) to your list
 )
