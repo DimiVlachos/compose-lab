@@ -201,49 +201,79 @@ class BarGeometryTest {
     }
 
     @Test
+    fun bubbleGeometryAtRestMatchesTheOriginalNotchConstants() {
+        val geometry = restBubbleGeometry(m = 0f)
+        assertEquals(6f, geometry.centerY, 0.01f)
+        assertEquals(26f, geometry.halfHeight, 0.01f)
+    }
+
+    @Test
     fun morphedNotchParamsAtRestReturnsTheRestValues() {
+        val geometry = restBubbleGeometry(m = 0f)
         val morphed =
-            morphedNotchParams(m = 0f, restCenterY = 6f, notchRadius = 32f, filletRadius = 16f)
+            morphedNotchParams(
+                m = 0f,
+                handoffM = HandoffM,
+                bubbleCenterY = geometry.centerY,
+                bubbleHalfHeight = geometry.halfHeight,
+                gap = Gap,
+                filletRadius = FilletRadius,
+            )
         assertNotNull(morphed)
-        assertEquals(32f, morphed.notchRadius)
-        assertEquals(16f, morphed.filletRadius)
-        assertEquals(6f, morphed.centerY)
+        assertEquals(32f, morphed.notchRadius, 0.01f)
+        assertEquals(16f, morphed.filletRadius, 0.01f)
+        assertEquals(6f, morphed.centerY, 0.01f)
     }
 
     @Test
-    fun morphedNotchParamsIsNullAtFullMorph() {
-        assertNull(
-            morphedNotchParams(m = 1f, restCenterY = 6f, notchRadius = 32f, filletRadius = 16f)
-        )
-    }
-
-    @Test
-    fun morphedNotchParamsDepthIsMonotonicallyDecreasingAndReachesZero() {
-        val restCenterY = 6f
-        val notchRadius = 32f
-        val filletRadius = 16f
-        var previousDepth = Float.MAX_VALUE
-        var becameNullAtStep: Int? = null
-        for (step in 0..1000) {
-            val m = step / 1000f
-            val morphed = morphedNotchParams(m, restCenterY, notchRadius, filletRadius)
-            if (morphed == null) {
-                if (becameNullAtStep == null) becameNullAtStep = step
-                continue
-            }
-            assertNull(becameNullAtStep, "must not un-morph after the notch has gone")
-            val depth = morphed.centerY + morphed.notchRadius
-            assertTrue(depth <= previousDepth + 0.0001f, "depth must not increase as m grows")
-            previousDepth = depth
+    fun morphedNotchParamsIsNullAtAndAfterHandoff() {
+        for (m in listOf(HandoffM, 0.8f, 0.9f, 1f)) {
+            val geometry = restBubbleGeometry(m)
+            assertNull(
+                morphedNotchParams(
+                    m = m,
+                    handoffM = HandoffM,
+                    bubbleCenterY = geometry.centerY,
+                    bubbleHalfHeight = geometry.halfHeight,
+                    gap = Gap,
+                    filletRadius = FilletRadius,
+                )
+            )
         }
-        assertNotNull(becameNullAtStep, "the notch must fully close before m reaches 1")
+    }
+
+    @Test
+    fun exposedRingShrinksMonotonicallyToZeroThroughTheHugPhase() {
+        var previousRing = Float.MAX_VALUE
+        var sawNonNull = false
+        for (step in 0..1000) {
+            val m = HandoffM * step / 1000f
+            val geometry = restBubbleGeometry(m)
+            val morphed =
+                morphedNotchParams(
+                    m = m,
+                    handoffM = HandoffM,
+                    bubbleCenterY = geometry.centerY,
+                    bubbleHalfHeight = geometry.halfHeight,
+                    gap = Gap,
+                    filletRadius = FilletRadius,
+                ) ?: continue
+            sawNonNull = true
+            val ring = morphed.notchRadius - geometry.halfHeight
+            assertTrue(ring <= previousRing + 0.0001f, "the exposed ring must not widen as m grows")
+            assertTrue(ring >= -0.01f, "the exposed ring must not go negative")
+            assertTrue(
+                morphed.centerY - morphed.notchRadius <= 0.01f,
+                "the notch centre must stay within its own radius (cy - R <= 0)",
+            )
+            previousRing = ring
+        }
+        assertTrue(sawNonNull, "the hug phase must produce a notch for some m below the hand-off")
+        assertTrue(previousRing <= 0.5f, "the exposed ring must shrink to (near) zero by hand-off")
     }
 
     @Test
     fun filletedNotchNeverThrowsThroughTheMorphAtRealBarWidthsAndTabCentres() {
-        val restCenterY = 6f
-        val notchRadius = 32f
-        val filletRadius = 16f
         val cornerRadius = 36f
         val itemCount = 4
         for (barWidthPx in listOf(256f, 300f, 371f)) {
@@ -252,8 +282,16 @@ class BarGeometryTest {
             for (centerX in tabCenters) {
                 for (step in 0..200) {
                     val m = step / 200f
+                    val geometry = restBubbleGeometry(m)
                     val morphed =
-                        morphedNotchParams(m, restCenterY, notchRadius, filletRadius) ?: continue
+                        morphedNotchParams(
+                            m = m,
+                            handoffM = HandoffM,
+                            bubbleCenterY = geometry.centerY,
+                            bubbleHalfHeight = geometry.halfHeight,
+                            gap = Gap,
+                            filletRadius = FilletRadius,
+                        ) ?: continue
                     filletedNotch(
                         centerX = clampNotchCenter(centerX, barWidthPx),
                         centerY = morphed.centerY,
@@ -266,6 +304,25 @@ class BarGeometryTest {
             }
         }
     }
+
+    private val BubbleSizePx = 52f
+    private val BubbleOverhangPx = 20f
+    private val BarHeightPx = 72f
+    private val PillHeightPx = 56f
+    private val FilletRadius = 16f
+    private val Gap = 6f
+    private val HandoffM =
+        BubbleOverhangPx / (BubbleOverhangPx + BarHeightPx / 2f - PillHeightPx / 2f)
+
+    private fun restBubbleGeometry(m: Float) =
+        bubbleGeometry(
+            m = m,
+            stretchFactor = 1f,
+            bubbleSize = BubbleSizePx,
+            bubbleOverhang = BubbleOverhangPx,
+            barHeight = BarHeightPx,
+            pillHeight = PillHeightPx,
+        )
 
     private fun straightSegmentNotch() =
         filletedNotch(
