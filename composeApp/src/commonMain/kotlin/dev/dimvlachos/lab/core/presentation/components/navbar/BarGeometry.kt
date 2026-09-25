@@ -15,6 +15,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlin.math.tanh
 
 internal fun barWidth(fullWidth: Int, collapsedWidth: Int, collapse: Float): Int {
     val target = min(fullWidth, collapsedWidth)
@@ -23,6 +24,41 @@ internal fun barWidth(fullWidth: Int, collapsedWidth: Int, collapse: Float): Int
 
 internal fun clampNotchCenter(centerX: Float, barWidth: Float): Float =
     centerX.coerceIn(0f, barWidth)
+
+internal fun softCompressToCeiling(value: Float, rest: Float, ceiling: Float?): Float {
+    if (ceiling == null || value <= rest) return value
+    val room = (ceiling - rest).coerceAtLeast(0.01f)
+    val excess = value - rest
+    return rest + room * tanh(excess / room)
+}
+
+internal class BubbleExtents(val left: Float, val right: Float)
+
+private const val MinBubbleExtentFraction = 0.5f
+
+internal fun bubbleExtents(
+    rawLeft: Float,
+    rawRight: Float,
+    calmCenter: Float,
+    stretch: Boolean,
+    bubbleHalfWidthRest: Float,
+    extentCeiling: Float?,
+): BubbleExtents {
+    val leftStretch = if (stretch) (calmCenter - rawLeft) * 2f else 1f
+    val rightStretch = if (stretch) (rawRight - calmCenter) * 2f else 1f
+    val minExtent = bubbleHalfWidthRest * MinBubbleExtentFraction
+    val left =
+        softCompressToCeiling(bubbleHalfWidthRest * leftStretch, bubbleHalfWidthRest, extentCeiling)
+            .coerceAtLeast(minExtent)
+    val right =
+        softCompressToCeiling(
+                bubbleHalfWidthRest * rightStretch,
+                bubbleHalfWidthRest,
+                extentCeiling,
+            )
+            .coerceAtLeast(minExtent)
+    return BubbleExtents(left, right)
+}
 
 internal class BarLayout(val width: Int, val left: Int, val inset: Int)
 
