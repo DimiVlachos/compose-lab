@@ -437,6 +437,103 @@ class BarGeometryTest {
         assertEquals(64f, actionInsetPx(1f, 8f, BarHeightPx, CollapsedBarHeightPx))
     }
 
+    @Test
+    fun softCompressToCeilingPassesValuesAtOrBelowRestThrough() {
+        assertEquals(52f, softCompressToCeiling(52f, rest = 52f, ceiling = 60f))
+        assertEquals(40f, softCompressToCeiling(40f, rest = 52f, ceiling = 60f))
+    }
+
+    @Test
+    fun softCompressToCeilingNeverReachesTheCeiling() {
+        val compressed = softCompressToCeiling(70f, rest = 52f, ceiling = 60f)
+        assertTrue(compressed < 60f)
+        assertTrue(compressed > 52f)
+    }
+
+    @Test
+    fun softCompressToCeilingReadsAsJellyForSmallExcess() {
+        val small = softCompressToCeiling(53f, rest = 52f, ceiling = 60f)
+        assertEquals(53f, small, 0.05f)
+    }
+
+    @Test
+    fun softCompressToCeilingIsANoOpWithoutACeiling() {
+        assertEquals(200f, softCompressToCeiling(200f, rest = 52f, ceiling = null))
+    }
+
+    @Test
+    fun bubbleExtentsLeanRightWhenMovingRight() {
+        // A mid-flight snapshot moving right (index 1 -> 3): the lead (right) spring races ahead of
+        // the calm centre, the bouncy trail (left) lags behind it.
+        val extents =
+            bubbleExtents(
+                rawLeft = 1.687f,
+                rawRight = 3.423f,
+                calmCenter = 2.306f,
+                stretch = true,
+                bubbleHalfWidthRest = 26f,
+                extentCeiling = 40f,
+            )
+        assertTrue(extents.right > extents.left, "moving right should lean the bubble to the right")
+    }
+
+    @Test
+    fun bubbleExtentsLeanLeftWhenMovingLeft() {
+        // The mirror image: index 3 -> 1, lead is now the left edge.
+        val extents =
+            bubbleExtents(
+                rawLeft = 1.577f,
+                rawRight = 3.313f,
+                calmCenter = 2.694f,
+                stretch = true,
+                bubbleHalfWidthRest = 26f,
+                extentCeiling = 40f,
+            )
+        assertTrue(extents.left > extents.right, "moving left should lean the bubble to the left")
+    }
+
+    @Test
+    fun bubbleExtentsEqualRestHalfWidthWhenSettled() {
+        val extents =
+            bubbleExtents(
+                rawLeft = 0f,
+                rawRight = 1f,
+                calmCenter = 0.5f,
+                stretch = true,
+                bubbleHalfWidthRest = 26f,
+                extentCeiling = 40f,
+            )
+        assertEquals(26f, extents.left, 0.01f)
+        assertEquals(26f, extents.right, 0.01f)
+    }
+
+    @Test
+    fun bubbleExtentsNeverExceedTheirCeilingOrDropBelowTheMinimum() {
+        val stretched =
+            bubbleExtents(
+                rawLeft = -2f,
+                rawRight = 3f,
+                calmCenter = 0.5f,
+                stretch = true,
+                bubbleHalfWidthRest = 26f,
+                extentCeiling = 40f,
+            )
+        assertTrue(stretched.left < 40f)
+        assertTrue(stretched.right < 40f)
+
+        val squashed =
+            bubbleExtents(
+                rawLeft = 0.49f,
+                rawRight = 0.51f,
+                calmCenter = 0.5f,
+                stretch = true,
+                bubbleHalfWidthRest = 26f,
+                extentCeiling = 40f,
+            )
+        assertTrue(squashed.left >= 13f, "the extent must never pinch below its sensible minimum")
+        assertTrue(squashed.right >= 13f, "the extent must never pinch below its sensible minimum")
+    }
+
     private val BubbleSizePx = 52f
     private val BubbleOverhangPx = 20f
     private val BarHeightPx = 72f
