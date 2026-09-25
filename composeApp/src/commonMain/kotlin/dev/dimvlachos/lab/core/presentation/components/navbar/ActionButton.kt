@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -25,6 +24,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -98,7 +98,7 @@ internal fun ActionButton(
                 scaleY = state.scaleYValue
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
-            .clip(CircleShape)
+            .clip(LabTheme.shapes.Full)
             .background(colors.accent)
             .then(
                 if (isActive) {
@@ -108,10 +108,8 @@ internal fun ActionButton(
                             indication = null,
                             role = Role.Button,
                         ) {
-                            scope.launch {
-                                state.squashTap()
-                                onActionClick(selectedIndex)
-                            }
+                            onActionClick(selectedIndex)
+                            scope.launch { state.squashTap() }
                         }
                 } else {
                     Modifier

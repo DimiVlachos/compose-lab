@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.navbar
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.semantics.Role
@@ -114,6 +115,7 @@ class AnimatedNavBarUiTest {
 
     @Test
     fun clickingTheActionButtonReportsTheSelectedIndex() = runComposeUiTest {
+        mainClock.autoAdvance = false
         var clicked = -1
         setContent {
             AnimatedNavBar(
@@ -124,8 +126,8 @@ class AnimatedNavBarUiTest {
                 layers = NavBarLayers(action = true),
             )
         }
-        onNodeWithContentDescription("Edit profile").performClick()
         mainClock.advanceTimeBy(1_000)
+        onNodeWithContentDescription("Edit profile").performClick()
         assertEquals(3, clicked)
     }
 
@@ -305,6 +307,51 @@ class AnimatedNavBarUiTest {
             compositions,
             "no recomposition is allowed while the icon swaps",
         )
+    }
+
+    @Test
+    fun revealingAnActionOnTheAlreadySelectedTabShowsTheButtonAndInsetsTheBar() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val home = NavItem("Home", Res.drawable.ic_home, Res.drawable.ic_home_filled)
+        val homeWithAction = home.copy(action = NavAction(Res.drawable.ic_add, "New post"))
+        val profile =
+            NavItem(
+                "Profile",
+                Res.drawable.ic_profile,
+                Res.drawable.ic_profile_filled,
+                NavAction(Res.drawable.ic_edit, "Edit profile"),
+            )
+        var items by mutableStateOf(listOf(home, profile))
+        setContent {
+            AnimatedNavBar(
+                items,
+                selectedIndex = 0,
+                onSelect = {},
+                layers = NavBarLayers(action = true),
+            )
+        }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithContentDescription("New post").assertDoesNotExist()
+        val barRightBefore = onNodeWithTag(NavBarRowTestTag).getBoundsInRoot().right
+
+        runOnUiThread { items = listOf(homeWithAction, profile) }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(1_000)
+
+        onNodeWithContentDescription("New post").assertExists()
+        val barRightAfter = onNodeWithTag(NavBarRowTestTag).getBoundsInRoot().right
+        assertTrue(
+            barRightAfter < barRightBefore,
+            "the bar must inset once the selected tab's action appears",
+        )
+
+        runOnUiThread { items = listOf(home, profile) }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(1_000)
+
+        onNodeWithContentDescription("New post").assertDoesNotExist()
+        val barRightFinal = onNodeWithTag(NavBarRowTestTag).getBoundsInRoot().right
+        assertEquals(barRightBefore.value, barRightFinal.value, 0.5f)
     }
 
     @Test
