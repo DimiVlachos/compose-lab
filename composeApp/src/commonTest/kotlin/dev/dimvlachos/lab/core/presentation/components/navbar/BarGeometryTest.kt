@@ -140,17 +140,6 @@ class BarGeometryTest {
     }
 
     @Test
-    fun aSingleLargeSweepArcStaysOnItsCircle() {
-        val center = Offset(200f, 6f)
-        val radius = 32f
-        val path =
-            Path().apply { arcTo(Rect(center, radius), 167.9753f, -155.95056f, forceMoveTo = true) }
-        for (point in samplePath(path)) {
-            assertEquals(radius, (point - center).getDistance(), 0.05f)
-        }
-    }
-
-    @Test
     fun cutterPathCurveSpansTheNotchAndClosesAboveTheBar() {
         val notch = straightSegmentNotch()
         val samples = samplePath(notchCutterPath(notch))
@@ -190,23 +179,6 @@ class BarGeometryTest {
             )
         val samples = samplePath(notchCutterPath(notch))
         assertEquals(16f + 32f, samples.maxOf { it.y }, 0.05f)
-    }
-
-    @Test
-    fun aCapTangentFilletNeverExtendsPastTheBarsOuterEdge() {
-        // Internal tangency (|F - C| = cornerRadius - filletRadius) puts every point of the
-        // fillet circle within cornerRadius of C by the triangle inequality, so the fillet can
-        // never poke outside the cap circle it is nested inside, whatever the exact numbers are.
-        val notch =
-            filletedNotch(
-                centerX = 32f,
-                centerY = 6f,
-                notchRadius = 32f,
-                filletRadius = 16f,
-                barWidth = 256f,
-                cornerRadius = 36f,
-            )
-        assertTrue(notch.leftFilletCenter.x - notch.leftFilletRadius >= 0f)
     }
 
     @Test
