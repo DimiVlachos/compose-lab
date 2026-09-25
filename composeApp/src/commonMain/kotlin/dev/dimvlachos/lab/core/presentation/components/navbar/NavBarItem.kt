@@ -75,7 +75,10 @@ internal fun NavBarItem(
                 interactionSource = null,
                 indication = null,
             )
-            .graphicsLayer { translationY = collapse() * NavBarDimens.LabelShift.toPx() },
+            .graphicsLayer {
+                val shift = (spacing.extraSmall.toPx() + typography.label.lineHeight.toPx()) / 2f
+                translationY = collapse() * shift
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

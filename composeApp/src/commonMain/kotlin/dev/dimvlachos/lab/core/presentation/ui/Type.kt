@@ -28,6 +28,7 @@ object AppTextStyle {
             fontFamily = FontFamily.Default,
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
+            lineHeight = 16.sp,
         )
 
     val caption =
