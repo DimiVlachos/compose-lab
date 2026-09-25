@@ -10,8 +10,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -121,7 +121,8 @@ internal class FilletedNotch(
     val rightNotchTangent: Offset,
     val notchCenter: Offset,
     val notchRadius: Float,
-    val filletRadius: Float,
+    val leftFilletRadius: Float,
+    val rightFilletRadius: Float,
     val barWidth: Float,
     val leftIsCapTangent: Boolean,
     val rightIsCapTangent: Boolean,
@@ -147,6 +148,7 @@ internal fun filletedNotch(
                 filletRadius = filletRadius,
                 capCenter = Offset(cornerRadius, cornerRadius),
                 cornerRadius = cornerRadius,
+                outwardSign = -1f,
             ) ?: leftEdge
         } else {
             leftEdge
@@ -161,6 +163,7 @@ internal fun filletedNotch(
                 filletRadius = filletRadius,
                 capCenter = Offset(barWidth - cornerRadius, cornerRadius),
                 cornerRadius = cornerRadius,
+                outwardSign = 1f,
             ) ?: rightEdge
         } else {
             rightEdge
@@ -171,11 +174,12 @@ internal fun filletedNotch(
         rightFilletCenter = rightFillet.center,
         leftOuterTangent = leftFillet.outerTangent,
         rightOuterTangent = rightFillet.outerTangent,
-        leftNotchTangent = tangentPoint(leftFillet.center, notchCenter, filletRadius),
-        rightNotchTangent = tangentPoint(rightFillet.center, notchCenter, filletRadius),
+        leftNotchTangent = tangentPoint(leftFillet.center, notchCenter, leftFillet.radius),
+        rightNotchTangent = tangentPoint(rightFillet.center, notchCenter, rightFillet.radius),
         notchCenter = notchCenter,
         notchRadius = notchRadius,
-        filletRadius = filletRadius,
+        leftFilletRadius = leftFillet.radius,
+        rightFilletRadius = rightFillet.radius,
         barWidth = barWidth,
         leftIsCapTangent = leftFillet.isCapTangent,
         rightIsCapTangent = rightFillet.isCapTangent,
@@ -183,10 +187,10 @@ internal fun filletedNotch(
 }
 
 internal fun notchCutterPath(notch: FilletedNotch): Path {
-    val leftFilletRect = Rect(notch.leftFilletCenter, notch.filletRadius)
-    val rightFilletRect = Rect(notch.rightFilletCenter, notch.filletRadius)
+    val leftFilletRect = Rect(notch.leftFilletCenter, notch.leftFilletRadius)
+    val rightFilletRect = Rect(notch.rightFilletCenter, notch.rightFilletRadius)
     val notchRect = Rect(notch.notchCenter, notch.notchRadius)
-    val top = -(notch.notchRadius + notch.filletRadius)
+    val top = -(notch.notchRadius + max(notch.leftFilletRadius, notch.rightFilletRadius))
 
     val leftFilletStart = angleDegrees(notch.leftOuterTangent - notch.leftFilletCenter)
     val leftFilletEnd = angleDegrees(notch.notchCenter - notch.leftFilletCenter)
@@ -239,7 +243,12 @@ internal fun barPath(size: Size, cornerRadius: Float, notch: FilletedNotch?): Pa
     return Path.combine(PathOperation.Difference, bar, notchCutterPath(notch))
 }
 
-private class OuterFillet(val center: Offset, val outerTangent: Offset, val isCapTangent: Boolean)
+private class OuterFillet(
+    val center: Offset,
+    val outerTangent: Offset,
+    val radius: Float,
+    val isCapTangent: Boolean,
+)
 
 private fun edgeTangentFillet(
     notchCenter: Offset,
@@ -255,7 +264,7 @@ private fun edgeTangentFillet(
     }
     val dx = sqrt(sumRadii * sumRadii - dy * dy)
     val center = Offset(notchCenter.x + xSign * dx, filletRadius)
-    return OuterFillet(center, Offset(center.x, 0f), isCapTangent = false)
+    return OuterFillet(center, Offset(center.x, 0f), filletRadius, isCapTangent = false)
 }
 
 private fun capTangentFillet(
@@ -264,16 +273,22 @@ private fun capTangentFillet(
     filletRadius: Float,
     capCenter: Offset,
     cornerRadius: Float,
+    outwardSign: Float,
 ): OuterFillet? {
-    val outerRadius = notchRadius + filletRadius
-    val innerRadius = cornerRadius - filletRadius
+    // Largest fillet that still fits between the notch and the cap: it touches the cap at the
+    // cap's bottom point. A larger one has no tangent point on the bar's outer arc.
+    val bx = capCenter.x - notchCenter.x
+    val by = capCenter.y + cornerRadius - notchCenter.y
+    val fittingRadius = (bx * bx + by * by - notchRadius * notchRadius) / (2f * (by + notchRadius))
+    val radius = min(filletRadius, fittingRadius)
+    if (radius <= 0f) return null
+    val outerRadius = notchRadius + radius
+    val innerRadius = cornerRadius - radius
     if (innerRadius <= 0f) return null
     val delta = capCenter - notchCenter
     val d = delta.getDistance()
     if (d <= 0f) return null
-    val minDistance = abs(outerRadius - innerRadius)
-    val maxDistance = outerRadius + innerRadius
-    if (d < minDistance || d > maxDistance) return null
+    if (d > outerRadius + innerRadius) return null
 
     val a = (outerRadius * outerRadius - innerRadius * innerRadius + d * d) / (2f * d)
     val h = sqrt((outerRadius * outerRadius - a * a).coerceAtLeast(0f))
@@ -281,9 +296,9 @@ private fun capTangentFillet(
     val perpendicular = Offset(-delta.y, delta.x) * (1f / d)
     val candidateA = mid + perpendicular * h
     val candidateB = mid - perpendicular * h
-    val center = if (candidateA.y <= candidateB.y) candidateA else candidateB
+    val center = if (outwardSign * (candidateA.x - candidateB.x) >= 0f) candidateA else candidateB
     val outerTangent = capCenter + (center - capCenter) * (cornerRadius / innerRadius)
-    return OuterFillet(center, outerTangent, isCapTangent = true)
+    return OuterFillet(center, outerTangent, radius, isCapTangent = true)
 }
 
 private fun tangentPoint(from: Offset, towards: Offset, radius: Float): Offset {
