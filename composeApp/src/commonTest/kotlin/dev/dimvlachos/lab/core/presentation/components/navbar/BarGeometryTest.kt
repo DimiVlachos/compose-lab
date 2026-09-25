@@ -26,6 +26,42 @@ class BarGeometryTest {
     }
 
     @Test
+    fun barLayoutMatchesPlainBarWidthWhenNoActionIsRevealed() {
+        val layout =
+            barLayout(
+                containerWidth = 1000,
+                collapsedWidth = 256,
+                collapse = 0f,
+                actionInset = 80,
+                actionReveal = 0f,
+            )
+        assertEquals(1000, layout.width)
+        assertEquals(0, layout.left)
+    }
+
+    @Test
+    fun barLayoutShrinksTheBarAndKeepsTheGroupEnvelopeConstant() {
+        val layout =
+            barLayout(
+                containerWidth = 1000,
+                collapsedWidth = 256,
+                collapse = 0f,
+                actionInset = 80,
+                actionReveal = 1f,
+            )
+        assertEquals(920, layout.width)
+        assertEquals(0, layout.left)
+    }
+
+    @Test
+    fun barLayoutCentersTheGroupEnvelopeWhenTheBarIsNarrowerThanTheContainer() {
+        val full = barLayout(1000, 256, 1f, actionInset = 80, actionReveal = 0f)
+        val revealed = barLayout(1000, 256, 1f, actionInset = 80, actionReveal = 1f)
+        assertEquals(full.left, revealed.left)
+        assertEquals(full.width - 80, revealed.width)
+    }
+
+    @Test
     fun notchCenterStaysInsideTheBar() {
         assertEquals(0f, clampNotchCenter(centerX = -12f, barWidth = 400f))
         assertEquals(200f, clampNotchCenter(centerX = 200f, barWidth = 400f))
