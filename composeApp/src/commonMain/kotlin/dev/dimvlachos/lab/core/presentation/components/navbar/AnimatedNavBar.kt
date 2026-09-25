@@ -140,6 +140,8 @@ private fun DrawScope.drawBar(
                 centerY = NavBarDimens.NotchCenterY.toPx(),
                 notchRadius = NavBarDimens.NotchRadius.toPx(),
                 filletRadius = NavBarDimens.NotchFillet.toPx(),
+                barWidth = size.width,
+                cornerRadius = corner,
             )
         } else {
             null
