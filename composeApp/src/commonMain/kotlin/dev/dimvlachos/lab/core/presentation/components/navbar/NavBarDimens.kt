@@ -9,12 +9,10 @@ internal object NavBarDimens {
     val PillInset = 8.dp
     val BubbleSize = 52.dp
     val BubbleOverhang = 20.dp
-    val NotchRadius = BubbleSize / 2 + 6.dp
-    val NotchGap = NotchRadius - BubbleSize / 2
+    val NotchGap = 6.dp
     val NotchFillet = 16.dp
     val FloatLift = 12.dp
     val IconSize = 26.dp
-    val LabelShift = 8.dp
     val ActionGap = 8.dp
     val BubbleHandoff: Float =
         bubbleHandoff(
