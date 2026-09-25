@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Static analysis, tests and debug build
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check Formatting (Spotless)
+        run: ./gradlew spotlessCheck --stacktrace
+
+      - name: Tests (iOS simulator)
+        run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
+
+      - name: Tests (Konsist architecture)
+        run: ./gradlew :androidApp:testDebugUnitTest --stacktrace
+
+      - name: Build Debug APK
+        run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+      - name: Upload Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            composeApp/build/reports/tests/**
+            composeApp/build/test-results/**
+            androidApp/build/reports/tests/**
+            androidApp/build/test-results/**
+          retention-days: 7
+          if-no-files-found: ignore

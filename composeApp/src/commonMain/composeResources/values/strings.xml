@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="catalog_title">compose-lab</string>
+    <string name="platform_android">Android</string>
+    <string name="platform_ios">iOS</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_saved">Saved</string>
+    <string name="nav_profile">Profile</string>
+    <string name="demo_navbar_indicator">Morphing indicator</string>
+    <string name="demo_navbar_icons">Animated icons</string>
+    <string name="demo_navbar_scroll">Collapse on scroll</string>
+    <string name="demo_navbar_cutout">Moving cutout</string>
+    <string name="demo_navbar_all">Everything together</string>
+    <string name="demo_navbar_recompositions">Zero recompositions while animating</string>
+    <string name="action_back">Back</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_replay">Replay</string>
+    <string name="recompositions_frames">frames drawn  %1$d</string>
+    <string name="recompositions_count">nav bar recompositions  %1$d</string>
+</resources>
