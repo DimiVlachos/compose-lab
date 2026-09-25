@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.ic_add
@@ -34,6 +36,8 @@ import dev.dimvlachos.lab.resources.ic_profile_filled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalTestApi::class)
 class AnimatedNavBarUiTest {
@@ -499,6 +503,42 @@ class AnimatedNavBarUiTest {
 
         assertTrue(afterSelection > afterScroll, "the selection change itself must recompose")
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
+    }
+
+    @Test
+    fun settlingAfterAPartialCollapseDoesNotRecomposeWithAllLayers() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        lateinit var scope: CoroutineScope
+        val scrollState = NavBarScrollState(collapseDistancePx = 100f)
+        setContent {
+            scope = rememberCoroutineScope()
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(
+                    testItems,
+                    selectedIndex = 3,
+                    onSelect = {},
+                    layers = NavBarLayers.All,
+                    scrollState = scrollState,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        runOnUiThread { scrollState.onScroll(-30f) }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(16)
+        val beforeSettle = compositions
+
+        runOnUiThread {
+            scope.launch {
+                scrollState.nestedScrollConnection.onPostFling(Velocity.Zero, Velocity.Zero)
+            }
+        }
+        mainClock.advanceTimeBy(3_000)
+        val afterSettle = compositions
+
+        assertEquals(0f, scrollState.collapse, 0.0001f)
+        assertEquals(beforeSettle, afterSettle, "settling to an end state must not recompose")
     }
 
     @Test
