@@ -10,3 +10,4 @@ iosApp/iosApp.xcodeproj/
 iosApp/iosApp/Info.plist
 xcuserdata/
 .superpowers/
+__pycache__/
