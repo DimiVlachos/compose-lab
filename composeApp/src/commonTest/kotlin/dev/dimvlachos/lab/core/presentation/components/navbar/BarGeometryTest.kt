@@ -3,6 +3,8 @@ package dev.dimvlachos.lab.core.presentation.components.navbar
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -77,12 +79,24 @@ class BarGeometryTest {
     }
 
     @Test
-    fun cutterPathBoundsSpanTheNotchAndCloseAboveTheBar() {
+    fun aSingleLargeSweepArcStaysOnItsCircle() {
+        val center = Offset(200f, 6f)
+        val radius = 32f
+        val path =
+            Path().apply { arcTo(Rect(center, radius), 167.9753f, -155.95056f, forceMoveTo = true) }
+        for (point in samplePath(path)) {
+            assertEquals(radius, (point - center).getDistance(), 0.05f)
+        }
+    }
+
+    @Test
+    fun cutterPathCurveSpansTheNotchAndClosesAboveTheBar() {
         val notch = straightSegmentNotch()
-        val bounds = notchCutterPath(notch).getBounds()
-        assertEquals(6f + 32f, bounds.bottom, 0.5f)
-        assertEquals(notch.leftOuterTangent.x, bounds.left, 0.5f)
-        assertEquals(-(32f + 16f), bounds.top, 0.5f)
+        val samples = samplePath(notchCutterPath(notch))
+        assertEquals(6f + 32f, samples.maxOf { it.y }, 0.05f)
+        assertEquals(notch.leftOuterTangent.x, samples.minOf { it.x }, 0.05f)
+        assertEquals(notch.rightOuterTangent.x, samples.maxOf { it.x }, 0.05f)
+        assertEquals(-(32f + 16f), samples.minOf { it.y }, 0.05f)
     }
 
     @Test
@@ -113,12 +127,29 @@ class BarGeometryTest {
                 barWidth = 400f,
                 cornerRadius = 36f,
             )
-        val bounds = notchCutterPath(notch).getBounds()
-        assertEquals(16f + 32f, bounds.bottom, 0.5f)
+        val samples = samplePath(notchCutterPath(notch))
+        assertEquals(16f + 32f, samples.maxOf { it.y }, 0.05f)
     }
 
     @Test
-    fun edgeTabAtRealNavBarWidthStaysCapTangentAndDoesNotEatTheCapSilhouette() {
+    fun aCapTangentFilletNeverExtendsPastTheBarsOuterEdge() {
+        // Internal tangency (|F - C| = cornerRadius - filletRadius) puts every point of the
+        // fillet circle within cornerRadius of C by the triangle inequality, so the fillet can
+        // never poke outside the cap circle it is nested inside, whatever the exact numbers are.
+        val notch =
+            filletedNotch(
+                centerX = 32f,
+                centerY = 6f,
+                notchRadius = 32f,
+                filletRadius = 16f,
+                barWidth = 256f,
+                cornerRadius = 36f,
+            )
+        assertTrue(notch.leftFilletCenter.x - notch.filletRadius >= 0f)
+    }
+
+    @Test
+    fun edgeTabAtRealNavBarWidthStaysCapTangentAndTheSilhouetteIntrusionIsExact() {
         val size = Size(371f, 72f)
         val notch =
             filletedNotch(
@@ -130,15 +161,13 @@ class BarGeometryTest {
                 cornerRadius = 36f,
             )
         assertTrue(notch.leftIsCapTangent)
-        val bounds = barPath(size, cornerRadius = 36f, notch = notch).getBounds()
-        assertEquals(0f, bounds.top)
-        assertEquals(0f, bounds.left, 3f)
-        assertEquals(size.width, bounds.right, 0.01f)
-        assertEquals(size.height, bounds.bottom, 0.01f)
+        val leftmost = notch.leftFilletCenter.x - notch.filletRadius
+        assertTrue(leftmost >= 0f)
+        assertEquals(1.93f, leftmost, 0.05f)
     }
 
     @Test
-    fun mirroredEdgeTabAtRealNavBarWidthStaysCapTangent() {
+    fun mirroredEdgeTabAtRealNavBarWidthStaysCapTangentAndTheSilhouetteIntrusionIsExact() {
         val size = Size(371f, 72f)
         val notch =
             filletedNotch(
@@ -150,8 +179,9 @@ class BarGeometryTest {
                 cornerRadius = 36f,
             )
         assertTrue(notch.rightIsCapTangent)
-        val bounds = barPath(size, cornerRadius = 36f, notch = notch).getBounds()
-        assertEquals(size.width, bounds.right, 3f)
+        val rightmost = notch.rightFilletCenter.x + notch.filletRadius
+        assertTrue(rightmost <= size.width)
+        assertEquals(size.width - 1.93f, rightmost, 0.05f)
     }
 
     @Test
@@ -177,4 +207,11 @@ class BarGeometryTest {
             barWidth = 400f,
             cornerRadius = 36f,
         )
+
+    private fun samplePath(path: Path, steps: Int = 500): List<Offset> {
+        val measure = PathMeasure()
+        measure.setPath(path, false)
+        val length = measure.length
+        return (0..steps).map { step -> measure.getPosition(length * step / steps) }
+    }
 }
