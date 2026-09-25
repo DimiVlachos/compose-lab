@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.navbar
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -7,6 +8,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.util.lerp
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -22,21 +24,41 @@ internal fun barWidth(fullWidth: Int, collapsedWidth: Int, collapse: Float): Int
 internal fun clampNotchCenter(centerX: Float, barWidth: Float): Float =
     centerX.coerceIn(0f, barWidth)
 
+internal class BubbleGeometry(val centerY: Float, val halfHeight: Float)
+
+internal fun bubbleGeometry(
+    m: Float,
+    stretchFactor: Float,
+    bubbleSize: Float,
+    bubbleOverhang: Float,
+    barHeight: Float,
+    pillHeight: Float,
+): BubbleGeometry {
+    val bubbleHeight = bubbleSize * (2f - stretchFactor).coerceIn(0.75f, 1.1f)
+    val height = lerp(bubbleHeight, pillHeight, m)
+    val centerYAbsolute = lerp(bubbleSize / 2f, bubbleOverhang + barHeight / 2f, m)
+    return BubbleGeometry(centerY = centerYAbsolute - bubbleOverhang, halfHeight = height / 2f)
+}
+
 internal class MorphedNotch(val notchRadius: Float, val filletRadius: Float, val centerY: Float)
 
 internal fun morphedNotchParams(
     m: Float,
-    restCenterY: Float,
-    notchRadius: Float,
+    handoffM: Float,
+    bubbleCenterY: Float,
+    bubbleHalfHeight: Float,
+    gap: Float,
     filletRadius: Float,
 ): MorphedNotch? {
-    val shrink = 1f - m
-    val scaledRadius = notchRadius * shrink
-    if (m >= 0.999f || scaledRadius < 0.5f) return null
+    if (m >= handoffM) return null
+    val t = FastOutSlowInEasing.transform(m / handoffM)
+    if (t >= 1f) return null
+    val f = filletRadius * (1f - t)
+    if (f < 0.5f) return null
     return MorphedNotch(
-        notchRadius = scaledRadius,
-        filletRadius = filletRadius * shrink,
-        centerY = restCenterY * shrink,
+        notchRadius = bubbleHalfHeight + gap * (1f - t),
+        filletRadius = f,
+        centerY = bubbleCenterY,
     )
 }
 
