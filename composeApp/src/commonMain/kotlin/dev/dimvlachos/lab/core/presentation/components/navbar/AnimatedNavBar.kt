@@ -29,6 +29,8 @@ import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.action_new_post
+import dev.dimvlachos.lab.resources.ic_add
 import dev.dimvlachos.lab.resources.ic_home
 import dev.dimvlachos.lab.resources.ic_home_filled
 import dev.dimvlachos.lab.resources.ic_profile
@@ -89,7 +91,7 @@ fun AnimatedNavBar(
     val actionState = remember { ActionRevealState(target) }
     val actionRevealValue: () -> Float = { actionState.revealValue }
 
-    LaunchedEffect(selected, layers) { actionState.animateTo(target) }
+    LaunchedEffect(target, layers.action) { actionState.animateTo(target) }
 
     Box(
         modifier
@@ -358,6 +360,7 @@ private fun AnimatedNavBarPreview() {
                     stringResource(Res.string.nav_home),
                     Res.drawable.ic_home,
                     Res.drawable.ic_home_filled,
+                    NavAction(Res.drawable.ic_add, stringResource(Res.string.action_new_post)),
                 ),
                 NavItem(
                     stringResource(Res.string.nav_search),
