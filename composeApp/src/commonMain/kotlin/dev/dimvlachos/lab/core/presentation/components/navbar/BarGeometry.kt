@@ -34,31 +34,18 @@ internal fun softCompressToCeiling(value: Float, rest: Float, ceiling: Float?): 
 
 internal class BubbleExtents(val left: Float, val right: Float)
 
-private const val MinBubbleExtentFraction = 0.5f
+internal fun bubbleExtents(lean: Float, restHalfWidth: Float): BubbleExtents =
+    BubbleExtents(
+        left = boundedExtent(restHalfWidth * (1f + sideLean(-lean)), restHalfWidth),
+        right = boundedExtent(restHalfWidth * (1f + sideLean(lean)), restHalfWidth),
+    )
 
-internal fun bubbleExtents(
-    rawLeft: Float,
-    rawRight: Float,
-    calmCenter: Float,
-    stretch: Boolean,
-    bubbleHalfWidthRest: Float,
-    extentCeiling: Float?,
-): BubbleExtents {
-    val leftStretch = if (stretch) (calmCenter - rawLeft) * 2f else 1f
-    val rightStretch = if (stretch) (rawRight - calmCenter) * 2f else 1f
-    val minExtent = bubbleHalfWidthRest * MinBubbleExtentFraction
-    val left =
-        softCompressToCeiling(bubbleHalfWidthRest * leftStretch, bubbleHalfWidthRest, extentCeiling)
-            .coerceAtLeast(minExtent)
-    val right =
-        softCompressToCeiling(
-                bubbleHalfWidthRest * rightStretch,
-                bubbleHalfWidthRest,
-                extentCeiling,
-            )
-            .coerceAtLeast(minExtent)
-    return BubbleExtents(left, right)
-}
+private fun sideLean(lean: Float): Float =
+    if (lean >= 0f) NavBarDimens.BubbleLeadGain * lean else NavBarDimens.BubbleTrailGain * lean
+
+private fun boundedExtent(extent: Float, restHalfWidth: Float): Float =
+    softCompressToCeiling(extent, restHalfWidth, restHalfWidth * NavBarDimens.BubbleStretchRatio)
+        .coerceAtLeast(restHalfWidth * NavBarDimens.BubblePinchRatio)
 
 internal class BarLayout(val width: Int, val left: Int, val inset: Int)
 

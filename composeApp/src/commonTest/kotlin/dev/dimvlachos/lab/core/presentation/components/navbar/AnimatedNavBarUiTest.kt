@@ -425,10 +425,25 @@ class AnimatedNavBarUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(32)
         val afterSelection = compositions
+        mainClock.advanceTimeBy(64)
+        val bubble = onNodeWithTag(NavBarBubbleTestTag).getBoundsInRoot()
+        val icon = onNodeWithTag(NavBarBubbleIconTestTag).getBoundsInRoot()
+        val iconCenter = (icon.left + icon.right) / 2f
+        val leadExtent = bubble.right - iconCenter
+        val trailExtent = iconCenter - bubble.left
         mainClock.advanceTimeBy(2_000)
+        val restingBubble = onNodeWithTag(NavBarBubbleTestTag).getBoundsInRoot()
 
         onNodeWithContentDescription("Edit profile").assertExists()
         assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
+        assertTrue(
+            leadExtent > trailExtent + 4.dp,
+            "moving right must lean the bubble right: lead $leadExtent, trail $trailExtent",
+        )
+        assertTrue(
+            leadExtent > (restingBubble.right - restingBubble.left) / 2f,
+            "the lead side must stretch past its resting half-width",
+        )
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
     }
 

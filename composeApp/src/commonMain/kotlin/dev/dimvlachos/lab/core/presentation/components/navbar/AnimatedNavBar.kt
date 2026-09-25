@@ -13,7 +13,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -49,6 +52,7 @@ import dev.dimvlachos.lab.resources.nav_saved
 import dev.dimvlachos.lab.resources.nav_search
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -81,12 +85,16 @@ fun AnimatedNavBar(
             }
         }
 
-    LaunchedEffect(selected, layers) {
-        if (layers.indicator || layers.cutout) {
-            indicator.animateTo(selected, stretch = layers.indicator, itemCount = itemCount)
-        } else {
-            indicator.snapTo(selected)
-        }
+    val currentSelected by rememberUpdatedState(selected)
+    LaunchedEffect(indicator, layers) {
+        snapshotFlow { currentSelected }
+            .collect { target ->
+                if (layers.indicator || layers.cutout) {
+                    launch { indicator.animateTo(target, stretch = layers.indicator) }
+                } else {
+                    indicator.snapTo(target)
+                }
+            }
     }
 
     val target = if (layers.action) items[selected].action else null
@@ -334,53 +342,39 @@ private fun BoxScope.Bubble(
                 barHeight = currentBarHeight,
                 pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
             )
-        val restingHalfHeight =
+        val resting =
             bubbleGeometry(
-                    m = m,
-                    stretchFactor = 1f,
-                    bubbleSize = bubbleSize,
-                    bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
-                    restBarHeight = NavBarDimens.BarHeight.toPx(),
-                    barHeight = currentBarHeight,
-                    pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
-                )
-                .halfHeight
+                m = m,
+                stretchFactor = 1f,
+                bubbleSize = bubbleSize,
+                bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
+                restBarHeight = NavBarDimens.BarHeight.toPx(),
+                barHeight = currentBarHeight,
+                pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
+            )
         val restingNotchRadius =
             morphedNotchParams(
                     m = m,
                     handoffM = NavBarDimens.BubbleHandoff,
-                    bubbleCenterY = geometry.centerY,
-                    bubbleHalfHeight = restingHalfHeight,
+                    bubbleCenterY = resting.centerY,
+                    bubbleHalfHeight = resting.halfHeight,
                     gap = NavBarDimens.NotchGap.toPx(),
                     filletRadius = NavBarDimens.NotchFillet.toPx(),
                 )
                 ?.notchRadius
-        val heightCeiling = restingNotchRadius?.let {
-            2f * it - NavBarDimens.PillInset.toPx()
-        }
-        val extentCeiling = restingNotchRadius?.let { it - NavBarDimens.PillInset.toPx() }
+        val heightCeiling = restingNotchRadius?.let { 2f * it - NavBarDimens.PillInset.toPx() }
         val height =
-            softCompressToCeiling(
-                geometry.halfHeight * 2f,
-                restingHalfHeight * 2f,
-                heightCeiling,
-            )
-
-        val bubbleHalfWidthRest = bubbleSize / 2f
-        val jellyExtents =
-            bubbleExtents(
-                rawLeft = rawLeft,
-                rawRight = rawRight,
-                calmCenter = calmCenter,
-                stretch = stretch,
-                bubbleHalfWidthRest = bubbleHalfWidthRest,
-                extentCeiling = extentCeiling,
-            )
+            softCompressToCeiling(geometry.halfHeight * 2f, resting.halfHeight * 2f, heightCeiling)
 
         val inset = NavBarDimens.PillInset.toPx()
-        val pillHalfWidth = max((rawRight - rawLeft) * slotWidth - 2 * inset, height) / 2f
-        val leftExtent = lerp(jellyExtents.left, pillHalfWidth, m)
-        val rightExtent = lerp(jellyExtents.right, pillHalfWidth, m)
+        val pillRestHalfWidth = max(slotWidth / 2f - inset, height / 2f)
+        val extents =
+            bubbleExtents(
+                lean = if (stretch) indicator.lean else 0f,
+                restHalfWidth = lerp(bubbleSize / 2f, pillRestHalfWidth, m),
+            )
+        val leftExtent = extents.left
+        val rightExtent = extents.right
         val width = leftExtent + rightExtent
 
         val bubble =
