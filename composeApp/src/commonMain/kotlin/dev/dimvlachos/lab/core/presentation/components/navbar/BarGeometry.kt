@@ -107,16 +107,18 @@ internal fun notchCutterPath(notch: FilletedNotch): Path {
 
     return Path().apply {
         moveTo(notch.leftOuterTangent.x, notch.leftOuterTangent.y)
-        arcToChunked(
+        arcTo(
             leftFilletRect,
             leftFilletStart,
             clockwiseSweep(leftFilletStart, leftFilletEnd),
+            forceMoveTo = false,
         )
-        arcToChunked(notchRect, notchStart, -clockwiseSweep(notchEnd, notchStart))
-        arcToChunked(
+        arcTo(notchRect, notchStart, -clockwiseSweep(notchEnd, notchStart), forceMoveTo = false)
+        arcTo(
             rightFilletRect,
             rightFilletStart,
             clockwiseSweep(rightFilletStart, rightFilletEnd),
+            forceMoveTo = false,
         )
 
         // A cap-tangent outer point sits partway down the rounded end, not on the top edge, so a
@@ -157,7 +159,11 @@ private fun edgeTangentFillet(
 ): OuterFillet {
     val sumRadii = notchRadius + filletRadius
     val dy = filletRadius - notchCenter.y
-    val dx = sqrt((sumRadii * sumRadii - dy * dy).coerceAtLeast(0f))
+    require(dy * dy <= sumRadii * sumRadii) {
+        "No tangent point for filletRadius=$filletRadius, centerY=${notchCenter.y}, " +
+            "notchRadius=$notchRadius: |filletRadius - centerY| must be <= notchRadius + filletRadius"
+    }
+    val dx = sqrt(sumRadii * sumRadii - dy * dy)
     val center = Offset(notchCenter.x + xSign * dx, filletRadius)
     return OuterFillet(center, Offset(center.x, 0f), isCapTangent = false)
 }
@@ -198,22 +204,3 @@ private fun tangentPoint(from: Offset, towards: Offset, radius: Float): Offset {
 private fun angleDegrees(offset: Offset): Float = atan2(offset.y, offset.x) * (180f / PI.toFloat())
 
 private fun clockwiseSweep(start: Float, end: Float): Float = ((end - start) % 360f + 360f) % 360f
-
-// A single arcTo() with a large sweep produces a visibly bulging bezier approximation on this
-// platform; splitting it into small chunks keeps the traced curve on the true circle.
-private fun Path.arcToChunked(rect: Rect, startAngleDegrees: Float, sweepAngleDegrees: Float) {
-    val maxChunkDegrees = 10f
-    var angle = startAngleDegrees
-    var remaining = sweepAngleDegrees
-    while (abs(remaining) > 0.001f) {
-        val chunk =
-            when {
-                abs(remaining) <= maxChunkDegrees -> remaining
-                remaining > 0f -> maxChunkDegrees
-                else -> -maxChunkDegrees
-            }
-        arcTo(rect, angle, chunk, forceMoveTo = false)
-        angle += chunk
-        remaining -= chunk
-    }
-}
