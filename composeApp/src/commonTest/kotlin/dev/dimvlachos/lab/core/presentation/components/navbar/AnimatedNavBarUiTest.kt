@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -21,6 +22,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.ic_add
@@ -497,5 +499,17 @@ class AnimatedNavBarUiTest {
 
         assertTrue(afterSelection > afterScroll, "the selection change itself must recompose")
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
+    }
+
+    @Test
+    fun tabsRunLeftToRightEvenUnderAnRtlLayoutDirection() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                AnimatedNavBar(testItems, selectedIndex = 0, onSelect = {})
+            }
+        }
+        val firstLeft = onNodeWithText("Home").getBoundsInRoot().left
+        val lastLeft = onNodeWithText("Profile").getBoundsInRoot().left
+        assertTrue(firstLeft < lastLeft, "firstLeft=$firstLeft lastLeft=$lastLeft")
     }
 }
