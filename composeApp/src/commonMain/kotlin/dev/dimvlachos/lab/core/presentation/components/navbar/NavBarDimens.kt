@@ -4,8 +4,8 @@ import androidx.compose.ui.unit.dp
 
 internal object NavBarDimens {
     val BarHeight = 72.dp
+    val CollapsedBarHeight = 56.dp
     val CollapsedSlot = 64.dp
-    val PillHeight = 56.dp
     val PillInset = 8.dp
     val BubbleSize = 52.dp
     val BubbleOverhang = 20.dp
@@ -15,8 +15,12 @@ internal object NavBarDimens {
     val FloatLift = 12.dp
     val IconSize = 26.dp
     val LabelShift = 8.dp
-    val ActionSize = BarHeight
     val ActionGap = 8.dp
     val BubbleHandoff: Float =
-        BubbleOverhang.value / (BubbleOverhang.value + BarHeight.value / 2f - PillHeight.value / 2f)
+        bubbleHandoff(
+            bubbleOverhang = BubbleOverhang.value,
+            barHeight = BarHeight.value,
+            collapsedBarHeight = CollapsedBarHeight.value,
+            pillInset = PillInset.value,
+        )
 }

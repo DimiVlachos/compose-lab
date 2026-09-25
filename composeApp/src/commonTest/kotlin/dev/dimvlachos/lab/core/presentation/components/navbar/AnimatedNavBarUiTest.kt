@@ -11,12 +11,14 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.ic_add
 import dev.dimvlachos.lab.resources.ic_edit
@@ -71,6 +73,7 @@ class AnimatedNavBarUiTest {
         assertEquals(1f, scrollState.collapse)
         onNodeWithText("Home").assertExists()
         onNodeWithText("Profile").assertExists()
+        onNodeWithText("Home").assertHeightIsAtLeast(48.dp)
     }
 
     @Test
@@ -287,6 +290,40 @@ class AnimatedNavBarUiTest {
         onNodeWithContentDescription("Edit profile").assertExists()
         assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
         assertEquals(afterSelection, compositions, "no recomposition is allowed while animating")
+    }
+
+    @Test
+    fun barHeightDoesNotRecomposeWhileScrollingWithoutTheCutoutLayer() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        val scrollState = NavBarScrollState(collapseDistancePx = 100f)
+        setContent {
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(
+                    testItems,
+                    selectedIndex = 0,
+                    onSelect = {},
+                    layers = NavBarLayers(scrollAware = true),
+                    scrollState = scrollState,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val beforeScroll = compositions
+
+        repeat(20) {
+            runOnUiThread { scrollState.onScroll(-5f) }
+            Snapshot.sendApplyNotifications()
+            mainClock.advanceTimeBy(16)
+        }
+        val afterScroll = compositions
+
+        assertEquals(1f, scrollState.collapse)
+        assertEquals(
+            beforeScroll,
+            afterScroll,
+            "the bar height shrinking on scroll must not recompose",
+        )
     }
 
     @Test
