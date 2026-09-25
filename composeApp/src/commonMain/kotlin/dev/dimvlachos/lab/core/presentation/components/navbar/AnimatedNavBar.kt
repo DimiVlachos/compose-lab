@@ -3,10 +3,10 @@ package dev.dimvlachos.lab.core.presentation.components.navbar
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
@@ -22,13 +22,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
@@ -53,6 +53,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val NavBarRowTestTag = "navBarRow"
+internal const val NavBarBubbleTestTag = "navBarBubble"
+internal const val NavBarBubbleIconTestTag = "navBarBubbleIcon"
 
 @Composable
 fun AnimatedNavBar(
@@ -286,116 +288,118 @@ private fun BoxScope.Bubble(
     colors: AppColors,
 ) {
     ReportComposition()
-    var leftExtentPx = 0f
-    Box(
-        Modifier.align(Alignment.TopStart)
-            .layout { measurable, constraints ->
-                val m = collapse()
-                val info =
-                    barLayout(
-                        containerWidth = constraints.maxWidth,
-                        collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-                        collapse = m,
-                        actionInset = actionInsetPx(m),
-                        actionReveal = actionReveal(),
-                    )
-                val barWidthPx = info.width
-                val slotWidth = barWidthPx / itemCount.toFloat()
-                val rawLeft = indicator.leftSlot
-                val rawRight = indicator.rightSlot
-                val calmCenter = indicator.calmCenterSlot
-                val stretchFactor = if (stretch) (rawRight - rawLeft).coerceIn(0.8f, 1.6f) else 1f
-                val currentBarHeight = currentBarHeightPx(m)
-                val bubbleSize = NavBarDimens.BubbleSize.toPx()
-                val geometry =
-                    bubbleGeometry(
-                        m = m,
-                        stretchFactor = stretchFactor,
-                        bubbleSize = bubbleSize,
-                        bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
-                        restBarHeight = NavBarDimens.BarHeight.toPx(),
-                        barHeight = currentBarHeight,
-                        pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
-                    )
-                val restingHalfHeight =
-                    bubbleGeometry(
-                            m = m,
-                            stretchFactor = 1f,
-                            bubbleSize = bubbleSize,
-                            bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
-                            restBarHeight = NavBarDimens.BarHeight.toPx(),
-                            barHeight = currentBarHeight,
-                            pillHeight =
-                                pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
-                        )
-                        .halfHeight
-                val restingNotchRadius =
-                    morphedNotchParams(
-                            m = m,
-                            handoffM = NavBarDimens.BubbleHandoff,
-                            bubbleCenterY = geometry.centerY,
-                            bubbleHalfHeight = restingHalfHeight,
-                            gap = NavBarDimens.NotchGap.toPx(),
-                            filletRadius = NavBarDimens.NotchFillet.toPx(),
-                        )
-                        ?.notchRadius
-                val heightCeiling = restingNotchRadius?.let {
-                    2f * it - NavBarDimens.PillInset.toPx()
-                }
-                val extentCeiling = restingNotchRadius?.let { it - NavBarDimens.PillInset.toPx() }
-                val height =
-                    softCompressToCeiling(
-                        geometry.halfHeight * 2f,
-                        restingHalfHeight * 2f,
-                        heightCeiling,
-                    )
-
-                val bubbleHalfWidthRest = bubbleSize / 2f
-                val jellyExtents =
-                    bubbleExtents(
-                        rawLeft = rawLeft,
-                        rawRight = rawRight,
-                        calmCenter = calmCenter,
-                        stretch = stretch,
-                        bubbleHalfWidthRest = bubbleHalfWidthRest,
-                        extentCeiling = extentCeiling,
-                    )
-
-                val inset = NavBarDimens.PillInset.toPx()
-                val pillHalfWidth = max((rawRight - rawLeft) * slotWidth - 2 * inset, height) / 2f
-                val leftExtent = lerp(jellyExtents.left, pillHalfWidth, m)
-                val rightExtent = lerp(jellyExtents.right, pillHalfWidth, m)
-                leftExtentPx = leftExtent
-                val width = leftExtent + rightExtent
-
-                val placeable =
-                    measurable.measure(Constraints.fixed(width.roundToInt(), height.roundToInt()))
-                layout(constraints.maxWidth, constraints.maxHeight) {
-                    val barLeft = info.left.toFloat()
-                    val center = clampNotchCenter(calmCenter * slotWidth, barWidthPx.toFloat())
-                    val barTop = outerHeightPx() - currentBarHeight.roundToInt()
-                    val centerYAbsolute = geometry.centerY + barTop
-                    placeable.place(
-                        (barLeft + center - leftExtent).roundToInt(),
-                        (centerYAbsolute - height / 2f).roundToInt(),
+    Layout(
+        content = {
+            Spacer(
+                Modifier.testTag(NavBarBubbleTestTag).drawBehind {
+                    drawRoundRect(
+                        color = colors.accent,
+                        cornerRadius = CornerRadius(size.height / 2f),
                     )
                 }
-            }
-            .drawBehind {
-                drawRoundRect(color = colors.accent, cornerRadius = CornerRadius(size.height / 2f))
-            },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Icon(
-            painter = painterResource(item.selectedIcon),
-            contentDescription = null,
-            tint = colors.onAccent,
-            modifier =
-                Modifier.size(NavBarDimens.IconSize).offset {
-                    val iconHalfPx = NavBarDimens.IconSize.toPx() / 2f
-                    IntOffset((leftExtentPx - iconHalfPx).roundToInt(), 0)
-                },
-        )
+            )
+            Icon(
+                painter = painterResource(item.selectedIcon),
+                contentDescription = null,
+                tint = colors.onAccent,
+                modifier = Modifier.testTag(NavBarBubbleIconTestTag),
+            )
+        },
+        modifier = Modifier.align(Alignment.TopStart),
+    ) { measurables, constraints ->
+        val m = collapse()
+        val info =
+            barLayout(
+                containerWidth = constraints.maxWidth,
+                collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
+                collapse = m,
+                actionInset = actionInsetPx(m),
+                actionReveal = actionReveal(),
+            )
+        val barWidthPx = info.width
+        val slotWidth = barWidthPx / itemCount.toFloat()
+        val rawLeft = indicator.leftSlot
+        val rawRight = indicator.rightSlot
+        val calmCenter = indicator.calmCenterSlot
+        val stretchFactor = if (stretch) (rawRight - rawLeft).coerceIn(0.8f, 1.6f) else 1f
+        val currentBarHeight = currentBarHeightPx(m)
+        val bubbleSize = NavBarDimens.BubbleSize.toPx()
+        val geometry =
+            bubbleGeometry(
+                m = m,
+                stretchFactor = stretchFactor,
+                bubbleSize = bubbleSize,
+                bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
+                restBarHeight = NavBarDimens.BarHeight.toPx(),
+                barHeight = currentBarHeight,
+                pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
+            )
+        val restingHalfHeight =
+            bubbleGeometry(
+                    m = m,
+                    stretchFactor = 1f,
+                    bubbleSize = bubbleSize,
+                    bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
+                    restBarHeight = NavBarDimens.BarHeight.toPx(),
+                    barHeight = currentBarHeight,
+                    pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
+                )
+                .halfHeight
+        val restingNotchRadius =
+            morphedNotchParams(
+                    m = m,
+                    handoffM = NavBarDimens.BubbleHandoff,
+                    bubbleCenterY = geometry.centerY,
+                    bubbleHalfHeight = restingHalfHeight,
+                    gap = NavBarDimens.NotchGap.toPx(),
+                    filletRadius = NavBarDimens.NotchFillet.toPx(),
+                )
+                ?.notchRadius
+        val heightCeiling = restingNotchRadius?.let {
+            2f * it - NavBarDimens.PillInset.toPx()
+        }
+        val extentCeiling = restingNotchRadius?.let { it - NavBarDimens.PillInset.toPx() }
+        val height =
+            softCompressToCeiling(
+                geometry.halfHeight * 2f,
+                restingHalfHeight * 2f,
+                heightCeiling,
+            )
+
+        val bubbleHalfWidthRest = bubbleSize / 2f
+        val jellyExtents =
+            bubbleExtents(
+                rawLeft = rawLeft,
+                rawRight = rawRight,
+                calmCenter = calmCenter,
+                stretch = stretch,
+                bubbleHalfWidthRest = bubbleHalfWidthRest,
+                extentCeiling = extentCeiling,
+            )
+
+        val inset = NavBarDimens.PillInset.toPx()
+        val pillHalfWidth = max((rawRight - rawLeft) * slotWidth - 2 * inset, height) / 2f
+        val leftExtent = lerp(jellyExtents.left, pillHalfWidth, m)
+        val rightExtent = lerp(jellyExtents.right, pillHalfWidth, m)
+        val width = leftExtent + rightExtent
+
+        val bubble =
+            measurables[0].measure(Constraints.fixed(width.roundToInt(), height.roundToInt()))
+        val iconSizePx = NavBarDimens.IconSize.roundToPx()
+        val icon = measurables[1].measure(Constraints.fixed(iconSizePx, iconSizePx))
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            val barLeft = info.left.toFloat()
+            val center = clampNotchCenter(calmCenter * slotWidth, barWidthPx.toFloat())
+            val barTop = outerHeightPx() - currentBarHeight.roundToInt()
+            val centerYAbsolute = geometry.centerY + barTop
+            val bubbleX = (barLeft + center - leftExtent).roundToInt()
+            val bubbleY = (centerYAbsolute - height / 2f).roundToInt()
+            bubble.place(bubbleX, bubbleY)
+            icon.place(
+                bubbleX + (leftExtent - icon.width / 2f).roundToInt(),
+                bubbleY + (bubble.height - icon.height) / 2,
+            )
+        }
     }
 }
 
