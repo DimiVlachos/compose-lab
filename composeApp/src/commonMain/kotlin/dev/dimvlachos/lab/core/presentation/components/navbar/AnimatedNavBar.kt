@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -21,10 +22,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -99,48 +102,50 @@ fun AnimatedNavBar(
             .height(NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight)
             .graphicsLayer { translationY = -collapse() * NavBarDimens.FloatLift.toPx() }
     ) {
-        Row(
-            Modifier.align(Alignment.TopStart)
-                .barRowPlacement(itemCount, collapse, actionRevealValue)
-                .testTag(NavBarRowTestTag)
-                .drawBehind { drawBar(itemCount, indicator, layers, colors, collapse) }
-                .selectableGroup()
-        ) {
-            items.forEachIndexed { index, item ->
-                NavBarItem(
-                    item = item,
-                    selected = index == selected,
-                    animateIcon = layers.icons,
-                    hideIcon = layers.cutout && index == selected,
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(
+                Modifier.align(Alignment.TopStart)
+                    .barRowPlacement(itemCount, collapse, actionRevealValue)
+                    .testTag(NavBarRowTestTag)
+                    .drawBehind { drawBar(itemCount, indicator, layers, colors, collapse) }
+                    .selectableGroup()
+            ) {
+                items.forEachIndexed { index, item ->
+                    NavBarItem(
+                        item = item,
+                        selected = index == selected,
+                        animateIcon = layers.icons,
+                        hideIcon = layers.cutout && index == selected,
+                        collapse = collapse,
+                        onClick = { onSelect(index) },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
+            }
+            if (layers.cutout) {
+                Bubble(
+                    item = items[selected],
+                    indicator = indicator,
+                    itemCount = itemCount,
+                    stretch = layers.indicator,
                     collapse = collapse,
-                    onClick = { onSelect(index) },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    actionReveal = actionRevealValue,
+                    colors = colors,
                 )
             }
-        }
-        if (layers.cutout) {
-            Bubble(
-                item = items[selected],
-                indicator = indicator,
-                itemCount = itemCount,
-                stretch = layers.indicator,
-                collapse = collapse,
-                actionReveal = actionRevealValue,
-                colors = colors,
-            )
-        }
-        renderedAction?.let { action ->
-            ActionButton(
-                action = action,
-                selectedIndex = selected,
-                isActive = target != null,
-                state = actionState,
-                onActionClick = onActionClick,
-                colors = colors,
-                modifier =
-                    Modifier.align(Alignment.TopStart)
-                        .actionButtonPlacement(itemCount, collapse, actionRevealValue),
-            )
+            renderedAction?.let { action ->
+                ActionButton(
+                    action = action,
+                    selectedIndex = selected,
+                    isActive = target != null,
+                    state = actionState,
+                    onActionClick = onActionClick,
+                    colors = colors,
+                    modifier =
+                        Modifier.align(Alignment.TopStart)
+                            .actionButtonPlacement(itemCount, collapse, actionRevealValue),
+                )
+            }
         }
     }
 }
