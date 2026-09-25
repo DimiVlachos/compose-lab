@@ -80,7 +80,7 @@ class AnimatedNavBarUiTest {
     }
 
     @Test
-    fun actionButtonExistsOnlyWhenTheSelectedTabHasAnActionAndTheLayerIsOn() = runComposeUiTest {
+    fun actionButtonExistsWhenTheSelectedTabHasAnActionAndTheLayerIsOn() = runComposeUiTest {
         setContent {
             AnimatedNavBar(
                 testItems,
@@ -186,6 +186,47 @@ class AnimatedNavBarUiTest {
         Snapshot.sendApplyNotifications()
         assertEquals(1f, scrollState.collapse)
         assertButtonAdjacentToBar()
+    }
+
+    @Test
+    fun revealedButtonNeverOverlapsTheBarAcrossCollapseWithAllLayers() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        val scrollState = NavBarScrollState(collapseDistancePx = 100f)
+        setContent {
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(
+                    testItems,
+                    selectedIndex = 3,
+                    onSelect = {},
+                    layers = NavBarLayers.All,
+                    scrollState = scrollState,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val beforeScroll = compositions
+
+        repeat(20) {
+            runOnUiThread { scrollState.onScroll(-5f) }
+            Snapshot.sendApplyNotifications()
+            mainClock.advanceTimeBy(16)
+            val barBounds = onNodeWithTag(NavBarRowTestTag).getBoundsInRoot()
+            val buttonBounds = onNodeWithContentDescription("Edit profile").getBoundsInRoot()
+            assertTrue(
+                buttonBounds.left >= barBounds.right,
+                "collapse=${scrollState.collapse} barRight=${barBounds.right} " +
+                    "buttonLeft=${buttonBounds.left}",
+            )
+        }
+        val afterScroll = compositions
+
+        assertEquals(1f, scrollState.collapse)
+        assertEquals(
+            beforeScroll,
+            afterScroll,
+            "collapsing with the button already revealed must not recompose",
+        )
     }
 
     @Test
