@@ -1,0 +1,73 @@
+package dev.dimvlachos.lab.catalog.presentation.screen
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.tooling.preview.Preview
+import dev.dimvlachos.lab.catalog.Catalog
+import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.catalog_title
+import org.jetbrains.compose.resources.stringResource
+
+@Composable
+internal fun CatalogScreen(onOpen: (Demo) -> Unit) {
+    LazyColumn(
+        modifier =
+            Modifier.fillMaxSize()
+                .background(LabTheme.colors.background)
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        contentPadding = PaddingValues(LabTheme.spacing.mediumLarge),
+        verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
+    ) {
+        item {
+            Text(
+                stringResource(Res.string.catalog_title),
+                color = LabTheme.colors.textPrimary,
+                style = LabTheme.typography.title,
+            )
+        }
+        items(Catalog.demos, key = { it.id }) { demo ->
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(LabTheme.shapes.Large)
+                    .background(LabTheme.colors.surface)
+                    .clickable(role = Role.Button) { onOpen(demo) }
+                    .padding(LabTheme.spacing.medium)
+            ) {
+                Text(
+                    stringResource(demo.title),
+                    color = LabTheme.colors.textPrimary,
+                    style = LabTheme.typography.subtitle,
+                )
+                Text(
+                    demo.id,
+                    color = LabTheme.colors.textMuted,
+                    style = LabTheme.typography.caption,
+                )
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun CatalogScreenPreview() {
+    LabTheme { CatalogScreen(onOpen = {}) }
+}
