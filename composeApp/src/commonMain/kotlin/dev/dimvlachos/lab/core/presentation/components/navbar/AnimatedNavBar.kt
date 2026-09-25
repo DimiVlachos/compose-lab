@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
@@ -43,6 +44,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+internal const val NavBarRowTestTag = "navBarRow"
 
 @Composable
 fun AnimatedNavBar(
@@ -97,6 +100,7 @@ fun AnimatedNavBar(
         Row(
             Modifier.align(Alignment.TopStart)
                 .barRowPlacement(itemCount, collapse, actionRevealValue)
+                .testTag(NavBarRowTestTag)
                 .drawBehind { drawBar(itemCount, indicator, layers, colors, collapse) }
                 .selectableGroup()
         ) {
@@ -148,7 +152,13 @@ private fun Density.outerHeightPx(): Int =
     (NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight).roundToPx()
 
 private fun Density.actionInsetPx(collapse: Float): Int =
-    (NavBarDimens.ActionGap.toPx() + currentBarHeightPx(collapse)).roundToInt()
+    actionInsetPx(
+            collapse = collapse,
+            gap = NavBarDimens.ActionGap.toPx(),
+            expandedHeight = NavBarDimens.BarHeight.toPx(),
+            collapsedHeight = NavBarDimens.CollapsedBarHeight.toPx(),
+        )
+        .roundToInt()
 
 private fun Modifier.barRowPlacement(
     itemCount: Int,
@@ -185,7 +195,9 @@ private fun Modifier.actionButtonPlacement(
             actionInset = actionInsetPx(c),
             actionReveal = actionReveal(),
         )
-    val sizePx = currentBarHeightPx(c).roundToInt()
+    val sizePx =
+        actionButtonSizePx(c, NavBarDimens.BarHeight.toPx(), NavBarDimens.CollapsedBarHeight.toPx())
+            .roundToInt()
     val placeable = measurable.measure(Constraints.fixed(sizePx, sizePx))
     layout(constraints.maxWidth, constraints.maxHeight) {
         val right = info.left + info.width + info.inset

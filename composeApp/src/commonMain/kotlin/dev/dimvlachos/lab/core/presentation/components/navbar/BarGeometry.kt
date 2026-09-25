@@ -44,6 +44,19 @@ internal fun barHeightPx(collapse: Float, expandedHeight: Float, collapsedHeight
 
 internal fun pillHeightPx(barHeight: Float, pillInset: Float): Float = barHeight - 2f * pillInset
 
+internal fun actionButtonSizePx(
+    collapse: Float,
+    expandedHeight: Float,
+    collapsedHeight: Float,
+): Float = barHeightPx(collapse, expandedHeight, collapsedHeight)
+
+internal fun actionInsetPx(
+    collapse: Float,
+    gap: Float,
+    expandedHeight: Float,
+    collapsedHeight: Float,
+): Float = gap + actionButtonSizePx(collapse, expandedHeight, collapsedHeight)
+
 internal fun bubbleHandoff(
     bubbleOverhang: Float,
     barHeight: Float,

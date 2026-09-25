@@ -5,7 +5,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
-import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -331,7 +330,6 @@ class BarGeometryTest {
 
     @Test
     fun filletedNotchNeverThrowsThroughTheMorphAtRealBarWidthsAndTabCentres() {
-        val cornerRadius = 36f
         val itemCount = 4
         for (barWidthPx in listOf(256f, 300f, 371f)) {
             val slot = barWidthPx / itemCount
@@ -340,6 +338,7 @@ class BarGeometryTest {
                 for (step in 0..200) {
                     val m = step / 200f
                     val geometry = restBubbleGeometry(m)
+                    val cornerRadius = barHeightPx(m, BarHeightPx, CollapsedBarHeightPx) / 2f
                     val morphed =
                         morphedNotchParams(
                             m = m,
@@ -416,22 +415,16 @@ class BarGeometryTest {
     }
 
     @Test
-    fun actionButtonLeftEdgeNeverOverlapsTheBarsRightEdge() {
-        val containerWidth = 1000
-        val collapsedWidth = 256
-        val gap = 8f
-        for (c in listOf(0f, 0.5f, 1f)) {
-            val size = barHeightPx(c, BarHeightPx, CollapsedBarHeightPx)
-            val sizePx = size.roundToInt()
-            val inset = (gap + size).roundToInt()
-            val layout = barLayout(containerWidth, collapsedWidth, c, inset, actionReveal = 1f)
-            val barRight = layout.left + layout.width
-            val buttonLeft = layout.left + layout.width + layout.inset - sizePx
-            assertTrue(
-                buttonLeft >= barRight + gap - 0.5f,
-                "c=$c barRight=$barRight buttonLeft=$buttonLeft",
-            )
-        }
+    fun actionButtonSizeTracksTheCurrentBarHeight() {
+        assertEquals(72f, actionButtonSizePx(0f, BarHeightPx, CollapsedBarHeightPx))
+        assertEquals(64f, actionButtonSizePx(0.5f, BarHeightPx, CollapsedBarHeightPx))
+        assertEquals(56f, actionButtonSizePx(1f, BarHeightPx, CollapsedBarHeightPx))
+    }
+
+    @Test
+    fun actionInsetIsTheGapPlusTheCurrentButtonSize() {
+        assertEquals(80f, actionInsetPx(0f, 8f, BarHeightPx, CollapsedBarHeightPx))
+        assertEquals(64f, actionInsetPx(1f, 8f, BarHeightPx, CollapsedBarHeightPx))
     }
 
     private val BubbleSizePx = 52f
