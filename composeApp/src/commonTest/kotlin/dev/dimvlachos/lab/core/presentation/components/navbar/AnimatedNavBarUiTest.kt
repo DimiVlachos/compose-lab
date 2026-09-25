@@ -17,6 +17,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.ic_add
+import dev.dimvlachos.lab.resources.ic_edit
+import dev.dimvlachos.lab.resources.ic_home
+import dev.dimvlachos.lab.resources.ic_home_filled
+import dev.dimvlachos.lab.resources.ic_profile
+import dev.dimvlachos.lab.resources.ic_profile_filled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -128,6 +135,127 @@ class AnimatedNavBarUiTest {
             )
         }
         onNodeWithContentDescription("Edit profile").assert(isButton)
+    }
+
+    @Test
+    fun interruptingAHideWithAShowSettlesFullyShown() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var selected by mutableIntStateOf(3)
+        var clicked = -1
+        setContent {
+            AnimatedNavBar(
+                testItems,
+                selected,
+                onSelect = {},
+                onActionClick = { clicked = it },
+                layers = NavBarLayers(action = true),
+            )
+        }
+        mainClock.advanceTimeBy(1_000)
+
+        runOnUiThread { selected = 0 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(60)
+        runOnUiThread { selected = 3 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(3_000)
+
+        onNodeWithContentDescription("Edit profile").assertExists()
+        onNodeWithContentDescription("Edit profile").performClick()
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(3, clicked)
+    }
+
+    @Test
+    fun interruptingAShowWithAHideSettlesFullyHidden() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var selected by mutableIntStateOf(0)
+        setContent {
+            AnimatedNavBar(testItems, selected, onSelect = {}, layers = NavBarLayers(action = true))
+        }
+        mainClock.advanceTimeBy(1_000)
+
+        runOnUiThread { selected = 3 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(60)
+        runOnUiThread { selected = 0 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(3_000)
+
+        onNodeWithContentDescription("Edit profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun actionHideDoesNotRecomposeAfterTheSelectionFrame() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        var selected by mutableIntStateOf(3)
+        setContent {
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(
+                    testItems,
+                    selected,
+                    onSelect = {},
+                    layers = NavBarLayers(action = true),
+                )
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val beforeSelection = compositions
+
+        runOnUiThread { selected = 0 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(32)
+        val afterSelection = compositions
+        mainClock.advanceTimeBy(2_000)
+
+        onNodeWithContentDescription("Edit profile").assertDoesNotExist()
+        assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
+        assertEquals(afterSelection, compositions, "no recomposition is allowed while it fades")
+    }
+
+    @Test
+    fun actionSwapDoesNotRecomposeAfterTheSelectionFrame() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var compositions = 0
+        val items =
+            listOf(
+                NavItem(
+                    "Home",
+                    Res.drawable.ic_home,
+                    Res.drawable.ic_home_filled,
+                    NavAction(Res.drawable.ic_add, "New post"),
+                ),
+                NavItem(
+                    "Profile",
+                    Res.drawable.ic_profile,
+                    Res.drawable.ic_profile_filled,
+                    NavAction(Res.drawable.ic_edit, "Edit profile"),
+                ),
+            )
+        var selected by mutableIntStateOf(0)
+        setContent {
+            CompositionLocalProvider(LocalNavBarCompositionProbe provides { compositions++ }) {
+                AnimatedNavBar(items, selected, onSelect = {}, layers = NavBarLayers(action = true))
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val beforeSelection = compositions
+
+        runOnUiThread { selected = 1 }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(32)
+        val afterSelection = compositions
+        mainClock.advanceTimeBy(2_000)
+
+        onNodeWithContentDescription("New post").assertDoesNotExist()
+        onNodeWithContentDescription("Edit profile").assertExists()
+        assertTrue(afterSelection > beforeSelection, "the selection change itself must recompose")
+        assertEquals(
+            afterSelection,
+            compositions,
+            "no recomposition is allowed while the icon swaps",
+        )
     }
 
     @Test

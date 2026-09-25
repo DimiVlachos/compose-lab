@@ -4,7 +4,7 @@ Compose Multiplatform components, rebuilt from scratch and recorded as short cli
 
 ## Nav bar (`core/presentation/components/navbar/`)
 
-One bar, four layers that can each be switched on or off. Nothing recomposes while it animates: every animated value is read in the layout or draw phase.
+One bar, five layers that can each be switched on or off. Nothing recomposes while it animates: every animated value is read in the layout or draw phase.
 
 | Demo | What it shows |
 |---|---|

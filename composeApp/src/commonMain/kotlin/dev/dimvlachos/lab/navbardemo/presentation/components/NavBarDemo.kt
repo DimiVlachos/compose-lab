@@ -25,23 +25,20 @@ import dev.dimvlachos.lab.resources.ic_profile
 import dev.dimvlachos.lab.resources.ic_profile_filled
 import dev.dimvlachos.lab.resources.ic_saved
 import dev.dimvlachos.lab.resources.ic_saved_filled
-import dev.dimvlachos.lab.resources.ic_search
 import dev.dimvlachos.lab.resources.nav_home
 import dev.dimvlachos.lab.resources.nav_profile
 import dev.dimvlachos.lab.resources.nav_saved
-import dev.dimvlachos.lab.resources.nav_search
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun NavBarDemo(state: DemoState, layers: NavBarLayers, scrollingContent: Boolean = false) {
     val homeLabel = stringResource(Res.string.nav_home)
-    val searchLabel = stringResource(Res.string.nav_search)
     val savedLabel = stringResource(Res.string.nav_saved)
     val profileLabel = stringResource(Res.string.nav_profile)
     val newPostLabel = stringResource(Res.string.action_new_post)
     val editProfileLabel = stringResource(Res.string.action_edit_profile)
     val navItems =
-        remember(homeLabel, searchLabel, savedLabel, profileLabel, newPostLabel, editProfileLabel) {
+        remember(homeLabel, savedLabel, profileLabel, newPostLabel, editProfileLabel) {
             listOf(
                 NavItem(
                     homeLabel,
@@ -49,7 +46,6 @@ internal fun NavBarDemo(state: DemoState, layers: NavBarLayers, scrollingContent
                     Res.drawable.ic_home_filled,
                     NavAction(Res.drawable.ic_add, newPostLabel),
                 ),
-                NavItem(searchLabel, Res.drawable.ic_search, Res.drawable.ic_search),
                 NavItem(savedLabel, Res.drawable.ic_saved, Res.drawable.ic_saved_filled),
                 NavItem(
                     profileLabel,

@@ -82,9 +82,8 @@ internal suspend fun squash(
 internal fun ActionButton(
     action: NavAction,
     selectedIndex: Int,
-    reveal: Animatable<Float, AnimationVector1D>,
-    scaleX: Animatable<Float, AnimationVector1D>,
-    scaleY: Animatable<Float, AnimationVector1D>,
+    isActive: Boolean,
+    state: ActionRevealState,
     collapse: () -> Float,
     onActionClick: (Int) -> Unit,
     colors: AppColors,
@@ -95,25 +94,31 @@ internal fun ActionButton(
     Box(
         modifier
             .graphicsLayer {
-                alpha = reveal.value
+                alpha = state.revealValue
                 val collapseScale = 1f - 0.15f * collapse()
-                this.scaleX = scaleX.value * collapseScale
-                this.scaleY = scaleY.value * collapseScale
+                scaleX = state.scaleXValue * collapseScale
+                scaleY = state.scaleYValue * collapseScale
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
             .clip(CircleShape)
             .background(colors.accent)
-            .semantics { contentDescription = action.label }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                role = Role.Button,
-            ) {
-                scope.launch {
-                    squash(scaleX, scaleY)
-                    onActionClick(selectedIndex)
+            .then(
+                if (isActive) {
+                    Modifier.semantics { contentDescription = action.label }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            role = Role.Button,
+                        ) {
+                            scope.launch {
+                                state.squashTap()
+                                onActionClick(selectedIndex)
+                            }
+                        }
+                } else {
+                    Modifier
                 }
-            },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
