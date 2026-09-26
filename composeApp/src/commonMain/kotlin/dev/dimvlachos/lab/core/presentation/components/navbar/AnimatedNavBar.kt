@@ -258,6 +258,7 @@ private fun DrawScope.drawBar(
                     filletRadius = it.filletRadius,
                     barWidth = size.width,
                     cornerRadius = corner,
+                    blendWindowPx = NavBarDimens.NotchBlendWindow.toPx(),
                 )
             }
         } else {

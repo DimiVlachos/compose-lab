@@ -11,6 +11,7 @@ internal object NavBarDimens {
     val BubbleOverhang = 20.dp
     val NotchGap = 6.dp
     val NotchFillet = 16.dp
+    val NotchBlendWindow = 16.dp
     val FloatLift = 12.dp
     val IconSize = 26.dp
     val ActionGap = 8.dp

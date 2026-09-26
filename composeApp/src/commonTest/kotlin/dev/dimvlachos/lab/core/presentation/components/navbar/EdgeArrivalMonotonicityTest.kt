@@ -140,6 +140,7 @@ class EdgeArrivalMonotonicityTest {
                 filletRadius = it.filletRadius,
                 barWidth = width,
                 cornerRadius = cornerRadius,
+                blendWindowPx = BlendWindowPx,
             )
         }
         return barPath(Size(width, currentBarHeight), cornerRadius, notch)
@@ -206,5 +207,6 @@ class EdgeArrivalMonotonicityTest {
     private val FilletRadius = NavBarDimens.NotchFillet.value
     private val Gap = NavBarDimens.NotchGap.value
     private val HandoffM = NavBarDimens.BubbleHandoff
+    private val BlendWindowPx = NavBarDimens.NotchBlendWindow.value
     private val SampleSteps = 1000
 }
