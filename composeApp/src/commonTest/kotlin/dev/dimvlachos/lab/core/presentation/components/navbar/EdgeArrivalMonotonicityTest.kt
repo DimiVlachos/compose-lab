@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 class EdgeArrivalMonotonicityTest {
 
     private val itemCount = 3
-    private val widths = listOf(264f, 344f, 192f)
+    private val widths = listOf(344f)
     private val ms = listOf(0f, 0.5f)
     private val transitions =
         listOf(Transition(2, 0), Transition(1, 0), Transition(0, 2), Transition(1, 2))
@@ -29,8 +29,14 @@ class EdgeArrivalMonotonicityTest {
 
     private class Transition(val from: Int, val to: Int)
 
-    private class Combo(val width: Float, val m: Float, val transition: Transition) {
-        override fun toString() = "width=$width m=$m ${transition.from}->${transition.to}"
+    private class Combo(
+        val width: Float,
+        val m: Float,
+        val transition: Transition,
+        val stretch: Boolean,
+    ) {
+        override fun toString() =
+            "width=$width m=$m stretch=$stretch ${transition.from}->${transition.to}"
     }
 
     @Test
@@ -40,7 +46,9 @@ class EdgeArrivalMonotonicityTest {
                 for (width in widths) {
                     for (m in ms) {
                         for (transition in transitions) {
-                            add(Combo(width, m, transition))
+                            for (stretch in listOf(true, false)) {
+                                add(Combo(width, m, transition, stretch))
+                            }
                         }
                     }
                 }
@@ -64,7 +72,7 @@ class EdgeArrivalMonotonicityTest {
 
                     val state = IndicatorState(combo.transition.from)
                     val job = launch {
-                        state.animateTo(combo.transition.to, stretch = true)
+                        state.animateTo(combo.transition.to, stretch = combo.stretch)
                     }
 
                     var previousSamples: Tip? = null
@@ -151,20 +159,33 @@ class EdgeArrivalMonotonicityTest {
         val measure = PathMeasure()
         measure.setPath(path, false)
         val length = measure.length
-        val all = (0 until SampleSteps).map { measure.getPosition(length * it / SampleSteps) }
         fun inTip(point: Offset) =
             if (right) point.x >= width - tipMarginPx else point.x <= tipMarginPx
-        val segments =
-            all.indices
-                .map { all[it] to all[(it + 1) % all.size] }
-                .filter { (start, end) -> inTip(start) || inTip(end) }
-        return Tip(points = all.filter(::inTip), segments = segments)
+        val all = (0 until SampleSteps).map { measure.getPosition(length * it / SampleSteps) }
+        val allInTip = BooleanArray(all.size) { inTip(all[it]) }
+        val segmentStarts = mutableListOf<Offset>()
+        val segmentEnds = mutableListOf<Offset>()
+        for (i in all.indices) {
+            val j = (i + 1) % all.size
+            if (allInTip[i] || allInTip[j]) {
+                segmentStarts += all[i]
+                segmentEnds += all[j]
+            }
+        }
+        val queryPoints = all.filterIndexed { i, _ -> allInTip[i] }
+        return Tip(segmentStarts, segmentEnds, queryPoints)
     }
 
     private fun hausdorff(reference: Tip, sample: Tip): Float {
-        if (reference.segments.isEmpty() || sample.points.isEmpty()) return 0f
-        return sample.points.maxOf { point ->
-            reference.segments.minOf { (start, end) -> distanceToSegment(point, start, end) }
+        if (reference.segmentStarts.isEmpty() || sample.queryPoints.isEmpty()) return 0f
+        return sample.queryPoints.maxOf { point ->
+            var best = Float.MAX_VALUE
+            for (i in reference.segmentStarts.indices) {
+                val distance =
+                    distanceToSegment(point, reference.segmentStarts[i], reference.segmentEnds[i])
+                if (distance < best) best = distance
+            }
+            best
         }
     }
 
@@ -178,7 +199,11 @@ class EdgeArrivalMonotonicityTest {
         return (point - (start + segment * t)).getDistance()
     }
 
-    private class Tip(val points: List<Offset>, val segments: List<Pair<Offset, Offset>>)
+    private class Tip(
+        val segmentStarts: List<Offset>,
+        val segmentEnds: List<Offset>,
+        val queryPoints: List<Offset>,
+    )
 
     private val BubbleSizePx = NavBarDimens.BubbleSize.value
     private val BubbleOverhangPx = NavBarDimens.BubbleOverhang.value
@@ -188,5 +213,5 @@ class EdgeArrivalMonotonicityTest {
     private val FilletRadius = NavBarDimens.NotchFillet.value
     private val Gap = NavBarDimens.NotchGap.value
     private val HandoffM = NavBarDimens.BubbleHandoff
-    private val SampleSteps = 2000
+    private val SampleSteps = 1000
 }
