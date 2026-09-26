@@ -189,6 +189,7 @@ internal fun filletedNotch(
     filletRadius: Float,
     barWidth: Float,
     cornerRadius: Float,
+    blendWindowPx: Float = DefaultBlendWindowPx,
 ): FilletedNotch {
     require(filletRadius > 0f) { "filletRadius must be positive" }
     val notchCenter = Offset(centerX, centerY)
@@ -202,6 +203,7 @@ internal fun filletedNotch(
             capCenter = Offset(cornerRadius, cornerRadius),
             cornerRadius = cornerRadius,
             edgeThreshold = cornerRadius,
+            blendWindowPx = blendWindowPx,
         )
 
     val rightFillet =
@@ -213,6 +215,7 @@ internal fun filletedNotch(
             capCenter = Offset(barWidth - cornerRadius, cornerRadius),
             cornerRadius = cornerRadius,
             edgeThreshold = barWidth - cornerRadius,
+            blendWindowPx = blendWindowPx,
         )
 
     return FilletedNotch(
@@ -296,7 +299,7 @@ private class OuterFillet(
     val isCapTangent: Boolean,
 )
 
-private const val BranchBlendWindowPx = 16f
+private const val DefaultBlendWindowPx = 16f
 
 private fun blendedFillet(
     notchCenter: Offset,
@@ -306,6 +309,7 @@ private fun blendedFillet(
     capCenter: Offset,
     cornerRadius: Float,
     edgeThreshold: Float,
+    blendWindowPx: Float,
 ): OuterFillet {
     val edge = edgeTangentFillet(notchCenter, notchRadius, filletRadius, xSign)
     val penetration = xSign * (edge.outerTangent.x - edgeThreshold)
@@ -319,8 +323,7 @@ private fun blendedFillet(
             cornerRadius = cornerRadius,
             outwardSign = xSign,
         ) ?: return edge
-    val window = BranchBlendWindowPx
-    val t = (penetration / window).coerceIn(0f, 1f)
+    val t = (penetration / blendWindowPx).coerceIn(0f, 1f)
     if (t >= 1f) return cap
     return OuterFillet(
         center = lerpOffset(edge.center, cap.center, t),
