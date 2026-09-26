@@ -135,6 +135,37 @@ internal fun morphedNotchParams(
     )
 }
 
+internal fun restingNotch(
+    m: Float,
+    barHeight: Float,
+    pillHeight: Float,
+    bubbleSize: Float,
+    bubbleOverhang: Float,
+    restBarHeight: Float,
+    handoffM: Float,
+    gap: Float,
+    filletRadius: Float,
+): MorphedNotch? {
+    val resting =
+        bubbleGeometry(
+            m = m,
+            stretchFactor = 1f,
+            bubbleSize = bubbleSize,
+            bubbleOverhang = bubbleOverhang,
+            restBarHeight = restBarHeight,
+            barHeight = barHeight,
+            pillHeight = pillHeight,
+        )
+    return morphedNotchParams(
+        m = m,
+        handoffM = handoffM,
+        bubbleCenterY = resting.centerY,
+        bubbleHalfHeight = resting.halfHeight,
+        gap = gap,
+        filletRadius = filletRadius,
+    )
+}
+
 internal class FilletedNotch(
     val leftFilletCenter: Offset,
     val rightFilletCenter: Offset,

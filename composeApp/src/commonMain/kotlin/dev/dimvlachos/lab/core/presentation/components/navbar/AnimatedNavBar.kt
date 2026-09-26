@@ -179,20 +179,27 @@ private fun Density.actionInsetPx(collapse: Float): Int =
         )
         .roundToInt()
 
+private fun Density.navBarLayout(
+    containerWidth: Int,
+    itemCount: Int,
+    collapse: Float,
+    actionReveal: Float,
+): BarLayout =
+    barLayout(
+        containerWidth = containerWidth,
+        collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
+        collapse = collapse,
+        actionInset = actionInsetPx(collapse),
+        actionReveal = actionReveal,
+    )
+
 private fun Modifier.barRowPlacement(
     itemCount: Int,
     collapse: () -> Float,
     actionReveal: () -> Float,
 ): Modifier = layout { measurable, constraints ->
     val c = collapse()
-    val info =
-        barLayout(
-            containerWidth = constraints.maxWidth,
-            collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-            collapse = c,
-            actionInset = actionInsetPx(c),
-            actionReveal = actionReveal(),
-        )
+    val info = navBarLayout(constraints.maxWidth, itemCount, c, actionReveal())
     val barHeightPxInt = currentBarHeightPx(c).roundToInt()
     val placeable = measurable.measure(Constraints.fixed(info.width, barHeightPxInt))
     layout(constraints.maxWidth, constraints.maxHeight) {
@@ -206,14 +213,7 @@ private fun Modifier.actionButtonPlacement(
     actionReveal: () -> Float,
 ): Modifier = layout { measurable, constraints ->
     val c = collapse()
-    val info =
-        barLayout(
-            containerWidth = constraints.maxWidth,
-            collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-            collapse = c,
-            actionInset = actionInsetPx(c),
-            actionReveal = actionReveal(),
-        )
+    val info = navBarLayout(constraints.maxWidth, itemCount, c, actionReveal())
     val sizePx =
         actionButtonSizePx(c, NavBarDimens.BarHeight.toPx(), NavBarDimens.CollapsedBarHeight.toPx())
             .roundToInt()
@@ -238,22 +238,15 @@ private fun DrawScope.drawBar(
     val notch =
         if (layers.cutout) {
             val m = collapse()
-            val restingBubble =
-                bubbleGeometry(
+            val morphed =
+                restingNotch(
                     m = m,
-                    stretchFactor = 1f,
+                    barHeight = size.height,
+                    pillHeight = pillHeight,
                     bubbleSize = NavBarDimens.BubbleSize.toPx(),
                     bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
                     restBarHeight = NavBarDimens.BarHeight.toPx(),
-                    barHeight = size.height,
-                    pillHeight = pillHeight,
-                )
-            val morphed =
-                morphedNotchParams(
-                    m = m,
                     handoffM = NavBarDimens.BubbleHandoff,
-                    bubbleCenterY = restingBubble.centerY,
-                    bubbleHalfHeight = restingBubble.halfHeight,
                     gap = NavBarDimens.NotchGap.toPx(),
                     filletRadius = NavBarDimens.NotchFillet.toPx(),
                 )
@@ -316,14 +309,7 @@ private fun BoxScope.Bubble(
         modifier = Modifier.align(Alignment.TopStart),
     ) { measurables, constraints ->
         val m = collapse()
-        val info =
-            barLayout(
-                containerWidth = constraints.maxWidth,
-                collapsedWidth = (NavBarDimens.CollapsedSlot * itemCount).roundToPx(),
-                collapse = m,
-                actionInset = actionInsetPx(m),
-                actionReveal = actionReveal(),
-            )
+        val info = navBarLayout(constraints.maxWidth, itemCount, m, actionReveal())
         val barWidthPx = info.width
         val slotWidth = barWidthPx / itemCount.toFloat()
         val rawLeft = indicator.leftSlot
@@ -353,11 +339,14 @@ private fun BoxScope.Bubble(
                 pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
             )
         val restingNotchRadius =
-            morphedNotchParams(
+            restingNotch(
                     m = m,
+                    barHeight = currentBarHeight,
+                    pillHeight = pillHeightPx(currentBarHeight, NavBarDimens.PillInset.toPx()),
+                    bubbleSize = bubbleSize,
+                    bubbleOverhang = NavBarDimens.BubbleOverhang.toPx(),
+                    restBarHeight = NavBarDimens.BarHeight.toPx(),
                     handoffM = NavBarDimens.BubbleHandoff,
-                    bubbleCenterY = resting.centerY,
-                    bubbleHalfHeight = resting.halfHeight,
                     gap = NavBarDimens.NotchGap.toPx(),
                     filletRadius = NavBarDimens.NotchFillet.toPx(),
                 )
