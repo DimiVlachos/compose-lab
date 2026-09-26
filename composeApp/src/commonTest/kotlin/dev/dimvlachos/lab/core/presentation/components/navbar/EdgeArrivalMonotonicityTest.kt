@@ -119,23 +119,16 @@ class EdgeArrivalMonotonicityTest {
         val cornerRadius = barHeightPx(m, BarHeightPx, CollapsedBarHeightPx) / 2f
         val currentBarHeight = barHeightPx(m, BarHeightPx, CollapsedBarHeightPx)
         val pillHeight = pillHeightPx(currentBarHeight, PillInsetPx)
-        val restingBubble =
-            bubbleGeometry(
+        val centerX = clampNotchCenter(calmCenterSlot * slot, width)
+        val morphed =
+            restingNotch(
                 m = m,
-                stretchFactor = 1f,
+                barHeight = currentBarHeight,
+                pillHeight = pillHeight,
                 bubbleSize = BubbleSizePx,
                 bubbleOverhang = BubbleOverhangPx,
                 restBarHeight = BarHeightPx,
-                barHeight = currentBarHeight,
-                pillHeight = pillHeight,
-            )
-        val centerX = clampNotchCenter(calmCenterSlot * slot, width)
-        val morphed =
-            morphedNotchParams(
-                m = m,
                 handoffM = HandoffM,
-                bubbleCenterY = restingBubble.centerY,
-                bubbleHalfHeight = restingBubble.halfHeight,
                 gap = Gap,
                 filletRadius = FilletRadius,
             )
