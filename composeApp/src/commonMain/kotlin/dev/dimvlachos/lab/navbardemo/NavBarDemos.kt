@@ -31,6 +31,20 @@ internal object NavBarDemos {
         at(5.0.seconds) { select(0) }
     }
 
+    // All six tab switches, split across the collapsed and expanded bar, with only full scrolls.
+    private val fullTour = demoScript {
+        at(0.6.seconds) { scrollBy(900f) }
+        at(2.1.seconds) { select(1) }
+        at(3.3.seconds) { select(2) }
+        at(4.5.seconds) { scrollBy(-900f) }
+        at(6.0.seconds) { select(1) }
+        at(7.2.seconds) { select(0) }
+        at(8.4.seconds) { select(2) }
+        at(9.6.seconds) { scrollBy(900f) }
+        at(11.1.seconds) { select(0) }
+        at(12.3.seconds) { scrollBy(-900f) }
+    }
+
     val all: List<Demo> =
         listOf(
             Demo("navbar.indicator", Res.string.demo_navbar_indicator, tabTour) {
@@ -55,7 +69,7 @@ internal object NavBarDemos {
             Demo("navbar.action", Res.string.demo_navbar_action, tabTour) {
                 NavBarDemo(it, NavBarLayers(indicator = true, action = true))
             },
-            Demo("navbar.all", Res.string.demo_navbar_all, scrollTour) {
+            Demo("navbar.all", Res.string.demo_navbar_all, fullTour) {
                 NavBarDemo(it, NavBarLayers.All, scrollingContent = true)
             },
             Demo("navbar.recompositions", Res.string.demo_navbar_recompositions, tabTour) {
