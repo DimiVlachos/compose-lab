@@ -1,19 +1,26 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -26,9 +33,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,10 +46,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDetail
@@ -55,12 +67,13 @@ import dev.dimvlachos.lab.core.presentation.components.profile.AvatarTarget
 import dev.dimvlachos.lab.core.presentation.components.profile.FabDialogTarget
 import dev.dimvlachos.lab.core.presentation.components.profile.FabSize
 import dev.dimvlachos.lab.core.presentation.components.profile.FabSource
-import dev.dimvlachos.lab.core.presentation.components.profile.ProfileScrim
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchSource
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchTarget
+import dev.dimvlachos.lab.core.presentation.components.profile.matchesQuery
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.gallery_photo_count
+import dev.dimvlachos.lab.resources.ic_history
 import dev.dimvlachos.lab.resources.photo_corfu
 import dev.dimvlachos.lab.resources.photo_hydra
 import dev.dimvlachos.lab.resources.photo_milos
@@ -68,8 +81,11 @@ import dev.dimvlachos.lab.resources.photo_naxos
 import dev.dimvlachos.lab.resources.photo_paxos
 import dev.dimvlachos.lab.resources.photo_santorini
 import dev.dimvlachos.lab.resources.portrait
+import dev.dimvlachos.lab.resources.search_no_results
+import dev.dimvlachos.lab.resources.search_recent
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ProfileNameTag = "profileName"
@@ -77,6 +93,8 @@ internal const val GalleryScrollTag = "galleryScroll"
 internal const val GalleryGridTag = "galleryGrid"
 internal const val SearchGridTag = "searchGrid"
 internal const val SearchPageTag = "searchPage"
+internal const val RecentSearchesTag = "recentSearches"
+private const val SearchContentFadeInMs = 200
 // The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
 private val SearchTopSpace = 80.dp
 private val FabEdgeInset = 36.dp
@@ -95,6 +113,7 @@ fun ProfileGallery(
     portrait: DrawableResource,
     photos: List<MorphPhoto>,
     searchQuery: String,
+    recentSearches: List<String> = emptyList(),
     scene: GalleryScene,
     onSceneChange: (GalleryScene) -> Unit,
     modifier: Modifier = Modifier,
@@ -110,8 +129,6 @@ fun ProfileGallery(
     val portraitPainter = remember(portraitBitmap) { BitmapPainter(portraitBitmap) }
     val painters = rememberMorphPainters(photos)
     val typed = remember { mutableStateOf("") }
-    // Leaving search clears its query, so the next search types from "" again.
-    LaunchedEffect(current.search) { if (!current.search) typed.value = "" }
     val noQuery = remember { mutableStateOf("") }
     val searchOpening = remember { { latest.value.search } }
     val collapseRange =
@@ -186,6 +203,7 @@ fun ProfileGallery(
             ) {
                 SearchPage(
                     photos = photos,
+                    recentSearches = recentSearches,
                     painters = painters,
                     query = searchQuery,
                     typed = typed,
@@ -252,6 +270,7 @@ private fun searchMorphKey(index: Int): String = "search_" + morphKey(index)
 @Composable
 private fun SearchPage(
     photos: List<MorphPhoto>,
+    recentSearches: List<String>,
     painters: List<Painter>,
     query: String,
     typed: MutableState<String>,
@@ -262,37 +281,41 @@ private fun SearchPage(
     onOpen: (Int) -> Unit,
     onClose: () -> Unit,
 ) {
+    val pageFade =
+        with(animatedVisibilityScope) {
+            Modifier.animateEnterExit(
+                enter = fadeIn(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
+                exit = fadeOut(tween(MorphDimens.CloseMs, easing = LinearEasing)),
+            )
+        }
     Box(Modifier.fillMaxSize()) {
-        // Opaque at rest, on the morph's progress; it swallows taps, and the back arrow closes.
-        ProfileScrim(animatedVisibilityScope, onClose = {}, maxAlpha = 1f, tag = SearchPageTag)
+        // Opaque at rest. It comes in with the bar and leaves over the bar's whole close on a
+        // steady ramp, so home fades back in under it rather than snapping back. It swallows
+        // taps; the back arrow closes. The search bar clears the query when it next opens, not
+        // here, so the results stay put while the page fades.
+        Box(
+            Modifier.fillMaxSize()
+                .then(pageFade)
+                .background(LabTheme.colors.background)
+                .clickable(interactionSource = null, indication = null, onClick = {})
+                .testTag(SearchPageTag)
+        )
         Column(
             Modifier.fillMaxSize()
-                .then(
-                    with(animatedVisibilityScope) {
-                        Modifier.animateEnterExit(
-                            enter =
-                                fadeIn(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
-                            exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs)),
-                        )
-                    }
-                )
+                .then(pageFade)
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                 .padding(bottom = LabTheme.spacing.medium)
         ) {
             Spacer(Modifier.height(SearchTopSpace))
-            GalleryGrid(
+            SearchContent(
                 photos = photos,
                 painters = painters,
-                query = typed,
+                recentSearches = recentSearches,
+                typed = typed,
                 openPhoto = openPhoto,
                 sharedTransitionScope = sharedTransitionScope,
                 onOpen = onOpen,
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(horizontal = LabTheme.spacing.mediumLarge)
-                        .testTag(SearchGridTag),
-                morphKeyOf = ::searchMorphKey,
             )
         }
         SearchTarget(
@@ -303,6 +326,105 @@ private fun SearchPage(
             opening,
             onClose = onClose,
         )
+    }
+}
+
+private enum class SearchState {
+    Recent,
+    Results,
+    NothingFound,
+}
+
+// What the page shows under the bar: the recent searches until something is typed, then the
+// matching photos, or a line saying nothing matched. It changes state by a short cross-fade; while
+// the state holds, the grid stays in place, so each typed letter glides the matches along.
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SearchContent(
+    photos: List<MorphPhoto>,
+    painters: List<Painter>,
+    recentSearches: List<String>,
+    typed: MutableState<String>,
+    openPhoto: Int,
+    sharedTransitionScope: SharedTransitionScope,
+    onOpen: (Int) -> Unit,
+) {
+    val query = typed.value
+    val state =
+        when {
+            query.isBlank() -> SearchState.Recent
+            photos.any { matchesQuery(it.title, query) } -> SearchState.Results
+            else -> SearchState.NothingFound
+        }
+    AnimatedContent(
+        targetState = state,
+        transitionSpec = {
+            ContentTransform(
+                targetContentEnter = fadeIn(tween(SearchContentFadeInMs)),
+                initialContentExit = fadeOut(tween(MorphDimens.ChromeFadeOutMs)),
+                sizeTransform = null,
+            )
+        },
+        label = "searchContent",
+    ) { shown ->
+        when (shown) {
+            SearchState.Recent -> RecentSearches(recentSearches, onPick = { typed.value = it })
+            SearchState.Results ->
+                GalleryGrid(
+                    photos = photos,
+                    painters = painters,
+                    query = typed,
+                    openPhoto = openPhoto,
+                    sharedTransitionScope = sharedTransitionScope,
+                    onOpen = onOpen,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(horizontal = LabTheme.spacing.mediumLarge)
+                            .testTag(SearchGridTag),
+                    morphKeyOf = ::searchMorphKey,
+                )
+            SearchState.NothingFound ->
+                Text(
+                    stringResource(Res.string.search_no_results, typed.value),
+                    color = LabTheme.colors.textMuted,
+                    style = LabTheme.typography.body,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(LabTheme.spacing.large),
+                )
+        }
+    }
+}
+
+@Composable
+private fun RecentSearches(entries: List<String>, onPick: (String) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = LabTheme.spacing.mediumLarge)
+            .testTag(RecentSearchesTag)
+    ) {
+        Text(
+            stringResource(Res.string.search_recent),
+            color = LabTheme.colors.textMuted,
+            style = LabTheme.typography.body,
+            modifier = Modifier.padding(bottom = LabTheme.spacing.small),
+        )
+        for (entry in entries) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(LabTheme.spacing.small))
+                    .clickable(role = Role.Button) { onPick(entry) }
+                    .padding(vertical = LabTheme.spacing.smallMedium),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.medium),
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_history),
+                    contentDescription = null,
+                    tint = LabTheme.colors.textMuted,
+                )
+                Text(entry, color = LabTheme.colors.textPrimary, style = LabTheme.typography.body)
+            }
+        }
     }
 }
 

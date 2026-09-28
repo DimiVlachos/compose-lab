@@ -54,6 +54,7 @@ class ProfileGalleryUiTest {
     private fun ComposeUiTest.showGallery(
         probe: ((MorphEnd) -> Unit)? = null,
         scroll: ScrollState = ScrollState(0),
+        query: String = "xos",
     ) {
         mainClock.autoAdvance = false
         setContent {
@@ -63,7 +64,8 @@ class ProfileGalleryUiTest {
                         name = "Alex Morgan",
                         portrait = Res.drawable.portrait,
                         photos = testIslands(),
-                        searchQuery = "xos",
+                        searchQuery = query,
+                        recentSearches = listOf("Santorini", "Milos", "Hydra"),
                         scene = scene,
                         onSceneChange = { reported += it },
                         scrollState = scroll,
@@ -378,5 +380,43 @@ class ProfileGalleryUiTest {
         assertEquals(400, scroll.value)
         go(GalleryScene(), thenMs = 2_500)
         assertEquals(400, scroll.value)
+    }
+
+    @Test
+    fun searchShowsRecentSearchesUntilTheQueryTypesIn() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 300) // the bar is still landing
+        onNodeWithText("Recent searches").assertExists()
+        onNodeWithTag(SearchGridTag).assertDoesNotExist()
+        mainClock.advanceTimeBy(2_200)
+        onNodeWithText("Recent searches").assertDoesNotExist()
+        inSearch("Paxos").assertCountEquals(1)
+    }
+
+    @Test
+    fun aQueryWithNoMatchesShowsTheEmptyState() = runComposeUiTest {
+        showGallery(query = "zzz")
+        go(GalleryScene(search = true), thenMs = 2_500)
+        onNodeWithText("No photos match \u201Czzz\u201D").assertExists()
+        onNodeWithTag(SearchGridTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingARecentSearchFillsTheQuery() = runComposeUiTest {
+        showGallery(query = "")
+        go(GalleryScene(search = true), thenMs = 2_500)
+        onNode(hasText("Milos") and hasAnyAncestor(hasTestTag(RecentSearchesTag))).performClick()
+        mainClock.advanceTimeBy(1_000)
+        inSearch("Milos").assertCountEquals(1)
+        inSearch("Corfu").assertCountEquals(0)
+    }
+
+    @Test
+    fun theResultsStayWhileThePageFadesOut() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 2_500)
+        go(GalleryScene(), thenMs = 100)
+        inSearch("Paxos").assertCountEquals(1) // not swapped for the recent searches mid-close
+        onNodeWithText("Recent searches").assertDoesNotExist()
     }
 }

@@ -15,6 +15,9 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.gallerydemo.indexForScene
 import dev.dimvlachos.lab.gallerydemo.sceneForIndex
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.photo_hydra_title
+import dev.dimvlachos.lab.resources.photo_milos_title
+import dev.dimvlachos.lab.resources.photo_santorini_title
 import dev.dimvlachos.lab.resources.portrait
 import dev.dimvlachos.lab.resources.profile_name
 import org.jetbrains.compose.resources.stringResource
@@ -37,6 +40,12 @@ internal fun GalleryDemo(state: DemoState) {
         portrait = Res.drawable.portrait,
         photos = rememberGalleryPhotos(),
         searchQuery = DemoQuery,
+        recentSearches =
+            listOf(
+                stringResource(Res.string.photo_santorini_title),
+                stringResource(Res.string.photo_milos_title),
+                stringResource(Res.string.photo_hydra_title),
+            ),
         scene = sceneForIndex(state.selectedIndex),
         onSceneChange = { state.select(indexForScene(it)) },
         modifier = Modifier.fillMaxSize().background(LabTheme.colors.background),
