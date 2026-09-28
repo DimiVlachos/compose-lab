@@ -7,20 +7,19 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -30,21 +29,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.layout.layout
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDetail
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
@@ -58,6 +55,7 @@ import dev.dimvlachos.lab.core.presentation.components.profile.AvatarTarget
 import dev.dimvlachos.lab.core.presentation.components.profile.FabDialogTarget
 import dev.dimvlachos.lab.core.presentation.components.profile.FabSize
 import dev.dimvlachos.lab.core.presentation.components.profile.FabSource
+import dev.dimvlachos.lab.core.presentation.components.profile.ProfileScrim
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchSource
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchTarget
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -77,9 +75,10 @@ import org.jetbrains.compose.resources.stringResource
 internal const val ProfileNameTag = "profileName"
 internal const val GalleryScrollTag = "galleryScroll"
 internal const val GalleryGridTag = "galleryGrid"
+internal const val SearchGridTag = "searchGrid"
+internal const val SearchPageTag = "searchPage"
 // The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
 private val SearchTopSpace = 80.dp
-private const val HeaderFadeOutMs = 200
 private val FabEdgeInset = 36.dp
 
 /**
@@ -111,8 +110,9 @@ fun ProfileGallery(
     val portraitPainter = remember(portraitBitmap) { BitmapPainter(portraitBitmap) }
     val painters = rememberMorphPainters(photos)
     val typed = remember { mutableStateOf("") }
-    // Leaving search clears the filter at once, so the cards glide back while the bar closes.
+    // Leaving search clears its query, so the next search types from "" again.
     LaunchedEffect(current.search) { if (!current.search) typed.value = "" }
+    val noQuery = remember { mutableStateOf("") }
     val searchOpening = remember { { latest.value.search } }
     val collapseRange =
         with(LocalDensity.current) {
@@ -121,39 +121,6 @@ fun ProfileGallery(
     val collapse =
         remember(scrollState, collapseRange) {
             { headerCollapse(scrollState.value, collapseRange) }
-        }
-    // Search shows its results from the top of the grid, on the bar's own curve, and leaving it
-    // glides the grid back to where it was, header collapsed again if it had been.
-    val scrollBeforeSearch = remember { mutableIntStateOf(0) }
-    LaunchedEffect(current.search) {
-        if (current.search) {
-            scrollBeforeSearch.intValue = scrollState.value
-            scrollState.animateScrollTo(
-                0,
-                tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing),
-            )
-        } else if (scrollBeforeSearch.intValue > 0) {
-            // A frame first, so the returning cards have given the grid its height back.
-            withFrameNanos {}
-            scrollState.animateScrollTo(
-                scrollBeforeSearch.intValue,
-                tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing),
-            )
-            scrollBeforeSearch.intValue = 0
-        }
-    }
-    // The grid starts under the expanded header, or 16 dp under the search bar while searching.
-    val topSpace =
-        updateTransition(current.search, label = "galleryTopSpace").animateDp(
-            transitionSpec = {
-                tween(
-                    if (targetState) MorphDimens.OpenMs else MorphDimens.CloseMs,
-                    easing = MorphDimens.MorphEasing,
-                )
-            },
-            label = "galleryTopSpace",
-        ) { searching ->
-            if (searching) SearchTopSpace else HeaderExpandedHeight + GridTopGap
         }
     SharedTransitionLayout(modifier.fillMaxSize()) {
         // Every tap that opens or closes something goes through the gate, so none cuts into a
@@ -172,20 +139,12 @@ fun ProfileGallery(
                     .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                     .padding(bottom = LabTheme.spacing.medium)
             ) {
-                // Read in layout, so the space animates without recomposing the grid.
-                Box(
-                    Modifier.fillMaxWidth().layout { measurable, constraints ->
-                        val height = topSpace.value.roundToPx()
-                        val placeable =
-                            measurable.measure(Constraints.fixed(constraints.maxWidth, height))
-                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-                    }
-                )
+                Spacer(Modifier.height(HeaderExpandedHeight + GridTopGap))
                 GalleryGrid(
                     photos = photos,
                     painters = painters,
-                    query = typed,
-                    openPhoto = current.photo,
+                    query = noQuery,
+                    openPhoto = if (current.search) 0 else current.photo,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     onOpen = { index -> update { it.copy(photo = index) } },
                     modifier =
@@ -194,51 +153,47 @@ fun ProfileGallery(
                             .testTag(GalleryGridTag),
                 )
             }
-            // Over the grid, which scrolls under it. It leaves quickly as the search bar arrives
-            // and comes back over the bar's close. Linear: the morph's curve front-loads a fade,
-            // and the avatar dropped to half in a single frame.
-            AnimatedVisibility(
-                !current.search,
-                enter = fadeIn(tween(MorphDimens.CloseMs, easing = LinearEasing)),
-                exit = fadeOut(tween(HeaderFadeOutMs, easing = LinearEasing)),
-            ) {
-                CollapsingHeader(
-                    collapse = collapse,
-                    name = name,
-                    count = stringResource(Res.string.gallery_photo_count, photos.size),
-                    avatar = {
-                        SourceSlot(!current.avatar, Modifier.fillMaxSize()) {
-                            AvatarSource(
-                                portraitPainter,
-                                this@SharedTransitionLayout,
-                                this,
-                                { update { it.copy(avatar = true) } },
-                            )
-                        }
-                    },
-                    search = {
-                        SourceSlot(!current.search, Modifier.fillMaxSize()) {
-                            SearchSource(
-                                this@SharedTransitionLayout,
-                                this,
-                                searchOpening,
-                                { update { it.copy(search = true) } },
-                            )
-                        }
-                    },
-                )
-            }
+            // Over the grid, which scrolls under it. Search opens over both, as its own page.
+            CollapsingHeader(
+                collapse = collapse,
+                name = name,
+                count = stringResource(Res.string.gallery_photo_count, photos.size),
+                avatar = {
+                    SourceSlot(!current.avatar, Modifier.fillMaxSize()) {
+                        AvatarSource(
+                            portraitPainter,
+                            this@SharedTransitionLayout,
+                            this,
+                            { update { it.copy(avatar = true) } },
+                        )
+                    }
+                },
+                search = {
+                    SourceSlot(!current.search, Modifier.fillMaxSize()) {
+                        SearchSource(
+                            this@SharedTransitionLayout,
+                            this,
+                            searchOpening,
+                            { update { it.copy(search = true) } },
+                        )
+                    }
+                },
+            )
             AnimatedVisibility(
                 current.search,
                 enter = EnterTransition.None,
                 exit = ExitTransition.None,
             ) {
-                SearchTarget(
-                    searchQuery,
-                    typed,
-                    this@SharedTransitionLayout,
-                    this,
-                    searchOpening,
+                SearchPage(
+                    photos = photos,
+                    painters = painters,
+                    query = searchQuery,
+                    typed = typed,
+                    openPhoto = current.photo,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this,
+                    opening = searchOpening,
+                    onOpen = { index -> update { it.copy(photo = index) } },
                     onClose = { update { it.copy(search = false) } },
                 )
             }
@@ -272,7 +227,8 @@ fun ProfileGallery(
                         painter = painters[i],
                         title = photo.title,
                         caption = photo.caption,
-                        key = morphKey(i + 1),
+                        // The card it came from: the search page's copy while searching.
+                        key = if (current.search) searchMorphKey(i + 1) else morphKey(i + 1),
                         layers = MorphLayers.All,
                         sharedTransitionScope = this@SharedTransitionLayout,
                         animatedVisibilityScope = this,
@@ -281,6 +237,72 @@ fun ProfileGallery(
                 }
             }
         }
+    }
+}
+
+// The search page's cards need keys of their own: the home grid stays composed under the page, and
+// two cards sharing a key would be one shared element with a stray copy.
+private fun searchMorphKey(index: Int): String = "search_" + morphKey(index)
+
+// Search as its own page over home, which stays exactly as it was underneath. The page fades in
+// with
+// the bar's morph, and its grid (every photo) fades in under the bar before the query types and
+// filters it.
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SearchPage(
+    photos: List<MorphPhoto>,
+    painters: List<Painter>,
+    query: String,
+    typed: MutableState<String>,
+    openPhoto: Int,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    opening: () -> Boolean,
+    onOpen: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        // Opaque at rest, on the morph's progress; it swallows taps, and the back arrow closes.
+        ProfileScrim(animatedVisibilityScope, onClose = {}, maxAlpha = 1f, tag = SearchPageTag)
+        Column(
+            Modifier.fillMaxSize()
+                .then(
+                    with(animatedVisibilityScope) {
+                        Modifier.animateEnterExit(
+                            enter =
+                                fadeIn(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
+                            exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs)),
+                        )
+                    }
+                )
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = LabTheme.spacing.medium)
+        ) {
+            Spacer(Modifier.height(SearchTopSpace))
+            GalleryGrid(
+                photos = photos,
+                painters = painters,
+                query = typed,
+                openPhoto = openPhoto,
+                sharedTransitionScope = sharedTransitionScope,
+                onOpen = onOpen,
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(horizontal = LabTheme.spacing.mediumLarge)
+                        .testTag(SearchGridTag),
+                morphKeyOf = ::searchMorphKey,
+            )
+        }
+        SearchTarget(
+            query,
+            typed,
+            sharedTransitionScope,
+            animatedVisibilityScope,
+            opening,
+            onClose = onClose,
+        )
     }
 }
 
