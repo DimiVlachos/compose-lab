@@ -9,7 +9,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -49,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
@@ -97,8 +99,8 @@ internal const val SearchGridTag = "searchGrid"
 internal const val SearchPageTag = "searchPage"
 internal const val RecentSearchesTag = "recentSearches"
 private const val SearchContentFadeInMs = 200
-// Shorter than the bar's morph, so the page has settled before the bar lands.
-private const val SearchPageFadeMs = 250
+// A fast screen fade on the standard ease, shorter than the bar's morph.
+private const val SearchFadeMs = 200
 // The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
 private val SearchTopSpace = 80.dp
 private val FabEdgeInset = 36.dp
@@ -151,9 +153,19 @@ fun ProfileGallery(
             remember(gate) {
                 { change -> gate { applyChange(change) } }
             }
+        // Home and the search page cross-fade, as an app's Explore and Search screens do: home
+        // fades out while the page fades in, and back. The search bar morphs above both, in the
+        // shared overlay, so neither fade touches it. Read in layer blocks only.
+        val homeAlpha =
+            animateFloatAsState(
+                if (current.search) 0f else 1f,
+                tween(SearchFadeMs, easing = FastOutSlowInEasing),
+                label = "homeAlpha",
+            )
         Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier.fillMaxSize()
+                    .graphicsLayer { alpha = homeAlpha.value }
                     .testTag(GalleryScrollTag)
                     // In the viewport's coordinates (before the scroll), read at draw time.
                     .drawWithContent {
@@ -182,6 +194,7 @@ fun ProfileGallery(
             }
             // Over the grid, which scrolls under it. Search opens over both, as its own page.
             CollapsingHeader(
+                modifier = Modifier.graphicsLayer { alpha = homeAlpha.value },
                 collapse = collapse,
                 name = name,
                 count = stringResource(Res.string.gallery_photo_count, photos.size),
@@ -294,13 +307,12 @@ private fun SearchPage(
     val pageFade =
         with(animatedVisibilityScope) {
             Modifier.animateEnterExit(
-                enter = fadeIn(tween(SearchPageFadeMs, easing = MorphDimens.MorphEasing)),
-                exit = fadeOut(tween(SearchPageFadeMs, easing = LinearEasing)),
+                enter = fadeIn(tween(SearchFadeMs, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(SearchFadeMs, easing = FastOutSlowInEasing)),
             )
         }
     Box(Modifier.fillMaxSize()) {
-        // Opaque at rest. It fades in and out in 250 ms, the way out on a steady ramp, so home
-        // fades back in under it rather than snapping back. It swallows taps; the back arrow
+        // Opaque at rest, cross-fading with home in 200 ms. It swallows taps; the back arrow
         // closes. The search bar clears the query when it next opens, not here, so the results
         // stay put while the page fades.
         Box(
