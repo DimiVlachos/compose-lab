@@ -30,10 +30,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -118,13 +120,24 @@ fun ProfileGallery(
         remember(scrollState, collapseRange) {
             { headerCollapse(scrollState.value, collapseRange) }
         }
-    // Search starts from the top of the grid, on the bar's own curve.
+    // Search shows its results from the top of the grid, on the bar's own curve, and leaving it
+    // glides the grid back to where it was, header collapsed again if it had been.
+    val scrollBeforeSearch = remember { mutableIntStateOf(0) }
     LaunchedEffect(current.search) {
         if (current.search) {
+            scrollBeforeSearch.intValue = scrollState.value
             scrollState.animateScrollTo(
                 0,
                 tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing),
             )
+        } else if (scrollBeforeSearch.intValue > 0) {
+            // A frame first, so the returning cards have given the grid its height back.
+            withFrameNanos {}
+            scrollState.animateScrollTo(
+                scrollBeforeSearch.intValue,
+                tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing),
+            )
+            scrollBeforeSearch.intValue = 0
         }
     }
     // The grid starts under the expanded header, or 16 dp under the search bar while searching.
