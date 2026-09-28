@@ -24,7 +24,6 @@
     <string name="profile_name">Alex Morgan</string>
     <string name="action_search">Search</string>
     <string name="action_cancel">Cancel</string>
-    <string name="add_image_title">Add image</string>
     <string name="add_image_camera">Take photo</string>
     <string name="add_image_gallery">Choose from gallery</string>
     <string name="photo_corfu_title">Corfu</string>

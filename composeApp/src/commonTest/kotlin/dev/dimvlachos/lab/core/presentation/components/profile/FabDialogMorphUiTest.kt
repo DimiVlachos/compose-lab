@@ -20,7 +20,7 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_cancel
 import dev.dimvlachos.lab.resources.add_image_camera
-import dev.dimvlachos.lab.resources.add_image_title
+import dev.dimvlachos.lab.resources.edit_photo_title
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
@@ -63,11 +63,11 @@ class FabDialogMorphUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(1_500)
         onNodeWithTag(FabDialogTag).assertExists()
-        onNodeWithText(runBlocking { getString(Res.string.add_image_title) }).assertExists()
+        onNodeWithText(runBlocking { getString(Res.string.edit_photo_title) }).assertExists()
         onNodeWithText(runBlocking { getString(Res.string.add_image_camera) }).assertExists()
         onNodeWithText(runBlocking { getString(Res.string.action_cancel) }).performClick()
         assertEquals(1, closed)
-        onNodeWithTag(ScrimTag).performClick()
+        onNodeWithTag(DialogScrimTag).performClick()
         assertEquals(2, closed)
         assertEquals(1, opened, "the scrim tap must not reach the FAB under it")
     }

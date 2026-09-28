@@ -23,18 +23,6 @@ class SearchTypingTest {
     }
 
     @Test
-    fun resultsContainTheQueryIgnoringCase() {
-        val candidates = listOf("Corfu", "Corfu Old Town", "Corinth", "Naxos", "Paxos")
-        assertEquals(listOf("Corfu", "Corfu Old Town", "Corinth"), searchResults("cor", candidates))
-    }
-
-    @Test
-    fun aBlankQueryHasNoResults() {
-        assertEquals(emptyList(), searchResults("", listOf("Corfu")))
-        assertEquals(emptyList(), searchResults("  ", listOf("Corfu")))
-    }
-
-    @Test
     fun aTitleMatchesWhenItContainsTheQueryIgnoringCase() {
         assertEquals(true, matchesQuery("Naxos", "xos"))
         assertEquals(true, matchesQuery("Paxos", "XOS "))

@@ -2,13 +2,19 @@ package dev.dimvlachos.lab.core.presentation.components.imagemorph
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 
 // The container's width as a fraction of its final width: a card's worth on the grid, 1 at rest as
@@ -76,3 +82,23 @@ internal fun MorphProgress(
     val closing = remember(transition) { { transition.targetState == EnterExitState.PostExit } }
     content(progress, closing)
 }
+
+/**
+ * The chrome rule as one modifier, for a small piece that appears with a target: the container's
+ * width [fraction] (published by [morphWidthFraction]) times a timed fade on the morph's curve, in
+ * over ChromeFadeInMs and out over ChromeFadeOutMs. Alpha only, read in the layer block.
+ */
+internal fun Modifier.morphChrome(
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    fraction: FloatState,
+): Modifier =
+    with(animatedVisibilityScope) {
+        this@morphChrome.animateEnterExit(
+                enter = fadeIn(tween(MorphDimens.ChromeFadeInMs, easing = MorphDimens.MorphEasing)),
+                exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs, easing = LinearEasing)),
+            )
+            .graphicsLayer {
+                alpha = morphChromeAlpha(fraction.floatValue)
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
+    }
