@@ -81,8 +81,9 @@ internal fun FabSource(
                 .clickable(role = Role.Button, onClick = onOpen),
         color = LabTheme.colors.surface,
     ) {
-        // The pencil goes first on an open and comes back last on a close, so it never stretches
-        // with the container.
+        // The pencil leaves first on an open. On a close it rides the centre of the shrinking
+        // dialog and fades in with it, on the morph's own curve and duration, so it lands with the
+        // FAB instead of appearing once the morph has settled.
         Icon(
             painterResource(Res.drawable.ic_edit),
             contentDescription = stringResource(Res.string.edit_photo_title),
@@ -92,11 +93,7 @@ internal fun FabSource(
                         Modifier.animateEnterExit(
                             enter =
                                 fadeIn(
-                                    tween(
-                                        IconFadeMs,
-                                        delayMillis = MorphDimens.CloseMs - IconFadeMs,
-                                        easing = LinearEasing,
-                                    )
+                                    tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)
                                 ),
                             exit = fadeOut(tween(IconFadeMs, easing = LinearEasing)),
                         )
