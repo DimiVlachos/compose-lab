@@ -7,6 +7,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -78,6 +79,7 @@ internal const val GalleryScrollTag = "galleryScroll"
 internal const val GalleryGridTag = "galleryGrid"
 // The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
 private val SearchTopSpace = 80.dp
+private const val HeaderFadeOutMs = 200
 private val FabEdgeInset = 36.dp
 
 /**
@@ -192,12 +194,13 @@ fun ProfileGallery(
                             .testTag(GalleryGridTag),
                 )
             }
-            // Over the grid, which scrolls under it. It fades with the search bar's open and
-            // back with its close, while the space above the grid moves on the same curve.
+            // Over the grid, which scrolls under it. It leaves quickly as the search bar arrives
+            // and comes back over the bar's close. Linear: the morph's curve front-loads a fade,
+            // and the avatar dropped to half in a single frame.
             AnimatedVisibility(
                 !current.search,
-                enter = fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)),
-                exit = fadeOut(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
+                enter = fadeIn(tween(MorphDimens.CloseMs, easing = LinearEasing)),
+                exit = fadeOut(tween(HeaderFadeOutMs, easing = LinearEasing)),
             ) {
                 CollapsingHeader(
                     collapse = collapse,
