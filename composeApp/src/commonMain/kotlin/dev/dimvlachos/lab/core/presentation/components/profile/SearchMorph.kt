@@ -59,6 +59,8 @@ private val SearchIconSize = 20.dp
 private val PillShape = RoundedCornerShape(50)
 private const val SearchStartTimeoutMs = 250L
 private const val LandedFraction = 0.999f
+// A beat between the pill landing and the first letter, as a person would take before typing.
+private const val SearchTypingPauseMs = 400L
 
 // The magnifier is its own shared element, above the container, travelling from the button's
 // centre to the pill's leading slot while the container grows around it.
@@ -134,7 +136,7 @@ internal fun SearchTarget(
             snapshotFlow { fraction.floatValue }.first { it < LandedFraction }
         }
         snapshotFlow { fraction.floatValue }.first { it >= LandedFraction }
-        val start = withFrameMillis { it }
+        val start = withFrameMillis { it } + SearchTypingPauseMs
         // Types only over its own letters: once something else sets the query (a recent search
         // picked while the bar lands, or later), the scripted typing stops.
         var written = ""
