@@ -23,11 +23,11 @@ class GalleryHeaderTest {
     }
 
     @Test
-    fun theGridIsCutSixteenDpBelowTheHeaderAtEveryCollapse() {
+    fun theGridIsCutEightDpBelowTheHeaderAtEveryCollapse() {
         assertEquals(HeaderExpandedHeight + GridTopGap, gridClipTop(collapse = 0f))
-        assertEquals(HeaderCollapsedHeight + 16.dp, gridClipTop(collapse = 1f))
+        assertEquals(HeaderCollapsedHeight + 8.dp, gridClipTop(collapse = 1f))
         assertEquals(
-            (HeaderExpandedHeight + HeaderCollapsedHeight) / 2 + 16.dp,
+            (HeaderExpandedHeight + HeaderCollapsedHeight) / 2 + 8.dp,
             gridClipTop(collapse = 0.5f),
         )
     }
