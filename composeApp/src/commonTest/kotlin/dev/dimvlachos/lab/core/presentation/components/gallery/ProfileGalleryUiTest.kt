@@ -5,13 +5,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.LocalMorphCompositionProbe
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
@@ -157,6 +161,24 @@ class ProfileGalleryUiTest {
             val afterOpen = sources to targets
             mainClock.advanceTimeBy(1_500)
             assertEquals(afterOpen, sources to targets, "$open recomposed while animating")
+            go(GalleryScene())
+        }
+    }
+
+    @Test
+    fun theAvatarScrimClosesFromAnywhereAroundTheCircle() = runComposeUiTest {
+        showGallery()
+        val spots: List<TouchInjectionScope.() -> Offset> =
+            listOf({ topCenter }, { centerRight }, { bottomCenter }, { bottomLeft }, { centerLeft })
+        for (spot in spots) {
+            reported.clear()
+            go(GalleryScene(avatar = true))
+            onNodeWithTag(ScrimTag).performTouchInput { click(spot()) }
+            assertEquals(
+                listOf(GalleryScene()),
+                reported,
+                "a tap at ${onNodeWithTag(ScrimTag).fetchSemanticsNode().size} failed",
+            )
             go(GalleryScene())
         }
     }
