@@ -2,7 +2,6 @@ package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
@@ -11,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
@@ -72,6 +72,7 @@ internal fun CollapsingHeader(
                 shadow.animateTo(if (shows) 1f else 0f, tween(HeaderShadowMs))
             }
     }
+    val background = LabTheme.colors.background
     Layout(
         modifier =
             modifier
@@ -82,7 +83,10 @@ internal fun CollapsingHeader(
                     shape = RectangleShape
                     clip = false
                 }
-                .background(LabTheme.colors.background),
+                // Only as solid as the header is collapsed: at the top there is nothing under it
+                // (the grid keeps 16 dp below it all the way up), and a solid background there
+                // swept a dark band over the photos whenever search faded the header in or out.
+                .drawBehind { drawRect(background, alpha = collapse()) },
         content = {
             Box { avatar() }
             Text(
