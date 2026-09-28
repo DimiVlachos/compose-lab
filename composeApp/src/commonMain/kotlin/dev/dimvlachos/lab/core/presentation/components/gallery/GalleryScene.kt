@@ -22,3 +22,16 @@ internal fun GalleryScene.normalized(photoCount: Int): GalleryScene {
     val avatar = avatar && photo == 0 && !search
     return GalleryScene(photo = photo, avatar = avatar, dialog = dialog && avatar, search = search)
 }
+
+/**
+ * The scene one step back, closing the topmost layer: the dialog before the avatar under it, a
+ * photo before the search it was opened from, then the avatar or search. The bare screen stays.
+ */
+internal fun GalleryScene.back(): GalleryScene =
+    when {
+        dialog -> copy(dialog = false)
+        photo != 0 -> copy(photo = 0)
+        avatar -> copy(avatar = false)
+        search -> copy(search = false)
+        else -> this
+    }

@@ -45,4 +45,14 @@ class GallerySceneTest {
             GalleryScene(avatar = true, dialog = true, search = true).normalized(6),
         )
     }
+
+    @Test
+    fun backClosesTheTopmostLayerFirst() {
+        assertEquals(GalleryScene(avatar = true), GalleryScene(avatar = true, dialog = true).back())
+        assertEquals(GalleryScene(), GalleryScene(avatar = true).back())
+        assertEquals(GalleryScene(), GalleryScene(photo = 3).back())
+        assertEquals(GalleryScene(search = true), GalleryScene(photo = 5, search = true).back())
+        assertEquals(GalleryScene(), GalleryScene(search = true).back())
+        assertEquals(GalleryScene(), GalleryScene().back())
+    }
 }
