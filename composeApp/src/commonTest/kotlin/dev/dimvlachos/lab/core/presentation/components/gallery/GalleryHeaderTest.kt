@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,5 +20,15 @@ class GalleryHeaderTest {
         assertFalse(headerShadowShows(collapse = 0f))
         assertFalse(headerShadowShows(collapse = 0.95f))
         assertTrue(headerShadowShows(collapse = 1f))
+    }
+
+    @Test
+    fun theGridIsCutSixteenDpBelowTheHeaderAtEveryCollapse() {
+        assertEquals(HeaderExpandedHeight + GridTopGap, gridClipTop(collapse = 0f))
+        assertEquals(HeaderCollapsedHeight + 16.dp, gridClipTop(collapse = 1f))
+        assertEquals(
+            (HeaderExpandedHeight + HeaderCollapsedHeight) / 2 + 16.dp,
+            gridClipTop(collapse = 0.5f),
+        )
     }
 }

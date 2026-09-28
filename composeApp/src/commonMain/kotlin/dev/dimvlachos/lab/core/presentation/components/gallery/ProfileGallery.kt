@@ -47,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
@@ -151,6 +153,12 @@ fun ProfileGallery(
             Column(
                 Modifier.fillMaxSize()
                     .testTag(GalleryScrollTag)
+                    // In the viewport's coordinates (before the scroll), read at draw time.
+                    .drawWithContent {
+                        clipRect(top = gridClipTop(collapse()).toPx()) {
+                            this@drawWithContent.drawContent()
+                        }
+                    }
                     .verticalScroll(scrollState)
                     // Inside the scroll, so the last row scrolls clear of the navigation bar.
                     .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
