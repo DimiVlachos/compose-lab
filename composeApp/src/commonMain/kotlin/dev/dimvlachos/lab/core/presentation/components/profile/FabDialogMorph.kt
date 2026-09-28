@@ -79,14 +79,14 @@ internal fun FabSource(
                 .size(FabSize)
                 .testTag(FabSourceTag)
                 .clickable(role = Role.Button, onClick = onOpen),
-        color = LabTheme.colors.accent,
+        color = LabTheme.colors.surface,
     ) {
         // The pencil goes first on an open and comes back last on a close, so it never stretches
         // with the container.
         Icon(
             painterResource(Res.drawable.ic_edit),
             contentDescription = stringResource(Res.string.edit_photo_title),
-            tint = LabTheme.colors.onAccent,
+            tint = LabTheme.colors.textPrimary,
             modifier =
                 with(animatedVisibilityScope) {
                         Modifier.animateEnterExit(
