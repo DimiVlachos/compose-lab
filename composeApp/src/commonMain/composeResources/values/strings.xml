@@ -58,4 +58,6 @@
     <string name="photo_kefalonia_caption">Houses across the bay</string>
     <string name="photo_folegandros_title">Folegandros</string>
     <string name="photo_folegandros_caption">Sunset over the west cliffs</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_no_results">No photos match “%1$s”</string>
 </resources>

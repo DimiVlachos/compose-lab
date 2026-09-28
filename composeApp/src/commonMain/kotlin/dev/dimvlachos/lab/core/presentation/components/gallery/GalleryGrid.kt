@@ -52,7 +52,13 @@ internal fun GalleryGrid(
     modifier: Modifier = Modifier,
     morphKeyOf: (Int) -> String = ::morphKey,
 ) {
-    val filter = remember(photos.size) { List(photos.size) { MutableTransitionState(true) } }
+    // Starting from the query's own matches, so a grid that appears mid-search fades nothing out.
+    val filter =
+        remember(photos.size) {
+            List(photos.size) {
+                MutableTransitionState(matchesQuery(photos[it].title, query.value))
+            }
+        }
     // Where each card last stood, so a card fading out stays there instead of jumping.
     val lastSlot = remember(photos.size) { IntArray(photos.size) { it } }
     val typed = query.value
