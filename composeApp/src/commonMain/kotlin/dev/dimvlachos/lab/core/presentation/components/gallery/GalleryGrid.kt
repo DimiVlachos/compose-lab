@@ -50,6 +50,7 @@ internal fun GalleryGrid(
     sharedTransitionScope: SharedTransitionScope,
     onOpen: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    morphKeyOf: (Int) -> String = ::morphKey,
 ) {
     val filter = remember(photos.size) { List(photos.size) { MutableTransitionState(true) } }
     // Where each card last stood, so a card fading out stays there instead of jumping.
@@ -85,7 +86,7 @@ internal fun GalleryGrid(
                             MorphPhotoCard(
                                 painter = painters[i],
                                 title = photo.title,
-                                key = morphKey(i + 1),
+                                key = morphKeyOf(i + 1),
                                 layers = MorphLayers.All,
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = this,

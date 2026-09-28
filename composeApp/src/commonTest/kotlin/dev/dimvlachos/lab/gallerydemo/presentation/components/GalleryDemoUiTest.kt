@@ -3,9 +3,14 @@ package dev.dimvlachos.lab.gallerydemo.presentation.components
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.presentation.components.gallery.SearchGridTag
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.photo_corfu_title
@@ -36,7 +41,8 @@ class GalleryDemoUiTest {
         onNodeWithText(santorini).assertExists()
         select(0)
         select(200, thenMs = 2_500)
-        onNodeWithText(corfu).assertDoesNotExist()
+        onAllNodes(hasText(corfu) and hasAnyAncestor(hasTestTag(SearchGridTag)))
+            .assertCountEquals(0)
         select(205)
         onNodeWithText(naxos).assertExists()
         select(0)

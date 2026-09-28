@@ -14,7 +14,11 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -127,33 +131,37 @@ class ProfileGalleryUiTest {
         assertEquals(listOf(GalleryScene()), reported)
     }
 
+    // A title in the search page's own grid, as opposed to the home grid under it.
+    private fun ComposeUiTest.inSearch(title: String) =
+        onAllNodes(hasText(title) and hasAnyAncestor(hasTestTag(SearchGridTag)))
+
     @Test
-    fun searchFiltersTheGridAndFoldsTheHeader() = runComposeUiTest {
+    fun searchShowsItsOwnFilteredGridOverAnUntouchedHome() = runComposeUiTest {
         showGallery()
         go(GalleryScene(search = true), thenMs = 2_500)
-        onNodeWithTag(ProfileNameTag).assertDoesNotExist()
-        onNodeWithText("Paxos").assertExists()
-        onNodeWithText("Naxos").assertExists()
+        inSearch("Paxos").assertCountEquals(1)
+        inSearch("Naxos").assertCountEquals(1)
         for (gone in listOf("Corfu", "Santorini", "Milos", "Hydra")) {
-            onNodeWithText(gone).assertDoesNotExist()
+            inSearch(gone).assertCountEquals(0)
         }
+        onNodeWithTag(ProfileNameTag).assertExists() // home is still there, under the page
         go(GalleryScene(), thenMs = 2_000)
-        onNodeWithTag(ProfileNameTag).assertExists()
-        for (title in IslandTitles) onNodeWithText(title).assertExists()
+        onNodeWithTag(SearchGridTag).assertDoesNotExist()
+        for (title in IslandTitles) onAllNodesWithText(title).assertCountEquals(1)
     }
 
     @Test
-    fun aPhotoOpensFromTheFilteredGridAndReturnsToIt() = runComposeUiTest {
+    fun aPhotoOpensFromTheSearchResultsAndReturnsToThem() = runComposeUiTest {
         showGallery()
         go(GalleryScene(search = true), thenMs = 2_500)
-        onNodeWithText("Naxos").performClick()
+        inSearch("Naxos").onFirst().performClick()
         assertEquals(GalleryScene(photo = 5, search = true), reported.last())
         go(GalleryScene(photo = 5, search = true))
         onNodeWithText("Caption Naxos").assertExists()
         go(GalleryScene(search = true))
         onNodeWithText("Caption Naxos").assertDoesNotExist()
-        onNodeWithText("Naxos").assertExists()
-        onNodeWithText("Corfu").assertDoesNotExist()
+        inSearch("Naxos").assertCountEquals(1)
+        inSearch("Corfu").assertCountEquals(0)
     }
 
     @Test
@@ -330,18 +338,8 @@ class ProfileGalleryUiTest {
         showGallery()
         go(GalleryScene(search = true), thenMs = 2_500)
         val pill = onNodeWithTag(SearchPillTag).getBoundsInRoot()
-        val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
+        val grid = onNodeWithTag(SearchGridTag).getBoundsInRoot()
         assertEquals(16.dp, grid.top - pill.bottom)
-    }
-
-    @Test
-    fun openingSearchScrollsBackToTheTop() = runComposeUiTest {
-        val scroll = ScrollState(0)
-        showGallery(scroll = scroll)
-        runOnUiThread { scroll.dispatchRawDelta(400f) }
-        mainClock.advanceTimeBy(100)
-        go(GalleryScene(search = true), thenMs = 2_500)
-        assertEquals(0, scroll.value)
     }
 
     @Test
@@ -371,13 +369,13 @@ class ProfileGalleryUiTest {
     }
 
     @Test
-    fun leavingSearchReturnsTheGridToWhereItWasScrolled() = runComposeUiTest {
+    fun searchNeverMovesTheHomeGrid() = runComposeUiTest {
         val scroll = ScrollState(0)
         showGallery(scroll = scroll)
         runOnUiThread { scroll.dispatchRawDelta(400f) }
         mainClock.advanceTimeBy(100)
         go(GalleryScene(search = true), thenMs = 2_500)
-        assertEquals(0, scroll.value, "the results show from the top")
+        assertEquals(400, scroll.value)
         go(GalleryScene(), thenMs = 2_500)
         assertEquals(400, scroll.value)
     }
