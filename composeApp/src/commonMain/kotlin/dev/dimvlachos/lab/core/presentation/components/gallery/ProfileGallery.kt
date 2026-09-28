@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -70,6 +72,8 @@ import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ProfileNameTag = "profileName"
+internal const val GalleryScrollTag = "galleryScroll"
+internal const val GalleryGridTag = "galleryGrid"
 private val SearchButtonSlot = 40.dp
 private val FabEdgeInset = 36.dp
 
@@ -139,8 +143,13 @@ fun ProfileGallery(
                 Column(
                     Modifier.fillMaxWidth()
                         .weight(1f)
+                        .testTag(GalleryScrollTag)
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = LabTheme.spacing.mediumLarge)
+                        // Inside the scroll, so the last row scrolls clear of the navigation bar.
+                        .windowInsetsPadding(
+                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
+                        )
+                        .padding(bottom = LabTheme.spacing.medium)
                 ) {
                     // Folds away with the search bar's open and back with its close, on the same
                     // curve and duration, so the grid rises and settles with the bar.
@@ -175,7 +184,8 @@ fun ProfileGallery(
                         onOpen = { index -> update { it.copy(photo = index) } },
                         modifier =
                             Modifier.fillMaxWidth()
-                                .padding(horizontal = LabTheme.spacing.mediumLarge),
+                                .padding(horizontal = LabTheme.spacing.mediumLarge)
+                                .testTag(GalleryGridTag),
                     )
                 }
             }
