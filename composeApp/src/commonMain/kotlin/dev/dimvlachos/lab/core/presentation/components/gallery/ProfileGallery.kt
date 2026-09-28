@@ -138,7 +138,7 @@ fun ProfileGallery(
             },
             label = "galleryTopSpace",
         ) { searching ->
-            if (searching) SearchTopSpace else HeaderExpandedHeight
+            if (searching) SearchTopSpace else HeaderExpandedHeight + GridTopGap
         }
     SharedTransitionLayout(modifier.fillMaxSize()) {
         // Every tap that opens or closes something goes through the gate, so none cuts into a

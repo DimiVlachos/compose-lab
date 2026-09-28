@@ -14,7 +14,6 @@ import dev.dimvlachos.lab.core.presentation.components.gallery.ProfileGallery
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.gallerydemo.indexForScene
 import dev.dimvlachos.lab.gallerydemo.sceneForIndex
-import dev.dimvlachos.lab.imagemorphdemo.presentation.components.rememberIslandPhotos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import dev.dimvlachos.lab.resources.profile_name
@@ -36,7 +35,7 @@ internal fun GalleryDemo(state: DemoState) {
     ProfileGallery(
         name = stringResource(Res.string.profile_name),
         portrait = Res.drawable.portrait,
-        photos = rememberIslandPhotos(),
+        photos = rememberGalleryPhotos(),
         searchQuery = DemoQuery,
         scene = sceneForIndex(state.selectedIndex),
         onSceneChange = { state.select(indexForScene(it)) },

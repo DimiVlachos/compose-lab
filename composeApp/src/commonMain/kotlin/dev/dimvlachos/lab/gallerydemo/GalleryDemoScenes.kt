@@ -2,13 +2,14 @@ package dev.dimvlachos.lab.gallerydemo
 
 import dev.dimvlachos.lab.core.presentation.components.gallery.GalleryScene
 
-private const val PhotoCount = 6
-private const val Avatar = 7
-private const val AvatarDialog = 8
-private const val Search = 9
+private const val PhotoCount = 12
+private const val Avatar = 100
+private const val AvatarDialog = 101
+private const val Search = 200
 
-// The script speaks in select(n); these are the scenes n stands for. 1-6 open a photo, 7 zooms the
-// avatar, 8 adds the dialog, 9 opens search, and 10-15 open photo n - 9 from the search results.
+// The script speaks in select(n); these are the scenes n stands for. 1-12 open a photo, 100 zooms
+// the avatar, 101 adds the dialog, 200 opens search, and 200 + n opens photo n from the results.
+// The avatar and search numbers sit well clear of the photos, so adding photos never collides.
 internal fun sceneForIndex(index: Int): GalleryScene =
     when (index) {
         in 1..PhotoCount -> GalleryScene(photo = index)

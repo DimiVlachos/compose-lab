@@ -46,4 +46,16 @@
     <string name="action_edit_profile">Edit profile</string>
     <string name="recompositions_frames">frames drawn  %1$d</string>
     <string name="recompositions_count">nav bar recompositions  %1$d</string>
+    <string name="photo_mykonos_title">Mykonos</string>
+    <string name="photo_mykonos_caption">Tables on the waterfront</string>
+    <string name="photo_crete_title">Crete</string>
+    <string name="photo_crete_caption">A boat in Balos lagoon</string>
+    <string name="photo_rhodes_title">Rhodes</string>
+    <string name="photo_rhodes_caption">A lagoon in the cliffs</string>
+    <string name="photo_zakynthos_title">Zakynthos</string>
+    <string name="photo_zakynthos_caption">Navagio beach from above</string>
+    <string name="photo_kefalonia_title">Kefalonia</string>
+    <string name="photo_kefalonia_caption">Houses across the bay</string>
+    <string name="photo_folegandros_title">Folegandros</string>
+    <string name="photo_folegandros_caption">Sunset over the west cliffs</string>
 </resources>
