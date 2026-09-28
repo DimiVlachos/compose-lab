@@ -2,11 +2,14 @@ package dev.dimvlachos.lab.demo.presentation.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -64,8 +67,9 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
         }
     }
 
-    Box(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
-        Box(Modifier.align(Alignment.Center).fillMaxWidth().aspectRatio(4f / 5f).clipToBounds()) {
+    // The stage: the demo and, on a multi-platform capture, its platform label.
+    val stage: @Composable (Modifier) -> Unit = { modifier ->
+        Box(modifier.clipToBounds()) {
             key(runId) { demo.content(state) }
             if (label != null) {
                 Text(
@@ -78,48 +82,65 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
                 )
             }
         }
-        if (!record) {
-            Row(
-                Modifier.align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = LabTheme.spacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (onBack != null) {
+    }
+    Box(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
+        if (record) {
+            // The clip's 4:5 frame, centred; the recorder crops to it.
+            stage(Modifier.align(Alignment.Center).fillMaxWidth().aspectRatio(4f / 5f))
+        } else {
+            // On the phone the demo is something to use, so it fills the screen under the bar:
+            // a 4:5 frame would leave bands above and below it that look like the demo but never
+            // reach it.
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                            )
+                        )
+                        .padding(horizontal = LabTheme.spacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (onBack != null) {
+                        TextButton(
+                            onClick = onBack,
+                            colors =
+                                ButtonDefaults.textButtonColors(
+                                    contentColor = LabTheme.colors.accent
+                                ),
+                        ) {
+                            Text(stringResource(Res.string.action_back))
+                        }
+                    }
+                    Text(
+                        stringResource(demo.title),
+                        color = LabTheme.colors.textPrimary,
+                        style = LabTheme.typography.body,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(horizontal = LabTheme.spacing.small),
+                    )
                     TextButton(
-                        onClick = onBack,
+                        onClick = {
+                            if (playing) {
+                                playing = false
+                            } else {
+                                runId++
+                                playing = true
+                            }
+                        },
                         colors =
                             ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.accent),
                     ) {
-                        Text(stringResource(Res.string.action_back))
+                        Text(
+                            stringResource(
+                                if (playing) Res.string.action_stop else Res.string.action_replay
+                            )
+                        )
                     }
                 }
-                Text(
-                    stringResource(demo.title),
-                    color = LabTheme.colors.textPrimary,
-                    style = LabTheme.typography.body,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(horizontal = LabTheme.spacing.small),
-                )
-                TextButton(
-                    onClick = {
-                        if (playing) {
-                            playing = false
-                        } else {
-                            runId++
-                            playing = true
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.accent),
-                ) {
-                    Text(
-                        stringResource(
-                            if (playing) Res.string.action_stop else Res.string.action_replay
-                        )
-                    )
-                }
+                stage(Modifier.fillMaxWidth().weight(1f))
             }
         }
     }
