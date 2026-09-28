@@ -427,4 +427,49 @@ class ProfileGalleryUiTest {
         val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
         assertEquals(20.dp, grid.top - avatar.bottom)
     }
+
+    @Test
+    fun tapsOnTheCollapsedBarNeverReachThePhotosUnderIt() = runComposeUiTest {
+        val scroll = ScrollState(0)
+        showGallery(scroll = scroll)
+        val range = with(density) { (HeaderExpandedHeight - HeaderCollapsedHeight).toPx() }
+        runOnUiThread { scroll.dispatchRawDelta(range + 200f) } // the first row is under the bar
+        mainClock.advanceTimeBy(100)
+        onNodeWithTag(ProfileNameTag).performClick()
+        val bar = onNodeWithTag(GalleryHeaderTag).getBoundsInRoot()
+        val band = with(density) { (bar.bottom + GridTopGap / 2).toPx() }
+        onNodeWithTag(GalleryScrollTag).performTouchInput { click(Offset(centerX, band)) }
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(emptyList(), reported)
+    }
+
+    @Test
+    fun aSecondSearchStartsFromTheRecentSearches() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 2_500)
+        go(GalleryScene(), thenMs = 2_500)
+        go(GalleryScene(search = true), thenMs = 50)
+        onNodeWithTag(SearchGridTag).assertDoesNotExist() // no flash of the last results
+        onNodeWithText("Recent searches").assertExists()
+    }
+
+    @Test
+    fun aRecentSearchPickedWhileTheBarLandsIsKept() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 100)
+        onNode(hasText("Milos") and hasAnyAncestor(hasTestTag(RecentSearchesTag))).performClick()
+        mainClock.advanceTimeBy(2_500)
+        inSearch("Milos").assertCountEquals(1)
+        inSearch("Paxos").assertCountEquals(0) // the scripted "xos" did not type over it
+    }
+
+    @Test
+    fun theResultsGridIsOnlyAsTallAsItsMatches() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 2_500)
+        // Its own size, not its bounds in the root, which the scroll viewport clips.
+        val grid = onNodeWithTag(SearchGridTag).fetchSemanticsNode().size
+        // Two matches: one row of 4:5 cards at half the width, not six rows of empty slots.
+        assertTrue(grid.height < grid.width, "one row, got $grid")
+    }
 }

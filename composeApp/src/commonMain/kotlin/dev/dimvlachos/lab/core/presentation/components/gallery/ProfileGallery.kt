@@ -17,6 +17,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -53,11 +55,14 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDetail
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
@@ -192,6 +197,22 @@ fun ProfileGallery(
                             .testTag(GalleryGridTag),
                 )
             }
+            // The grid is cut off under the bar only in drawing, so this takes the taps there
+            // too: the bar and the band below it never open a photo scrolled out of sight. Its
+            // height follows the collapse in layout, like the cut, and the header's own buttons
+            // sit above it.
+            Box(
+                Modifier.fillMaxWidth()
+                    .layout { measurable, constraints ->
+                        val height = gridClipTop(collapse()).roundToPx()
+                        val placeable =
+                            measurable.measure(Constraints.fixed(constraints.maxWidth, height))
+                        layout(placeable.width, height) { placeable.place(0, 0) }
+                    }
+                    .pointerInput(Unit) {
+                        awaitEachGesture { awaitFirstDown(requireUnconsumed = false).consume() }
+                    }
+            )
             // Over the grid, which scrolls under it. Search opens over both, as its own page.
             CollapsingHeader(
                 modifier = Modifier.graphicsLayer { alpha = homeAlpha.value },
@@ -286,9 +307,7 @@ fun ProfileGallery(
 private fun searchMorphKey(index: Int): String = "search_" + morphKey(index)
 
 // Search as its own page over home, which stays exactly as it was underneath. The page fades in
-// with
-// the bar's morph, and its grid (every photo) fades in under the bar before the query types and
-// filters it.
+// with the bar's morph, showing the recent searches until the query types in.
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun SearchPage(
@@ -313,8 +332,8 @@ private fun SearchPage(
         }
     Box(Modifier.fillMaxSize()) {
         // Opaque at rest, cross-fading with home in 200 ms. It swallows taps; the back arrow
-        // closes. The search bar clears the query when it next opens, not here, so the results
-        // stay put while the page fades.
+        // closes. The search bar clears the query once the page has gone, so the results stay
+        // put while it fades.
         Box(
             Modifier.fillMaxSize()
                 .then(pageFade)
@@ -322,14 +341,16 @@ private fun SearchPage(
                 .clickable(interactionSource = null, indication = null, onClick = {})
                 .testTag(SearchPageTag)
         )
+        // Below the bar's row, so results scrolling up are cut off under it instead of passing
+        // behind the back arrow, and taps on the row never reach them.
         Column(
             Modifier.fillMaxSize()
                 .then(pageFade)
+                .padding(top = SearchTopSpace)
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                 .padding(bottom = LabTheme.spacing.medium)
         ) {
-            Spacer(Modifier.height(SearchTopSpace))
             SearchContent(
                 photos = photos,
                 painters = painters,

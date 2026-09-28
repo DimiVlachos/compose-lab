@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -129,20 +130,28 @@ internal fun SearchTarget(
     // one-second chrome fade. It waits for the morph to start first, because on this end's first
     // frames the fraction still holds its initial 1.
     LaunchedEffect(Unit) {
-        typed.value = ""
         withTimeoutOrNull(SearchStartTimeoutMs) {
             snapshotFlow { fraction.floatValue }.first { it < LandedFraction }
         }
         snapshotFlow { fraction.floatValue }.first { it >= LandedFraction }
         val start = withFrameMillis { it }
-        while (typed.value != query) {
+        // Types only over its own letters: once something else sets the query (a recent search
+        // picked while the bar lands, or later), the scripted typing stops.
+        var written = ""
+        while (typed.value == written && written != query) {
             withFrameMillis { now ->
-                typed.value = searchQueryAt(now - start, query, SearchPerCharMs)
+                if (typed.value == written) {
+                    written = searchQueryAt(now - start, query, SearchPerCharMs)
+                    typed.value = written
+                }
             }
         }
     }
+    // Cleared once the bar has gone, not when it opens: an open that clears it composes its first
+    // frames with the last query's results, which then flash away.
+    DisposableEffect(Unit) { onDispose { typed.value = "" } }
     val chrome = Modifier.morphChrome(animatedVisibilityScope, fraction)
-    // The bar sits where the top bar was; the results are the grid under it, filtered by [typed].
+    // The bar sits where the top bar was; the page under it shows what [typed] matches.
     Row(
         Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
