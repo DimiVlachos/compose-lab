@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.LocalMorphCompositionProbe
@@ -221,5 +222,23 @@ class ProfileGalleryUiTest {
         val root = onRoot().getBoundsInRoot()
         assertEquals(36.dp, root.right - fab.right)
         assertEquals(36.dp, root.bottom - fab.bottom)
+    }
+
+    @Test
+    fun theGridEndsSixteenDpAboveTheBottomWhenScrolledToTheEnd() = runComposeUiTest {
+        showGallery()
+        mainClock.autoAdvance = true
+        onNodeWithTag(GalleryScrollTag).performTouchInput { repeat(4) { swipeUp() } }
+        waitForIdle()
+        val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
+        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - grid.bottom)
+    }
+
+    @Test
+    fun theDetailCaptionEndsSixteenDpAboveTheBottom() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(photo = 3), thenMs = 2_000)
+        val caption = onNodeWithText("Caption Santorini").getBoundsInRoot()
+        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - caption.bottom)
     }
 }
