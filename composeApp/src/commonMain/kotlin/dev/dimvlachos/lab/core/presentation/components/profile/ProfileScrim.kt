@@ -25,12 +25,13 @@ internal fun ProfileScrim(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     maxAlpha: Float = ScrimMaxAlpha,
+    tag: String = ScrimTag,
 ) {
     MorphProgress(animatedVisibilityScope) { progress, closing ->
         Box(
             modifier
                 .fillMaxSize()
-                .testTag(ScrimTag)
+                .testTag(tag)
                 .graphicsLayer {
                     alpha = maxAlpha * morphBackdropAlpha(progress.value, closing())
                     compositingStrategy = CompositingStrategy.ModulateAlpha

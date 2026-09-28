@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
@@ -23,14 +25,13 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class SearchMorphUiTest {
-    private val candidates = listOf("Corfu", "Corfu Old Town", "Corinth", "Naxos", "Paxos")
+    private val typed = mutableStateOf("")
+    private var open by mutableIntStateOf(0)
+    private var opened = 0
+    private var closed = 0
 
-    @Test
-    fun barTypesTheQueryAfterLandingAndRestartsOnReopen() = runComposeUiTest {
+    private fun ComposeUiTest.showSearch() {
         mainClock.autoAdvance = false
-        var open by mutableIntStateOf(0)
-        var opened = 0
-        var closed = 0
         setContent {
             LabTheme {
                 SharedTransitionLayout(Modifier.fillMaxSize()) {
@@ -53,8 +54,8 @@ class SearchMorphUiTest {
                             exit = ExitTransition.None,
                         ) {
                             SearchTarget(
-                                "Cor",
-                                candidates,
+                                "xos",
+                                typed,
                                 this@SharedTransitionLayout,
                                 this,
                                 { open == 2 },
@@ -66,69 +67,40 @@ class SearchMorphUiTest {
             }
         }
         mainClock.advanceTimeBy(500)
-        onNodeWithTag(SearchSourceTag).performClick()
-        assertEquals(1, opened)
-        runOnUiThread { open = 2 }
+    }
+
+    private fun ComposeUiTest.set(value: Int, thenMs: Long) {
+        runOnUiThread { open = value }
         Snapshot.sendApplyNotifications()
-        mainClock.advanceTimeBy(300)
-        onNodeWithText("Corfu").assertDoesNotExist() // still morphing, nothing typed yet
-        mainClock.advanceTimeBy(1_500)
-        onNodeWithText("Corfu").assertExists()
-        onNodeWithText("Naxos").assertDoesNotExist()
-        onNodeWithTag(SearchBackTag).performClick()
-        assertEquals(1, closed)
-        runOnUiThread { open = 0 }
-        Snapshot.sendApplyNotifications()
-        mainClock.advanceTimeBy(1_000)
-        onNodeWithTag(SearchPillTag).assertDoesNotExist()
-        runOnUiThread { open = 2 }
-        Snapshot.sendApplyNotifications()
-        mainClock.advanceTimeBy(300)
-        onNodeWithText("Corfu").assertDoesNotExist() // typing restarted from ""
+        mainClock.advanceTimeBy(thenMs)
     }
 
     @Test
-    fun typingStartsAsSoonAsThePillLandsOverAnOpaqueBackdrop() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        var open by mutableIntStateOf(0)
-        setContent {
-            LabTheme {
-                SharedTransitionLayout(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize()) {
-                        AnimatedVisibility(
-                            open == 0,
-                            enter = EnterTransition.None,
-                            exit = ExitTransition.None,
-                        ) {
-                            SearchSource(this@SharedTransitionLayout, this, { open == 2 }, {})
-                        }
-                        AnimatedVisibility(
-                            open == 2,
-                            enter = EnterTransition.None,
-                            exit = ExitTransition.None,
-                        ) {
-                            SearchTarget(
-                                "Cor",
-                                candidates,
-                                this@SharedTransitionLayout,
-                                this,
-                                { open == 2 },
-                                {},
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        mainClock.advanceTimeBy(500)
-        runOnUiThread { open = 2 }
-        Snapshot.sendApplyNotifications()
-        // The pill lands at 500 ms and "Cor" takes 360 ms; the 1 s chrome fade must not hold it up.
-        mainClock.advanceTimeBy(1_000)
-        onNodeWithText("Corfu").assertExists()
-        onNodeWithTag(ScrimTag).assertExists()
+    fun barTypesTheQueryAfterLandingAndRestartsOnReopen() = runComposeUiTest {
+        showSearch()
+        onNodeWithTag(SearchSourceTag).performClick()
+        assertEquals(1, opened)
+        set(2, thenMs = 300)
+        onNodeWithText("xos").assertDoesNotExist() // still morphing, nothing typed yet
+        mainClock.advanceTimeBy(1_500)
+        onNodeWithText("xos").assertExists()
+        assertEquals("xos", typed.value)
+        onNodeWithTag(SearchBackTag).performClick()
+        assertEquals(1, closed)
+        set(0, thenMs = 1_000)
+        onNodeWithTag(SearchPillTag).assertDoesNotExist()
+        set(2, thenMs = 300)
+        assertEquals("", typed.value, "typing restarts from an empty query")
+    }
+
+    @Test
+    fun typingStartsAsSoonAsThePillLandsCentredInIt() = runComposeUiTest {
+        showSearch()
+        // The pill lands at 500 ms and "xos" takes 360 ms; the 1 s chrome fade must not hold it up.
+        set(2, thenMs = 1_000)
+        onNodeWithText("xos").assertExists()
         val pill = onNodeWithTag(SearchPillTag).getBoundsInRoot()
-        val text = onNodeWithText("Cor").getBoundsInRoot()
+        val text = onNodeWithText("xos").getBoundsInRoot()
         assertEquals(
             (pill.top + pill.bottom).value / 2,
             (text.top + text.bottom).value / 2,

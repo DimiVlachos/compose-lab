@@ -3,14 +3,9 @@ package dev.dimvlachos.lab.core.presentation.components.profile
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,26 +18,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.ReportMorphComposition
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.ShapedMorphNode
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphBoundsTransform
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChromeAlpha
+import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChrome
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphWidthFraction
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -124,7 +116,7 @@ internal fun SearchSource(
 @Composable
 internal fun SearchTarget(
     query: String,
-    candidates: List<String>,
+    typed: MutableState<String>,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     opening: () -> Boolean,
@@ -132,12 +124,12 @@ internal fun SearchTarget(
 ) {
     ReportMorphComposition(MorphEnd.Detail)
     val fraction = remember { mutableFloatStateOf(1f) }
-    val typed = remember { mutableStateOf("") }
     // Typing starts once the pill has landed: its width reaches its final value. Not when
     // isTransitionActive turns false, which waits for every animation of this end, including the
     // one-second chrome fade. It waits for the morph to start first, because on this end's first
     // frames the fraction still holds its initial 1.
     LaunchedEffect(Unit) {
+        typed.value = ""
         withTimeoutOrNull(SearchStartTimeoutMs) {
             snapshotFlow { fraction.floatValue }.first { it < LandedFraction }
         }
@@ -149,64 +141,48 @@ internal fun SearchTarget(
             }
         }
     }
-    val chromeFade =
-        with(animatedVisibilityScope) {
-            Modifier.animateEnterExit(
-                enter = fadeIn(tween(MorphDimens.ChromeFadeInMs, easing = MorphDimens.MorphEasing)),
-                exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs, easing = LinearEasing)),
+    val chrome = Modifier.morphChrome(animatedVisibilityScope, fraction)
+    // The bar sits where the top bar was; the results are the grid under it, filtered by [typed].
+    Row(
+        Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            chrome
+                .size(SearchButtonSize)
+                .clip(CircleShape)
+                .testTag(SearchBackTag)
+                .clickable(role = Role.Button, onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_arrow_back),
+                stringResource(Res.string.action_back),
+                tint = LabTheme.colors.textPrimary,
             )
         }
-    val chromeLayer = Modifier.graphicsLayer {
-        alpha = morphChromeAlpha(fraction.floatValue)
-        compositingStrategy = CompositingStrategy.ModulateAlpha
-    }
-    // A search page, not a popup: an opaque backdrop hides the screen under the results. It
-    // swallows
-    // taps; the back arrow is the way out.
-    Box(Modifier.fillMaxSize()) {
-        ProfileScrim(animatedVisibilityScope, onClose = {}, maxAlpha = 1f)
-        Column(Modifier.fillMaxWidth().padding(LabTheme.spacing.medium)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.then(chromeFade)
-                        .then(chromeLayer)
-                        .size(SearchButtonSize)
-                        .clip(CircleShape)
-                        .testTag(SearchBackTag)
-                        .clickable(role = Role.Button, onClick = onClose),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_arrow_back),
-                        stringResource(Res.string.action_back),
-                        tint = LabTheme.colors.textPrimary,
-                    )
-                }
-                ShapedMorphNode(
-                    sharedTransitionScope,
-                    animatedVisibilityScope,
-                    SearchKey,
-                    PillShape,
-                    Modifier.weight(1f).height(SearchPillHeight).testTag(SearchPillTag),
-                    overlayZIndex = 1f,
-                    color = LabTheme.colors.bar,
-                ) {
-                    Row(
-                        // The whole pill, so the fraction is the pill's own (a Row wrapping its
-                        // content would reach its final width long before the pill does) and the
-                        // row centres in its height.
-                        Modifier.fillMaxSize()
-                            .morphWidthFraction(fraction)
-                            .padding(horizontal = LabTheme.spacing.medium),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
-                    ) {
-                        Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
-                        TypedQuery(typed, Modifier.then(chromeFade).then(chromeLayer))
-                    }
-                }
+        ShapedMorphNode(
+            sharedTransitionScope,
+            animatedVisibilityScope,
+            SearchKey,
+            PillShape,
+            Modifier.weight(1f).height(SearchPillHeight).testTag(SearchPillTag),
+            overlayZIndex = 1f,
+            color = LabTheme.colors.bar,
+        ) {
+            Row(
+                // The whole pill, so the fraction is the pill's own (a Row wrapping its
+                // content would reach its final width long before the pill does) and the
+                // row centres in its height.
+                Modifier.fillMaxSize()
+                    .morphWidthFraction(fraction)
+                    .padding(horizontal = LabTheme.spacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
+            ) {
+                Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
+                TypedQuery(typed, chrome)
             }
-            SearchResults(typed, candidates, Modifier.then(chromeFade).then(chromeLayer))
         }
     }
 }
@@ -222,18 +198,4 @@ private fun TypedQuery(typed: State<String>, modifier: Modifier) {
         maxLines = 1,
         modifier = modifier,
     )
-}
-
-@Composable
-private fun SearchResults(typed: State<String>, candidates: List<String>, modifier: Modifier) {
-    Column(modifier.padding(top = LabTheme.spacing.medium)) {
-        for (result in searchResults(typed.value, candidates)) {
-            Text(
-                result,
-                color = LabTheme.colors.textPrimary,
-                style = LabTheme.typography.body,
-                modifier = Modifier.padding(vertical = LabTheme.spacing.smallMedium),
-            )
-        }
-    }
 }

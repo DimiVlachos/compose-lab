@@ -26,8 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -36,15 +34,15 @@ import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.RadiusMorphNode
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.ReportMorphComposition
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChromeAlpha
+import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChrome
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphWidthFraction
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_cancel
 import dev.dimvlachos.lab.resources.add_image_camera
 import dev.dimvlachos.lab.resources.add_image_gallery
-import dev.dimvlachos.lab.resources.add_image_title
-import dev.dimvlachos.lab.resources.ic_add
+import dev.dimvlachos.lab.resources.edit_photo_title
+import dev.dimvlachos.lab.resources.ic_edit
 import dev.dimvlachos.lab.resources.ic_image
 import dev.dimvlachos.lab.resources.ic_photo_camera
 import org.jetbrains.compose.resources.painterResource
@@ -55,9 +53,11 @@ internal const val FabSourceTag = "fabSource"
 internal const val FabDialogTag = "fabDialog"
 internal val FabRadius = 16.dp
 internal val DialogRadius = 28.dp
-private val FabSize = 56.dp
+internal val FabSize = 56.dp
 private const val DialogWidth = 0.8f
-private const val PlusFadeMs = 100
+private const val IconFadeMs = 100
+private const val DialogScrimAlpha = 0.5f
+internal const val DialogScrimTag = "dialogScrim"
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -81,11 +81,11 @@ internal fun FabSource(
                 .clickable(role = Role.Button, onClick = onOpen),
         color = LabTheme.colors.accent,
     ) {
-        // The + goes first on an open and comes back last on a close, so it never stretches with
-        // the container.
+        // The pencil goes first on an open and comes back last on a close, so it never stretches
+        // with the container.
         Icon(
-            painterResource(Res.drawable.ic_add),
-            contentDescription = stringResource(Res.string.add_image_title),
+            painterResource(Res.drawable.ic_edit),
+            contentDescription = stringResource(Res.string.edit_photo_title),
             tint = LabTheme.colors.onAccent,
             modifier =
                 with(animatedVisibilityScope) {
@@ -93,12 +93,12 @@ internal fun FabSource(
                             enter =
                                 fadeIn(
                                     tween(
-                                        PlusFadeMs,
-                                        delayMillis = MorphDimens.CloseMs - PlusFadeMs,
+                                        IconFadeMs,
+                                        delayMillis = MorphDimens.CloseMs - IconFadeMs,
                                         easing = LinearEasing,
                                     )
                                 ),
-                            exit = fadeOut(tween(PlusFadeMs, easing = LinearEasing)),
+                            exit = fadeOut(tween(IconFadeMs, easing = LinearEasing)),
                         )
                     }
                     .align(Alignment.Center),
@@ -115,20 +115,15 @@ internal fun FabDialogTarget(
 ) {
     ReportMorphComposition(MorphEnd.Detail)
     val fraction = remember { mutableFloatStateOf(1f) }
-    val chrome =
-        with(animatedVisibilityScope) {
-                Modifier.animateEnterExit(
-                    enter =
-                        fadeIn(tween(MorphDimens.ChromeFadeInMs, easing = MorphDimens.MorphEasing)),
-                    exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs, easing = LinearEasing)),
-                )
-            }
-            .graphicsLayer {
-                alpha = morphChromeAlpha(fraction.floatValue)
-                compositingStrategy = CompositingStrategy.ModulateAlpha
-            }
+    val chrome = Modifier.morphChrome(animatedVisibilityScope, fraction)
     Box(Modifier.fillMaxSize()) {
-        ProfileScrim(animatedVisibilityScope, onClose)
+        // Lighter than the avatar's: the zoomed avatar stays visible under the dialog.
+        ProfileScrim(
+            animatedVisibilityScope,
+            onClose,
+            maxAlpha = DialogScrimAlpha,
+            tag = DialogScrimTag,
+        )
         RadiusMorphNode(
             sharedTransitionScope,
             animatedVisibilityScope,
@@ -150,7 +145,7 @@ internal fun FabDialogTarget(
                 verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
             ) {
                 Text(
-                    stringResource(Res.string.add_image_title),
+                    stringResource(Res.string.edit_photo_title),
                     color = LabTheme.colors.textPrimary,
                     style = LabTheme.typography.subtitle,
                     modifier = chrome.padding(bottom = LabTheme.spacing.small),
