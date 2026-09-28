@@ -24,6 +24,7 @@ internal fun ProfileScrim(
     animatedVisibilityScope: AnimatedVisibilityScope,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    maxAlpha: Float = ScrimMaxAlpha,
 ) {
     MorphProgress(animatedVisibilityScope) { progress, closing ->
         Box(
@@ -31,7 +32,7 @@ internal fun ProfileScrim(
                 .fillMaxSize()
                 .testTag(ScrimTag)
                 .graphicsLayer {
-                    alpha = ScrimMaxAlpha * morphBackdropAlpha(progress.value, closing())
+                    alpha = maxAlpha * morphBackdropAlpha(progress.value, closing())
                     compositingStrategy = CompositingStrategy.ModulateAlpha
                 }
                 .background(LabTheme.colors.background)

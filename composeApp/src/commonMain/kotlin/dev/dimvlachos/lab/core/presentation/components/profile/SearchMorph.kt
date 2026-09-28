@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -64,6 +65,7 @@ private val SearchPillHeight = 48.dp
 private val SearchIconSize = 20.dp
 private val PillShape = RoundedCornerShape(50)
 private const val SearchStartTimeoutMs = 250L
+private const val LandedFraction = 0.999f
 
 // The magnifier is its own shared element, above the container, travelling from the button's
 // centre to the pill's leading slot while the container grows around it.
@@ -131,13 +133,15 @@ internal fun SearchTarget(
     ReportMorphComposition(MorphEnd.Detail)
     val fraction = remember { mutableFloatStateOf(1f) }
     val typed = remember { mutableStateOf("") }
-    // Typing starts once the pill has landed. It waits for the morph to start first, because
-    // isTransitionActive is still false on this end's first composition.
+    // Typing starts once the pill has landed: its width reaches its final value. Not when
+    // isTransitionActive turns false, which waits for every animation of this end, including the
+    // one-second chrome fade. It waits for the morph to start first, because on this end's first
+    // frames the fraction still holds its initial 1.
     LaunchedEffect(Unit) {
         withTimeoutOrNull(SearchStartTimeoutMs) {
-            snapshotFlow { sharedTransitionScope.isTransitionActive }.first { it }
+            snapshotFlow { fraction.floatValue }.first { it < LandedFraction }
         }
-        snapshotFlow { sharedTransitionScope.isTransitionActive }.first { !it }
+        snapshotFlow { fraction.floatValue }.first { it >= LandedFraction }
         val start = withFrameMillis { it }
         while (typed.value != query) {
             withFrameMillis { now ->
@@ -156,44 +160,54 @@ internal fun SearchTarget(
         alpha = morphChromeAlpha(fraction.floatValue)
         compositingStrategy = CompositingStrategy.ModulateAlpha
     }
-    Column(Modifier.fillMaxWidth().padding(LabTheme.spacing.medium)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.then(chromeFade)
-                    .then(chromeLayer)
-                    .size(SearchButtonSize)
-                    .clip(CircleShape)
-                    .testTag(SearchBackTag)
-                    .clickable(role = Role.Button, onClick = onClose),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_arrow_back),
-                    stringResource(Res.string.action_back),
-                    tint = LabTheme.colors.textPrimary,
-                )
-            }
-            ShapedMorphNode(
-                sharedTransitionScope,
-                animatedVisibilityScope,
-                SearchKey,
-                PillShape,
-                Modifier.weight(1f).height(SearchPillHeight).testTag(SearchPillTag),
-                overlayZIndex = 1f,
-                color = LabTheme.colors.bar,
-            ) {
-                Row(
-                    Modifier.morphWidthFraction(fraction)
-                        .padding(horizontal = LabTheme.spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
+    // A search page, not a popup: an opaque backdrop hides the screen under the results. It
+    // swallows
+    // taps; the back arrow is the way out.
+    Box(Modifier.fillMaxSize()) {
+        ProfileScrim(animatedVisibilityScope, onClose = {}, maxAlpha = 1f)
+        Column(Modifier.fillMaxWidth().padding(LabTheme.spacing.medium)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.then(chromeFade)
+                        .then(chromeLayer)
+                        .size(SearchButtonSize)
+                        .clip(CircleShape)
+                        .testTag(SearchBackTag)
+                        .clickable(role = Role.Button, onClick = onClose),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
-                    TypedQuery(typed, Modifier.then(chromeFade).then(chromeLayer))
+                    Icon(
+                        painterResource(Res.drawable.ic_arrow_back),
+                        stringResource(Res.string.action_back),
+                        tint = LabTheme.colors.textPrimary,
+                    )
+                }
+                ShapedMorphNode(
+                    sharedTransitionScope,
+                    animatedVisibilityScope,
+                    SearchKey,
+                    PillShape,
+                    Modifier.weight(1f).height(SearchPillHeight).testTag(SearchPillTag),
+                    overlayZIndex = 1f,
+                    color = LabTheme.colors.bar,
+                ) {
+                    Row(
+                        // The whole pill, so the fraction is the pill's own (a Row wrapping its
+                        // content would reach its final width long before the pill does) and the
+                        // row centres in its height.
+                        Modifier.fillMaxSize()
+                            .morphWidthFraction(fraction)
+                            .padding(horizontal = LabTheme.spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
+                    ) {
+                        Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
+                        TypedQuery(typed, Modifier.then(chromeFade).then(chromeLayer))
+                    }
                 }
             }
+            SearchResults(typed, candidates, Modifier.then(chromeFade).then(chromeLayer))
         }
-        SearchResults(typed, candidates, Modifier.then(chromeFade).then(chromeLayer))
     }
 }
 
