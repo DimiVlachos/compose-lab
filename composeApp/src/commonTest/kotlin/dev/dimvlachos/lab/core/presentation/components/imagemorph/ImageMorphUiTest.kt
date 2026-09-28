@@ -135,4 +135,28 @@ class ImageMorphUiTest {
         mainClock.advanceTimeBy(2_000)
         assertEquals(afterOpen, cards to details, "no card or detail recomposed during the morph")
     }
+
+    @Test
+    fun aCloseDuringTheOpenWaitsForTheMorphToLand() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var expanded by mutableIntStateOf(0)
+        setContent {
+            LabTheme {
+                ImageMorph(
+                    photos,
+                    expandedIndex = expanded,
+                    onExpand = { expanded = it },
+                    onCollapse = { expanded = 0 },
+                )
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Paxos").performClick()
+        mainClock.advanceTimeBy(100) // still growing
+        onNodeWithContentDescription(close).performClick()
+        mainClock.advanceTimeBy(50)
+        assertEquals(2, expanded, "the close must not cut into the open")
+        mainClock.advanceTimeBy(1_500)
+        assertEquals(0, expanded, "and happens once the photo has landed")
+    }
 }

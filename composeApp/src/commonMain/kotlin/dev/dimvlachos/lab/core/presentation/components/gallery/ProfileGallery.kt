@@ -48,6 +48,7 @@ import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphLayers
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphPhoto
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphKey
+import dev.dimvlachos.lab.core.presentation.components.imagemorph.rememberMorphGate
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.rememberMorphPainters
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSize
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSource
@@ -99,7 +100,7 @@ fun ProfileGallery(
     val current = scene.normalized(photos.size)
     val latest = rememberUpdatedState(current)
     val report = rememberUpdatedState(onSceneChange)
-    val update: ((GalleryScene) -> GalleryScene) -> Unit = remember {
+    val applyChange: ((GalleryScene) -> GalleryScene) -> Unit = remember {
         { change -> report.value(change(latest.value)) }
     }
     val portraitBitmap = imageResource(portrait)
@@ -110,6 +111,13 @@ fun ProfileGallery(
     LaunchedEffect(current.search) { if (!current.search) typed.value = "" }
     val searchOpening = remember { { latest.value.search } }
     SharedTransitionLayout(modifier.fillMaxSize()) {
+        // Every tap that opens or closes something goes through the gate, so none cuts into a
+        // morph in flight. The change is computed when it runs, from the scene at that moment.
+        val gate = rememberMorphGate()
+        val update: ((GalleryScene) -> GalleryScene) -> Unit =
+            remember(gate) {
+                { change -> gate { applyChange(change) } }
+            }
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
                 Row(

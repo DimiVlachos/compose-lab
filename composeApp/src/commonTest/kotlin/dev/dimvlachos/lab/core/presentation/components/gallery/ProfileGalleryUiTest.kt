@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -73,8 +74,11 @@ class ProfileGalleryUiTest {
     @Test
     fun eachTriggerReportsTheNextScene() = runComposeUiTest {
         showGallery()
+        // Apart, as a person taps: taps inside one morph's window are serialised by the gate.
         onNodeWithText("Paxos").performClick()
+        mainClock.advanceTimeBy(1_000)
         onNodeWithTag(AvatarSourceTag).performClick()
+        mainClock.advanceTimeBy(1_000)
         onNodeWithTag(SearchSourceTag).performClick()
         assertEquals(
             listOf(
@@ -240,5 +244,62 @@ class ProfileGalleryUiTest {
         go(GalleryScene(photo = 3), thenMs = 2_000)
         val caption = onNodeWithText("Caption Santorini").getBoundsInRoot()
         assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - caption.bottom)
+    }
+
+    @Test
+    fun reopeningAPhotoNeverLeavesAnOldEndBehind() = runComposeUiTest {
+        showGallery()
+        repeat(3) { round ->
+            go(GalleryScene(photo = 3), thenMs = 100)
+            onAllNodesWithText("Caption Santorini").assertCountEquals(1)
+            onAllNodesWithText("Santorini").assertCountEquals(2) // the card and the detail
+            mainClock.advanceTimeBy(1_500)
+            go(GalleryScene(), thenMs = 100)
+            onAllNodesWithText("Santorini").assertCountEquals(2)
+            mainClock.advanceTimeBy(1_500)
+            onAllNodesWithText("Santorini").assertCountEquals(1)
+            onAllNodesWithText("Caption Santorini").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun closingMidOpenLeavesNoOldEndBehind() = runComposeUiTest {
+        showGallery()
+        repeat(2) {
+            go(GalleryScene(photo = 3), thenMs = 200) // still growing
+            go(GalleryScene(), thenMs = 2_000)
+            onAllNodesWithText("Caption Santorini").assertCountEquals(0)
+            onAllNodesWithText("Santorini").assertCountEquals(1)
+        }
+        go(GalleryScene(photo = 3), thenMs = 100)
+        onAllNodesWithText("Caption Santorini").assertCountEquals(1)
+        onAllNodesWithText("Santorini").assertCountEquals(2)
+    }
+
+    @Test
+    fun aCloseDuringTheOpenWaitsForTheMorphToLand() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var live by mutableStateOf(GalleryScene())
+        setContent {
+            LabTheme {
+                ProfileGallery(
+                    title = "Profile",
+                    name = "Alex Morgan",
+                    portrait = Res.drawable.portrait,
+                    photos = testIslands(),
+                    searchQuery = "xos",
+                    scene = live,
+                    onSceneChange = { live = it },
+                )
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Paxos").performClick()
+        mainClock.advanceTimeBy(100) // still growing
+        onNodeWithContentDescription("Close").performClick()
+        mainClock.advanceTimeBy(50)
+        assertEquals(GalleryScene(photo = 2), live, "the close must not cut into the open")
+        mainClock.advanceTimeBy(1_500)
+        assertEquals(GalleryScene(), live, "and happens once the photo has landed")
     }
 }
