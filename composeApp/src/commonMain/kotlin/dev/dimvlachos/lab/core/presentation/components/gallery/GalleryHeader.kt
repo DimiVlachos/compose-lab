@@ -24,16 +24,16 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 
-// Expanded: 16 top + the 88 dp avatar + 4 bottom. Collapsed: 16 top + a 40 dp row + 8 bottom,
+// Expanded: 16 top + the 88 dp avatar + 12 bottom. Collapsed: 16 top + a 40 dp row + 8 bottom,
 // Edda's bar padding. The difference is how far the grid scrolls to collapse it. The grid keeps
-// GridTopGap below the header, so it rests 16 dp under the bar's shadow line once collapsed and
-// 20 dp under the avatar when expanded.
-internal val HeaderExpandedHeight = 108.dp
-internal val GridTopGap = 16.dp
+// GridTopGap below the header: 20 dp under the avatar when expanded, and 8 dp under the collapsed
+// bar, which with the bar's 8 dp shadow reads as 16 dp.
+internal val HeaderExpandedHeight = 116.dp
+internal val GridTopGap = 8.dp
 internal val HeaderCollapsedHeight = 64.dp
 internal const val GalleryHeaderTag = "galleryHeader"
 private val HeaderTop = 16.dp
-private val HeaderExpandedBottom = 4.dp
+private val HeaderExpandedBottom = 12.dp
 private val HeaderCollapsedBottom = 8.dp
 private val HeaderSide = 20.dp
 private val HeaderGap = 16.dp
@@ -48,7 +48,7 @@ internal fun headerCollapse(scrollPx: Int, rangePx: Float): Float =
 
 /**
  * Where the scrolling grid is cut off: GridTopGap below the header's bottom edge at its current
- * collapse. Once collapsed, photos scrolling up stop 16 dp short of the bar, leaving a clean band
+ * collapse. Once collapsed, photos scrolling up stop 8 dp short of the bar, leaving a clean band
  * under its shadow; before that the grid sits below the line anyway, so nothing is lost.
  */
 internal fun gridClipTop(collapse: Float): Dp =

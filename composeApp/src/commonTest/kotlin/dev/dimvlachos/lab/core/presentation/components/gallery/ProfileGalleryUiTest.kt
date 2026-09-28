@@ -358,7 +358,7 @@ class ProfileGalleryUiTest {
     }
 
     @Test
-    fun onceCollapsedTheGridStartsSixteenDpBelowTheBar() = runComposeUiTest {
+    fun onceCollapsedTheGridStartsEightDpBelowTheBar() = runComposeUiTest {
         val scroll = ScrollState(0)
         showGallery(scroll = scroll)
         val range = with(density) { (HeaderExpandedHeight - HeaderCollapsedHeight).toPx() }
@@ -367,7 +367,7 @@ class ProfileGalleryUiTest {
         val bar = onNodeWithTag(GalleryHeaderTag).getBoundsInRoot()
         val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
         assertEquals(64.dp, bar.bottom - bar.top, "fully collapsed")
-        assertEquals(16.dp, grid.top - bar.bottom)
+        assertEquals(8.dp, grid.top - bar.bottom) // plus the 8 dp shadow: 16 dp to the eye
     }
 
     @Test
@@ -418,5 +418,13 @@ class ProfileGalleryUiTest {
         go(GalleryScene(), thenMs = 100)
         inSearch("Paxos").assertCountEquals(1) // not swapped for the recent searches mid-close
         onNodeWithText("Recent searches").assertDoesNotExist()
+    }
+
+    @Test
+    fun expandedThePhotosStayTwentyDpUnderTheAvatar() = runComposeUiTest {
+        showGallery()
+        val avatar = onNodeWithTag(AvatarSourceTag).getBoundsInRoot()
+        val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
+        assertEquals(20.dp, grid.top - avatar.bottom)
     }
 }
