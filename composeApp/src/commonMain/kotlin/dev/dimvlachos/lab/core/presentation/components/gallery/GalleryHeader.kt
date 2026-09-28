@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSize
@@ -44,6 +45,14 @@ private const val HeaderShadowMs = 200
 /** How far the header has collapsed, 0 to 1, over the first [rangePx] of the grid's scroll. */
 internal fun headerCollapse(scrollPx: Int, rangePx: Float): Float =
     if (rangePx <= 0f) 1f else (scrollPx / rangePx).coerceIn(0f, 1f)
+
+/**
+ * Where the scrolling grid is cut off: GridTopGap below the header's bottom edge at its current
+ * collapse. Once collapsed, photos scrolling up stop 16 dp short of the bar, leaving a clean band
+ * under its shadow; before that the grid sits below the line anyway, so nothing is lost.
+ */
+internal fun gridClipTop(collapse: Float): Dp =
+    lerp(HeaderExpandedHeight, HeaderCollapsedHeight, collapse) + GridTopGap
 
 // The bar only needs a shadow once content is passing under it, which here is once
 // the header has fully become the bar.
