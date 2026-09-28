@@ -99,4 +99,15 @@ class MorphCornerRadiusTest {
             )
         assertEquals(7.dp, radius)
     }
+
+    @Test
+    fun fabAndDialogPickTheSameSpecForOneOpen() {
+        // Opening: the FAB exits (16 -> 28) while the dialog enters (16 -> 28).
+        val fab = morphRadiusSpec(entering = false, restRadius = 16.dp, counterpartRadius = 28.dp)
+        val dialog = morphRadiusSpec(entering = true, restRadius = 28.dp, counterpartRadius = 16.dp)
+        assertEquals(
+            assertIs<TweenSpec<Dp>>(fab).durationMillis,
+            assertIs<TweenSpec<Dp>>(dialog).durationMillis,
+        )
+    }
 }
