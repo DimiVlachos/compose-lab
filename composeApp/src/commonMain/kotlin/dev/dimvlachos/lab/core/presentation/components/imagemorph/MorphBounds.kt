@@ -1,17 +1,12 @@
 package dev.dimvlachos.lab.core.presentation.components.imagemorph
 
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -31,38 +26,17 @@ internal fun Modifier.morphBounds(
     preMorphRadius: Dp = morphRestRadius(end),
     overlayZIndex: Float = 0f,
 ): Modifier =
-    with(sharedTransitionScope) {
-        val sharedContentState = rememberSharedContentState(key)
-        val restRadius = morphRestRadius(end)
-        val radius =
-            rememberMorphCornerRadius(
-                animatedVisibilityScope = animatedVisibilityScope,
-                sharedContentState = sharedContentState,
-                restRadius = restRadius,
-                counterpartRadius = morphCounterpartRadius(end, layers.pairedCorners),
-                preMorphRadius = preMorphRadius,
-            )
-        // pairedCorners is constant for the lifetime of a call site, so the branch never flips.
-        val overlayClip =
-            if (layers.pairedCorners) rememberMorphOverlayClip(radius)
-            else remember(restRadius) { OverlayClip(RoundedCornerShape(restRadius)) }
-        sharedBounds(
-                sharedContentState = sharedContentState,
-                animatedVisibilityScope = animatedVisibilityScope,
-                enter = EnterTransition.None,
-                exit = ExitTransition.None,
-                boundsTransform = MorphBoundsTransform,
-                resizeMode = morphResizeMode(layers.remeasure),
-                zIndexInOverlay = overlayZIndex,
-                clipInOverlayDuringTransition = overlayClip,
-            )
-            // The element's own clip, read in the layer block: Modifier.clip(shape) takes a value,
-            // so a radius read there would recompose this end on every frame of the morph.
-            .graphicsLayer {
-                clip = true
-                shape = RoundedCornerShape(radius.value)
-            }
-    }
+    morphRadiusBounds(
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
+        key = key,
+        restRadius = morphRestRadius(end),
+        counterpartRadius = morphCounterpartRadius(end, paired = true),
+        preMorphRadius = preMorphRadius,
+        remeasure = layers.remeasure,
+        paired = layers.pairedCorners,
+        overlayZIndex = overlayZIndex,
+    )
 
 /**
  * The shared node itself, in a composition scope of its own. sharedBounds and the paired radius

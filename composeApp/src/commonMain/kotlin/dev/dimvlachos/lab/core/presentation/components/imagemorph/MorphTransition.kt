@@ -29,3 +29,14 @@ internal val MorphBoundsTransform = BoundsTransform { initialBounds, targetBound
         easing = MorphDimens.MorphEasing,
     )
 }
+
+// For an element that keeps its size (an icon), the width cannot tell an open from a close, so the
+// caller says which one it is.
+@OptIn(ExperimentalSharedTransitionApi::class)
+internal fun morphBoundsTransform(opening: () -> Boolean): BoundsTransform =
+    BoundsTransform { _, _ ->
+        tween(
+            if (opening()) MorphDimens.OpenMs else MorphDimens.CloseMs,
+            easing = MorphDimens.MorphEasing,
+        )
+    }
