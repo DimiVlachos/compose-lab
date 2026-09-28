@@ -51,6 +51,10 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
         if (!playing) return@LaunchedEffect
         if (record) {
             delay(RecordPreRoll)
+            // One run before the start marker: the first play of a demo pays for shader
+            // compilation and text and icon caches with a few long frames, and the recorder cuts
+            // everything before the marker, so the recorded run is the second one.
+            demo.script.play(state)
             RecordingLog.started(demo.id)
             demo.script.play(state)
             RecordingLog.done(demo.id)
