@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.cmp.ui.tooling.preview)
             implementation(libs.kermit)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.navigationevent.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
