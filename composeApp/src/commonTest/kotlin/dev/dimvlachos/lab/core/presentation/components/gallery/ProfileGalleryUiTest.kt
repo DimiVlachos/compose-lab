@@ -356,4 +356,17 @@ class ProfileGalleryUiTest {
         }
         assertEquals(before, compositions)
     }
+
+    @Test
+    fun onceCollapsedTheGridStartsSixteenDpBelowTheBar() = runComposeUiTest {
+        val scroll = ScrollState(0)
+        showGallery(scroll = scroll)
+        val range = with(density) { (HeaderExpandedHeight - HeaderCollapsedHeight).toPx() }
+        runOnUiThread { scroll.dispatchRawDelta(range) }
+        mainClock.advanceTimeBy(100)
+        val bar = onNodeWithTag(GalleryHeaderTag).getBoundsInRoot()
+        val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
+        assertEquals(64.dp, bar.bottom - bar.top, "fully collapsed")
+        assertEquals(16.dp, grid.top - bar.bottom)
+    }
 }

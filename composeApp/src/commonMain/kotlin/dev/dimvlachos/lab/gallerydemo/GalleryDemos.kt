@@ -15,15 +15,15 @@ internal object GalleryDemos {
     private val appTour = demoScript {
         at(0.8.seconds) { select(3) } // Santorini
         at(2.6.seconds) { select(0) }
-        at(3.6.seconds) { select(7) } // the avatar; the FAB fades in
-        at(5.2.seconds) { select(8) } // FAB -> dialog
-        at(6.8.seconds) { select(7) } // Cancel
+        at(3.6.seconds) { select(100) } // the avatar; the FAB fades in
+        at(5.2.seconds) { select(101) } // FAB -> dialog
+        at(6.8.seconds) { select(100) } // Cancel
         at(8.0.seconds) { select(0) }
-        at(9.0.seconds) { scrollBy(700f) } // the header collapses into the bar, with its shadow
-        at(10.6.seconds) { scrollBy(-700f) } // and grows back at the top
-        at(12.2.seconds) { select(9) } // search; "xos" types, the grid filters
-        at(15.2.seconds) { select(14) } // Naxos from the results
-        at(17.0.seconds) { select(9) }
+        at(9.0.seconds) { scrollBy(1600f) } // the header collapses into the bar, with its shadow
+        at(10.6.seconds) { scrollBy(-1600f) } // and grows back at the top
+        at(12.2.seconds) { select(200) } // search; "xos" types, the grid filters
+        at(15.2.seconds) { select(205) } // Naxos from the results
+        at(17.0.seconds) { select(200) }
         at(18.4.seconds) { select(0) } // back: the grid and the header return
     }
 
