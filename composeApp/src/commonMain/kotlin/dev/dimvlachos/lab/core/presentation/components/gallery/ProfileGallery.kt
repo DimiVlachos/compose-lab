@@ -64,6 +64,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDetail
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphLayers
@@ -158,6 +161,13 @@ fun ProfileGallery(
             remember(gate) {
                 { change -> gate { applyChange(change) } }
             }
+        // The system back gesture closes the topmost layer, through the same gate as a tap. On the
+        // bare screen it is off, so back is the app's again.
+        NavigationBackHandler(
+            state = rememberNavigationEventState(NavigationEventInfo.None),
+            isBackEnabled = current != GalleryScene(),
+            onBackCompleted = { update { it.back() } },
+        )
         // Home and the search page cross-fade, as an app's Explore and Search screens do: home
         // fades out while the page fades in, and back. The search bar morphs above both, in the
         // shared overlay, so neither fade touches it. Read in layer blocks only.

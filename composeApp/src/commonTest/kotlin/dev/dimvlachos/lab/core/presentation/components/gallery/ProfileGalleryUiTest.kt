@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -29,6 +30,12 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.LocalMorphCompositionProbe
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSourceTag
@@ -51,6 +58,8 @@ class ProfileGalleryUiTest {
     private var scene by mutableStateOf(GalleryScene())
     private val reported = mutableListOf<GalleryScene>()
 
+    private val backInput = DirectNavigationEventInput()
+
     private fun ComposeUiTest.showGallery(
         probe: ((MorphEnd) -> Unit)? = null,
         scroll: ScrollState = ScrollState(0),
@@ -58,18 +67,25 @@ class ProfileGalleryUiTest {
     ) {
         mainClock.autoAdvance = false
         setContent {
-            LabTheme {
-                CompositionLocalProvider(LocalMorphCompositionProbe provides probe) {
-                    ProfileGallery(
-                        name = "Alex Morgan",
-                        portrait = Res.drawable.portrait,
-                        photos = testIslands(),
-                        searchQuery = query,
-                        recentSearches = listOf("Santorini", "Milos", "Hydra"),
-                        scene = scene,
-                        onSceneChange = { reported += it },
-                        scrollState = scroll,
-                    )
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(backInput)
+                onDispose { owner.navigationEventDispatcher.removeInput(backInput) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                LabTheme {
+                    CompositionLocalProvider(LocalMorphCompositionProbe provides probe) {
+                        ProfileGallery(
+                            name = "Alex Morgan",
+                            portrait = Res.drawable.portrait,
+                            photos = testIslands(),
+                            searchQuery = query,
+                            recentSearches = listOf("Santorini", "Milos", "Hydra"),
+                            scene = scene,
+                            onSceneChange = { reported += it },
+                            scrollState = scroll,
+                        )
+                    }
                 }
             }
         }
@@ -471,5 +487,62 @@ class ProfileGalleryUiTest {
         val grid = onNodeWithTag(SearchGridTag).fetchSemanticsNode().size
         // Two matches: one row of 4:5 cards at half the width, not six rows of empty slots.
         assertTrue(grid.height < grid.width, "one row, got $grid")
+    }
+
+    private fun ComposeUiTest.pressBack() {
+        runOnUiThread { backInput.backCompleted() }
+        mainClock.advanceTimeBy(1_000)
+    }
+
+    @Test
+    fun systemBackClosesWhateverIsOpenOneLayerAtATime() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(avatar = true, dialog = true))
+        pressBack()
+        go(GalleryScene(photo = 2, search = true))
+        pressBack()
+        go(GalleryScene(search = true))
+        pressBack()
+        assertEquals(
+            listOf(
+                GalleryScene(avatar = true),
+                GalleryScene(search = true),
+                GalleryScene(),
+            ),
+            reported,
+        )
+    }
+
+    @Test
+    fun systemBackOnTheBareScreenIsLeftToTheApp() = runComposeUiTest {
+        var appBacks = 0
+        mainClock.autoAdvance = false
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(backInput)
+                onDispose { owner.navigationEventDispatcher.removeInput(backInput) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                NavigationBackHandler(
+                    state = rememberNavigationEventState(NavigationEventInfo.None),
+                    onBackCompleted = { appBacks++ },
+                )
+                LabTheme {
+                    ProfileGallery(
+                        name = "Alex Morgan",
+                        portrait = Res.drawable.portrait,
+                        photos = testIslands(),
+                        searchQuery = "xos",
+                        scene = scene,
+                        onSceneChange = { reported += it },
+                    )
+                }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        pressBack()
+        assertEquals(1, appBacks)
+        assertEquals(emptyList(), reported)
     }
 }
