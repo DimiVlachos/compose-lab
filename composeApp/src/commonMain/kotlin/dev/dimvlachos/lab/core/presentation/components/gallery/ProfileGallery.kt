@@ -7,16 +7,15 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,9 +37,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDetail
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
@@ -50,7 +50,6 @@ import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphPhoto
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphKey
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.rememberMorphGate
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.rememberMorphPainters
-import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSize
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSource
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarTarget
 import dev.dimvlachos.lab.core.presentation.components.profile.FabDialogTarget
@@ -75,7 +74,8 @@ import org.jetbrains.compose.resources.stringResource
 internal const val ProfileNameTag = "profileName"
 internal const val GalleryScrollTag = "galleryScroll"
 internal const val GalleryGridTag = "galleryGrid"
-private val SearchButtonSlot = 40.dp
+// The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
+private val SearchTopSpace = 80.dp
 private val FabEdgeInset = 36.dp
 
 /**
@@ -88,7 +88,6 @@ private val FabEdgeInset = 36.dp
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ProfileGallery(
-    title: String,
     name: String,
     portrait: DrawableResource,
     photos: List<MorphPhoto>,
@@ -96,6 +95,7 @@ fun ProfileGallery(
     scene: GalleryScene,
     onSceneChange: (GalleryScene) -> Unit,
     modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
 ) {
     val current = scene.normalized(photos.size)
     val latest = rememberUpdatedState(current)
@@ -110,6 +110,36 @@ fun ProfileGallery(
     // Leaving search clears the filter at once, so the cards glide back while the bar closes.
     LaunchedEffect(current.search) { if (!current.search) typed.value = "" }
     val searchOpening = remember { { latest.value.search } }
+    val collapseRange =
+        with(LocalDensity.current) {
+            (HeaderExpandedHeight - HeaderCollapsedHeight).toPx()
+        }
+    val collapse =
+        remember(scrollState, collapseRange) {
+            { headerCollapse(scrollState.value, collapseRange) }
+        }
+    // Search starts from the top of the grid, on the bar's own curve.
+    LaunchedEffect(current.search) {
+        if (current.search) {
+            scrollState.animateScrollTo(
+                0,
+                tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing),
+            )
+        }
+    }
+    // The grid starts under the expanded header, or 16 dp under the search bar while searching.
+    val topSpace =
+        updateTransition(current.search, label = "galleryTopSpace").animateDp(
+            transitionSpec = {
+                tween(
+                    if (targetState) MorphDimens.OpenMs else MorphDimens.CloseMs,
+                    easing = MorphDimens.MorphEasing,
+                )
+            },
+            label = "galleryTopSpace",
+        ) { searching ->
+            if (searching) SearchTopSpace else HeaderExpandedHeight
+        }
     SharedTransitionLayout(modifier.fillMaxSize()) {
         // Every tap that opens or closes something goes through the gate, so none cuts into a
         // morph in flight. The change is computed when it runs, from the scene at that moment.
@@ -119,83 +149,68 @@ fun ProfileGallery(
                 { change -> gate { applyChange(change) } }
             }
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Under the search bar's back arrow, so it leaves as the bar arrives.
-                    AnimatedVisibility(
-                        !current.search,
-                        modifier = Modifier.weight(1f),
-                        enter =
-                            fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)),
-                        exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs)),
-                    ) {
-                        Text(
-                            title,
-                            color = LabTheme.colors.textPrimary,
-                            style = LabTheme.typography.title,
-                        )
+            Column(
+                Modifier.fillMaxSize()
+                    .testTag(GalleryScrollTag)
+                    .verticalScroll(scrollState)
+                    // Inside the scroll, so the last row scrolls clear of the navigation bar.
+                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                    .padding(bottom = LabTheme.spacing.medium)
+            ) {
+                // Read in layout, so the space animates without recomposing the grid.
+                Box(
+                    Modifier.fillMaxWidth().layout { measurable, constraints ->
+                        val height = topSpace.value.roundToPx()
+                        val placeable =
+                            measurable.measure(Constraints.fixed(constraints.maxWidth, height))
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                     }
-                    SourceSlot(!current.search, Modifier.size(SearchButtonSlot)) {
-                        SearchSource(
-                            this@SharedTransitionLayout,
-                            this,
-                            searchOpening,
-                            { update { it.copy(search = true) } },
-                        )
-                    }
-                }
-                // The header and the grid scroll together under the bar.
-                Column(
-                    Modifier.fillMaxWidth()
-                        .weight(1f)
-                        .testTag(GalleryScrollTag)
-                        .verticalScroll(rememberScrollState())
-                        // Inside the scroll, so the last row scrolls clear of the navigation bar.
-                        .windowInsetsPadding(
-                            WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
-                        )
-                        .padding(bottom = LabTheme.spacing.medium)
-                ) {
-                    // Folds away with the search bar's open and back with its close, on the same
-                    // curve and duration, so the grid rises and settles with the bar.
-                    AnimatedVisibility(
-                        !current.search,
-                        enter =
-                            fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)) +
-                                expandVertically(
-                                    tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)
-                                ),
-                        exit =
-                            fadeOut(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)) +
-                                shrinkVertically(
-                                    tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)
-                                ),
-                    ) {
-                        ProfileHeader(
-                            name = name,
-                            count = stringResource(Res.string.gallery_photo_count, photos.size),
-                            painter = portraitPainter,
-                            avatarOpen = current.avatar,
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            onAvatar = { update { it.copy(avatar = true) } },
-                        )
-                    }
-                    GalleryGrid(
-                        photos = photos,
-                        painters = painters,
-                        query = typed,
-                        openPhoto = current.photo,
-                        sharedTransitionScope = this@SharedTransitionLayout,
-                        onOpen = { index -> update { it.copy(photo = index) } },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .padding(horizontal = LabTheme.spacing.mediumLarge)
-                                .testTag(GalleryGridTag),
-                    )
-                }
+                )
+                GalleryGrid(
+                    photos = photos,
+                    painters = painters,
+                    query = typed,
+                    openPhoto = current.photo,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    onOpen = { index -> update { it.copy(photo = index) } },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(horizontal = LabTheme.spacing.mediumLarge)
+                            .testTag(GalleryGridTag),
+                )
+            }
+            // Over the grid, which scrolls under it. It fades with the search bar's open and
+            // back with its close, while the space above the grid moves on the same curve.
+            AnimatedVisibility(
+                !current.search,
+                enter = fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)),
+                exit = fadeOut(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
+            ) {
+                CollapsingHeader(
+                    collapse = collapse,
+                    name = name,
+                    count = stringResource(Res.string.gallery_photo_count, photos.size),
+                    avatar = {
+                        SourceSlot(!current.avatar, Modifier.fillMaxSize()) {
+                            AvatarSource(
+                                portraitPainter,
+                                this@SharedTransitionLayout,
+                                this,
+                                { update { it.copy(avatar = true) } },
+                            )
+                        }
+                    },
+                    search = {
+                        SourceSlot(!current.search, Modifier.fillMaxSize()) {
+                            SearchSource(
+                                this@SharedTransitionLayout,
+                                this,
+                                searchOpening,
+                                { update { it.copy(search = true) } },
+                            )
+                        }
+                    },
+                )
             }
             AnimatedVisibility(
                 current.search,
@@ -249,41 +264,6 @@ fun ProfileGallery(
                     )
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-private fun ProfileHeader(
-    name: String,
-    count: String,
-    painter: Painter,
-    avatarOpen: Boolean,
-    sharedTransitionScope: SharedTransitionScope,
-    onAvatar: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth()
-            .padding(
-                start = LabTheme.spacing.mediumLarge,
-                end = LabTheme.spacing.mediumLarge,
-                bottom = LabTheme.spacing.mediumLarge,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.mediumLarge),
-    ) {
-        SourceSlot(!avatarOpen, Modifier.size(AvatarSize)) {
-            AvatarSource(painter, sharedTransitionScope, this, onAvatar)
-        }
-        Column {
-            Text(
-                name,
-                color = LabTheme.colors.textPrimary,
-                style = LabTheme.typography.subtitle,
-                modifier = Modifier.testTag(ProfileNameTag),
-            )
-            Text(count, color = LabTheme.colors.textMuted, style = LabTheme.typography.body)
         }
     }
 }
@@ -348,7 +328,6 @@ private fun ProfileGalleryPreview() {
     LabTheme {
         var scene by remember { mutableStateOf(GalleryScene()) }
         ProfileGallery(
-            title = "Profile",
             name = "Alex Morgan",
             portrait = Res.drawable.portrait,
             photos =

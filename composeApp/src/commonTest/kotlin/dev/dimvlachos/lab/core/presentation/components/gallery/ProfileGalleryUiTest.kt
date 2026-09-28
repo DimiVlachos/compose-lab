@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import dev.dimvlachos.lab.core.presentation.components.profile.DialogScrimTag
 import dev.dimvlachos.lab.core.presentation.components.profile.FabDialogTag
 import dev.dimvlachos.lab.core.presentation.components.profile.FabSourceTag
 import dev.dimvlachos.lab.core.presentation.components.profile.ScrimTag
+import dev.dimvlachos.lab.core.presentation.components.profile.SearchPillTag
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchSourceTag
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -45,19 +47,22 @@ class ProfileGalleryUiTest {
     private var scene by mutableStateOf(GalleryScene())
     private val reported = mutableListOf<GalleryScene>()
 
-    private fun ComposeUiTest.showGallery(probe: ((MorphEnd) -> Unit)? = null) {
+    private fun ComposeUiTest.showGallery(
+        probe: ((MorphEnd) -> Unit)? = null,
+        scroll: ScrollState = ScrollState(0),
+    ) {
         mainClock.autoAdvance = false
         setContent {
             LabTheme {
                 CompositionLocalProvider(LocalMorphCompositionProbe provides probe) {
                     ProfileGallery(
-                        title = "Profile",
                         name = "Alex Morgan",
                         portrait = Res.drawable.portrait,
                         photos = testIslands(),
                         searchQuery = "xos",
                         scene = scene,
                         onSceneChange = { reported += it },
+                        scrollState = scroll,
                     )
                 }
             }
@@ -164,7 +169,7 @@ class ProfileGalleryUiTest {
     fun nothingRecomposesDuringThePhotoAndAvatarMorphs() = runComposeUiTest {
         var sources = 0
         var targets = 0
-        showGallery { end -> if (end == MorphEnd.Card) sources++ else targets++ }
+        showGallery(probe = { end -> if (end == MorphEnd.Card) sources++ else targets++ })
         for (open in listOf(GalleryScene(photo = 2), GalleryScene(avatar = true))) {
             go(open) // warm-up: first decode and first overlay
             go(GalleryScene())
@@ -193,14 +198,6 @@ class ProfileGalleryUiTest {
             )
             go(GalleryScene())
         }
-    }
-
-    @Test
-    fun theTitleShowsOnTheScreenAndLeavesWithSearch() = runComposeUiTest {
-        showGallery()
-        onNodeWithText("Profile").assertExists()
-        go(GalleryScene(search = true), thenMs = 2_500)
-        onNodeWithText("Profile").assertDoesNotExist()
     }
 
     @Test
@@ -283,7 +280,6 @@ class ProfileGalleryUiTest {
         setContent {
             LabTheme {
                 ProfileGallery(
-                    title = "Profile",
                     name = "Alex Morgan",
                     portrait = Res.drawable.portrait,
                     photos = testIslands(),
@@ -301,5 +297,63 @@ class ProfileGalleryUiTest {
         assertEquals(GalleryScene(photo = 2), live, "the close must not cut into the open")
         mainClock.advanceTimeBy(1_500)
         assertEquals(GalleryScene(), live, "and happens once the photo has landed")
+    }
+
+    @Test
+    fun theAvatarShrinksToTheSearchButtonAsTheGridScrolls() = runComposeUiTest {
+        val scroll = ScrollState(0)
+        showGallery(scroll = scroll)
+        assertEquals(
+            88.dp,
+            onNodeWithTag(AvatarSourceTag).getBoundsInRoot().let { it.right - it.left },
+        )
+        runOnUiThread { scroll.dispatchRawDelta(1_000f) }
+        mainClock.advanceTimeBy(100)
+        assertEquals(
+            40.dp,
+            onNodeWithTag(AvatarSourceTag).getBoundsInRoot().let { it.right - it.left },
+        )
+        assertEquals(
+            40.dp,
+            onNodeWithTag(SearchSourceTag).getBoundsInRoot().let { it.right - it.left },
+        )
+        runOnUiThread { scroll.dispatchRawDelta(-1_000f) }
+        mainClock.advanceTimeBy(100)
+        assertEquals(
+            88.dp,
+            onNodeWithTag(AvatarSourceTag).getBoundsInRoot().let { it.right - it.left },
+        )
+    }
+
+    @Test
+    fun theResultsStartSixteenDpBelowTheSearchBar() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(search = true), thenMs = 2_500)
+        val pill = onNodeWithTag(SearchPillTag).getBoundsInRoot()
+        val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
+        assertEquals(16.dp, grid.top - pill.bottom)
+    }
+
+    @Test
+    fun openingSearchScrollsBackToTheTop() = runComposeUiTest {
+        val scroll = ScrollState(0)
+        showGallery(scroll = scroll)
+        runOnUiThread { scroll.dispatchRawDelta(400f) }
+        mainClock.advanceTimeBy(100)
+        go(GalleryScene(search = true), thenMs = 2_500)
+        assertEquals(0, scroll.value)
+    }
+
+    @Test
+    fun scrollingTheGridRecomposesNoMorphEnd() = runComposeUiTest {
+        var compositions = 0
+        val scroll = ScrollState(0)
+        showGallery(probe = { compositions++ }, scroll = scroll)
+        val before = compositions
+        repeat(20) {
+            runOnUiThread { scroll.dispatchRawDelta(12f) }
+            mainClock.advanceTimeByFrame()
+        }
+        assertEquals(before, compositions)
     }
 }
