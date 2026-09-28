@@ -81,6 +81,9 @@ internal fun MorphDetail(
                         compositingStrategy = CompositingStrategy.ModulateAlpha
                     }
                     .background(LabTheme.colors.background)
+                    // Swallows taps: a host that keeps its grid composed under the detail (the
+                    // profile gallery) would otherwise open the card behind the photo.
+                    .clickable(interactionSource = null, indication = null, onClick = {})
             )
             MorphNode(
                 sharedTransitionScope = sharedTransitionScope,
