@@ -1,7 +1,10 @@
 package dev.dimvlachos.lab
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.platform.platformLabel
 import kotlin.test.Test
@@ -29,6 +32,29 @@ class AppSmokeTest {
         setContent { App(initialDemoId = "navbar.indicator", record = false, label = false) }
         onNodeWithText("compose-lab").assertDoesNotExist()
         onNodeWithText("Morphing indicator").assertExists()
+    }
+
+    @Test
+    fun theCatalogListsSectionsAndEachSectionItsDemos() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithText("Nav bar").assertExists()
+        onNodeWithText("4 demos").assertExists()
+        onNodeWithText("Profile gallery").assertDoesNotExist()
+        onNodeWithText("Image morph").performClick()
+        onNodeWithText("Profile gallery").assertExists()
+        onNodeWithText("Morphing indicator").assertDoesNotExist()
+        onNodeWithText("Back").performClick()
+        onNodeWithText("Nav bar").assertExists()
+    }
+
+    @Test
+    fun backFromADemoReturnsToItsSection() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent { App(initialDemoId = "morph.app", record = false, label = false) }
+        onAllNodesWithText("Back").onFirst().performClick()
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Bounds only").assertExists()
+        onNodeWithText("Morphing indicator").assertDoesNotExist()
     }
 
     @Test

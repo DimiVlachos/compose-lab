@@ -3,6 +3,9 @@
 package dev.dimvlachos.lab.catalog
 
 import dev.dimvlachos.lab.core.demo.FakeController
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.section_morph
+import dev.dimvlachos.lab.resources.section_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -33,6 +36,25 @@ class CatalogTest {
             ids,
         )
         assertEquals(ids.size, ids.toSet().size)
+    }
+
+    @Test
+    fun groupsTheDemosIntoNavBarThenImageMorph() {
+        assertEquals(
+            listOf(Res.string.section_navbar, Res.string.section_morph),
+            Catalog.sections.map { it.title },
+        )
+        assertEquals(
+            listOf("morph.bounds", "morph.corners", "morph.chrome", "morph.app"),
+            Catalog.sections[1].demos.map { it.id },
+        )
+        assertEquals(Catalog.demos, Catalog.sections.flatMap { it.demos })
+    }
+
+    @Test
+    fun eachDemoKnowsItsSection() {
+        assertEquals(Catalog.sections[0], Catalog.sectionOf(Catalog.find("navbar.scroll")!!))
+        assertEquals(Catalog.sections[1], Catalog.sectionOf(Catalog.find("morph.app")!!))
     }
 
     @Test
