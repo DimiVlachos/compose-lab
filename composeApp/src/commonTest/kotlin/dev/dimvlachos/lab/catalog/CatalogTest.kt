@@ -4,8 +4,8 @@ package dev.dimvlachos.lab.catalog
 
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.section_morph
-import dev.dimvlachos.lab.resources.section_navbar
+import dev.dimvlachos.lab.resources.demo_morph_app
+import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -16,45 +16,12 @@ import kotlinx.coroutines.test.runTest
 
 class CatalogTest {
     @Test
-    fun containsTheTwelveDemosInCatalogOrderWithUniqueIds() {
-        val ids = Catalog.demos.map { it.id }
+    fun keepsTheFinishedDemoOfEachComponent() {
+        assertEquals(listOf("navbar.all", "morph.app"), Catalog.demos.map { it.id })
         assertEquals(
-            listOf(
-                "navbar.indicator",
-                "navbar.icons",
-                "navbar.scroll",
-                "navbar.cutout",
-                "navbar.cutoutmorph",
-                "navbar.action",
-                "navbar.all",
-                "navbar.recompositions",
-                "morph.bounds",
-                "morph.corners",
-                "morph.chrome",
-                "morph.app",
-            ),
-            ids,
+            listOf(Res.string.demo_navbar, Res.string.demo_morph_app),
+            Catalog.demos.map { it.title },
         )
-        assertEquals(ids.size, ids.toSet().size)
-    }
-
-    @Test
-    fun groupsTheDemosIntoNavBarThenImageMorph() {
-        assertEquals(
-            listOf(Res.string.section_navbar, Res.string.section_morph),
-            Catalog.sections.map { it.title },
-        )
-        assertEquals(
-            listOf("morph.bounds", "morph.corners", "morph.chrome", "morph.app"),
-            Catalog.sections[1].demos.map { it.id },
-        )
-        assertEquals(Catalog.demos, Catalog.sections.flatMap { it.demos })
-    }
-
-    @Test
-    fun eachDemoKnowsItsSection() {
-        assertEquals(Catalog.sections[0], Catalog.sectionOf(Catalog.find("navbar.scroll")!!))
-        assertEquals(Catalog.sections[1], Catalog.sectionOf(Catalog.find("morph.app")!!))
     }
 
     @Test

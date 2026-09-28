@@ -34,36 +34,24 @@ class AppSmokeTest {
     @Test
     fun knownDemoOpensDirectly() = runComposeUiTest {
         mainClock.autoAdvance = false
-        setContent { App(initialDemoId = "navbar.indicator", record = false, label = false) }
+        setContent { App(initialDemoId = "navbar.all", record = false, label = false) }
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithText("Morphing indicator").assertExists()
+        onNodeWithText("Nav bar").assertExists()
     }
 
     @Test
-    fun theCatalogListsSectionsAndEachSectionItsDemos() = runComposeUiTest {
+    fun theCatalogOpensEachDemoDirectly() = runComposeUiTest {
         setContent { App(initialDemoId = null, record = false, label = false) }
         onNodeWithText("Nav bar").assertExists()
-        onNodeWithText("4 demos").assertExists()
-        onNodeWithText("Profile gallery").assertDoesNotExist()
-        onNodeWithText("Image morph").performClick()
-        onNodeWithText("Profile gallery").assertExists()
-        onNodeWithText("Morphing indicator").assertDoesNotExist()
-        onNodeWithText("Back").performClick()
-        onNodeWithText("Nav bar").assertExists()
-    }
-
-    @Test
-    fun backFromADemoReturnsToItsSection() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        setContent { App(initialDemoId = "morph.app", record = false, label = false) }
+        onNodeWithText("Profile gallery").performClick()
+        onNodeWithText("compose-lab").assertDoesNotExist()
+        onNodeWithText("Stop").assertExists()
         onAllNodesWithText("Back").onFirst().performClick()
-        mainClock.advanceTimeByFrame()
-        onNodeWithText("Bounds only").assertExists()
-        onNodeWithText("Morphing indicator").assertDoesNotExist()
+        onNodeWithText("compose-lab").assertExists()
     }
 
     @Test
-    fun systemBackStepsFromADemoToItsSectionThenHome() = runComposeUiTest {
+    fun systemBackFromADemoReturnsHome() = runComposeUiTest {
         mainClock.autoAdvance = false
         val input = DirectNavigationEventInput()
         setContent {
@@ -78,17 +66,13 @@ class AppSmokeTest {
         }
         runOnUiThread { input.backCompleted() }
         mainClock.advanceTimeByFrame()
-        onNodeWithText("Bounds only").assertExists()
-        runOnUiThread { input.backCompleted() }
-        mainClock.advanceTimeByFrame()
-        onNodeWithText("Image morph").assertExists()
-        onNodeWithText("Bounds only").assertDoesNotExist()
+        onNodeWithText("compose-lab").assertExists()
     }
 
     @Test
     fun labelShowsThePlatformNameOnTheStage() = runComposeUiTest {
         mainClock.autoAdvance = false
-        setContent { App(initialDemoId = "navbar.indicator", record = true, label = true) }
+        setContent { App(initialDemoId = "navbar.all", record = true, label = true) }
         val expected = runBlocking { getString(platformLabel) }
         onNodeWithText(expected).assertExists()
     }

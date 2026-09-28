@@ -13,7 +13,7 @@ import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.demo_navbar_indicator
+import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -23,7 +23,7 @@ class DemoScreenUiTest {
     private val demo =
         Demo(
             id = "test.stage",
-            title = Res.string.demo_navbar_indicator,
+            title = Res.string.demo_navbar,
             script = demoScript {},
             content = { Box(Modifier.fillMaxSize().testTag("stage")) },
         )

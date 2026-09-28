@@ -9,18 +9,14 @@ import kotlin.test.assertTrue
 
 class AppNavigationTest {
     private val morphApp = Catalog.find("morph.app")!!
-    private val morphSection = Catalog.sections[1]
 
     @Test
-    fun backStepsFromADemoToItsSectionThenHome() {
+    fun backFromADemoReturnsHome() {
         val navigation = AppNavigation(initialDemo = null, record = false)
-        navigation.openSection(morphSection)
         navigation.openDemo(morphApp)
+        assertTrue(navigation.canGoBack)
         navigation.back()
         assertNull(navigation.demo)
-        assertEquals(morphSection, navigation.section)
-        navigation.back()
-        assertNull(navigation.section)
     }
 
     @Test
@@ -29,11 +25,10 @@ class AppNavigationTest {
     }
 
     @Test
-    fun aDemoOpenedByIdGoesBackToItsSection() {
+    fun aDemoOpenedByIdGoesBackHome() {
         val navigation = AppNavigation(initialDemo = morphApp, record = false)
-        assertTrue(navigation.canGoBack)
         navigation.back()
-        assertEquals(morphSection, navigation.section)
+        assertNull(navigation.demo)
     }
 
     @Test

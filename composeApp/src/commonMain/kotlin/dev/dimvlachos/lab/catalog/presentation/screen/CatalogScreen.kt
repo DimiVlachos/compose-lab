@@ -14,18 +14,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.dimvlachos.lab.catalog.Catalog
-import dev.dimvlachos.lab.catalog.CatalogSection
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogCard
+import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.catalog_demo_count
 import dev.dimvlachos.lab.resources.catalog_title
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** The home screen: one card per section, each opening that section's demos. */
+/** The home screen: one card per demo, each opening it. */
 @Composable
-internal fun CatalogScreen(onOpen: (CatalogSection) -> Unit) {
+internal fun CatalogScreen(onOpen: (Demo) -> Unit) {
     LazyColumn(
         modifier =
             Modifier.fillMaxSize()
@@ -41,16 +39,11 @@ internal fun CatalogScreen(onOpen: (CatalogSection) -> Unit) {
                 style = LabTheme.typography.title,
             )
         }
-        items(Catalog.sections, key = { it.title.key }) { section ->
+        items(Catalog.demos, key = { it.id }) { demo ->
             CatalogCard(
-                title = stringResource(section.title),
-                subtitle =
-                    pluralStringResource(
-                        Res.plurals.catalog_demo_count,
-                        section.demos.size,
-                        section.demos.size,
-                    ),
-                onClick = { onOpen(section) },
+                title = stringResource(demo.title),
+                subtitle = demo.id,
+                onClick = { onOpen(demo) },
             )
         }
     }

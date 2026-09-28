@@ -3,7 +3,6 @@ package dev.dimvlachos.lab.gallerydemo.presentation.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphPhoto
-import dev.dimvlachos.lab.imagemorphdemo.presentation.components.rememberIslandPhotos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.photo_crete
 import dev.dimvlachos.lab.resources.photo_crete_caption
