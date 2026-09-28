@@ -94,10 +94,17 @@ class SearchMorphUiTest {
     }
 
     @Test
-    fun typingStartsAsSoonAsThePillLandsCentredInIt() = runComposeUiTest {
+    fun typingWaitsABeatAfterThePillLands() = runComposeUiTest {
         showSearch()
-        // The pill lands at 500 ms and "xos" takes 360 ms; the 1 s chrome fade must not hold it up.
-        set(2, thenMs = 1_000)
+        set(2, thenMs = 800) // landed at 500 ms, still pausing
+        assertEquals("", typed.value)
+    }
+
+    @Test
+    fun typingStartsAfterItsPauseCentredInThePill() = runComposeUiTest {
+        showSearch()
+        // The pill lands at 500 ms, pauses 400 ms, and "xos" takes 360 ms.
+        set(2, thenMs = 1_400)
         onNodeWithText("xos").assertExists()
         val pill = onNodeWithTag(SearchPillTag).getBoundsInRoot()
         val text = onNodeWithText("xos").getBoundsInRoot()
