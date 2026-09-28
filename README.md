@@ -42,6 +42,33 @@ AnimatedNavBar(
 )
 ```
 
+## Profile gallery (`core/presentation/components/gallery/`)
+
+![](docs/media/morph.app.gif)
+
+One screen where everything that opens is a shared-element morph, all in one `SharedTransitionLayout`:
+
+- **Photo.** A grid card grows into the full-screen photo and back (a container transform). The corners are paired, so the card's 16 dp and the photo's 0 dp meet halfway instead of a square photo showing through a rounded card. The title and caption follow the photo as it grows.
+- **Profile photo.** The avatar zooms into a large circle over a scrim. A pencil button then morphs into a "Change profile photo" dialog, and back into the button.
+- **Search.** The search button grows into a bar, and search opens as its own page, cross-fading with the gallery. Recent searches show until the query types in, then the matching photos, which glide into place as each letter narrows them.
+- **Collapsing header.** As the grid scrolls, the avatar shrinks into a top bar with a shadow, following the finger.
+
+Taps are serialised by a morph gate: one that arrives mid-morph waits for the morph to land, so an interrupted transition never leaves a stray copy behind. Nothing recomposes while anything morphs or scrolls. The system back gesture closes the topmost layer.
+
+```kotlin
+ProfileGallery(
+    name = "Alex Morgan",
+    portrait = Res.drawable.portrait,
+    photos = photos, // List<MorphPhoto>(image, title, caption)
+    searchQuery = "xos",
+    recentSearches = listOf("Santorini", "Milos", "Hydra"),
+    scene = scene, // GalleryScene(photo, avatar, dialog, search)
+    onSceneChange = { scene = it },
+)
+```
+
+The photo morph also ships on its own as `ImageMorph` (`core/presentation/components/imagemorph/`), with `MorphLayers` to switch its fixes on one by one.
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
@@ -70,6 +97,26 @@ Needs Python 3 and ffmpeg.
 
 The nav bar supports 2–4 tabs, at a minimum slot width of about 64 dp.
 
+The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo straight from another is not a morph: close to the grid first.
+
 ## Licence
 
 MIT. Icon path data comes from Material Icons (Apache 2.0).
+
+Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](https://unsplash.com/license):
+
+| Photo | Photographer |
+|---|---|
+| [Portrait](https://unsplash.com/photos/DItYlc26zVI) | Christian Buehner |
+| [Corfu](https://unsplash.com/photos/vhRn4aDempw) | Tobias Reich |
+| [Paxos](https://unsplash.com/photos/bs1aa6L9rPM) | Luke Moss |
+| [Santorini](https://unsplash.com/photos/6N2mSJsKTtA) | James Ting |
+| [Milos](https://unsplash.com/photos/0lq90N_B1XE) | Despina Galani |
+| [Naxos](https://unsplash.com/photos/dGD7R9R4ZiI) | Sebastiano Corti |
+| [Hydra](https://unsplash.com/photos/jfnTAhvysZI) | Despina Galani |
+| [Mykonos](https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a) | Johnny Africa |
+| [Crete](https://images.unsplash.com/photo-1575237402880-4b496a83ae04) | Joshua Kettle |
+| [Rhodes](https://images.unsplash.com/photo-1572375901777-1b257481cbb0) | Vlad Kiselov |
+| [Zakynthos](https://images.unsplash.com/photo-1612279427382-f8349a383af8) | Julian Timmerman |
+| [Kefalonia](https://images.unsplash.com/photo-1598959594958-34761147b7b0) | Mac McDade |
+| [Folegandros](https://images.unsplash.com/photo-1688765866663-0fd353e7d5df) | Tom Waldek |
