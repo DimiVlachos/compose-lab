@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.profile
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.LinearEasing
@@ -74,6 +75,7 @@ internal fun FabSource(
         FabKey,
         restRadius = FabRadius,
         counterpartRadius = DialogRadius,
+        overlayZIndex = appearingOnTop(animatedVisibilityScope),
         modifier =
             modifier
                 .size(FabSize)
@@ -133,7 +135,7 @@ internal fun FabDialogTarget(
                     .wrapContentHeight()
                     .testTag(FabDialogTag),
             preMorphRadius = FabRadius,
-            overlayZIndex = 1f,
+            overlayZIndex = appearingOnTop(animatedVisibilityScope),
             color = LabTheme.colors.surface,
         ) {
             // Inside the node, the contents ride the container and fade with its width.
@@ -173,6 +175,14 @@ internal fun FabDialogTarget(
         }
     }
 }
+
+// The end that is appearing draws on top in the overlay: the dialog over the FAB it grows from, and
+// the FAB over the dialog it shrinks back into. Both share one colour, so the end drawn on top is
+// all that shows; with the dialog always on top, the returning pencil stayed hidden until the
+// dialog was gone. Read in composition; it flips once per morph.
+@Composable
+private fun appearingOnTop(animatedVisibilityScope: AnimatedVisibilityScope): Float =
+    if (animatedVisibilityScope.transition.targetState == EnterExitState.Visible) 1f else 0f
 
 @Composable
 private fun DialogRow(icon: Painter, label: String, chrome: Modifier) {

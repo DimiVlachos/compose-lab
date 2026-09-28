@@ -253,6 +253,16 @@ private fun BoxScope.EditPhoto(
     onOpen: () -> Unit,
     onClose: () -> Unit,
 ) {
+    // The dialog first and the FAB over it, so a FAB that has just landed is never covered by the
+    // dialog it came from while that one finishes leaving.
+    AnimatedVisibility(
+        dialogOpen,
+        modifier = Modifier.fillMaxSize(),
+        enter = EnterTransition.None,
+        exit = ExitTransition.None,
+    ) {
+        FabDialogTarget(sharedTransitionScope, this, onClose)
+    }
     SourceSlot(
         !dialogOpen,
         Modifier.align(Alignment.BottomEnd)
@@ -261,14 +271,6 @@ private fun BoxScope.EditPhoto(
             .size(FabSize),
     ) {
         FabSource(sharedTransitionScope, this, onOpen)
-    }
-    AnimatedVisibility(
-        dialogOpen,
-        modifier = Modifier.fillMaxSize(),
-        enter = EnterTransition.None,
-        exit = ExitTransition.None,
-    ) {
-        FabDialogTarget(sharedTransitionScope, this, onClose)
     }
 }
 
