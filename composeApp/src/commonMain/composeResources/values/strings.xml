@@ -18,12 +18,9 @@
     <string name="demo_morph_bounds">Bounds only</string>
     <string name="demo_morph_corners">Paired corners</string>
     <string name="demo_morph_chrome">Staged chrome</string>
-    <string name="demo_morph_all">Everything together</string>
-    <string name="demo_morph_avatar">Profile picture</string>
-    <string name="demo_morph_search">Search bar</string>
-    <string name="demo_morph_fab">Add image dialog</string>
-    <string name="demo_morph_profile">Profile, everything together</string>
-    <string name="profile_title">Profile</string>
+    <string name="demo_morph_app">Profile gallery</string>
+    <string name="gallery_photo_count">%1$d photos</string>
+    <string name="edit_photo_title">Change profile photo</string>
     <string name="profile_name">Alex Morgan</string>
     <string name="action_search">Search</string>
     <string name="action_cancel">Cancel</string>
