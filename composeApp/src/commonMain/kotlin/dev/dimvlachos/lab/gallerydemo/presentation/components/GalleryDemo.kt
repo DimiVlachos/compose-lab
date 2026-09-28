@@ -13,6 +13,7 @@ import dev.dimvlachos.lab.imagemorphdemo.presentation.components.rememberIslandP
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import dev.dimvlachos.lab.resources.profile_name
+import dev.dimvlachos.lab.resources.profile_title
 import org.jetbrains.compose.resources.stringResource
 
 // Matches Paxos and Naxos: two results, side by side in the first row.
@@ -21,6 +22,7 @@ private const val DemoQuery = "xos"
 @Composable
 internal fun GalleryDemo(state: DemoState) {
     ProfileGallery(
+        title = stringResource(Res.string.profile_title),
         name = stringResource(Res.string.profile_name),
         portrait = Res.drawable.portrait,
         photos = rememberIslandPhotos(),

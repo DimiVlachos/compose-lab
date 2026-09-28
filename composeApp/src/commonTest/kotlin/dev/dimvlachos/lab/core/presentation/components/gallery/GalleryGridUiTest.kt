@@ -86,4 +86,18 @@ class GalleryGridUiTest {
             "Paxos is back in the first row",
         )
     }
+
+    @Test
+    fun matchesGlideWhileTheOthersAreStillFading() = runComposeUiTest {
+        showGrid()
+        val paxosBefore = onNodeWithText("Paxos").getBoundsInRoot()
+        runOnUiThread { query.value = "xos" }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(64)
+        onNodeWithText("Corfu").assertExists() // still fading where it stood
+        assertTrue(
+            onNodeWithText("Paxos").getBoundsInRoot().left < paxosBefore.left,
+            "Paxos is already on its way to the first slot",
+        )
+    }
 }

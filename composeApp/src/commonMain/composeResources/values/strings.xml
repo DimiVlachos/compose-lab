@@ -21,6 +21,7 @@
     <string name="demo_morph_app">Profile gallery</string>
     <string name="gallery_photo_count">%1$d photos</string>
     <string name="edit_photo_title">Change profile photo</string>
+    <string name="profile_title">Profile</string>
     <string name="profile_name">Alex Morgan</string>
     <string name="action_search">Search</string>
     <string name="action_cancel">Cancel</string>
