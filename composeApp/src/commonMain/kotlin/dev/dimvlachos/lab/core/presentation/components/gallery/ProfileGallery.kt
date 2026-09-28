@@ -97,6 +97,8 @@ internal const val SearchGridTag = "searchGrid"
 internal const val SearchPageTag = "searchPage"
 internal const val RecentSearchesTag = "recentSearches"
 private const val SearchContentFadeInMs = 200
+// Shorter than the bar's morph, so the page has settled before the bar lands.
+private const val SearchPageFadeMs = 250
 // The search bar's row: 16 dp above and below its 48 dp pill, so the results start 16 dp under it.
 private val SearchTopSpace = 80.dp
 private val FabEdgeInset = 36.dp
@@ -292,15 +294,15 @@ private fun SearchPage(
     val pageFade =
         with(animatedVisibilityScope) {
             Modifier.animateEnterExit(
-                enter = fadeIn(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)),
-                exit = fadeOut(tween(MorphDimens.CloseMs, easing = LinearEasing)),
+                enter = fadeIn(tween(SearchPageFadeMs, easing = MorphDimens.MorphEasing)),
+                exit = fadeOut(tween(SearchPageFadeMs, easing = LinearEasing)),
             )
         }
     Box(Modifier.fillMaxSize()) {
-        // Opaque at rest. It comes in with the bar and leaves over the bar's whole close on a
-        // steady ramp, so home fades back in under it rather than snapping back. It swallows
-        // taps; the back arrow closes. The search bar clears the query when it next opens, not
-        // here, so the results stay put while the page fades.
+        // Opaque at rest. It fades in and out in 250 ms, the way out on a steady ramp, so home
+        // fades back in under it rather than snapping back. It swallows taps; the back arrow
+        // closes. The search bar clears the query when it next opens, not here, so the results
+        // stay put while the page fades.
         Box(
             Modifier.fillMaxSize()
                 .then(pageFade)
