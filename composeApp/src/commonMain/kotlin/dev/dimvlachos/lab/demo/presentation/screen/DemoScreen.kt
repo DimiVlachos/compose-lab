@@ -38,7 +38,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
 import dev.dimvlachos.lab.resources.action_replay
 import dev.dimvlachos.lab.resources.action_stop
-import dev.dimvlachos.lab.resources.demo_navbar_indicator
+import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -153,7 +153,7 @@ private fun DemoScreenPreview() {
         val demo = remember {
             Demo(
                 id = "preview.demo",
-                title = Res.string.demo_navbar_indicator,
+                title = Res.string.demo_navbar,
                 script = demoScript {},
                 content = { Box(Modifier.fillMaxSize().background(LabTheme.colors.surface)) },
             )

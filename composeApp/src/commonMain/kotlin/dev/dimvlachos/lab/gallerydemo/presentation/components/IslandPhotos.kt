@@ -1,4 +1,4 @@
-package dev.dimvlachos.lab.imagemorphdemo.presentation.components
+package dev.dimvlachos.lab.gallerydemo.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember

@@ -1,29 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="catalog_title">compose-lab</string>
-    <string name="section_navbar">Nav bar</string>
-    <string name="section_morph">Image morph</string>
-    <plurals name="catalog_demo_count">
-        <item quantity="one">%1$d demo</item>
-        <item quantity="other">%1$d demos</item>
-    </plurals>
     <string name="platform_android">Android</string>
     <string name="platform_ios">iOS</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
     <string name="nav_saved">Saved</string>
     <string name="nav_profile">Profile</string>
-    <string name="demo_navbar_indicator">Morphing indicator</string>
-    <string name="demo_navbar_icons">Animated icons</string>
-    <string name="demo_navbar_scroll">Collapse on scroll</string>
-    <string name="demo_navbar_cutout">Moving cutout</string>
-    <string name="demo_navbar_cutoutmorph">Cutout morph</string>
-    <string name="demo_navbar_action">Action button</string>
-    <string name="demo_navbar_all">Everything together</string>
-    <string name="demo_navbar_recompositions">Zero recompositions while animating</string>
-    <string name="demo_morph_bounds">Bounds only</string>
-    <string name="demo_morph_corners">Paired corners</string>
-    <string name="demo_morph_chrome">Staged chrome</string>
+    <string name="demo_navbar">Nav bar</string>
     <string name="demo_morph_app">Profile gallery</string>
     <string name="gallery_photo_count">%1$d photos</string>
     <string name="edit_photo_title">Change profile photo</string>
@@ -50,8 +34,6 @@
     <string name="action_replay">Replay</string>
     <string name="action_new_post">New post</string>
     <string name="action_edit_profile">Edit profile</string>
-    <string name="recompositions_frames">frames drawn  %1$d</string>
-    <string name="recompositions_count">nav bar recompositions  %1$d</string>
     <string name="photo_mykonos_title">Mykonos</string>
     <string name="photo_mykonos_caption">Tables on the waterfront</string>
     <string name="photo_crete_title">Crete</string>

@@ -8,7 +8,6 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.catalog.Catalog
 import dev.dimvlachos.lab.catalog.presentation.screen.CatalogScreen
-import dev.dimvlachos.lab.catalog.presentation.screen.SectionScreen
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.platform.platformLabel
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -33,22 +32,15 @@ fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
             }
         }
         val demo = navigation.demo
-        val section = navigation.section
-        when {
-            demo != null ->
-                DemoScreen(
-                    demo = demo,
-                    record = record && demo === initialDemo,
-                    label = if (label) stringResource(platformLabel) else null,
-                    onBack = if (navigation.canGoBack) navigation::back else null,
-                )
-            section != null ->
-                SectionScreen(
-                    section = section,
-                    onOpen = navigation::openDemo,
-                    onBack = navigation::back,
-                )
-            else -> CatalogScreen(onOpen = navigation::openSection)
+        if (demo != null) {
+            DemoScreen(
+                demo = demo,
+                record = record && demo === initialDemo,
+                label = if (label) stringResource(platformLabel) else null,
+                onBack = if (navigation.canGoBack) navigation::back else null,
+            )
+        } else {
+            CatalogScreen(onOpen = navigation::openDemo)
         }
     }
 }

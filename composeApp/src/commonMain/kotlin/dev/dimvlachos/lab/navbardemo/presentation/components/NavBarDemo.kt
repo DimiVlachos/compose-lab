@@ -31,7 +31,7 @@ import dev.dimvlachos.lab.resources.nav_saved
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun NavBarDemo(state: DemoState, layers: NavBarLayers, scrollingContent: Boolean = false) {
+internal fun NavBarDemo(state: DemoState) {
     val homeLabel = stringResource(Res.string.nav_home)
     val savedLabel = stringResource(Res.string.nav_saved)
     val profileLabel = stringResource(Res.string.nav_profile)
@@ -57,18 +57,14 @@ internal fun NavBarDemo(state: DemoState, layers: NavBarLayers, scrollingContent
         }
     val scrollState = rememberNavBarScrollState()
     Box(Modifier.fillMaxSize()) {
-        if (scrollingContent) {
-            FeedList(state, scrollState)
-        } else {
-            PageLabel(navItems[state.selectedIndex].label)
-        }
+        FeedList(state, scrollState)
         AnimatedNavBar(
             items = navItems,
             selectedIndex = state.selectedIndex,
             onSelect = state::select,
             onActionClick = {},
             modifier = Modifier.align(Alignment.BottomCenter).padding(LabTheme.spacing.mediumLarge),
-            layers = layers,
+            layers = NavBarLayers.All,
             scrollState = scrollState,
         )
     }

@@ -4,9 +4,9 @@ Compose Multiplatform components, rebuilt from scratch and recorded as short cli
 
 ## Nav bar (`core/presentation/components/navbar/`)
 
-One bar, five layers that can each be switched on or off. Nothing recomposes while it animates: every animated value is read in the layout or draw phase.
+One bar, five layers that can each be switched on or off. Nothing recomposes while it animates: every animated value is read in the layout or draw phase. The app's demo, `navbar.all`, runs the finished bar; the GIFs below show each layer on its own.
 
-| Demo | What it shows |
+| Layer | What it shows |
 |---|---|
 | ![](docs/media/navbar.indicator.gif) | **Morphing indicator.** The leading and trailing edges run on different springs. |
 | ![](docs/media/navbar.icons.gif) | **Animated icons.** A circular reveal of the filled icon, with a squash and bounce. |
@@ -57,11 +57,11 @@ Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm6
 Every demo plays a timed script that ends where it started, so clips loop cleanly.
 
 ```bash
-scripts/record.py android navbar.indicator        # out/navbar.indicator-android.mp4 (1080×1350, 60 fps, ≤ 5 MB)
-scripts/record.py ios navbar.indicator
-scripts/record.py android navbar.indicator --label && scripts/record.py ios navbar.indicator --label
-scripts/side-by-side.sh navbar.indicator           # out/navbar.indicator-both.mp4
-scripts/gif.sh navbar.indicator                    # docs/media/navbar.indicator.gif
+scripts/record.py android navbar.all              # out/navbar.all-android.mp4 (1080×1350, 60 fps, ≤ 5 MB)
+scripts/record.py ios navbar.all
+scripts/record.py android navbar.all --label && scripts/record.py ios navbar.all --label
+scripts/side-by-side.sh navbar.all                 # out/navbar.all-both.mp4
+scripts/gif.sh navbar.all                          # docs/media/navbar.all.gif
 ```
 
 Needs Python 3 and ffmpeg.
