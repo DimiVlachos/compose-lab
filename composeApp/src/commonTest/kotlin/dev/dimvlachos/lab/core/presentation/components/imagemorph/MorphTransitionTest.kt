@@ -57,4 +57,20 @@ class MorphTransitionTest {
         assertEquals(MorphDimens.CloseMs, tween.durationMillis)
         assertEquals(MorphDimens.MorphEasing, tween.easing)
     }
+
+    @Test
+    fun directionalTransformFollowsTheOpeningFlag() {
+        var opening = true
+        val transform = morphBoundsTransform { opening }
+        val same = Rect(0f, 0f, 10f, 10f)
+        assertEquals(
+            MorphDimens.OpenMs,
+            assertIs<TweenSpec<Rect>>(transform.createAnimationSpec(same, same)).durationMillis,
+        )
+        opening = false
+        assertEquals(
+            MorphDimens.CloseMs,
+            assertIs<TweenSpec<Rect>>(transform.createAnimationSpec(same, same)).durationMillis,
+        )
+    }
 }
