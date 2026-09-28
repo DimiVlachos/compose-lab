@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -84,5 +85,55 @@ class SearchMorphUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(300)
         onNodeWithText("Corfu").assertDoesNotExist() // typing restarted from ""
+    }
+
+    @Test
+    fun typingStartsAsSoonAsThePillLandsOverAnOpaqueBackdrop() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        var open by mutableIntStateOf(0)
+        setContent {
+            LabTheme {
+                SharedTransitionLayout(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize()) {
+                        AnimatedVisibility(
+                            open == 0,
+                            enter = EnterTransition.None,
+                            exit = ExitTransition.None,
+                        ) {
+                            SearchSource(this@SharedTransitionLayout, this, { open == 2 }, {})
+                        }
+                        AnimatedVisibility(
+                            open == 2,
+                            enter = EnterTransition.None,
+                            exit = ExitTransition.None,
+                        ) {
+                            SearchTarget(
+                                "Cor",
+                                candidates,
+                                this@SharedTransitionLayout,
+                                this,
+                                { open == 2 },
+                                {},
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        runOnUiThread { open = 2 }
+        Snapshot.sendApplyNotifications()
+        // The pill lands at 500 ms and "Cor" takes 360 ms; the 1 s chrome fade must not hold it up.
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("Corfu").assertExists()
+        onNodeWithTag(ScrimTag).assertExists()
+        val pill = onNodeWithTag(SearchPillTag).getBoundsInRoot()
+        val text = onNodeWithText("Cor").getBoundsInRoot()
+        assertEquals(
+            (pill.top + pill.bottom).value / 2,
+            (text.top + text.bottom).value / 2,
+            1f,
+            "the query is centred in the pill",
+        )
     }
 }
