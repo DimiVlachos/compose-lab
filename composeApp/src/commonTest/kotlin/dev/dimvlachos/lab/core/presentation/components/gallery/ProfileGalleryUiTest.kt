@@ -545,4 +545,13 @@ class ProfileGalleryUiTest {
         assertEquals(1, appBacks)
         assertEquals(emptyList(), reported)
     }
+
+    @Test
+    fun tapsOnAnOpenPhotoNeverReachTheGridUnderIt() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(photo = 3))
+        onRoot().performTouchInput { click(Offset(centerX / 2, centerY)) } // a card lies below
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(emptyList(), reported)
+    }
 }
