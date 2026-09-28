@@ -111,7 +111,14 @@ internal fun GalleryGrid(
         val cellHeight = (cellWidth / CardAspect).roundToInt()
         val cell = Constraints.fixed(cellWidth, cellHeight)
         val placeables = measurables.map { it.measure(cell) }
-        val rows = (photos.size + columns - 1) / columns
+        // As tall as the slots in use: the matches, and any card still fading out where it stood.
+        var slots = 0
+        var leavingEnd = 0
+        filter.forEachIndexed { i, state ->
+            if (state.targetState) slots++
+            else if (state.currentState) leavingEnd = maxOf(leavingEnd, lastSlot[i] + 1)
+        }
+        val rows = (maxOf(slots, leavingEnd) + columns - 1) / columns
         val height =
             constraints.constrainHeight(rows * cellHeight + (rows - 1).coerceAtLeast(0) * gapPx)
         layout(constraints.maxWidth, height) {
