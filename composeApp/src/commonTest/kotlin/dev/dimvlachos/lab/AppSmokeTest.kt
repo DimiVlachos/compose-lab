@@ -1,11 +1,16 @@
 package dev.dimvlachos.lab
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import dev.dimvlachos.lab.core.platform.platformLabel
 import kotlin.test.Test
 import kotlinx.coroutines.runBlocking
@@ -55,6 +60,29 @@ class AppSmokeTest {
         mainClock.advanceTimeByFrame()
         onNodeWithText("Bounds only").assertExists()
         onNodeWithText("Morphing indicator").assertDoesNotExist()
+    }
+
+    @Test
+    fun systemBackStepsFromADemoToItsSectionThenHome() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val input = DirectNavigationEventInput()
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(input)
+                onDispose { owner.navigationEventDispatcher.removeInput(input) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                App(initialDemoId = "morph.app", record = false, label = false)
+            }
+        }
+        runOnUiThread { input.backCompleted() }
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Bounds only").assertExists()
+        runOnUiThread { input.backCompleted() }
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Image morph").assertExists()
+        onNodeWithText("Bounds only").assertDoesNotExist()
     }
 
     @Test

@@ -2,10 +2,10 @@ package dev.dimvlachos.lab
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.catalog.Catalog
 import dev.dimvlachos.lab.catalog.presentation.screen.CatalogScreen
 import dev.dimvlachos.lab.catalog.presentation.screen.SectionScreen
@@ -19,31 +19,36 @@ import org.jetbrains.compose.resources.stringResource
 fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
     LabTheme {
         val initialDemo = remember { Catalog.find(initialDemoId) }
-        var currentDemo by remember { mutableStateOf(initialDemo) }
-        // A demo opened directly by id still has a section to go back to.
-        var currentSection by remember { mutableStateOf(initialDemo?.let(Catalog::sectionOf)) }
+        val navigation = remember { AppNavigation(initialDemo, record) }
+        // The system back gesture steps back like the on-screen Back buttons; on the home screen
+        // it is left to the system, which closes the app.
+        NavigationBackHandler(
+            state = rememberNavigationEventState(NavigationEventInfo.None),
+            isBackEnabled = navigation.canGoBack,
+            onBackCompleted = navigation::back,
+        )
         LaunchedEffect(Unit) {
             if (initialDemoId != null && initialDemo == null) {
                 RecordingLog.unknownDemo(initialDemoId)
             }
         }
-        val demo = currentDemo
-        val section = currentSection
+        val demo = navigation.demo
+        val section = navigation.section
         when {
             demo != null ->
                 DemoScreen(
                     demo = demo,
                     record = record && demo === initialDemo,
                     label = if (label) stringResource(platformLabel) else null,
-                    onBack = if (record && demo === initialDemo) null else ({ currentDemo = null }),
+                    onBack = if (navigation.canGoBack) navigation::back else null,
                 )
             section != null ->
                 SectionScreen(
                     section = section,
-                    onOpen = { currentDemo = it },
-                    onBack = { currentSection = null },
+                    onOpen = navigation::openDemo,
+                    onBack = navigation::back,
                 )
-            else -> CatalogScreen(onOpen = { currentSection = it })
+            else -> CatalogScreen(onOpen = navigation::openSection)
         }
     }
 }
