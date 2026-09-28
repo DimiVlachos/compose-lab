@@ -33,4 +33,17 @@ class SearchTypingTest {
         assertEquals(emptyList(), searchResults("", listOf("Corfu")))
         assertEquals(emptyList(), searchResults("  ", listOf("Corfu")))
     }
+
+    @Test
+    fun aTitleMatchesWhenItContainsTheQueryIgnoringCase() {
+        assertEquals(true, matchesQuery("Naxos", "xos"))
+        assertEquals(true, matchesQuery("Paxos", "XOS "))
+        assertEquals(false, matchesQuery("Corfu", "xos"))
+    }
+
+    @Test
+    fun aBlankQueryMatchesEverything() {
+        assertEquals(true, matchesQuery("Corfu", ""))
+        assertEquals(true, matchesQuery("Corfu", "  "))
+    }
 }
