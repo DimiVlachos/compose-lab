@@ -13,3 +13,7 @@ internal fun searchQueryAt(elapsedMs: Long, full: String, perCharMs: Long): Stri
 internal fun searchResults(query: String, candidates: List<String>): List<String> =
     if (query.isBlank()) emptyList()
     else candidates.filter { it.contains(query.trim(), ignoreCase = true) }
+
+// The grid keeps a photo while its title contains the query; a blank query keeps them all.
+internal fun matchesQuery(title: String, query: String): Boolean =
+    query.isBlank() || title.contains(query.trim(), ignoreCase = true)
