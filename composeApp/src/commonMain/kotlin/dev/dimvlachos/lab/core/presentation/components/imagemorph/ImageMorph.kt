@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -59,7 +60,13 @@ fun ImageMorph(
 ) {
     val painters = rememberMorphPainters(photos)
     val target = if (expandedIndex in 1..photos.size) expandedIndex else 0
+    val latestExpand = rememberUpdatedState(onExpand)
+    val latestCollapse = rememberUpdatedState(onCollapse)
     SharedTransitionLayout(modifier) {
+        // Opens and closes go through the gate, so neither cuts into a morph in flight.
+        val gate = rememberMorphGate()
+        val expand: (Int) -> Unit = remember(gate) { { i -> gate { latestExpand.value(i) } } }
+        val collapse: () -> Unit = remember(gate) { { gate { latestCollapse.value() } } }
         AnimatedContent(
             targetState = target,
             transitionSpec = {
@@ -82,7 +89,7 @@ fun ImageMorph(
                     layers = layers,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@AnimatedContent,
-                    onExpand = onExpand,
+                    onExpand = expand,
                 )
             } else {
                 val photo = photos[index - 1]
@@ -94,7 +101,7 @@ fun ImageMorph(
                     layers = layers,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@AnimatedContent,
-                    onClose = onCollapse,
+                    onClose = collapse,
                 )
             }
         }
