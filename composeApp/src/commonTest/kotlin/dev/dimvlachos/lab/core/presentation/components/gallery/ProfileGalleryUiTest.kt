@@ -369,4 +369,16 @@ class ProfileGalleryUiTest {
         assertEquals(64.dp, bar.bottom - bar.top, "fully collapsed")
         assertEquals(16.dp, grid.top - bar.bottom)
     }
+
+    @Test
+    fun leavingSearchReturnsTheGridToWhereItWasScrolled() = runComposeUiTest {
+        val scroll = ScrollState(0)
+        showGallery(scroll = scroll)
+        runOnUiThread { scroll.dispatchRawDelta(400f) }
+        mainClock.advanceTimeBy(100)
+        go(GalleryScene(search = true), thenMs = 2_500)
+        assertEquals(0, scroll.value, "the results show from the top")
+        go(GalleryScene(), thenMs = 2_500)
+        assertEquals(400, scroll.value)
+    }
 }
