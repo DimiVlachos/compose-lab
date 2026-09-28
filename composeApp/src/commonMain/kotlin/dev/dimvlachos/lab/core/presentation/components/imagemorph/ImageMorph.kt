@@ -57,14 +57,7 @@ fun ImageMorph(
     modifier: Modifier = Modifier,
     layers: MorphLayers = MorphLayers.All,
 ) {
-    // Decoded here, above the transition, so both ends draw the same painter and the detail's
-    // first frame is never an empty placeholder (a new Image measures 0x0 on its first layout).
-    // Remembered per bitmap: painterResource builds a fresh BitmapPainter on every composition,
-    // which would hand each card a new painter whenever the index changes and recompose them all.
-    val painters = photos.map { photo ->
-        val bitmap = imageResource(photo.image)
-        remember(bitmap) { BitmapPainter(bitmap) }
-    }
+    val painters = rememberMorphPainters(photos)
     val target = if (expandedIndex in 1..photos.size) expandedIndex else 0
     SharedTransitionLayout(modifier) {
         AnimatedContent(
@@ -106,6 +99,16 @@ fun ImageMorph(
             }
         }
     }
+}
+
+// Decoded above the transition, so both ends of a morph draw the same painter and the detail's
+// first frame is never an empty placeholder (a new Image measures 0x0 on its first layout).
+// Remembered per bitmap: painterResource builds a fresh BitmapPainter on every composition, which
+// would hand each card a new painter whenever the scene changes and recompose them all.
+@Composable
+internal fun rememberMorphPainters(photos: List<MorphPhoto>): List<Painter> = photos.map { photo ->
+    val bitmap = imageResource(photo.image)
+    remember(bitmap) { BitmapPainter(bitmap) }
 }
 
 // Plain rows, not a lazy grid: every card stays composed, so the match for a returning detail is
