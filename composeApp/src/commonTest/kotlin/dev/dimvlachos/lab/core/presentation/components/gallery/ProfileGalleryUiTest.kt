@@ -10,13 +10,18 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.LocalMorphCompositionProbe
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
 import dev.dimvlachos.lab.core.presentation.components.profile.AvatarSourceTag
@@ -31,6 +36,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class ProfileGalleryUiTest {
@@ -43,6 +49,7 @@ class ProfileGalleryUiTest {
             LabTheme {
                 CompositionLocalProvider(LocalMorphCompositionProbe provides probe) {
                     ProfileGallery(
+                        title = "Profile",
                         name = "Alex Morgan",
                         portrait = Res.drawable.portrait,
                         photos = testIslands(),
@@ -65,12 +72,12 @@ class ProfileGalleryUiTest {
     @Test
     fun eachTriggerReportsTheNextScene() = runComposeUiTest {
         showGallery()
-        onNodeWithText("Milos").performClick()
+        onNodeWithText("Paxos").performClick()
         onNodeWithTag(AvatarSourceTag).performClick()
         onNodeWithTag(SearchSourceTag).performClick()
         assertEquals(
             listOf(
-                GalleryScene(photo = 4),
+                GalleryScene(photo = 2),
                 GalleryScene(avatar = true),
                 GalleryScene(search = true),
             ),
@@ -181,5 +188,38 @@ class ProfileGalleryUiTest {
             )
             go(GalleryScene())
         }
+    }
+
+    @Test
+    fun theTitleShowsOnTheScreenAndLeavesWithSearch() = runComposeUiTest {
+        showGallery()
+        onNodeWithText("Profile").assertExists()
+        go(GalleryScene(search = true), thenMs = 2_500)
+        onNodeWithText("Profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun theHeaderAndGridScrollUnderTheBar() = runComposeUiTest {
+        showGallery()
+        val before = onNodeWithTag(ProfileNameTag).getBoundsInRoot().top
+        // A scroll animates, so the clock must run on its own for performScrollTo to return.
+        mainClock.autoAdvance = true
+        onNodeWithText("Hydra").performScrollTo()
+        waitForIdle()
+        onNodeWithText("Hydra").assertIsDisplayed()
+        assertTrue(
+            onNodeWithTag(ProfileNameTag).getBoundsInRoot().top < before,
+            "the header scrolled",
+        )
+    }
+
+    @Test
+    fun theFabSitsThirtySixDpFromTheBottomAndEndEdges() = runComposeUiTest {
+        showGallery()
+        go(GalleryScene(avatar = true))
+        val fab = onNodeWithTag(FabSourceTag).getBoundsInRoot()
+        val root = onRoot().getBoundsInRoot()
+        assertEquals(36.dp, root.right - fab.right)
+        assertEquals(36.dp, root.bottom - fab.bottom)
     }
 }

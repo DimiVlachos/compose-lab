@@ -17,10 +17,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +71,7 @@ import org.jetbrains.compose.resources.stringResource
 
 internal const val ProfileNameTag = "profileName"
 private val SearchButtonSlot = 40.dp
+private val FabEdgeInset = 36.dp
 
 /**
  * A profile screen where every element that opens does so as a shared-element morph: a photo card
@@ -77,6 +83,7 @@ private val SearchButtonSlot = 40.dp
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ProfileGallery(
+    title: String,
     name: String,
     portrait: DrawableResource,
     photos: List<MorphPhoto>,
@@ -103,8 +110,22 @@ fun ProfileGallery(
             Column(Modifier.fillMaxSize()) {
                 Row(
                     Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
-                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Under the search bar's back arrow, so it leaves as the bar arrives.
+                    AnimatedVisibility(
+                        !current.search,
+                        modifier = Modifier.weight(1f),
+                        enter =
+                            fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)),
+                        exit = fadeOut(tween(MorphDimens.ChromeFadeOutMs)),
+                    ) {
+                        Text(
+                            title,
+                            color = LabTheme.colors.textPrimary,
+                            style = LabTheme.typography.title,
+                        )
+                    }
                     SourceSlot(!current.search, Modifier.size(SearchButtonSlot)) {
                         SearchSource(
                             this@SharedTransitionLayout,
@@ -114,40 +135,49 @@ fun ProfileGallery(
                         )
                     }
                 }
-                // Folds away with the search bar's open and back with its close, on the same
-                // curve and duration, so the grid rises and settles with the bar.
-                AnimatedVisibility(
-                    !current.search,
-                    enter =
-                        fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)) +
-                            expandVertically(
-                                tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)
-                            ),
-                    exit =
-                        fadeOut(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)) +
-                            shrinkVertically(
-                                tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)
-                            ),
+                // The header and the grid scroll together under the bar.
+                Column(
+                    Modifier.fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = LabTheme.spacing.mediumLarge)
                 ) {
-                    ProfileHeader(
-                        name = name,
-                        count = stringResource(Res.string.gallery_photo_count, photos.size),
-                        painter = portraitPainter,
-                        avatarOpen = current.avatar,
+                    // Folds away with the search bar's open and back with its close, on the same
+                    // curve and duration, so the grid rises and settles with the bar.
+                    AnimatedVisibility(
+                        !current.search,
+                        enter =
+                            fadeIn(tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)) +
+                                expandVertically(
+                                    tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)
+                                ),
+                        exit =
+                            fadeOut(tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)) +
+                                shrinkVertically(
+                                    tween(MorphDimens.OpenMs, easing = MorphDimens.MorphEasing)
+                                ),
+                    ) {
+                        ProfileHeader(
+                            name = name,
+                            count = stringResource(Res.string.gallery_photo_count, photos.size),
+                            painter = portraitPainter,
+                            avatarOpen = current.avatar,
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            onAvatar = { update { it.copy(avatar = true) } },
+                        )
+                    }
+                    GalleryGrid(
+                        photos = photos,
+                        painters = painters,
+                        query = typed,
+                        openPhoto = current.photo,
                         sharedTransitionScope = this@SharedTransitionLayout,
-                        onAvatar = { update { it.copy(avatar = true) } },
+                        onOpen = { index -> update { it.copy(photo = index) } },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .padding(horizontal = LabTheme.spacing.mediumLarge),
                     )
                 }
-                GalleryGrid(
-                    photos = photos,
-                    painters = painters,
-                    query = typed,
-                    openPhoto = current.photo,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    onOpen = { index -> update { it.copy(photo = index) } },
-                    modifier =
-                        Modifier.fillMaxWidth().padding(horizontal = LabTheme.spacing.mediumLarge),
-                )
             }
             AnimatedVisibility(
                 current.search,
@@ -266,7 +296,9 @@ private fun BoxScope.EditPhoto(
     SourceSlot(
         !dialogOpen,
         Modifier.align(Alignment.BottomEnd)
-            .padding(LabTheme.spacing.mediumLarge)
+            // Clear of the system navigation bar, then its own inset from the corner.
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(end = FabEdgeInset, bottom = FabEdgeInset)
             .then(chrome)
             .size(FabSize),
     ) {
@@ -298,6 +330,7 @@ private fun ProfileGalleryPreview() {
     LabTheme {
         var scene by remember { mutableStateOf(GalleryScene()) }
         ProfileGallery(
+            title = "Profile",
             name = "Alex Morgan",
             portrait = Res.drawable.portrait,
             photos =

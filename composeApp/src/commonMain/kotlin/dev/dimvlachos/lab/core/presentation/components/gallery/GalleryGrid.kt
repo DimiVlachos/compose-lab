@@ -31,12 +31,13 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.roundToInt
 
 private const val CardAspect = 0.8f // width / height: the photos' own 4:5
-private const val FilterFadeMs = 150
+private const val FilterFadeMs = 200
 
 /**
- * The photo grid, filtered by [query]. A card that stops matching fades out and then leaves the
- * layout, and the ones after it glide up into the freed slots; clearing the query glides them back
- * and fades the returning ones in once they have room. Every card keeps one parent and one place in
+ * The photo grid, filtered by [query]. A card that stops matching gives up its slot at once and
+ * fades out where it stands, under the cards gliding into the freed slots; clearing the query fades
+ * the returning ones in at their slots while the others glide back. Nothing waits for anything, so
+ * no photo is ever missing from a slot mid-reshuffle. Every card keeps one parent and one place in
  * the composition, so its shared node and its glide survive the reshuffle.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -51,6 +52,8 @@ internal fun GalleryGrid(
     modifier: Modifier = Modifier,
 ) {
     val filter = remember(photos.size) { List(photos.size) { MutableTransitionState(true) } }
+    // Where each card last stood, so a card fading out stays there instead of jumping.
+    val lastSlot = remember(photos.size) { IntArray(photos.size) { it } }
     val typed = query.value
     photos.forEachIndexed { i, photo -> filter[i].targetState = matchesQuery(photo.title, typed) }
     val glide = remember {
@@ -69,7 +72,7 @@ internal fun GalleryGrid(
                     AnimatedVisibility(
                         visibleState = filter[i],
                         modifier = Modifier.fillMaxSize(),
-                        enter = fadeIn(tween(FilterFadeMs, delayMillis = MorphDimens.OpenMs)),
+                        enter = fadeIn(tween(FilterFadeMs)),
                         exit = fadeOut(tween(FilterFadeMs)),
                     ) {
                         // The photo morph's source: None both ways, the shared bounds carry it.
@@ -106,14 +109,19 @@ internal fun GalleryGrid(
             constraints.constrainHeight(rows * cellHeight + (rows - 1).coerceAtLeast(0) * gapPx)
         layout(constraints.maxWidth, height) {
             // Read here, in placement: a card that finishes fading re-places the grid without
-            // recomposing it.
+            // recomposing it. Leaving cards are placed first and below, so the gliders pass over.
+            fun slotX(slot: Int) = (slot % columns) * (cellWidth + gapPx)
+            fun slotY(slot: Int) = (slot / columns) * (cellHeight + gapPx)
+            placeables.forEachIndexed { i, placeable ->
+                if (!filter[i].targetState && filter[i].currentState) {
+                    placeable.place(slotX(lastSlot[i]), slotY(lastSlot[i]), zIndex = -1f)
+                }
+            }
             var slot = 0
             placeables.forEachIndexed { i, placeable ->
-                if (filter[i].currentState || filter[i].targetState) {
-                    placeable.place(
-                        x = (slot % columns) * (cellWidth + gapPx),
-                        y = (slot / columns) * (cellHeight + gapPx),
-                    )
+                if (filter[i].targetState) {
+                    lastSlot[i] = slot
+                    placeable.place(slotX(slot), slotY(slot))
                     slot++
                 }
             }
