@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="catalog_title">compose-lab</string>
+    <string name="section_navbar">Nav bar</string>
+    <string name="section_morph">Image morph</string>
+    <plurals name="catalog_demo_count">
+        <item quantity="one">%1$d demo</item>
+        <item quantity="other">%1$d demos</item>
+    </plurals>
     <string name="platform_android">Android</string>
     <string name="platform_ios">iOS</string>
     <string name="nav_home">Home</string>
