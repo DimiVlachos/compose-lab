@@ -13,7 +13,7 @@ import kotlinx.coroutines.test.runTest
 
 class CatalogTest {
     @Test
-    fun containsTheTwelveDemosInCatalogOrderWithUniqueIds() {
+    fun containsTheSixteenDemosInCatalogOrderWithUniqueIds() {
         val ids = Catalog.demos.map { it.id }
         assertEquals(
             listOf(
@@ -29,6 +29,10 @@ class CatalogTest {
                 "morph.corners",
                 "morph.chrome",
                 "morph.all",
+                "morph.avatar",
+                "morph.search",
+                "morph.fab",
+                "morph.profile",
             ),
             ids,
         )
