@@ -1,0 +1,6 @@
+Your table request is on its way.
+{"version": "v0.9", "deleteSurface": {"surfaceId": "booking_1"}}
+{"version": "v0.9", "createSurface": {"surfaceId": "confirmation_1", "catalogId": "https://dimvlachos.dev/lab/catalogs/concierge/v1/catalog.json"}}
+{"version": "v0.9", "updateComponents": {"surfaceId": "confirmation_1", "components": [{"id": "root", "component": "Card", "child": "col"}, {"id": "col", "component": "Column", "children": ["title", "summary", "status"]}, {"id": "title", "component": "Text", "text": "Booking requested", "variant": "h4"}, {"id": "summary", "component": "Text", "text": "Olive & Thyme · Friday 2 Oct, 20:30 · 4 people", "variant": "body"}, {"id": "status", "component": "StatTile", "label": "Status", "value": {"path": "/status"}}]}}
+{"version": "v0.9", "updateDataModel": {"surfaceId": "confirmation_1", "path": "/status", "value": "Requested"}}
+{"version": "v0.9", "updateDataModel": {"surfaceId": "confirmation_1", "path": "/status", "value": "Confirmed"}}

@@ -8,16 +8,27 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.catalog.Catalog
 import dev.dimvlachos.lab.catalog.presentation.screen.CatalogScreen
+import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.platform.platformLabel
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.demo.presentation.screen.DemoScreen
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * [extraDemos] are platform-only demos (the Android app adds its A2UI demo, whose libraries have no
+ * iOS build); they are listed and opened like the shared ones.
+ */
 @Composable
-fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
+fun App(
+    initialDemoId: String?,
+    record: Boolean,
+    label: Boolean,
+    extraDemos: List<Demo> = emptyList(),
+) {
     LabTheme {
-        val initialDemo = remember { Catalog.find(initialDemoId) }
+        val demos = remember(extraDemos) { Catalog.demos + extraDemos }
+        val initialDemo = remember { Catalog.find(initialDemoId, demos) }
         val navigation = remember { AppNavigation(initialDemo, record) }
         // The system back gesture steps back like the on-screen Back buttons; on the home screen
         // it is left to the system, which closes the app.
@@ -40,7 +51,7 @@ fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
                 onBack = if (navigation.canGoBack) navigation::back else null,
             )
         } else {
-            CatalogScreen(onOpen = navigation::openDemo)
+            CatalogScreen(demos = demos, onOpen = navigation::openDemo)
         }
     }
 }

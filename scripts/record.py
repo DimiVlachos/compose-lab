@@ -47,8 +47,12 @@ def stream_lines(proc):
     return lines
 
 
-def wait_for_markers(lines, demo_id, t0):
-    """Return (start, done) in seconds since t0, or exit with a clear message."""
+def wait_for_markers(lines, demo_id, t0, seconds=None):
+    """Return (start, done) in seconds since t0, or exit with a clear message.
+
+    With seconds, the clip ends that long after the start marker instead of at the done marker:
+    an interactive demo has no script to finish, so it never sends one.
+    """
     start = None
     deadline = time.monotonic() + MARKER_TIMEOUT_S
     while True:
@@ -66,6 +70,9 @@ def wait_for_markers(lines, demo_id, t0):
             sys.exit(f"The app reported: {text[text.index('LAB_WARN'):]}")
         if text.endswith(f"LAB_DEMO_START {demo_id}"):
             start = at - t0
+            if seconds is not None:
+                time.sleep(max(0.0, t0 + start + seconds - time.monotonic()))
+                return start, start + seconds
         elif text.endswith(f"LAB_DEMO_DONE {demo_id}"):
             if start is None:
                 sys.exit("Saw LAB_DEMO_DONE without LAB_DEMO_START")
@@ -102,7 +109,7 @@ def wait_for_recording_file(deadline_s=5.0, poll_s=0.05):
     sys.exit(f"screenrecord did not start writing {DEVICE_FILE} within {deadline_s}s")
 
 
-def record_android(demo_id, label, raw):
+def record_android(demo_id, label, raw, flags, seconds):
     width, height = android_record_size()
     run(["adb", "logcat", "-c"])
     recorder = subprocess.Popen(
@@ -124,10 +131,12 @@ def record_android(demo_id, label, raw):
     launch = ["adb", "shell", "am", "start", "-S", "-n", ACTIVITY, "--es", "demo", demo_id, "--ez", "record", "true"]
     if label:
         launch += ["--ez", "label", "true"]
+    for flag in flags:
+        launch += ["--ez", flag, "true"]
     failed = True
     try:
         run(launch)
-        start, done = wait_for_markers(lines, demo_id, t0)
+        start, done = wait_for_markers(lines, demo_id, t0, seconds)
         failed = False
     finally:
         time.sleep(0.5)
@@ -142,7 +151,7 @@ def record_android(demo_id, label, raw):
     return start, done
 
 
-def record_ios(demo_id, label, raw):
+def record_ios(demo_id, label, raw, flags, seconds):
     recorder = subprocess.Popen(
         ["xcrun", "simctl", "io", "booted", "recordVideo", "--codec=h264", "--force", str(raw)],
         stderr=subprocess.PIPE,
@@ -158,10 +167,11 @@ def record_ios(demo_id, label, raw):
               "-demo", demo_id, "-record"]
     if label:
         launch.append("-label")
+    launch += [f"-{flag}" for flag in flags]
     app = subprocess.Popen(launch, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     lines = stream_lines(app)
     try:
-        start, done = wait_for_markers(lines, demo_id, t0)
+        start, done = wait_for_markers(lines, demo_id, t0, seconds)
     finally:
         time.sleep(0.5)
         recorder.send_signal(signal.SIGINT)
@@ -202,6 +212,10 @@ def main():
     parser.add_argument("platform", choices=["android", "ios"])
     parser.add_argument("demo_id")
     parser.add_argument("--label", action="store_true", help="draw the platform name on the stage (for side-by-side clips)")
+    parser.add_argument("--flag", action="append", default=[], metavar="NAME",
+                        help="pass a boolean launch flag to the app, e.g. --flag replay (repeatable)")
+    parser.add_argument("--seconds", type=float,
+                        help="end the clip this long after the demo starts (interactive demos have no end marker)")
     args = parser.parse_args()
 
     OUT.mkdir(exist_ok=True)
@@ -211,7 +225,7 @@ def main():
     record = record_android if args.platform == "android" else record_ios
 
     try:
-        start, done = record(args.demo_id, args.label, raw)
+        start, done = record(args.demo_id, args.label, raw, args.flag, args.seconds)
     except SystemExit:
         raw.unlink(missing_ok=True)
         raise

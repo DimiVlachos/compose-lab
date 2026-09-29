@@ -69,6 +69,23 @@ ProfileGallery(
 
 The photo morph also ships on its own as `ImageMorph` (`core/presentation/components/imagemorph/`), with `MorphLayers` to switch its fixes on one by one.
 
+## Agentic UI, A2UI (`androidApp/.../agenticdemo/`, Android only)
+
+A chat where the agent answers with native UI instead of text. The agent (OpenAI or Claude) writes [A2UI v0.9](https://a2ui.org/) messages, and the [Jetpack Compose A2UI renderer](https://developer.android.com/develop/ui/compose/agentic) draws them from a catalog this app registers. The agent can only use what the catalog declares, and no generated code runs on the device.
+
+```
+you type ──▶ ConciergeAgent (OpenAI | Claude) ──stream──▶ JsonlLineSplitter ──line──▶ A2uiMessageProcessor ──▶ A2uiSurface
+   ▲                                                                              │
+   └──────────── A2uiWireMapper ◀── outboundEvents (taps, validation errors) ◀─────┘
+```
+
+- **Hybrid catalog.** The Material 3 Basic Catalog plus two custom components: `RatingBar`, whose stars write back to the data model through `bindUpdater`, and `StatTile`, which re-animates when an `updateDataModel` arrives. The catalog's JSON schema is exported into the system prompt with `toJsonSchemaString()`, so the prompt always matches what is registered.
+- **Progressive rendering.** Each JSONL line goes to the processor as soon as it closes, so cards appear while the model is still writing.
+- **The loop back.** Button events and form values reach the agent as its next turn. Parse and validation errors are sent back as well, at most twice per turn, so the agent can correct itself.
+- **Theme.** The lab's colours reach the Basic Catalog through a `MaterialTheme`.
+
+To run it, add `openai.apiKey=sk-…` (optionally `openai.model=…`, default `gpt-6-luna`) or `anthropic.apiKey=sk-ant-…` to `local.properties` and launch `agentic.concierge`. When both keys are set, OpenAI is used. Launched with `--ez replay true`, the demo plays a scripted conversation from `assets/a2ui/replay/` instead, with no key and no cost; record it with `scripts/record.py android agentic.concierge --flag replay --seconds 25` and use it while the clip runs. The key is compiled into the debug APK, which is fine for a local demo but must never ship: a real app should call the agent from a backend. The A2UI libraries have no iOS build, so this demo is not in the iOS app. `a2ui/*.json` in the assets comes from [google/A2UI](https://github.com/google/A2UI) (Apache 2.0).
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.

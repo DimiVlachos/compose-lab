@@ -46,4 +46,7 @@ kotlin {
     }
 }
 
-compose.resources { packageOfResClass = "dev.dimvlachos.lab.resources" }
+compose.resources {
+    packageOfResClass = "dev.dimvlachos.lab.resources"
+    publicResClass = true
+}
