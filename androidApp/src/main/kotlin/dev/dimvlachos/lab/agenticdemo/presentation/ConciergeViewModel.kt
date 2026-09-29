@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.agenticdemo.data.A2uiWireMapper
 import dev.dimvlachos.lab.agenticdemo.data.AgentChunk
+import dev.dimvlachos.lab.agenticdemo.data.AgentFailure
 import dev.dimvlachos.lab.agenticdemo.data.ComponentReferenceCheck
 import dev.dimvlachos.lab.agenticdemo.data.ConciergeAgent
 import kotlin.coroutines.cancellation.CancellationException
@@ -57,6 +58,7 @@ class ConciergeViewModel(
     private val pendingErrors = mutableListOf<String>()
     private val references = ComponentReferenceCheck()
     private val reportedMissing = mutableSetOf<String>()
+    private val createdThisTurn = mutableSetOf<String>()
     private var errorFlush: Job? = null
     private var corrections = 0
     private var nextKey = 0
@@ -67,7 +69,18 @@ class ConciergeViewModel(
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             processor.outboundEvents.collect(::onOutbound)
         }
+        viewModelScope.launch {
+            processor.activeSurfaces.collect { active ->
+                val ids = active.mapTo(mutableSetOf()) { it.id }
+                _state.update { it.copy(seenSurfaces = it.seenSurfaces + ids) }
+            }
+        }
         viewModelScope.launch { for (turn in turns) run(turn) }
+    }
+
+    override fun onCleared() {
+        // viewModelScope is already cancelled, which stops a streaming turn; this frees the client.
+        agent?.close()
     }
 
     fun onSend(text: String) {
@@ -109,6 +122,7 @@ class ConciergeViewModel(
     private suspend fun run(turn: Turn) {
         val agent = agent ?: return
         _state.update { it.copy(thinking = true) }
+        createdThisTurn.clear()
         try {
             agent.send(turn.text).collect(::onChunk)
             reportMissingComponents()
@@ -116,9 +130,33 @@ class ConciergeViewModel(
             throw cancelled
         } catch (failure: Exception) {
             log.e(failure) { "Agent turn failed" }
-            append(TranscriptItem.Failure(key(), FailureReason.Network))
+            append(TranscriptItem.Failure(key(), reasonFor(failure)))
         } finally {
             _state.update { it.copy(thinking = false) }
+            markUnshownSurfacesFailed(createdThisTurn.toSet())
+        }
+    }
+
+    private fun reasonFor(failure: Exception) =
+        when ((failure as? AgentFailure)?.reason) {
+            AgentFailure.Reason.Auth -> FailureReason.Auth
+            AgentFailure.Reason.RateLimited -> FailureReason.RateLimited
+            AgentFailure.Reason.Unavailable -> FailureReason.Unavailable
+            AgentFailure.Reason.Network,
+            null -> FailureReason.Network
+        }
+
+    // The renderer applies lines off the main thread, so a surface is only given up on once the
+    // turn is over and the renderer has had time to catch up; until then it shows as loading.
+    private fun markUnshownSurfacesFailed(created: Set<String>) {
+        if (created.isEmpty()) return
+        viewModelScope.launch {
+            delay(errorSettle)
+            val active = processor.activeSurfaces.value.mapTo(mutableSetOf()) { it.id }
+            val failed = created - active - _state.value.seenSurfaces
+            if (failed.isNotEmpty()) {
+                _state.update { it.copy(failedSurfaces = it.failedSurfaces + failed) }
+            }
         }
     }
 
@@ -127,8 +165,13 @@ class ConciergeViewModel(
             is AgentChunk.Prose -> append(TranscriptItem.Agent(key(), chunk.text))
             is AgentChunk.A2uiLine -> {
                 log.d { "A2UI in: ${chunk.json}" }
-                references.accept(chunk.json)
-                createdSurfaceId(chunk.json)?.let { append(TranscriptItem.Surface(key(), it)) }
+                runCatching { JSONObject(chunk.json) }
+                    .getOrNull()
+                    ?.let { message ->
+                        references.accept(message)
+                        createdSurfaceId(message)?.let(::placeSurface)
+                    }
+                // Malformed lines go to the renderer too: its error goes back to the agent.
                 processor.processInput(parser, chunk.json)
             }
             AgentChunk.Refused -> append(TranscriptItem.Failure(key(), FailureReason.Refused))
@@ -153,11 +196,24 @@ class ConciergeViewModel(
         }
     }
 
-    // A surface gets its place in the transcript where the agent created it.
-    private fun createdSurfaceId(json: String): String? =
-        runCatching { JSONObject(json).optJSONObject("createSurface")?.optString("surfaceId") }
-            .getOrNull()
-            ?.takeIf { it.isNotEmpty() }
+    private fun createdSurfaceId(message: JSONObject): String? =
+        message.optJSONObject("createSurface")?.optString("surfaceId")?.takeIf { it.isNotEmpty() }
+
+    // A surface takes its place in the transcript where the agent (re)created it. One the agent
+    // sends again, to correct it or after closing it, moves down to the conversation instead of
+    // showing twice.
+    private fun placeSurface(surfaceId: String) {
+        createdThisTurn += surfaceId
+        _state.update { state ->
+            state.copy(
+                transcript =
+                    state.transcript.filterNot {
+                        it is TranscriptItem.Surface && it.surfaceId == surfaceId
+                    } + TranscriptItem.Surface(key(), surfaceId),
+                failedSurfaces = state.failedSurfaces - surfaceId,
+            )
+        }
+    }
 
     private fun append(item: TranscriptItem) {
         _state.update { it.copy(transcript = it.transcript + item) }

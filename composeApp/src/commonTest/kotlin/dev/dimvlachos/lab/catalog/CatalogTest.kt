@@ -2,13 +2,16 @@
 
 package dev.dimvlachos.lab.catalog
 
+import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.FakeController
+import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,6 +31,17 @@ class CatalogTest {
     fun unknownOrMissingIdsFindNothing() {
         assertNull(Catalog.find(null))
         assertNull(Catalog.find("navbar.nope"))
+    }
+
+    @Test
+    fun platformDemosAreFoundAlongsideTheSharedOnes() {
+        val extra =
+            Demo("platform.only", Res.string.demo_navbar, demoScript {}, interactive = true) {}
+        val demos = Catalog.demos + extra
+
+        assertSame(extra, Catalog.find("platform.only", demos))
+        assertEquals("morph.app", Catalog.find("morph.app", demos)?.id)
+        assertNull(Catalog.find("platform.only"))
     }
 
     @Test

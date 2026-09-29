@@ -2,19 +2,25 @@ package dev.dimvlachos.lab.agenticdemo.data
 
 import com.openai.client.OpenAIClient
 import com.openai.client.okhttp.OpenAIOkHttpClient
+import com.openai.errors.BadRequestException
+import com.openai.errors.NotFoundException
+import com.openai.errors.PermissionDeniedException
+import com.openai.errors.RateLimitException
+import com.openai.errors.UnauthorizedException
 import com.openai.models.Reasoning
 import com.openai.models.ReasoningEffort
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseInputItem
 import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.optionals.getOrNull
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * An OpenAI model as the A2UI agent, over the Responses API. The same contract as
@@ -27,17 +33,22 @@ class OpenAiConciergeAgent(apiKey: String, private val model: String, systemProm
     // Built on first use, off the main thread: it reads the schema assets and exports the catalog.
     private val instructions by lazy(systemPrompt)
     private val history = mutableListOf<ResponseInputItem>()
-    private val lock = Mutex()
 
     override fun send(turn: String): Flow<AgentChunk> =
         flow {
-                lock.withLock {
-                    history += message(EasyInputMessage.Role.USER, turn)
-                    val splitter = JsonlLineSplitter()
-                    val reply = StringBuilder()
-                    var refused = false
-                    try {
-                        client.responses().createStreaming(params()).use { response ->
+                history += message(EasyInputMessage.Role.USER, turn)
+                val splitter = JsonlLineSplitter()
+                val reply = StringBuilder()
+                var refused = false
+                try {
+                    client.responses().createStreaming(params()).use { response ->
+                        // Leaving the demo cancels the turn; closing the stream stops the request
+                        // (and the bill) instead of waiting for the next event to notice.
+                        val stop =
+                            currentCoroutineContext()[Job]?.invokeOnCompletion {
+                                response.close()
+                            }
+                        try {
                             for (event in response.stream().iterator()) {
                                 event.outputTextDelta().getOrNull()?.let { delta ->
                                     reply.append(delta.delta())
@@ -52,17 +63,45 @@ class OpenAiConciergeAgent(apiKey: String, private val model: String, systemProm
                                     )
                                 }
                             }
+                        } finally {
+                            stop?.dispose()
                         }
-                    } catch (failure: Throwable) {
-                        history.removeAt(history.lastIndex)
-                        throw failure
                     }
-                    splitter.flush().forEach { emit(it) }
-                    history += message(EasyInputMessage.Role.ASSISTANT, reply.toString())
-                    if (refused) emit(AgentChunk.Refused)
+                } catch (failure: Throwable) {
+                    keepPartialReply(reply)
+                    throw if (failure is CancellationException) failure else classify(failure)
                 }
+                splitter.flush().forEach { emit(it) }
+                keepPartialReply(reply)
+                if (refused) emit(AgentChunk.Refused)
             }
             .flowOn(Dispatchers.IO)
+
+    override fun close() = client.close()
+
+    // Whatever streamed is on screen, so the conversation has to say so too; with nothing streamed
+    // (a refusal, a failure before the first token) the user turn is dropped instead of being
+    // answered by an empty assistant message.
+    private fun keepPartialReply(reply: StringBuilder) {
+        if (reply.isEmpty()) {
+            history.removeAt(history.lastIndex)
+        } else {
+            history += message(EasyInputMessage.Role.ASSISTANT, reply.toString())
+        }
+    }
+
+    private fun classify(failure: Throwable): AgentFailure =
+        AgentFailure(
+            when (failure) {
+                is UnauthorizedException,
+                is PermissionDeniedException -> AgentFailure.Reason.Auth
+                is RateLimitException -> AgentFailure.Reason.RateLimited
+                is BadRequestException,
+                is NotFoundException -> AgentFailure.Reason.Unavailable
+                else -> AgentFailure.Reason.Network
+            },
+            failure,
+        )
 
     private fun params(): ResponseCreateParams =
         ResponseCreateParams.builder()

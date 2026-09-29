@@ -3,6 +3,11 @@ package dev.dimvlachos.lab.agenticdemo.data
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
+import com.anthropic.errors.BadRequestException
+import com.anthropic.errors.NotFoundException
+import com.anthropic.errors.PermissionDeniedException
+import com.anthropic.errors.RateLimitException
+import com.anthropic.errors.UnauthorizedException
 import com.anthropic.helpers.MessageAccumulator
 import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.MessageCreateParams
@@ -10,13 +15,14 @@ import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.OutputConfig
 import com.anthropic.models.messages.StopReason
 import com.anthropic.models.messages.TextBlockParam
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.optionals.getOrNull
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Claude as the A2UI agent. Streams each reply and cuts it into lines as it arrives, and keeps the
@@ -35,17 +41,22 @@ class ClaudeConciergeAgent(apiKey: String, systemPrompt: () -> String) : Concier
         )
     }
     private val history = mutableListOf<MessageParam>()
-    private val lock = Mutex()
 
     override fun send(turn: String): Flow<AgentChunk> =
         flow {
-                lock.withLock {
-                    history +=
-                        MessageParam.builder().role(MessageParam.Role.USER).content(turn).build()
-                    val accumulator = MessageAccumulator.create()
-                    val splitter = JsonlLineSplitter()
-                    try {
-                        client.messages().createStreaming(params()).use { response ->
+                history += message(MessageParam.Role.USER, turn)
+                val accumulator = MessageAccumulator.create()
+                val splitter = JsonlLineSplitter()
+                val reply = StringBuilder()
+                try {
+                    client.messages().createStreaming(params()).use { response ->
+                        // Leaving the demo cancels the turn; closing the stream stops the request
+                        // (and the bill) instead of waiting for the next event to notice.
+                        val stop =
+                            currentCoroutineContext()[Job]?.invokeOnCompletion {
+                                response.close()
+                            }
+                        try {
                             for (event in response.stream().iterator()) {
                                 accumulator.accumulate(event)
                                 val delta =
@@ -55,22 +66,54 @@ class ClaudeConciergeAgent(apiKey: String, systemPrompt: () -> String) : Concier
                                         ?.delta()
                                         ?.text()
                                         ?.getOrNull()
-                                if (delta != null) splitter.push(delta.text()).forEach { emit(it) }
+                                if (delta != null) {
+                                    reply.append(delta.text())
+                                    splitter.push(delta.text()).forEach { emit(it) }
+                                }
                             }
+                        } finally {
+                            stop?.dispose()
                         }
-                    } catch (failure: Throwable) {
-                        history.removeAt(history.lastIndex)
-                        throw failure
                     }
-                    splitter.flush().forEach { emit(it) }
-                    val message = accumulator.message()
-                    history += message.toParam()
-                    if (message.stopReason().getOrNull() == StopReason.REFUSAL) {
-                        emit(AgentChunk.Refused)
-                    }
+                } catch (failure: Throwable) {
+                    keepPartialReply(reply)
+                    throw if (failure is CancellationException) failure else classify(failure)
                 }
+                splitter.flush().forEach { emit(it) }
+                val message = accumulator.message()
+                val refused = message.stopReason().getOrNull() == StopReason.REFUSAL
+                // A refused or empty message must not go into the history as it is: an empty
+                // assistant turn makes every later request invalid.
+                if (refused || reply.isEmpty()) keepPartialReply(reply)
+                else history += message.toParam()
+                if (refused) emit(AgentChunk.Refused)
             }
             .flowOn(Dispatchers.IO)
+
+    override fun close() = client.close()
+
+    // Whatever already streamed is on screen, so the conversation has to say so too; with nothing
+    // streamed the user turn is dropped, keeping the history a valid user/assistant alternation.
+    private fun keepPartialReply(reply: StringBuilder) {
+        if (reply.isEmpty()) {
+            history.removeAt(history.lastIndex)
+        } else {
+            history += message(MessageParam.Role.ASSISTANT, reply.toString())
+        }
+    }
+
+    private fun classify(failure: Throwable): AgentFailure =
+        AgentFailure(
+            when (failure) {
+                is UnauthorizedException,
+                is PermissionDeniedException -> AgentFailure.Reason.Auth
+                is RateLimitException -> AgentFailure.Reason.RateLimited
+                is BadRequestException,
+                is NotFoundException -> AgentFailure.Reason.Unavailable
+                else -> AgentFailure.Reason.Network
+            },
+            failure,
+        )
 
     private fun params(): MessageCreateParams =
         MessageCreateParams.builder()
@@ -83,6 +126,9 @@ class ClaudeConciergeAgent(apiKey: String, systemPrompt: () -> String) : Concier
             .putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
             .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
             .build()
+
+    private fun message(role: MessageParam.Role, text: String) =
+        MessageParam.builder().role(role).content(text).build()
 
     private companion object {
         const val MODEL = "claude-opus-5-5"
