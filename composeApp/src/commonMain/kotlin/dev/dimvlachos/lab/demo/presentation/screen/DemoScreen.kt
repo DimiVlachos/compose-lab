@@ -52,6 +52,15 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
     val state = remember(runId) { DemoState() }
     LaunchedEffect(runId, playing) {
         if (!playing) return@LaunchedEffect
+        if (demo.interactive) {
+            // Nothing to play: a recording frames whatever is done with the demo after the start
+            // marker, for as long as the recorder was asked to run.
+            if (record) {
+                delay(RecordPreRoll)
+                RecordingLog.started(demo.id)
+            }
+            return@LaunchedEffect
+        }
         if (record) {
             delay(RecordPreRoll)
             // One run before the start marker: the first play of a demo pays for shader
@@ -121,23 +130,28 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f).padding(horizontal = LabTheme.spacing.small),
                     )
-                    TextButton(
-                        onClick = {
-                            if (playing) {
-                                playing = false
-                            } else {
-                                runId++
-                                playing = true
-                            }
-                        },
-                        colors =
-                            ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.accent),
-                    ) {
-                        Text(
-                            stringResource(
-                                if (playing) Res.string.action_stop else Res.string.action_replay
+                    if (!demo.interactive) {
+                        TextButton(
+                            onClick = {
+                                if (playing) {
+                                    playing = false
+                                } else {
+                                    runId++
+                                    playing = true
+                                }
+                            },
+                            colors =
+                                ButtonDefaults.textButtonColors(
+                                    contentColor = LabTheme.colors.accent
+                                ),
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (playing) Res.string.action_stop
+                                    else Res.string.action_replay
+                                )
                             )
-                        )
+                        }
                     }
                 }
                 stage(Modifier.fillMaxWidth().weight(1f))

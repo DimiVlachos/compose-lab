@@ -28,7 +28,7 @@ fun App(
 ) {
     LabTheme {
         val demos = remember(extraDemos) { Catalog.demos + extraDemos }
-        val initialDemo = remember { demos.firstOrNull { it.id == initialDemoId } }
+        val initialDemo = remember { Catalog.find(initialDemoId, demos) }
         val navigation = remember { AppNavigation(initialDemo, record) }
         // The system back gesture steps back like the on-screen Back buttons; on the home screen
         // it is left to the system, which closes the app.

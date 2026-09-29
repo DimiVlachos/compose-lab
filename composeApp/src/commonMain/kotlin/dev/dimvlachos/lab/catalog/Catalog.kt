@@ -8,5 +8,5 @@ object Catalog {
     // The finished demo of each component, each one a clip.
     val demos: List<Demo> = NavBarDemos.all + GalleryDemos.all
 
-    fun find(id: String?): Demo? = demos.firstOrNull { it.id == id }
+    fun find(id: String?, among: List<Demo> = demos): Demo? = among.firstOrNull { it.id == id }
 }

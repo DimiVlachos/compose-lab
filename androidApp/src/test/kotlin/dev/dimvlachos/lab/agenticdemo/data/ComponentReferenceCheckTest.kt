@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.agenticdemo.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.json.JSONObject
 
 class ComponentReferenceCheckTest {
     @Test
@@ -44,22 +45,25 @@ class ComponentReferenceCheckTest {
         )
         assertEquals(mapOf("s" to setOf("a", "open", "body", "row")), check.missing())
 
-        check.accept("""{"version":"v0.9","deleteSurface":{"surfaceId":"s"}}""")
+        check.accept(JSONObject("""{"version":"v0.9","deleteSurface":{"surfaceId":"s"}}"""))
         assertEquals(emptyMap(), check.missing())
     }
 
     @Test
-    fun linesThatAreNotComponentUpdatesAreIgnored() {
+    fun messagesThatAreNotComponentUpdatesAreIgnored() {
         val check = ComponentReferenceCheck()
 
-        check.accept("""{"version":"v0.9","updateDataModel":{"surfaceId":"s","value":{}}}""")
-        check.accept("not json")
+        check.accept(
+            JSONObject("""{"version":"v0.9","updateDataModel":{"surfaceId":"s","value":{}}}""")
+        )
 
         assertEquals(emptyMap(), check.missing())
     }
 
     private fun components(surfaceId: String, vararg components: String) =
-        """{"version":"v0.9","updateComponents":{"surfaceId":"$surfaceId","components":[""" +
-            components.joinToString(",") +
-            "]}}"
+        JSONObject(
+            """{"version":"v0.9","updateComponents":{"surfaceId":"$surfaceId","components":[""" +
+                components.joinToString(",") +
+                "]}}"
+        )
 }

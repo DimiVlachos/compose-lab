@@ -84,7 +84,7 @@ you type ──▶ ConciergeAgent (OpenAI | Claude) ──stream──▶ JsonlL
 - **The loop back.** Button events and form values reach the agent as its next turn. Parse and validation errors are sent back as well, at most twice per turn, so the agent can correct itself.
 - **Theme.** The lab's colours reach the Basic Catalog through a `MaterialTheme`.
 
-To run it, add `openai.apiKey=sk-…` (optionally `openai.model=…`, default `gpt-6-luna`) or `anthropic.apiKey=sk-ant-…` to `local.properties` and launch `agentic.concierge`. When both keys are set, OpenAI is used. The key is compiled into the debug APK, which is fine for a local demo but must never ship: a real app should call the agent from a backend. The A2UI libraries have no iOS build, so this demo is not in the iOS app. `a2ui/*.json` in the assets comes from [google/A2UI](https://github.com/google/A2UI) (Apache 2.0).
+To run it, add `openai.apiKey=sk-…` (optionally `openai.model=…`, default `gpt-6-luna`) or `anthropic.apiKey=sk-ant-…` to `local.properties` and launch `agentic.concierge`. When both keys are set, OpenAI is used. Launched with `--ez replay true`, the demo plays a scripted conversation from `assets/a2ui/replay/` instead, with no key and no cost; record it with `scripts/record.py android agentic.concierge --flag replay --seconds 25` and use it while the clip runs. The key is compiled into the debug APK, which is fine for a local demo but must never ship: a real app should call the agent from a backend. The A2UI libraries have no iOS build, so this demo is not in the iOS app. `a2ui/*.json` in the assets comes from [google/A2UI](https://github.com/google/A2UI) (Apache 2.0).
 
 ## Run
 

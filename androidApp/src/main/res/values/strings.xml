@@ -10,6 +10,10 @@
     <string name="concierge_action">You tapped “%1$s”</string>
     <string name="concierge_correction">%1$d A2UI error(s) sent back to the agent to fix</string>
     <string name="concierge_failure_network">The agent could not be reached. Check the connection and try again.</string>
+    <string name="concierge_failure_auth">The API key was rejected. Check openai.apiKey or anthropic.apiKey in local.properties.</string>
+    <string name="concierge_failure_rate_limited">Too many requests, or the key\'s quota is used up. Try again in a moment.</string>
+    <string name="concierge_failure_unavailable">The provider rejected the request. Check the model name in local.properties.</string>
+    <string name="concierge_surface_failed">The agent\'s UI could not be shown.</string>
     <string name="concierge_failure_refused">The agent declined this request.</string>
     <string name="concierge_surface_closed">Surface closed</string>
     <string name="concierge_missing_key">Add openai.apiKey=… (or anthropic.apiKey=…) to local.properties and rebuild to talk to the agent.</string>

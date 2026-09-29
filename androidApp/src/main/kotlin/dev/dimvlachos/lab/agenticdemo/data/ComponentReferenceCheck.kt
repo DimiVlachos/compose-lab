@@ -13,8 +13,7 @@ class ComponentReferenceCheck {
     private val defined = mutableMapOf<String, MutableSet<String>>()
     private val referenced = mutableMapOf<String, MutableSet<String>>()
 
-    fun accept(line: String) {
-        val message = runCatching { JSONObject(line) }.getOrNull() ?: return
+    fun accept(message: JSONObject) {
         message.optJSONObject("deleteSurface")?.optString("surfaceId")?.let {
             defined.remove(it)
             referenced.remove(it)

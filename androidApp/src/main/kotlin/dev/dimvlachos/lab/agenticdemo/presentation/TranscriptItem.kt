@@ -18,5 +18,8 @@ sealed interface TranscriptItem {
 
 enum class FailureReason {
     Network,
+    Auth,
+    RateLimited,
+    Unavailable,
     Refused,
 }

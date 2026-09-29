@@ -6,6 +6,17 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+val localProperties =
+    Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
+    }
+
+// A Java string literal for BuildConfig, escaped so no value can break the generated source.
+fun localString(key: String, default: String = ""): String =
+    "\"" +
+        localProperties.getProperty(key, default).replace("\\", "\\\\").replace("\"", "\\\"") +
+        "\""
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
@@ -54,20 +65,19 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        val localProperties = Properties()
-        rootProject
-            .file("local.properties")
-            .takeIf { it.exists() }
-            ?.inputStream()
-            ?.use {
-                localProperties.load(it)
-            }
-        // The concierge demo's agent: OpenAI when openai.apiKey is set, otherwise Claude.
-        fun localString(key: String, default: String = "") =
-            "\"${localProperties.getProperty(key, default)}\""
-        buildConfigField("String", "OPENAI_API_KEY", localString("openai.apiKey"))
         buildConfigField("String", "OPENAI_MODEL", localString("openai.model", "gpt-6-luna"))
-        buildConfigField("String", "ANTHROPIC_API_KEY", localString("anthropic.apiKey"))
+    }
+    buildTypes {
+        // The concierge demo's agent: OpenAI when openai.apiKey is set, otherwise Claude. The keys
+        // go into debug builds only; a release build never carries them.
+        debug {
+            buildConfigField("String", "OPENAI_API_KEY", localString("openai.apiKey"))
+            buildConfigField("String", "ANTHROPIC_API_KEY", localString("anthropic.apiKey"))
+        }
+        release {
+            buildConfigField("String", "OPENAI_API_KEY", "\"\"")
+            buildConfigField("String", "ANTHROPIC_API_KEY", "\"\"")
+        }
     }
     packaging {
         resources {

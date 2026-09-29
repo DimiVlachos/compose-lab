@@ -83,7 +83,7 @@ fun ConciergeScreen(
                 item(key = "intro") { Intro(enabled = state.hasApiKey, onPick = send) }
             }
             items(state.transcript, key = { it.key }) { item ->
-                TranscriptRow(item, surfacesById)
+                TranscriptRow(item, surfacesById, state)
             }
         }
         if (state.thinking) {
@@ -94,7 +94,11 @@ fun ConciergeScreen(
 }
 
 @Composable
-private fun TranscriptRow(item: TranscriptItem, surfaces: Map<String, A2uiSurfaceModel>) {
+private fun TranscriptRow(
+    item: TranscriptItem,
+    surfaces: Map<String, A2uiSurfaceModel>,
+    state: ConciergeState,
+) {
     when (item) {
         is TranscriptItem.User -> Bubble(item.text, fromUser = true)
         is TranscriptItem.Agent -> Bubble(item.text, fromUser = false)
@@ -107,6 +111,9 @@ private fun TranscriptRow(item: TranscriptItem, surfaces: Map<String, A2uiSurfac
                 stringResource(
                     when (item.reason) {
                         FailureReason.Network -> R.string.concierge_failure_network
+                        FailureReason.Auth -> R.string.concierge_failure_auth
+                        FailureReason.RateLimited -> R.string.concierge_failure_rate_limited
+                        FailureReason.Unavailable -> R.string.concierge_failure_unavailable
                         FailureReason.Refused -> R.string.concierge_failure_refused
                     }
                 ),
@@ -114,12 +121,32 @@ private fun TranscriptRow(item: TranscriptItem, surfaces: Map<String, A2uiSurfac
             )
         is TranscriptItem.Surface -> {
             val surface = surfaces[item.surfaceId]
-            if (surface == null) {
-                Note(stringResource(R.string.concierge_surface_closed), accent = false)
-            } else {
-                AgentSurface(surface)
+            when {
+                surface != null -> AgentSurface(surface)
+                item.surfaceId in state.failedSurfaces ->
+                    Note(stringResource(R.string.concierge_surface_failed), accent = false)
+                item.surfaceId in state.seenSurfaces ->
+                    Note(stringResource(R.string.concierge_surface_closed), accent = false)
+                // Created by the agent, not yet applied by the renderer.
+                else -> SurfacePlaceholder()
             }
         }
+    }
+}
+
+@Composable
+private fun SurfacePlaceholder() {
+    Box(
+        Modifier.fillMaxWidth()
+            .heightIn(min = LabTheme.spacing.huge * 2)
+            .background(LabTheme.colors.surface, LabTheme.shapes.Large),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            stringResource(R.string.concierge_thinking),
+            color = LabTheme.colors.textMuted,
+            style = LabTheme.typography.label,
+        )
     }
 }
 
@@ -128,20 +155,7 @@ private fun AgentSurface(surface: A2uiSurfaceModel) {
     A2uiSurface(
         surfaceModel = surface,
         modifier = Modifier.fillMaxWidth(),
-        loadingContent = {
-            Box(
-                Modifier.fillMaxWidth()
-                    .heightIn(min = LabTheme.spacing.huge * 2)
-                    .background(LabTheme.colors.surface, LabTheme.shapes.Large),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.concierge_thinking),
-                    color = LabTheme.colors.textMuted,
-                    style = LabTheme.typography.label,
-                )
-            }
-        },
+        loadingContent = { SurfacePlaceholder() },
         errorContent = { exception ->
             Note(
                 stringResource(R.string.concierge_surface_error, exception.message.orEmpty()),
