@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import dev.dimvlachos.lab.agenticdemo.AgenticDemos
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,7 +23,14 @@ class MainActivity : ComponentActivity() {
         val record = intent.getBooleanExtra("record", false)
         val label = intent.getBooleanExtra("label", false)
         if (record) enterRecordMode()
-        setContent { App(initialDemoId = demoId, record = record, label = label) }
+        setContent {
+            App(
+                initialDemoId = demoId,
+                record = record,
+                label = label,
+                extraDemos = AgenticDemos.all,
+            )
+        }
     }
 
     private fun enterRecordMode() {
