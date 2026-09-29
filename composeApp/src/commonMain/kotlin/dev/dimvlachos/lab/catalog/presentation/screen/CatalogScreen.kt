@@ -23,7 +23,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The home screen: one card per demo, each opening it. */
 @Composable
-internal fun CatalogScreen(onOpen: (Demo) -> Unit) {
+internal fun CatalogScreen(demos: List<Demo>, onOpen: (Demo) -> Unit) {
     LazyColumn(
         modifier =
             Modifier.fillMaxSize()
@@ -39,7 +39,7 @@ internal fun CatalogScreen(onOpen: (Demo) -> Unit) {
                 style = LabTheme.typography.title,
             )
         }
-        items(Catalog.demos, key = { it.id }) { demo ->
+        items(demos, key = { it.id }) { demo ->
             CatalogCard(
                 title = stringResource(demo.title),
                 subtitle = demo.id,
@@ -52,5 +52,5 @@ internal fun CatalogScreen(onOpen: (Demo) -> Unit) {
 @Preview
 @Composable
 private fun CatalogScreenPreview() {
-    LabTheme { CatalogScreen(onOpen = {}) }
+    LabTheme { CatalogScreen(demos = Catalog.demos, onOpen = {}) }
 }

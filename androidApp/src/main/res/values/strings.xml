@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="concierge_hint">Ask for a dinner plan…</string>
+    <string name="concierge_send">Send</string>
+    <string name="concierge_thinking">Composing UI…</string>
+    <string name="concierge_intro">Ask for dinner. The answer comes back as native UI, built by the agent from this app\'s A2UI catalog.</string>
+    <string name="concierge_suggestion_athens">Dinner for 4 in Athens on Friday, one vegetarian</string>
+    <string name="concierge_suggestion_date">A quiet date night in Lisbon tomorrow</string>
+    <string name="concierge_suggestion_cheap">Cheap eats near the Colosseum for 2</string>
+    <string name="concierge_action">You tapped “%1$s”</string>
+    <string name="concierge_correction">%1$d A2UI error(s) sent back to the agent to fix</string>
+    <string name="concierge_failure_network">The agent could not be reached. Check the connection and try again.</string>
+    <string name="concierge_failure_refused">The agent declined this request.</string>
+    <string name="concierge_surface_closed">Surface closed</string>
+    <string name="concierge_missing_key">Add openai.apiKey=… (or anthropic.apiKey=…) to local.properties and rebuild to talk to the agent.</string>
+    <string name="concierge_surface_error">This surface failed to render: %1$s</string>
+</resources>
