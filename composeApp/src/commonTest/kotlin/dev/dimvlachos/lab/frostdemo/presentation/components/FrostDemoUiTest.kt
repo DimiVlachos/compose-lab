@@ -14,9 +14,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -260,6 +260,9 @@ class FrostDemoUiTest {
     private val openSettings = runBlocking { getString(Res.string.mic_card_open_settings) }
     private val blockedLine = runBlocking { getString(Res.string.mic_card_blocked) }
 
+    // Taps on the card go through real touch handling, not the click action: a layer over the glass
+    // once swallowed every tap before the buttons saw it, and performClick() never noticed.
+
     // The access the demo is shown with, changeable mid-test as Android would change it.
     private fun ComposeUiTest.showDemoWith(
         access: () -> MicAccess,
@@ -290,7 +293,7 @@ class FrostDemoUiTest {
         var asks = 0
         showDemoWith({ MicAccess.Askable { asks++ } })
 
-        onNodeWithText(allow).performClick()
+        onNodeWithText(allow).performTouchInput { click() }
 
         assertEquals(1, asks)
     }
@@ -301,7 +304,7 @@ class FrostDemoUiTest {
         var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
         showDemoWith({ access })
 
-        onNodeWithText(allow).performClick()
+        onNodeWithText(allow).performTouchInput { click() }
         access = MicAccess.Askable {}
         waitForIdle()
 
@@ -315,12 +318,12 @@ class FrostDemoUiTest {
         var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
         showDemoWith({ access })
 
-        onNodeWithText(allow).performClick()
+        onNodeWithText(allow).performTouchInput { click() }
         access = MicAccess.Blocked { settings++ }
         waitForIdle()
 
         onNodeWithText(blockedLine).assertExists()
-        onNodeWithText(openSettings).performClick()
+        onNodeWithText(openSettings).performTouchInput { click() }
         assertEquals(1, settings)
     }
 
@@ -336,10 +339,10 @@ class FrostDemoUiTest {
     fun notNowLeadsToHoldingAndTheHintBringsTheCardBack() = runComposeUiTest {
         showDemoWith({ MicAccess.Askable {} })
 
-        onNodeWithText(notNow).performClick()
+        onNodeWithText(notNow).performTouchInput { click() }
         onNodeWithText(cardTitle).assertDoesNotExist()
 
-        onNodeWithText(holdHint).performClick()
+        onNodeWithText(holdHint).performTouchInput { click() }
         onNodeWithText(cardTitle).assertExists()
     }
 
@@ -387,5 +390,20 @@ class FrostDemoUiTest {
                 )
                 .map { runBlocking { getString(it) } } + blockedLine
         assertTrue(words.none { '\\' in it }, "$words")
+    }
+
+    @Test
+    fun aRealFingerThatShiftsAPixelStillPressesTheCardsButtons() = runComposeUiTest {
+        // A finger always moves a little while down; the card's buttons must not lose it.
+        showDemoWith({ MicAccess.Askable {} })
+
+        onNodeWithText(notNow).performTouchInput {
+            down(center)
+            moveBy(Offset(2f, 1f))
+            moveBy(Offset(1f, 2f))
+            up()
+        }
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
     }
 }
