@@ -12,6 +12,11 @@ targets:
         CFBundleDisplayName: Compose Lab
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchScreen: {}
+        # Landscape too, so a landscape demo (book.turn) can ask the scene to turn.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dimvlachos.lab
