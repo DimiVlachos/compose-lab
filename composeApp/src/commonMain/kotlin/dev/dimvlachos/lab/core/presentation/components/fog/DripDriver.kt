@@ -205,7 +205,6 @@ class DripDriver(
                 head,
                 radius =
                     when {
-                        stopped -> (RestingBeadDp / 2).dp
                         grown < GrowSeconds -> (diameter / 2 * (grown / GrowSeconds)).dp
                         else -> (diameter / 2).dp
                     },
@@ -281,14 +280,13 @@ private const val MaxStickSeconds = 0.8f
 private const val MaxStepSeconds = 0.1f
 private const val MaxSpeedDp = 150f
 private const val AccelerationDp = 600f
-private const val MinBeadDp = 5f
-private const val MaxBeadDp = 7f
-private const val RestingBeadDp = 4f
+private const val MinBeadDp = 9f
+private const val MaxBeadDp = 13f
 private const val MaxWobbleDp = 1.4f
 private const val WaveLengthDp = 60f
-private const val StreakClarity = 0.85f
-private val StreakRadius = 4.dp
-private val TopStreakRadius = 3.dp
+private const val StreakClarity = 0.9f
+private val StreakRadius = 5.dp
+private val TopStreakRadius = 4.dp
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
 private val StartClearance = 12.dp

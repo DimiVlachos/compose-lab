@@ -292,6 +292,15 @@ private fun DrawScope.drawBead(bead: Bead) {
         size = Size(radius * 2, radius * 2),
         style = Stroke(width = radius * 0.35f),
     )
+    drawArc(
+        Color.White.copy(alpha = FogDimens.BeadEdgeLight),
+        startAngle = 200f,
+        sweepAngle = 140f,
+        useCenter = false,
+        topLeft = centre - Offset(radius, radius),
+        size = Size(radius * 2, radius * 2),
+        style = Stroke(width = radius * 0.18f),
+    )
     drawCircle(
         Color.White.copy(alpha = FogDimens.BeadHighlight),
         radius * 0.3f,
