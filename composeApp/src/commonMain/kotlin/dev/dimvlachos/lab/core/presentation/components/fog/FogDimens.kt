@@ -22,4 +22,15 @@ internal object FogDimens {
 
     /** The milky film over the blurred scene, under the droplets. */
     const val FilmAlpha = 0.1f
+
+    // The fog clear glass keeps round its edges, as shares of the window: shallow at the top,
+    // deepest along the bottom, where condensation collects.
+    const val EdgeDepthTop = 0.035f
+    const val EdgeDepthSide = 0.07f
+    const val EdgeDepthBottom = 0.09f
+    const val EdgeRag = 0.03f
+    const val EdgeWobbleKnots = 7
+    const val EdgeGrainKnots = 9
+    const val EdgeMaskWidth = 72
+    const val EdgeMaskHeight = 128
 }
