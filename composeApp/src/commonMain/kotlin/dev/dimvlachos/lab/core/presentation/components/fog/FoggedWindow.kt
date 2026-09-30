@@ -2,10 +2,6 @@ package dev.dimvlachos.lab.core.presentation.components.fog
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,9 +26,10 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -53,8 +50,9 @@ import org.jetbrains.compose.resources.imageResource
  * Breaths fog the glass back over: each draws the fog again through a mask rising from the bottom.
  * Wipes and breaths replay in the order they were made, so a later wipe clears fresh fog too.
  *
- * With [onHoldChange] set, a press that stays still for [FogDimens.HoldDelayMillis] reports `true`
- * instead of wiping, and `false` when it lifts or the window goes away.
+ * Every finger wipes its own stroke, so several can wipe at once. With [onHoldChange] set, a finger
+ * that stays still for [FogDimens.HoldDelayMillis] holds instead of wiping: `true` when the first
+ * finger starts holding, `false` when the last lets go or the window goes away.
  */
 @Composable
 fun FoggedWindow(
@@ -75,35 +73,88 @@ fun FoggedWindow(
         modifier.pointerInput(state, onHoldChange != null) {
             val holdEnabled = onHoldChange != null
             awaitEachGesture {
-                val down = awaitFirstDown()
-                val start =
-                    if (holdEnabled) {
-                        withTimeoutOrNull(FogDimens.HoldDelayMillis) { awaitDragOrLift(down) }
-                            ?: PressStart.Held
-                    } else {
-                        awaitDragOrLift(down)
-                    }
-                when (start) {
-                    PressStart.Held -> {
-                        // The callback the hold started with lets it go: switching holding off
-                        // mid-hold clears the callback before the gesture is cancelled.
-                        val onHold = holdChange
+                // Each finger on its own: pending until it moves past touch slop, a wipe, or stays
+                // still long enough, a hold. The glass breathes while any finger holds.
+                val fingers = mutableMapOf<PointerId, Finger>()
+                var holding = 0
+                // The callback the hold started with lets it go: switching holding off mid-hold
+                // clears the callback before the gesture is cancelled.
+                var onHold: ((Boolean) -> Unit)? = null
+                fun startHolding() {
+                    if (holding++ == 0) {
+                        onHold = holdChange
                         onHold?.invoke(true)
-                        try {
-                            waitForUpOrCancellation()
-                        } finally {
-                            onHold?.invoke(false)
-                        }
                     }
-                    PressStart.Lifted -> Unit
-                    is PressStart.Dragged -> {
-                        val stroke = state.beginStroke(down.position.fractionOf(size))
-                        state.extendStroke(stroke, start.change.position.fractionOf(size))
-                        drag(start.change.id) { change ->
-                            state.extendStroke(stroke, change.position.fractionOf(size))
-                            change.consume()
-                        }
+                }
+                fun stopHolding() {
+                    if (--holding == 0) {
+                        onHold?.invoke(false)
+                        onHold = null
                     }
+                }
+                var now = 0L
+                try {
+                    do {
+                        val due =
+                            if (holdEnabled) {
+                                fingers.values.filterIsInstance<Finger.Pending>().minOfOrNull {
+                                    it.holdAt
+                                }
+                            } else {
+                                null
+                            }
+                        val event =
+                            if (due == null) awaitPointerEvent()
+                            else
+                                withTimeoutOrNull((due - now).coerceAtLeast(0)) {
+                                    awaitPointerEvent()
+                                }
+                        if (event == null) {
+                            // A still finger sends nothing; its hold comes due on the clock.
+                            now = due!!
+                            fingers.entries
+                                .filter { (_, finger) ->
+                                    finger is Finger.Pending && finger.holdAt <= now
+                                }
+                                .forEach { entry ->
+                                    entry.setValue(Finger.Holding)
+                                    startHolding()
+                                }
+                            continue
+                        }
+                        for (change in event.changes) {
+                            now = change.uptimeMillis
+                            val finger = fingers[change.id]
+                            when {
+                                change.changedToDown() ->
+                                    fingers[change.id] =
+                                        Finger.Pending(
+                                            change.position,
+                                            change.uptimeMillis + FogDimens.HoldDelayMillis,
+                                        )
+                                !change.pressed -> {
+                                    if (fingers.remove(change.id) == Finger.Holding) stopHolding()
+                                }
+                                finger is Finger.Pending &&
+                                    (change.position - finger.down).getDistance() >
+                                        viewConfiguration.touchSlop -> {
+                                    val stroke = state.beginStroke(finger.down.fractionOf(size))
+                                    state.extendStroke(stroke, change.position.fractionOf(size))
+                                    fingers[change.id] = Finger.Wiping(stroke)
+                                    change.consume()
+                                }
+                                finger is Finger.Wiping && change.positionChanged() -> {
+                                    state.extendStroke(
+                                        finger.stroke,
+                                        change.position.fractionOf(size),
+                                    )
+                                    change.consume()
+                                }
+                            }
+                        }
+                    } while (fingers.isNotEmpty())
+                } finally {
+                    if (holding > 0) onHold?.invoke(false)
                 }
             }
         }
@@ -197,18 +248,14 @@ private fun softBrush(radius: Float) =
 
 private fun Offset.fractionOf(size: IntSize) = Offset(x / size.width, y / size.height)
 
-private sealed interface PressStart {
-    data object Held : PressStart
+// One finger on the glass: undecided, wiping its own stroke, or holding still to breathe.
+private sealed interface Finger {
+    class Pending(val down: Offset, val holdAt: Long) : Finger
 
-    data object Lifted : PressStart
+    class Wiping(val stroke: WipeStroke) : Finger
 
-    class Dragged(val change: PointerInputChange) : PressStart
+    data object Holding : Finger
 }
-
-// Waits for the press to move past touch slop, a drag, or to lift first.
-private suspend fun AwaitPointerEventScope.awaitDragOrLift(down: PointerInputChange): PressStart =
-    awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
-        ?.let { PressStart.Dragged(it) } ?: PressStart.Lifted
 
 // Draws [image] over the whole area, cropped to cover it rather than stretched.
 private fun DrawScope.drawCovering(image: ImageBitmap, blendMode: BlendMode) {
