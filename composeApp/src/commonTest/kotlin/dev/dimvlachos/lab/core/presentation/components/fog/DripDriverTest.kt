@@ -493,4 +493,22 @@ class DripDriverTest {
         drips.run(0.3f)
         assertTrue(drips.beads.isEmpty(), "gone: ${drips.beads}")
     }
+
+    @Test
+    fun aDropHiddenByABreathStaysHiddenAsItIsPushedOut() {
+        val fog = FogState()
+        val drips = driver(fog)
+        // The first drop rests low; a breath rises past it, not quite to the top.
+        drips.drip(Offset(0.05f, 0.7f), 0.1f)
+        drips.run(10f)
+        fog.setBreathLevel(fog.beginBreath(), 0.6f)
+        assertEquals(0f, drips.beads.single().alpha, "fogged over")
+
+        // Twelve more push it out.
+        repeat(12) { drips.drip(Offset(0.12f + it * 0.07f, 0.05f), 0.08f) }
+        drips.run(12f) {
+            val hidden = drips.beads.filter { it.at.x < 0.08f }
+            assertTrue(hidden.all { it.alpha == 0f }, "never back into view: $hidden")
+        }
+    }
 }
