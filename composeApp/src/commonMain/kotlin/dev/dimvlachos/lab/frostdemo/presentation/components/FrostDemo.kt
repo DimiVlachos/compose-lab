@@ -243,12 +243,13 @@ internal fun FrostDemo(
             }
         }
         // While the card is up the glass takes no touches, so reaching for a button cannot wipe it.
+        // Being hit is enough to keep touches off the glass beneath; consuming them as well would
+        // take a real finger's small movements from the card's own buttons, which then cancel the
+        // tap.
         if (cardShown) {
             Box(
                 Modifier.matchParentSize().pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) awaitPointerEvent().changes.forEach { it.consume() }
-                    }
+                    awaitPointerEventScope { while (true) awaitPointerEvent() }
                 },
                 contentAlignment = Alignment.Center,
             ) {
