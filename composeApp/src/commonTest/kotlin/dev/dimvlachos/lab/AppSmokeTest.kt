@@ -43,7 +43,7 @@ class AppSmokeTest {
     fun theCatalogOpensEachDemoDirectly() = runComposeUiTest {
         setContent { App(initialDemoId = null, record = false, label = false) }
         onNodeWithText("Nav bar").assertExists()
-        onNodeWithText("Fogged mirror").assertExists()
+        onNodeWithText("Bathroom").assertExists()
         onNodeWithText("Profile gallery").performClick()
         onNodeWithText("compose-lab").assertDoesNotExist()
         onNodeWithText("Stop").assertExists()

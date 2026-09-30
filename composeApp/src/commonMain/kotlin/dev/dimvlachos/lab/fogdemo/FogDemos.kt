@@ -5,9 +5,11 @@ import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
-import dev.dimvlachos.lab.fogdemo.presentation.components.FogDemo
+import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
+import dev.dimvlachos.lab.fogdemo.reflection.ReflectionMirror
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.demo_fog
+import dev.dimvlachos.lab.resources.demo_fog_bathroom
+import dev.dimvlachos.lab.resources.demo_fog_reflection
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -36,12 +38,17 @@ internal object FogDemos {
     }
 
     // On the phone the glass is the user's to breathe on and wipe; Replay plays the clip.
-    val all: List<Demo> =
-        listOf(
-            Demo("fog.mirror", Res.string.demo_fog, wipeTour, autoplay = false) {
-                FogDemo(it)
-            }
-        )
+    val bathroom =
+        Demo("fog.mirror.bathroom", Res.string.demo_fog_bathroom, wipeTour, autoplay = false) {
+            BathroomMirror(it)
+        }
+
+    val reflection =
+        Demo("fog.mirror.camera", Res.string.demo_fog_reflection, wipeTour, autoplay = false) {
+            ReflectionMirror(it)
+        }
+
+    val all: List<Demo> = listOf(bathroom, reflection)
 }
 
 private val LiftBetweenStrokes = 250.milliseconds
