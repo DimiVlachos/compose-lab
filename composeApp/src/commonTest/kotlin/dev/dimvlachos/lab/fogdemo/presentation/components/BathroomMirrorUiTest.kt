@@ -76,7 +76,9 @@ class BathroomMirrorUiTest {
     @Test
     fun afterAWipeTheBathroomInvitesNoBreath() = runComposeUiTest {
         showBathroom(DemoState(), FogState())
-        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
         waitForIdle()
 
         onNodeWithText(text(Res.string.fog_hint_wipe)).assertDoesNotExist()
@@ -118,7 +120,9 @@ class BathroomMirrorUiTest {
         val fog = FogState()
         showBathroom(DemoState(), fog)
         mainClock.advanceTimeByFrame()
-        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
         mainClock.advanceTimeByFrame()
         assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
 

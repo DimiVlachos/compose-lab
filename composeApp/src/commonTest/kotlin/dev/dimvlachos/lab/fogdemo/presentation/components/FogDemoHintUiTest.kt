@@ -72,7 +72,9 @@ class FogDemoHintUiTest {
     fun afterAWipeTheMirrorInvitesABlow() = runComposeUiTest {
         showDemo(listening())
 
-        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
         waitForIdle()
 
         onNodeWithText(wipeHint).assertDoesNotExist()
@@ -83,7 +85,9 @@ class FogDemoHintUiTest {
     fun afterAWipeWithoutAMicrophoneItInvitesAHold() = runComposeUiTest {
         showDemo(MicAccess.Unavailable)
 
-        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
         waitForIdle()
 
         onNodeWithText(wipeHint).assertDoesNotExist()
@@ -95,7 +99,9 @@ class FogDemoHintUiTest {
         val fog = FogState()
         showDemo(MicAccess.Unavailable, fog)
 
-        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
         waitForIdle()
         runOnUiThread { fog.setBreathLevel(fog.beginBreath(), 1f) }
         waitForIdle()

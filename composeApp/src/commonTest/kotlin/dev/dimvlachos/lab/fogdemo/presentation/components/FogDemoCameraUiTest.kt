@@ -78,6 +78,17 @@ class FogDemoCameraUiTest {
     }
 
     @Test
+    fun theMirrorHangsOnAWallTheCameraShowingOnlyInItsGlass() = runComposeUiTest {
+        showMirror({ CameraAccess.Granted(FakeMirrorCamera()) })
+        assertTrue(middleIsMagenta(), "the glass shows the camera")
+
+        // Low down, below the glass, the wall and the basin.
+        val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
+        val low = pixels[pixels.width / 2, pixels.height * 9 / 10]
+        assertTrue(abs(low.red - low.green) < 0.1f, "the wall, not the mirror: $low")
+    }
+
+    @Test
     fun aGrantedCameraShowsTheLiveMirror() = runComposeUiTest {
         val camera = FakeMirrorCamera()
         showMirror({ CameraAccess.Granted(camera) })

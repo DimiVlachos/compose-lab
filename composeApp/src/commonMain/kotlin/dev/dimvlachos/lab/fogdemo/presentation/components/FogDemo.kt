@@ -352,26 +352,29 @@ internal fun FogDemo(
     val surface = LabTheme.colors.surface
     val startingGlass = remember(surface) { ColorPainter(surface) }
     Box(Modifier.fillMaxSize()) {
-        FoggedWindow(
-            // A camera still starting shows plain glass: the still is for when there is none.
-            photo =
-                when {
-                    camera == null -> painterResource(Res.drawable.mirror_view)
-                    camera.showing -> camera.mirror
-                    else -> startingGlass
-                },
-            state = fog,
-            modifier =
-                Modifier.fillMaxSize().onSizeChanged {
-                    window = it.toSize()
-                    drips.glass = with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
-                },
-            brushRadius = FogDemos.FingerBrush,
-            beads = { drips.beads },
-            onHoldChange =
-                if (!breathing || listening || state.recording || cardShown) null
-                else { held -> holding = held },
-        )
+        // The fog is the glass of a mirror on the bathroom wall.
+        MirrorOnWall { glassModifier ->
+            FoggedWindow(
+                // A camera still starting shows plain glass: the still is for when there is none.
+                photo =
+                    when {
+                        camera == null -> painterResource(Res.drawable.mirror_view)
+                        camera.showing -> camera.mirror
+                        else -> startingGlass
+                    },
+                state = fog,
+                modifier =
+                    glassModifier.onSizeChanged {
+                        window = it.toSize()
+                        drips.glass = with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
+                    },
+                brushRadius = FogDemos.FingerBrush,
+                beads = { drips.beads },
+                onHoldChange =
+                    if (!breathing || listening || state.recording || cardShown) null
+                    else { held -> holding = held },
+            )
+        }
         // First the wipe hint, until the mirror is found. The blow hint goes after the first
         // breath; the hold pill stays while it is the way back to the card.
         val hint =

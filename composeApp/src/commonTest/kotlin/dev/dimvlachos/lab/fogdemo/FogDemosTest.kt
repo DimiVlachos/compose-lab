@@ -3,6 +3,7 @@
 package dev.dimvlachos.lab.fogdemo
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.FakeController
@@ -10,6 +11,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
+import dev.dimvlachos.lab.fogdemo.presentation.components.wallGlassOn
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,7 +34,7 @@ class FogDemosTest {
         }
         val dripper =
             DripDriver(fog, Random(1)).apply {
-                glass = DpSize(400.dp, 500.dp)
+                glass = ClipGlass
                 randomStarts = false
             }
         for ((at, length) in controller.drips) dripper.drip(at, length)
@@ -92,9 +94,10 @@ class FogDemosTest {
     fun theClipsDripsRunBesideThePorthole() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.reflection.script.play(controller)
-        // In dp on the clip's 400 × 500 frame, measured to the scrub's segments: a drop that
+        // In dp on the clip's glass, measured to the scrub's segments: a drop that
         // came within the finger's reach of them would stop and blend in.
-        fun dp(point: Offset) = Offset(point.x * 400f, point.y * 500f)
+        fun dp(point: Offset) =
+            Offset(point.x * ClipGlass.width.value, point.y * ClipGlass.height.value)
         val scrub = FogDemos.porthole.path().map(::dp)
         val clearance = FogDemos.FingerBrush.value + MaxDropRadius
 
@@ -116,11 +119,11 @@ class FogDemosTest {
         val times = controller.calls.filter { it.second.startsWith("drip") }.map { it.first }
         val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first
 
-        // Whatever the drops' own randomness, over many seeds, on the clip's 400 × 500 frame.
+        // Whatever the drops' own randomness, over many seeds, on the clip's glass.
         for (seed in 1..30) {
             val drips =
                 DripDriver(newFogDemoState(), Random(seed)).apply {
-                    glass = DpSize(400.dp, 500.dp)
+                    glass = ClipGlass
                     randomStarts = false
                 }
             var now = times.first()
@@ -172,7 +175,8 @@ class FogDemosTest {
                 .zip(controller.calls.filter { it.second.startsWith("drip") })
                 .filter { (_, call) -> call.first < wipeAt }
                 .map { it.first }
-        fun dp(point: Offset) = Offset(point.x * 400f, point.y * 500f)
+        fun dp(point: Offset) =
+            Offset(point.x * ClipGlass.width.value, point.y * ClipGlass.height.value)
         val scrub = FogDemos.porthole.path().map(::dp)
         val clearance = FogDemos.FingerBrush.value + MaxDropRadius
         for ((at, length) in before) {
@@ -242,7 +246,7 @@ class FogDemosTest {
 
 private fun clipDrips(seed: Int, fog: FogState = newFogDemoState()) =
     DripDriver(fog, Random(seed), wipeRadius = FogDemos.FingerBrush).apply {
-        glass = DpSize(400.dp, 500.dp)
+        glass = ClipGlass
         randomStarts = false
     }
 
@@ -266,6 +270,9 @@ private fun wipeOnto(fog: FogState, controller: FakeController) {
         path.drop(1).forEach { fog.extendStroke(stroke, it) }
     }
 }
+
+// The mirror's glass in the clip's 400 × 500 dp frame: the stage the drops run on.
+private val ClipGlass = wallGlassOn(Size(400f, 500f)).let { DpSize(it.width.dp, it.height.dp) }
 
 // The biggest drop's radius, in dp.
 private const val MaxDropRadius = 5.5f
