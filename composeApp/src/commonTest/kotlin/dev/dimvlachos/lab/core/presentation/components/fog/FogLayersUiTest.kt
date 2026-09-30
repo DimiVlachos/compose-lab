@@ -224,4 +224,24 @@ class FogLayersUiTest {
         val twice = fogLeftUnder(2)
         assertTrue(abs(twice - once) < 0.02f, "one film, not two: $twice against $once")
     }
+
+    @Test
+    fun halfAMistBringsBackHalfTheFogOverAWipe() = runComposeUiTest {
+        val fog = FogState()
+        fog.beginStroke(Offset(0.1f, 0.5f)).also { fog.extendStroke(it, Offset(0.9f, 0.5f)) }
+        val mist = fog.beginMist()
+        fog.setMistAmount(mist, 0.5f)
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = fog,
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val wiped = pixels[pixels.width / 2, pixels.height / 2].green
+        val fogged = pixels[pixels.width / 2, (pixels.height * 0.15f).toInt()].green
+        assertTrue(wiped > 0.02f, "some fog back over the wipe: $wiped")
+        assertTrue(wiped < fogged * 0.8f, "not all of it yet: $wiped against $fogged")
+    }
 }

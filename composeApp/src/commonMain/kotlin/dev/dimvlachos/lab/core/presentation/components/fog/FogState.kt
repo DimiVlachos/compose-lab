@@ -69,6 +69,28 @@ class FogState(startClear: Boolean = false) {
         }
     }
 
+    /** Starts fog misting back evenly over the whole window, and returns the mist. */
+    fun beginMist(): Mist {
+        val mist = Mist()
+        _marks += mist
+        return mist
+    }
+
+    /**
+     * Thickens [mist] to [amount], from 0, nothing, to 1, the whole window fogged. It never thins,
+     * and a mist already dropped stays gone. At 1 the window is fresh fog: the mist and every mark
+     * before it are dropped, with drops' trails laid while it thickened.
+     */
+    fun setMistAmount(mist: Mist, amount: Float) {
+        val index = _marks.indexOf(mist)
+        if (index < 0 || amount <= mist.amount) return
+        mist.amount = amount.coerceAtMost(1f)
+        if (amount >= 1f) {
+            _marks.removeRange(0, index + 1)
+            _marks.removeAll { it is WipeStroke && it.clarity < 1f }
+        }
+    }
+
     /** Starts the fog evaporating evenly over the whole window, and returns the evaporation. */
     fun beginEvaporation(): Evaporation {
         val evaporation = Evaporation()
@@ -143,6 +165,12 @@ internal constructor(
 
 /** The fog evaporating evenly, from [FogState.beginEvaporation]; at 1 the glass is clear. */
 class Evaporation internal constructor() : FogMark {
+    var amount by mutableFloatStateOf(0f)
+        internal set
+}
+
+/** Fog misting back evenly over a [FogState], from [FogState.beginMist]; at 1 it is all fog. */
+class Mist internal constructor() : FogMark {
     var amount by mutableFloatStateOf(0f)
         internal set
 }

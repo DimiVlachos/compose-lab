@@ -190,7 +190,12 @@ fun FoggedWindow(
                                     drawStreaks(marks.subList(i, end), radius, mark.clarity)
                                     i = end - 1
                                 }
-                            is Breath -> drawFog(mark.level)
+                            is Breath -> if (mark.level > 0f) drawFog { drawFogMask(mark.level) }
+                            // Misting back evenly: the same fill-in fog, through an even veil.
+                            is Mist ->
+                                if (mark.amount > 0f) {
+                                    drawFog { drawRect(Color.Black.copy(alpha = mark.amount)) }
+                                }
                             is Evaporation ->
                                 // Clear glass keeps a ragged band of fog round its edges.
                                 drawImage(
@@ -291,15 +296,14 @@ private fun FogMark.isStreakLike(first: WipeStroke) =
 // Fog fills in what is missing rather than piling onto fog already there: under the breath's mask
 // the glass becomes the fog's natural state, existing × (1 − mask) + fog × mask. So the existing
 // layer is first cleared through the mask, then the fog, kept only where the mask is, is added.
-private fun ContentDrawScope.drawFog(level: Float) {
-    if (level <= 0f) return
+private fun ContentDrawScope.drawFog(mask: DrawScope.() -> Unit) {
     val bounds = Rect(Offset.Zero, size)
     drawIntoCanvas { canvas ->
         canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.DstOut })
-        drawFogMask(level)
+        mask()
         canvas.restore()
         canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.Plus })
-        drawFogMask(level)
+        mask()
         canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.SrcIn })
         drawContent()
         canvas.restore()

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -21,6 +22,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.Breath
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
+import dev.dimvlachos.lab.core.presentation.components.fog.Mist
+import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
 import dev.dimvlachos.lab.resources.Res
@@ -107,5 +110,32 @@ class BathroomMirrorUiTest {
         mainClock.advanceTimeBy(600)
 
         assertTrue(fog.marks.any { it is Breath }, "the clip's breath: ${fog.marks}")
+    }
+
+    @Test
+    fun theWipedBathroomMirrorMistsBackOverByItself() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        showBathroom(DemoState(), fog)
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag("demo").performTouchInput { swipe(centerLeft, centerRight) }
+        mainClock.advanceTimeByFrame()
+        assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
+
+        mainClock.advanceTimeBy(32_000)
+        assertTrue(
+            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+            "fogged over again: ${fog.marks}",
+        )
+    }
+
+    @Test
+    fun theRecordingDoesNotMistTheClipOver() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
+        showBathroom(DemoState(recording = true), fog)
+        mainClock.advanceTimeBy(10_000)
+        assertTrue(fog.marks.none { it is Mist }, "${fog.marks}")
     }
 }
