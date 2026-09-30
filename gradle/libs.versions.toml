@@ -1,4 +1,5 @@
 [versions]
+lifecycle = "2.9.6"
 activityCompose = "1.13.0"
 agp = "9.3.1"
 android-compileSdk = "37"
@@ -15,6 +16,7 @@ navigationEvent = "1.0.1"
 spotless = "8.9.0"
 
 [libraries]
+lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 cmp-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "composeMultiplatform" }

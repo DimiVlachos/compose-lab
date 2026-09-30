@@ -1,9 +1,15 @@
 package dev.dimvlachos.lab.frostdemo.presentation.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -11,26 +17,61 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.toSize
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import co.touchlab.kermit.Logger
+import dev.dimvlachos.lab.core.audio.BlowDetector
+import dev.dimvlachos.lab.core.audio.MicAccess
+import dev.dimvlachos.lab.core.audio.MicFrameSeconds
+import dev.dimvlachos.lab.core.audio.rememberMicAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostedWindow
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.frostdemo.BreathDriver
 import dev.dimvlachos.lab.frostdemo.FrostDemos
 import dev.dimvlachos.lab.frostdemo.clipFrameToWindow
 import dev.dimvlachos.lab.frostdemo.pointAt
 import dev.dimvlachos.lab.frostdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.frost_hint_blow
+import dev.dimvlachos.lab.resources.frost_hint_hold
 import dev.dimvlachos.lab.resources.photo_santorini
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+
+// A held finger breathes steadily, a little softer than a firm blow.
+private const val HoldStrength = 0.7f
+
+// About 2 s of nothing but zeros: the microphone is taken by something else, a call perhaps.
+private const val SilentMicFrames = 60
+
+private val log = Logger.withTag("FrostDemo")
 
 @Composable
-internal fun FrostDemo(state: DemoState, frost: FrostState = remember { FrostState() }) {
+internal fun FrostDemo(
+    state: DemoState,
+    frost: FrostState = remember { FrostState() },
+    micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
+) {
     var window by remember { mutableStateOf(Size.Zero) }
     val driver = remember(frost) { BreathDriver(frost) }
+    var micFailed by remember { mutableStateOf(false) }
+    var breathed by remember { mutableStateOf(false) }
+    var holding by remember { mutableStateOf(false) }
+    val listening = micAccess is MicAccess.Granted && !micFailed
+
     // The script's wipe plays its finger back sample by sample: the path already holds the hand's
     // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
     // whatever window this is.
@@ -64,13 +105,90 @@ internal fun FrostDemo(state: DemoState, frost: FrostState = remember { FrostSta
             state.setBreatheHandler(null)
         }
     }
-    // Back on 0, the loop's start, the glass frosts over again.
-    val selected = state.selectedIndex
-    LaunchedEffect(selected) { if (selected == 0) frost.clear() }
-    FrostedWindow(
-        photo = painterResource(Res.drawable.photo_santorini),
-        state = frost,
-        modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
-        brushRadius = FrostDemos.ScrubBrush,
-    )
+
+    // A blow on the microphone fogs the glass, only while the demo is in front of the user.
+    if (micAccess is MicAccess.Granted && !micFailed) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(micAccess, lifecycle) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                val detector = BlowDetector()
+                var silentFrames = 0
+                try {
+                    micAccess.microphone.frames.collect { frame ->
+                        silentFrames = if (frame.all { it == 0f }) silentFrames + 1 else 0
+                        check(silentFrames < SilentMicFrames) {
+                            "the microphone hears only silence"
+                        }
+                        val strength = detector.process(frame)
+                        if (strength > 0f) {
+                            driver.advance(strength, MicFrameSeconds)
+                            breathed = true
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    log.w(e) { "no microphone, so holding the glass breathes on it" }
+                    micFailed = true
+                }
+            }
+        }
+    }
+
+    // Without a microphone, a held finger breathes on the glass for as long as it stays.
+    LaunchedEffect(holding) {
+        if (!holding) return@LaunchedEffect
+        var previous = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                driver.advance(HoldStrength, (now - previous) / 1_000_000_000f)
+                previous = now
+            }
+            breathed = true
+        }
+    }
+
+    // Back on 0, the loop's start, the glass frosts over again. Only on a return to 0: clearing on
+    // the first composition too would race a microphone that is already fogging the glass.
+    LaunchedEffect(state, frost) {
+        snapshotFlow { state.selectedIndex }.drop(1).filter { it == 0 }.collect { frost.clear() }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        FrostedWindow(
+            photo = painterResource(Res.drawable.photo_santorini),
+            state = frost,
+            modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
+            brushRadius = FrostDemos.ScrubBrush,
+            onHoldChange = if (listening || state.recording) null else { held -> holding = held },
+        )
+        val hint =
+            when {
+                state.recording || breathed -> null
+                listening -> Res.string.frost_hint_blow
+                micAccess is MicAccess.Pending -> null
+                else -> Res.string.frost_hint_hold
+            }
+        Crossfade(
+            targetState = hint,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(LabTheme.spacing.mediumLarge),
+        ) { shown ->
+            if (shown != null) {
+                Text(
+                    stringResource(shown),
+                    color = LabTheme.colors.textPrimary,
+                    style = LabTheme.typography.body,
+                    modifier =
+                        Modifier.background(
+                                LabTheme.colors.surface.copy(alpha = 0.7f),
+                                RoundedCornerShape(percent = 50),
+                            )
+                            .padding(
+                                horizontal = LabTheme.spacing.mediumLarge,
+                                vertical = LabTheme.spacing.small,
+                            ),
+                )
+            }
+        }
+    }
 }
