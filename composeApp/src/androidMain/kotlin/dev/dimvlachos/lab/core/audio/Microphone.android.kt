@@ -41,17 +41,18 @@ actual fun rememberMicAccess(enabled: Boolean): MicAccess {
     var granted by remember { mutableStateOf(isGranted()) }
     var blocked by rememberSaveable { mutableStateOf(false) }
     var refusals by rememberSaveable { mutableIntStateOf(0) }
+    var rationaleBefore by rememberSaveable { mutableStateOf(false) }
+    fun rationale() =
+        context
+            .findActivity()
+            ?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) == true
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
             granted = ok
             if (!ok) {
                 refusals++
-                // A refusal without the system being willing to ask again: only settings can help.
-                blocked =
-                    context
-                        .findActivity()
-                        ?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) ==
-                        false
+                // Only settings can help once the system will not ask again.
+                blocked = refusedForGood(rationaleBefore, rationale(), refusals)
             }
         }
     // Back from settings, or from anywhere, the permission may have changed.
@@ -78,7 +79,10 @@ actual fun rememberMicAccess(enabled: Boolean): MicAccess {
     // A new Askable after each refusal, so the demo can tell the answer came.
     val askableAccess =
         remember(refusals) {
-            MicAccess.Askable { launcher.launch(Manifest.permission.RECORD_AUDIO) }
+            MicAccess.Askable {
+                rationaleBefore = rationale()
+                launcher.launch(Manifest.permission.RECORD_AUDIO)
+            }
         }
     return when {
         granted -> grantedAccess

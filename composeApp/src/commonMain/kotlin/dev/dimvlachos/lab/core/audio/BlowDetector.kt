@@ -37,8 +37,8 @@ private const val MinStrength = 0.3f
 class BlowDetector(private val sampleRate: Int = MicSampleRate) {
     private var background = Float.NaN
     private var candidateFrames = 0
-    private var blowFrames = 0
     private var quietFrames = 0
+    private var loudFrames = 0
     private var strength = 0f
 
     fun process(frame: FloatArray): Float {
@@ -49,25 +49,27 @@ class BlowDetector(private val sampleRate: Int = MicSampleRate) {
         if (background.isNaN()) background = level
         val margin = level - background
         val loud = margin >= MarginDb
+        // Loud for long enough, whatever the other checks said frame by frame, is the room: a fan
+        // or
+        // a vacuum that now and then fails a check must not start a fresh blow each time.
+        loudFrames = if (loud) loudFrames + 1 else 0
+        if (loudFrames > MaxBlowFrames) {
+            background = level
+            loudFrames = 0
+            stop()
+            return strength
+        }
         val blowing =
             loud && level >= MinLevelDb && periodicity(frame, sampleRate) <= MaxPeriodicity
         if (strength > 0f) {
             if (blowing) {
                 quietFrames = 0
-                blowFrames++
                 strength = strengthFor(margin)
-                if (blowFrames > MaxBlowFrames) {
-                    background = level
-                    stop()
-                }
             } else if (++quietFrames >= ReleaseFrames) {
                 stop()
             }
         } else if (blowing) {
-            if (++candidateFrames >= OnsetFrames) {
-                blowFrames = candidateFrames
-                strength = strengthFor(margin)
-            }
+            if (++candidateFrames >= OnsetFrames) strength = strengthFor(margin)
         } else {
             candidateFrames = 0
             // Only quiet frames are the room: a loud sound that is no blow must not raise it.
@@ -79,7 +81,6 @@ class BlowDetector(private val sampleRate: Int = MicSampleRate) {
     private fun stop() {
         strength = 0f
         candidateFrames = 0
-        blowFrames = 0
         quietFrames = 0
     }
 

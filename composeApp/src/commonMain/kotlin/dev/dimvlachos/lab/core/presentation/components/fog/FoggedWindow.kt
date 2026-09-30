@@ -79,11 +79,14 @@ fun FoggedWindow(
                     }
                 when (start) {
                     PressStart.Held -> {
-                        holdChange?.invoke(true)
+                        // The callback the hold started with lets it go: switching holding off
+                        // mid-hold clears the callback before the gesture is cancelled.
+                        val onHold = holdChange
+                        onHold?.invoke(true)
                         try {
                             waitForUpOrCancellation()
                         } finally {
-                            holdChange?.invoke(false)
+                            onHold?.invoke(false)
                         }
                     }
                     PressStart.Lifted -> Unit
