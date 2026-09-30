@@ -172,4 +172,24 @@ class FogStateTest {
         assertEquals(1f, fog.beginStroke(Offset(0.5f, 0.5f)).clarity)
         assertEquals(0.85f, fog.beginStroke(Offset(0.5f, 0.5f), clarity = 0.85f).clarity)
     }
+
+    @Test
+    fun aMistRisesEvenlyAndOnlyEverThickens() {
+        val fog = FogState()
+        fog.beginStroke(Offset(0.5f, 0.5f))
+        val mist = fog.beginMist()
+        fog.setMistAmount(mist, 0.4f)
+        fog.setMistAmount(mist, 0.2f)
+        assertEquals(0.4f, mist.amount)
+    }
+
+    @Test
+    fun aFullMistLeavesFreshFog() {
+        val fog = FogState()
+        fog.beginStroke(Offset(0.5f, 0.5f))
+        val mist = fog.beginMist()
+        fog.beginStroke(Offset(0.2f, 0.2f), clarity = 0.9f)
+        fog.setMistAmount(mist, 1f)
+        assertTrue(fog.marks.isEmpty(), "${fog.marks}")
+    }
 }

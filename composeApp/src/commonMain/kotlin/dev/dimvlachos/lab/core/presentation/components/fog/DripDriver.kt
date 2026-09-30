@@ -218,7 +218,7 @@ class DripDriver(
         private var lastStreak: WipeStroke? = null
         private var wipedBefore: Map<WipeStroke, Int> = emptyMap()
         // How far each breath under way when it stopped had already fogged it.
-        private var fogAtStop: Map<Breath, Float> = emptyMap()
+        private var fogAtStop: Map<FogMark, Float> = emptyMap()
         private var head = start
         private var stretch = 0f
         var stopped = false
@@ -286,9 +286,9 @@ class DripDriver(
                             .filter { it !in ours }
                             .associateWith { it.points.size }
                     fogAtStop =
-                        fog.marks.filterIsInstance<Breath>().associateWith {
-                            fogCoverAt(head.y, it.level)
-                        }
+                        fog.marks
+                            .filter { it is Breath || it is Mist }
+                            .associateWith { it.fogAt(head.y) }
                 } else stuck = random.between(MinStickSeconds, MaxStickSeconds)
             }
         }
@@ -349,13 +349,12 @@ class DripDriver(
             if (index < 0) return if (fadeRate > 0f) fadeLeft else 0f
             var cover = 0f
             for (i in index + 1 until fog.marks.size) {
-                val mark = fog.marks[i]
-                if (mark is Breath) cover = maxOf(cover, fogCoverAt(head.y, mark.level))
+                cover = maxOf(cover, fog.marks[i].fogAt(head.y))
             }
             // A breath already under way when it stopped fogs it over as its front rises past.
             for ((breath, before) in fogAtStop) {
                 if (before >= 1f || fog.marks.none { it === breath }) continue
-                val now = fogCoverAt(head.y, breath.level)
+                val now = breath.fogAt(head.y)
                 cover = maxOf(cover, ((now - before) / (1f - before)).coerceIn(0f, 1f))
             }
             return fadeLeft * (1f - cover)
@@ -450,11 +449,18 @@ internal fun FogState.isWipedAt(point: Offset, glass: DpSize, wipeRadius: Dp): B
 /** Whether a breath after the mark at [index] has fogged [point] back over. */
 internal fun FogState.foggedOverSince(index: Int, point: Offset): Boolean {
     for (j in index + 1 until marks.size) {
-        val later = marks[j]
-        if (later is Breath && fogCoverAt(point.y, later.level) >= FoggedOver) return true
+        if (marks[j].fogAt(point.y) >= FoggedOver) return true
     }
     return false
 }
+
+/** How much this mark fogs the glass at height [y]: a breath from below, a mist evenly. */
+internal fun FogMark.fogAt(y: Float): Float =
+    when (this) {
+        is Breath -> fogCoverAt(y, level)
+        is Mist -> amount
+        else -> 0f
+    }
 
 // How much of a breath's fog makes glass count as fogged over again.
 private const val FoggedOver = 0.9f

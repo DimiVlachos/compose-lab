@@ -551,4 +551,18 @@ class DripDriverTest {
         drips.run(0.5f)
         assertTrue(drips.beads.isEmpty())
     }
+
+    @Test
+    fun aMistFogsARestingDropOverAsItThickens() {
+        val fog = FogState()
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        drips.run(10f)
+        val mist = fog.beginMist()
+        fog.setMistAmount(mist, 0.5f)
+        assertEquals(0.5f, drips.beads.single().alpha, 0.01f)
+        fog.setMistAmount(mist, 1f)
+        drips.run(0.5f)
+        assertTrue(drips.beads.isEmpty())
+    }
 }

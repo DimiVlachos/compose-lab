@@ -48,6 +48,7 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
+import dev.dimvlachos.lab.core.presentation.components.fog.MistDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.BreathDriver
@@ -253,6 +254,27 @@ internal fun FogDemo(
     LaunchedEffect(fog) {
         snapshotFlow { fog.marks.any { it is WipeStroke && it.clarity >= 1f } }.first { it }
         wiped = true
+    }
+
+    // Without breath, the still-steamy room mists wiped glass back over by itself, slowly, while
+    // the demo is in front of the user; never in the recording, whose clip breathes over it.
+    if (!breathing && !state.recording) {
+        val mist = remember(fog) { MistDriver(fog) }
+        val mistLifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(mist, mistLifecycle) {
+            mistLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    snapshotFlow { mist.needed }.first { it }
+                    var previous = withFrameNanos { it }
+                    while (mist.needed) {
+                        withFrameNanos { now ->
+                            mist.advance((now - previous) / 1_000_000_000f)
+                            previous = now
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Drops run only while the demo is in front of the user. Between drops, once the last has
