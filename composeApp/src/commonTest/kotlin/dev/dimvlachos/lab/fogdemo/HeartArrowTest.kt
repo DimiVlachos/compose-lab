@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.fogdemo
 
+import androidx.compose.ui.geometry.Offset
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,11 +9,28 @@ import kotlin.test.assertTrue
 class HeartArrowTest {
     private val strokes = heartWithArrow()
     private val heart = strokes[0].path
-    private val shaft = strokes[1].path
+    private val shaftIn = strokes[1].path
+    private val shaftOut = strokes[2].path
+
+    private fun distanceToHeart(point: Offset) = heart.minOf { (it - point).getDistance() }
+
+    // Even-odd ray cast against the heart's outline.
+    private fun insideHeart(point: Offset): Boolean {
+        var inside = false
+        for (i in heart.indices) {
+            val a = heart[i]
+            val b = heart[(i + 1) % heart.size]
+            if ((a.y > point.y) != (b.y > point.y)) {
+                val x = a.x + (point.y - a.y) / (b.y - a.y) * (b.x - a.x)
+                if (x > point.x) inside = !inside
+            }
+        }
+        return inside
+    }
 
     @Test
-    fun aHeartThenAShaftThenTwoHeadStrokesThenTwoFeathers() {
-        assertEquals(6, strokes.size)
+    fun aHeartThenTheShaftInTwoPiecesThenTwoHeadStrokesThenTwoFeathers() {
+        assertEquals(7, strokes.size)
     }
 
     @Test
@@ -33,25 +51,36 @@ class HeartArrowTest {
     }
 
     @Test
-    fun theShaftRunsFromLowerLeftToUpperRightThroughTheHeart() {
-        assertTrue(shaft.first().x < shaft.last().x && shaft.first().y > shaft.last().y)
-        val left = heart.minOf { it.x }
-        val right = heart.maxOf { it.x }
+    fun theArrowPiercesTheHeartGoingInOneSideAndOutTheOther() {
+        // Lower left in, upper right out; nothing of the shaft drawn inside the heart.
+        assertTrue(shaftIn.first().x < shaftOut.last().x && shaftIn.first().y > shaftOut.last().y)
+        assertTrue(distanceToHeart(shaftIn.last()) < 0.015f, "the shaft goes in at the outline")
+        assertTrue(distanceToHeart(shaftOut.first()) < 0.015f, "and comes out at the outline")
+        val drawn = shaftIn.dropLast(2) + shaftOut.drop(2)
+        assertTrue(drawn.none { insideHeart(it) }, "no shaft inside the heart")
         assertTrue(
-            shaft.first().x < left && shaft.last().x > right,
-            "it pierces the heart side to side",
+            !insideHeart(shaftIn.first()) && !insideHeart(shaftOut.last()),
+            "tail and tip outside it",
         )
     }
 
     @Test
     fun theHeadIsAtTheTipAndTheFeathersAtTheTail() {
-        val tip = shaft.last()
-        val tail = shaft.first()
-        strokes.subList(2, 4).forEach {
+        val tip = shaftOut.last()
+        val tail = shaftIn.first()
+        strokes.subList(3, 5).forEach {
             assertTrue((it.path.last() - tip).getDistance() < 0.02f, "head ends at the tip")
         }
-        strokes.subList(4, 6).forEach {
-            assertTrue((it.path.first() - tail).getDistance() < 0.12f, "feathers near the tail")
+        strokes.subList(5, 7).forEach {
+            assertTrue((it.path.first() - tail).getDistance() < 0.15f, "feathers near the tail")
+        }
+    }
+
+    @Test
+    fun theFeathersAreBigEnoughToSee() {
+        strokes.subList(5, 7).forEach { feather ->
+            val span = (feather.path.first() - feather.path.last()).getDistance()
+            assertTrue(span >= 0.1f, "each feather spans a tenth of the frame: $span")
         }
     }
 
@@ -59,7 +88,7 @@ class HeartArrowTest {
     fun everythingStaysOnTheGlassAndTakesAboutFiveSeconds() {
         assertTrue(strokes.flatMap { it.path }.all { it.x in 0.05f..0.95f && it.y in 0.05f..0.95f })
         val seconds = strokes.sumOf { it.duration.inWholeMilliseconds } / 1000f
-        assertTrue(seconds in 3.5f..6f, "$seconds s")
+        assertTrue(seconds in 3.5f..6.5f, "$seconds s")
     }
 
     @Test
