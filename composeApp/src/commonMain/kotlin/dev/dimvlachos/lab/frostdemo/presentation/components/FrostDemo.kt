@@ -18,9 +18,11 @@ import androidx.compose.ui.unit.toSize
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostedWindow
+import dev.dimvlachos.lab.frostdemo.BreathDriver
 import dev.dimvlachos.lab.frostdemo.FrostDemos
 import dev.dimvlachos.lab.frostdemo.clipFrameToWindow
 import dev.dimvlachos.lab.frostdemo.pointAt
+import dev.dimvlachos.lab.frostdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.photo_santorini
 import org.jetbrains.compose.resources.painterResource
@@ -28,10 +30,11 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 internal fun FrostDemo(state: DemoState, frost: FrostState = remember { FrostState() }) {
     var window by remember { mutableStateOf(Size.Zero) }
+    val driver = remember(frost) { BreathDriver(frost) }
     // The script's wipe plays its finger back sample by sample: the path already holds the hand's
     // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
     // whatever window this is.
-    DisposableEffect(state, frost) {
+    DisposableEffect(state, frost, driver) {
         state.setWipeHandler { path, duration ->
             if (window.isEmpty()) return@setWipeHandler
             val stroke = frost.beginStroke(clipFrameToWindow(path.first(), window))
@@ -43,7 +46,23 @@ internal fun FrostDemo(state: DemoState, frost: FrostState = remember { FrostSta
                 frost.extendStroke(stroke, clipFrameToWindow(pointAt(path, t), window))
             }
         }
-        onDispose { state.setWipeHandler(null) }
+        // The script's breath swells and fades through the same driver as a real one.
+        state.setBreatheHandler { duration, strength ->
+            val seconds = duration.inWholeMilliseconds / 1000f
+            var previous = 0f
+            animate(
+                0f,
+                1f,
+                animationSpec = tween(duration.inWholeMilliseconds.toInt(), easing = LinearEasing),
+            ) { t, _ ->
+                driver.advance(scriptedBreathStrength(t, strength), (t - previous) * seconds)
+                previous = t
+            }
+        }
+        onDispose {
+            state.setWipeHandler(null)
+            state.setBreatheHandler(null)
+        }
     }
     // Back on 0, the loop's start, the glass frosts over again.
     val selected = state.selectedIndex

@@ -44,10 +44,13 @@ internal object FrostDemos {
                 ),
         )
 
+    // The scrub, a moment to look through the oval, then a breath fogs the glass over from the
+    // bottom: by the loop's reset the glass is already fresh frost, so the reset shows nothing.
     private val wipeTour = demoScript {
         at(0.seconds) { select(1) }
         at(0.4.seconds) { wipe(porthole.path(), porthole.duration) }
-        at(8.6.seconds) { select(0) }
+        at(7.4.seconds) { breathe(2.4.seconds, strength = 1f) }
+        at(10.2.seconds) { select(0) }
     }
 
     val all: List<Demo> =

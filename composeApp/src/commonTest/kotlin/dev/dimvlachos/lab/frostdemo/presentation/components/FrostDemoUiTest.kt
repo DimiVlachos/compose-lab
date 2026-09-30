@@ -56,4 +56,23 @@ class FrostDemoUiTest {
 
         assertTrue(frost.strokes.isEmpty())
     }
+
+    @Test
+    fun aScriptedBreathFogsTheGlassOver() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        val frost = FrostState()
+        var scope: CoroutineScope? = null
+        setContent {
+            scope = rememberCoroutineScope()
+            LabTheme { Box(Modifier.size(400.dp, 500.dp)) { FrostDemo(state, frost) } }
+        }
+        mainClock.advanceTimeByFrame()
+        // Wiped once the demo is up: on its first composition the demo starts from fresh frost.
+        runOnUiThread { frost.beginStroke(Offset(0.5f, 0.5f)) }
+        runOnUiThread { scope!!.launch { state.breathe(2_400.milliseconds, 1f) } }
+        mainClock.advanceTimeBy(2_600)
+
+        assertTrue(frost.strokes.isEmpty(), "the wipe is fogged over: ${frost.marks}")
+    }
 }
