@@ -91,7 +91,8 @@ private fun cropY(
 ) =
     (frame.center.y * photo.height * scale - screen.height / 2).coerceIn(
         0f,
-        photo.height * scale - screen.height,
+        // Scaled to the height, a rounding hair under nothing: then there is nothing to crop.
+        (photo.height * scale - screen.height).coerceAtLeast(0f),
     )
 
 private fun scaleFor(screen: Size) =
