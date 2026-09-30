@@ -22,6 +22,8 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private const val SpreadCount = 4
+
 // Room around the book for its shadow on the table; the book takes the largest 2:1 that fits.
 private val TableMarginX = 40.dp
 private val TableMarginY = 28.dp
@@ -33,12 +35,12 @@ private val TableMarginY = 28.dp
 @Composable
 internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
     val spreads = rememberBookSpreads()
-    val book = rememberPageTurnState(spreads.size)
+    val book = rememberPageTurnState(SpreadCount)
     val touch = remember { TouchDot() }
     val currentOnSpreadChange by rememberUpdatedState(onSpreadChange)
     LaunchedEffect(book) { snapshotFlow { book.spread }.collect { currentOnSpreadChange(it) } }
     LaunchedEffect(book, state.selectedIndex) {
-        val target = state.selectedIndex.coerceIn(0, spreads.lastIndex)
+        val target = state.selectedIndex.coerceIn(0, SpreadCount - 1)
         while (book.spread != target) {
             val forward = target > book.spread
             val landing = book.spread + if (forward) 1 else -1
@@ -58,6 +60,7 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
             .padding(horizontal = TableMarginX, vertical = TableMarginY),
         contentAlignment = Alignment.Center,
     ) {
+        if (spreads == null) return@Box
         PageTurnBook(
             spreads,
             book,

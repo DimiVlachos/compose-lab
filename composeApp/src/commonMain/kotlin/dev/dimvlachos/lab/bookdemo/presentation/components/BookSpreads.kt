@@ -1,40 +1,27 @@
 package dev.dimvlachos.lab.bookdemo.presentation.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.LinearGradientShader
-import androidx.compose.ui.graphics.Paint
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.book_spread_1
+import dev.dimvlachos.lab.resources.book_spread_2
+import dev.dimvlachos.lab.resources.book_spread_3
+import dev.dimvlachos.lab.resources.book_spread_4
+import org.jetbrains.compose.resources.imageResource
 
-// Placeholder spreads until the photos land: a wash of two hues and a sun, per spread.
-private const val Width = 1152
-private const val Height = 576
-private val Hues = listOf(200f to 30f, 150f to 50f, 280f to 330f, 20f to 210f)
-
+/**
+ * The book's four spreads, a little journey: a castle on a hill, cottages on a canal, a harbour
+ * town and balloons over it all. Each photo is 2592 x 1296, so a page splits into 18 whole-pixel
+ * strips. Null until every one has loaded: resources arrive as a 1 x 1 stand-in first.
+ */
 @Composable
-internal fun rememberBookSpreads(): List<ImageBitmap> = remember {
-    Hues.map { (from, to) ->
-        val image = ImageBitmap(Width, Height)
-        val canvas = Canvas(image)
-        val wash =
-            Paint().apply {
-                shader =
-                    LinearGradientShader(
-                        Offset.Zero,
-                        Offset(Width.toFloat(), Height.toFloat()),
-                        listOf(Color.hsv(from, 0.45f, 0.9f), Color.hsv(to, 0.55f, 0.8f)),
-                    )
-            }
-        canvas.drawRect(Rect(0f, 0f, Width.toFloat(), Height.toFloat()), wash)
-        canvas.drawCircle(
-            Offset(Width * 0.7f, Height * 0.35f),
-            Height * 0.12f,
-            Paint().apply { color = Color.hsv(50f, 0.3f, 1f) },
+internal fun rememberBookSpreads(): List<ImageBitmap>? {
+    val spreads =
+        listOf(
+            imageResource(Res.drawable.book_spread_1),
+            imageResource(Res.drawable.book_spread_2),
+            imageResource(Res.drawable.book_spread_3),
+            imageResource(Res.drawable.book_spread_4),
         )
-        image
-    }
+    return spreads.takeIf { images -> images.all { it.width > 1 } }
 }
