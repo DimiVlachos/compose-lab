@@ -32,6 +32,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
@@ -45,6 +47,7 @@ import dev.dimvlachos.lab.core.audio.rememberMicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.camera.rememberCameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
@@ -65,6 +68,7 @@ import dev.dimvlachos.lab.resources.mirror_view
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -91,6 +95,10 @@ internal fun FogDemo(
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
     val driver = remember(fog) { BreathDriver(fog) }
+    // Condensation running down the glass; in the clip, only the script's drops.
+    val drips = remember(fog) { DripDriver(fog, wipeRadius = FogDemos.FingerBrush) }
+    drips.randomStarts = !state.recording && !state.replay
+    val density = LocalDensity.current
     var micFailed by remember { mutableStateOf(false) }
     var cameraFailed by remember { mutableStateOf(false) }
     var breathed by remember { mutableStateOf(false) }
@@ -172,9 +180,14 @@ internal fun FogDemo(
                 previous = t
             }
         }
+        // The script's drop starts in the clip's frame, placed on whatever window this is.
+        state.setDripHandler { at, length ->
+            if (!window.isEmpty()) drips.drip(clipFrameToWindow(at, window), length)
+        }
         onDispose {
             state.setWipeHandler(null)
             state.setBreatheHandler(null)
+            state.setDripHandler(null)
         }
     }
 
@@ -237,6 +250,33 @@ internal fun FogDemo(
         wiped = true
     }
 
+    // Drops run only while the demo is in front of the user. Between drops there is nothing to
+    // draw, so the loop sleeps until the next is due rather than asking for frames.
+    val dripLifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(drips, dripLifecycle) {
+        dripLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                if (!drips.moving) {
+                    val wait = drips.secondsToNextStart
+                    if (wait == null) {
+                        snapshotFlow { drips.moving }.first { it }
+                    } else {
+                        delay((wait * 1000).toLong().coerceAtLeast(1))
+                        drips.advance(wait)
+                    }
+                    continue
+                }
+                var previous = withFrameNanos { it }
+                while (drips.moving) {
+                    withFrameNanos { now ->
+                        drips.advance((now - previous) / 1_000_000_000f)
+                        previous = now
+                    }
+                }
+            }
+        }
+    }
+
     // Without a microphone, a held finger breathes on the glass for as long as it stays.
     LaunchedEffect(holding) {
         if (!holding) return@LaunchedEffect
@@ -262,8 +302,13 @@ internal fun FogDemo(
                     else -> startingGlass
                 },
             state = fog,
-            modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
+            modifier =
+                Modifier.fillMaxSize().onSizeChanged {
+                    window = it.toSize()
+                    drips.glass = with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
+                },
             brushRadius = FogDemos.FingerBrush,
+            beads = { drips.beads },
             onHoldChange =
                 if (listening || state.recording || cardShown) null else { held -> holding = held },
         )
