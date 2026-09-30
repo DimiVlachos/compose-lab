@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.fogdemo
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.demoScript
@@ -20,14 +21,17 @@ internal object FogDemos {
     // Stroke by stroke, with a moment between, as a hand lifts and places the fingertip again.
     private val drawing = heartWithArrow()
 
-    // Fogged glass: a beat, a fingertip draws a heart pierced by an arrow, a moment to look at it,
-    // then a breath fogs it all over, back to the fogged glass the loop starts from.
+    // Fogged glass: a beat, a fingertip draws a heart pierced by an arrow, two drops of
+    // condensation run down either side of it while it is looked at, then a breath fogs it all
+    // over, back to the fogged glass the loop starts from.
     private val wipeTour = demoScript {
         var start = 0.3.seconds
         for (stroke in drawing) {
             at(start) { wipe(stroke.path, stroke.duration) }
             start += stroke.duration + LiftBetweenStrokes
         }
+        at(start + 0.1.seconds) { drip(Offset(0.12f, 0.1f), 0.18f) }
+        at(start + 0.6.seconds) { drip(Offset(0.88f, 0.6f), 0.18f) }
         at(start + LookAtTheDrawing) { breathe(2.4.seconds, strength = 1f) }
     }
 
@@ -42,7 +46,8 @@ internal object FogDemos {
 
 private val LiftBetweenStrokes = 250.milliseconds
 
-private val LookAtTheDrawing = 1.5.seconds
+// Long enough for both drops to finish running before the breath.
+private val LookAtTheDrawing = 5.seconds
 
 /** The demo's glass: fogged all over, waiting for a wipe. */
 internal fun newFogDemoState() = FogState()

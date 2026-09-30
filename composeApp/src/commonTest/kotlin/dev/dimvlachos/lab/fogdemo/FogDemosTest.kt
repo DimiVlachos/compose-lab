@@ -2,9 +2,14 @@
 
 package dev.dimvlachos.lab.fogdemo
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.FakeController
+import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -24,6 +29,13 @@ class FogDemosTest {
             val stroke = fog.beginStroke(path.first())
             path.drop(1).forEach { fog.extendStroke(stroke, it) }
         }
+        val dripper =
+            DripDriver(fog, Random(1)).apply {
+                glass = DpSize(400.dp, 500.dp)
+                randomStarts = false
+            }
+        for ((at, length) in controller.drips) dripper.drip(at, length)
+        repeat(600) { dripper.advance(1 / 60f) }
         val driver = BreathDriver(fog)
         val steps = (duration.inWholeMilliseconds / 16).toInt()
         for (i in 1..steps) driver.advance(
@@ -35,6 +47,7 @@ class FogDemosTest {
             fog.marks.none { it is WipeStroke || it is Evaporation },
             "the drawing is still on the glass: ${fog.marks}",
         )
+        assertTrue(dripper.beads.isEmpty(), "a drop left on the fresh fog: ${dripper.beads}")
     }
 
     @Test
@@ -56,5 +69,62 @@ class FogDemosTest {
     @Test
     fun onThePhoneTheDemoWaitsToBePlayedWith() {
         assertFalse(FogDemos.all.single().autoplay)
+    }
+
+    @Test
+    fun theClipDripsTwiceBetweenTheDrawingAndTheBreath() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.all.single().script.play(controller)
+
+        val calls = controller.calls.map { it.second }
+        val lastWipe = calls.indexOfLast { it.startsWith("wipe") }
+        val breath = calls.indexOfFirst { it.startsWith("breathe") }
+        val drips = calls.indices.filter { calls[it].startsWith("drip") }
+        assertEquals(2, drips.size, "$calls")
+        assertTrue(drips.all { it in lastWipe..breath }, "$calls")
+    }
+
+    @Test
+    fun theClipsDripsRunClearOfTheHeart() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.all.single().script.play(controller)
+        val drawing = heartWithArrow().flatMap { it.path }
+
+        for ((at, length) in controller.drips) {
+            var y = at.y
+            while (y <= at.y + length) {
+                val point = Offset(at.x, y)
+                val nearest = drawing.minOf { (it - point).getDistance() }
+                assertTrue(nearest > 0.06f, "a drip at $point comes $nearest from the heart")
+                y += 0.01f
+            }
+        }
+    }
+
+    @Test
+    fun theClipsDripsHaveStoppedBeforeTheBreath() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.all.single().script.play(controller)
+        val times = controller.calls.filter { it.second.startsWith("drip") }.map { it.first }
+        val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first
+
+        // Whatever the drops' own randomness, over many seeds, on the clip's 400 × 500 frame.
+        for (seed in 1..30) {
+            val drips =
+                DripDriver(newFogDemoState(), Random(seed)).apply {
+                    glass = DpSize(400.dp, 500.dp)
+                    randomStarts = false
+                }
+            var now = times.first()
+            val pending = controller.drips.zip(times).toMutableList()
+            while (now < breathAt) {
+                pending.removeAll { (drip, at) ->
+                    (at <= now).also { if (it) drips.drip(drip.first, drip.second) }
+                }
+                drips.advance(0.016f)
+                now += 16
+            }
+            assertTrue(!drips.moving, "seed $seed: a drop still running at the breath")
+        }
     }
 }
