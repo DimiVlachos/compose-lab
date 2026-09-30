@@ -1,10 +1,16 @@
 package dev.dimvlachos.lab.core.presentation.components.frost
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
@@ -24,6 +30,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
@@ -40,6 +48,9 @@ import androidx.compose.ui.unit.IntSize
  * Breaths fog the glass back over: each draws the frost again through a mask rising from the
  * bottom. Wipes and breaths replay in the order they were made, so a later wipe clears fresh fog
  * too.
+ *
+ * With [onHoldChange] set, a press that stays still for [FrostDimens.HoldDelayMillis] reports
+ * `true` instead of wiping, and `false` when it lifts or the window goes away.
  */
 @Composable
 fun FrostedWindow(
@@ -47,19 +58,46 @@ fun FrostedWindow(
     state: FrostState,
     modifier: Modifier = Modifier,
     brushRadius: Dp = FrostDimens.BrushRadius,
+    onHoldChange: ((Boolean) -> Unit)? = null,
 ) {
+    // A caller's lambda changes on every recomposition; the gesture reads the latest without
+    // restarting.
+    val holdChange by rememberUpdatedState(onHoldChange)
     val noise = remember { frostNoiseTile() }
     val grain =
         remember(noise) { ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated)) }
     Box(
-        modifier.pointerInput(state) {
-            var stroke: WipeStroke? = null
-            detectDragGestures(
-                onDragStart = { stroke = state.beginStroke(it.fractionOf(size)) },
-                onDrag = { change, _ ->
-                    stroke?.let { state.extendStroke(it, change.position.fractionOf(size)) }
-                },
-            )
+        modifier.pointerInput(state, onHoldChange != null) {
+            val holdEnabled = onHoldChange != null
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val start =
+                    if (holdEnabled) {
+                        withTimeoutOrNull(FrostDimens.HoldDelayMillis) { awaitDragOrLift(down) }
+                            ?: PressStart.Held
+                    } else {
+                        awaitDragOrLift(down)
+                    }
+                when (start) {
+                    PressStart.Held -> {
+                        holdChange?.invoke(true)
+                        try {
+                            waitForUpOrCancellation()
+                        } finally {
+                            holdChange?.invoke(false)
+                        }
+                    }
+                    PressStart.Lifted -> Unit
+                    is PressStart.Dragged -> {
+                        val stroke = state.beginStroke(down.position.fractionOf(size))
+                        state.extendStroke(stroke, start.change.position.fractionOf(size))
+                        drag(start.change.id) { change ->
+                            state.extendStroke(stroke, change.position.fractionOf(size))
+                            change.consume()
+                        }
+                    }
+                }
+            }
         }
     ) {
         Image(photo, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
@@ -134,3 +172,16 @@ private fun softBrush(radius: Float) =
     )
 
 private fun Offset.fractionOf(size: IntSize) = Offset(x / size.width, y / size.height)
+
+private sealed interface PressStart {
+    data object Held : PressStart
+
+    data object Lifted : PressStart
+
+    class Dragged(val change: PointerInputChange) : PressStart
+}
+
+// Waits for the press to move past touch slop, a drag, or to lift first.
+private suspend fun AwaitPointerEventScope.awaitDragOrLift(down: PointerInputChange): PressStart =
+    awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+        ?.let { PressStart.Dragged(it) } ?: PressStart.Lifted
