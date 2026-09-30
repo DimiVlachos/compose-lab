@@ -23,7 +23,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /**
  * A mirror on a bathroom wall: the photo fills the screen, and [glass] is laid exactly over the
- * mirror's glass in it, with its rounded lower corners, on any screen shape.
+ * mirror's glass in it, with its rounded corners, on any screen shape.
  */
 @Composable
 internal fun MirrorOnWall(
@@ -33,7 +33,7 @@ internal fun MirrorOnWall(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val screen = with(density) { Size(maxWidth.toPx(), maxHeight.toPx()) }
-        val onScreen = glassOnScreen(WallPhotoSize, screen, WallGlass)
+        val onScreen = wallGlassOn(screen)
         val scale = max(screen.width / WallPhotoSize.width, screen.height / WallPhotoSize.height)
         val corner = with(density) { (WallGlassCorner * WallPhotoSize.width * scale).toDp() }
         Image(
@@ -51,7 +51,7 @@ internal fun MirrorOnWall(
                     with(density) { onScreen.width.toDp() },
                     with(density) { onScreen.height.toDp() },
                 )
-                .clip(RoundedCornerShape(bottomStart = corner, bottomEnd = corner))
+                .clip(RoundedCornerShape(corner))
         ) {
             glass(Modifier.fillMaxSize())
         }
@@ -59,17 +59,18 @@ internal fun MirrorOnWall(
 }
 
 /** Where the wall photo's mirror glass lands on [screen]. */
-internal fun wallGlassOn(screen: Size): Rect = glassOnScreen(WallPhotoSize, screen, WallGlass)
+internal fun wallGlassOn(screen: Size): Rect =
+    glassOnScreen(WallPhotoSize, screen, WallGlass, WallMirror)
 
 /**
  * Where the photo's [glass] (fractions of the photo) lands on [screen], the photo covering it: its
- * sides cropped evenly, and, on a screen wider than the photo, its top and bottom cropped so the
- * glass ends [GlassEndsAt] of the way down. Kept on the screen.
+ * sides cropped evenly, and, on a screen wider than the photo, its top and bottom cropped about the
+ * middle of the mirror's [frame], so the whole mirror shows where it fits. Kept on the screen.
  */
-internal fun glassOnScreen(photo: Size, screen: Size, glass: Rect): Rect {
+internal fun glassOnScreen(photo: Size, screen: Size, glass: Rect, frame: Rect): Rect {
     val scale = max(screen.width / photo.width, screen.height / photo.height)
     val x = cropX(screen, photo, scale)
-    val y = cropY(screen, photo, scale, glass)
+    val y = cropY(screen, photo, scale, frame)
     return Rect(
         (glass.left * photo.width * scale - x).coerceIn(0f, screen.width),
         (glass.top * photo.height * scale - y).coerceIn(0f, screen.height),
@@ -86,9 +87,9 @@ private fun cropY(
     screen: Size,
     photo: Size = WallPhotoSize,
     scale: Float = scaleFor(screen),
-    glass: Rect = WallGlass,
+    frame: Rect = WallMirror,
 ) =
-    (glass.bottom * photo.height * scale - screen.height * GlassEndsAt).coerceIn(
+    (frame.center.y * photo.height * scale - screen.height / 2).coerceIn(
         0f,
         photo.height * scale - screen.height,
     )
@@ -96,11 +97,10 @@ private fun cropY(
 private fun scaleFor(screen: Size) =
     max(screen.width / WallPhotoSize.width, screen.height / WallPhotoSize.height)
 
-/** How far down a wide screen the glass ends, leaving the taps and the basin below it. */
-internal const val GlassEndsAt = 0.62f
-
-// bathroom_wall.jpg: its size, where its mirror's glass is, as fractions of it (its top runs off
-// the photo), and the radius of the glass's corners, as a fraction of the photo's width.
+// bathroom_wall.jpg (scripts/bathroom-wall.sh): its size; where its mirror's glass is, and the
+// whole mirror with its frame and outer rail, as fractions of it; and the radius of the glass's
+// corners, as a fraction of the photo's width.
 private val WallPhotoSize = Size(1220f, 2639f)
-private val WallGlass = Rect(0.118f, 0f, 0.8828f, 0.4934f)
+private val WallGlass = Rect(144f / 1220f, 462f / 2639f, 1077f / 1220f, 1719f / 2639f)
+private val WallMirror = Rect(20f / 1220f, 348f / 2639f, 1190f / 1220f, 1833f / 2639f)
 private const val WallGlassCorner = 0.064f
