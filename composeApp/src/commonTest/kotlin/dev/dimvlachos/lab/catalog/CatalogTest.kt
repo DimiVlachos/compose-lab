@@ -18,7 +18,7 @@ import kotlinx.coroutines.test.runTest
 class CatalogTest {
     @Test
     fun keepsTheFinishedDemoOfEachComponent() {
-        assertEquals(listOf("navbar.all", "morph.app", "fog.window"), Catalog.demos.map { it.id })
+        assertEquals(listOf("navbar.all", "morph.app", "fog.mirror"), Catalog.demos.map { it.id })
         assertEquals(
             listOf(Res.string.demo_navbar, Res.string.demo_morph_app, Res.string.demo_fog),
             Catalog.demos.map { it.title },

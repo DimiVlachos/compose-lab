@@ -34,7 +34,7 @@ internal object FogDemos {
     // On the phone the glass is the user's to breathe on and wipe; Replay plays the clip.
     val all: List<Demo> =
         listOf(
-            Demo("fog.window", Res.string.demo_fog, wipeTour, autoplay = false) {
+            Demo("fog.mirror", Res.string.demo_fog, wipeTour, autoplay = false) {
                 FogDemo(it)
             }
         )
