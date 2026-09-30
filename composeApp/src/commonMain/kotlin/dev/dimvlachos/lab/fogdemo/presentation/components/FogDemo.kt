@@ -45,7 +45,6 @@ import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.audio.MicFrameSeconds
 import dev.dimvlachos.lab.core.audio.rememberMicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
-import dev.dimvlachos.lab.core.camera.rememberCameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
@@ -91,7 +90,8 @@ internal fun FogDemo(
     state: DemoState,
     fog: FogState = remember { newFogDemoState() },
     micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
-    cameraAccess: CameraAccess = rememberCameraAccess(enabled = !state.recording),
+    // No default: each version says which camera it shows, so the bathroom can never ask for one.
+    cameraAccess: CameraAccess,
     reflection: Boolean = true,
 ) {
     var window by remember { mutableStateOf(Size.Zero) }

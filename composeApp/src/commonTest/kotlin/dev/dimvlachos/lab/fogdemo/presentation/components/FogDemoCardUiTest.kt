@@ -25,6 +25,7 @@ import dev.dimvlachos.lab.core.camera.FakeMirrorCamera
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.mirror_card_allow
 import dev.dimvlachos.lab.resources.mirror_card_body_what
@@ -214,13 +215,8 @@ class FogDemoCardUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 700.dp)) {
-                        FogDemo(
-                            DemoState(),
-                            FogState(),
-                            mic,
-                            CameraAccess.Unavailable,
-                            reflection = false,
-                        )
+                        // The real Bathroom entry, so it is what never asks for the camera.
+                        BathroomMirror(DemoState(), mic)
                     }
                 }
             }
