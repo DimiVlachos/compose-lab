@@ -273,10 +273,10 @@ class DripDriverTest {
         assertTrue(inside, "it went into the wiped patch")
         val depth = (deepest - edge) * 800f
         assertTrue(
-            depth in diameter * 1.5f..diameter * 3.2f,
-            "a short slide: $depth dp for $diameter",
+            depth in diameter * 0.5f..diameter * 1.6f,
+            "just inside: $depth dp for $diameter",
         )
-        assertTrue(seconds in 1.6f..3f, "slides and dissolves in a couple of seconds: $seconds")
+        assertTrue(seconds in 3.5f..5.5f, "spreads out slowly, over a few seconds: $seconds")
         assertTrue(lastSpread > 0.9f, "spread right out: $lastSpread")
         assertTrue(drips.beads.isEmpty(), "and is gone: ${drips.beads}")
         val trail = fog.streaks().maxOf { s -> s.points.maxOf { it.y } }
