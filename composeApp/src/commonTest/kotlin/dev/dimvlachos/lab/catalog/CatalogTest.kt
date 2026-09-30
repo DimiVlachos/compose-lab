@@ -4,6 +4,7 @@ package dev.dimvlachos.lab.catalog
 
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_morph_app
@@ -69,5 +70,17 @@ class CatalogTest {
                 assertTrue(point.x in 0f..1f && point.y in 0f..1f, "${demo.id} wipes off at $point")
             }
         }
+    }
+
+    @Test
+    fun theFoggedMirrorIsAFolderOfItsTwoVersions() {
+        val group = Catalog.entries.filterIsInstance<CatalogEntry.Group>().single()
+        assertEquals("fog.mirror", group.id)
+        assertEquals(Res.string.demo_fog, group.title)
+        assertEquals(listOf("fog.mirror.bathroom", "fog.mirror.camera"), group.demos.map { it.id })
+        assertEquals(
+            listOf("navbar.all", "morph.app"),
+            Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
+        )
     }
 }
