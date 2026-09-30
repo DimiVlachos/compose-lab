@@ -156,6 +156,20 @@ class PageTurnStateTest {
     }
 
     @Test
+    fun aTapTakesTheBookAtOnceSoNothingSlipsInBeforeItsTurnStarts() = runComposeUiTest {
+        val state = book()
+        runOnUiThread {
+            state.next()
+            // Before any frame: the turn is already the book's, and it starts from the page.
+            assertTrue(state.isTurning)
+            assertEquals(0f, state.leafProgress)
+        }
+        settle()
+        assertEquals(1, state.spread)
+        assertFalse(state.isTurning)
+    }
+
+    @Test
     fun aTapWhileAPageLandsTurnsTheNextOne() = runComposeUiTest {
         val state = book()
         act(ms = 80) { state.next() }

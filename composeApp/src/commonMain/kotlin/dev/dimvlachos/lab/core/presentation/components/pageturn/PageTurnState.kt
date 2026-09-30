@@ -60,6 +60,10 @@ internal constructor(
     // The book's width in pixels, which a drag's distance is measured against; set on layout.
     internal var bookWidthPx: Float = 0f
 
+    // Set between a tap's turn starting and its progress snapping back to 0: the pair is already
+    // the new one, so it draws from 0 rather than from where the last turn was.
+    private var restarting by mutableStateOf(false)
+
     private var dragBase = 0f
     private var dragDx = 0f
     private var lastDragProgress = -1f
@@ -78,7 +82,15 @@ internal constructor(
      * left page of the next. A backward turn is a forward one played in reverse.
      */
     internal val leafProgress: Float
-        get() = pair?.let { if (it.forward) turn.value else 1f - turn.value } ?: 0f
+        get() {
+            val pair = pair ?: return 0f
+            val progress = if (restarting) 0f else turn.value
+            return if (pair.forward) progress else 1f - progress
+        }
+
+    /** Whether a page is up: under a finger or on its way down. */
+    val isTurning: Boolean
+        get() = phase != TurnPhase.Idle
 
     internal val bendDirection: Float
         get() = bend.value
@@ -107,7 +119,7 @@ internal constructor(
         dragDx = 0f
         lastDragProgress = -1f
         if (inFlight != null) {
-            dragBase = turn.value
+            dragBase = if (restarting) 0f else turn.value
             dragBend = bend.value
             scope.launch { turn.stop() }
         } else {
@@ -145,7 +157,8 @@ internal constructor(
         val velocity = dragToProgress(signed, bookWidthPx)
         // Launched after the drag's own snaps, so the progress read here is the last one.
         scope.launch {
-            if (shouldCommit(turn.value, velocity)) complete(pair) else cancel(pair)
+            if (shouldCommit(turn.value, velocity)) complete(pair, velocity)
+            else cancel(pair, velocity)
         }
     }
 
@@ -155,27 +168,41 @@ internal constructor(
         val basis = (phase as? TurnPhase.Settling)?.landing ?: spread
         val target = basis + if (forward) 1 else -1
         if (target !in 0..lastSpread) return
+        // The phase changes now, not in the coroutine, so a drag or a tap in between sees this
+        // turn and nothing can slip in while the last one's animation is being cancelled.
+        val pair = TurnPair(forward, basis, target)
+        spread = basis
+        phase = TurnPhase.Settling(pair, landing = target)
+        restarting = true
         scope.launch {
-            spread = basis
-            phase = TurnPhase.Idle
             turn.snapTo(0f)
-            complete(TurnPair(forward, basis, target))
+            restarting = false
+            complete(pair, velocity = 0f)
         }
     }
 
-    private suspend fun complete(pair: TurnPair) {
+    // [velocity] is the release speed in turns a second, so a flicked page keeps going.
+    private suspend fun complete(pair: TurnPair, velocity: Float) {
         releaseBend(bendTowards(pair.forward, progressIncreasing = true))
         phase = TurnPhase.Settling(pair, landing = pair.to)
-        turn.animateTo(1f, spring(dampingRatio = 1f, stiffness = PageTurnDimens.CommitStiffness))
+        turn.animateTo(
+            1f,
+            spring(dampingRatio = 1f, stiffness = PageTurnDimens.CommitStiffness),
+            initialVelocity = velocity,
+        )
         spread = pair.to
         phase = TurnPhase.Idle
         turn.snapTo(0f)
     }
 
-    private suspend fun cancel(pair: TurnPair) {
+    private suspend fun cancel(pair: TurnPair, velocity: Float) {
         releaseBend(bendTowards(pair.forward, progressIncreasing = false))
         phase = TurnPhase.Settling(pair, landing = pair.from)
-        turn.animateTo(0f, spring(dampingRatio = 1f, stiffness = PageTurnDimens.CancelStiffness))
+        turn.animateTo(
+            0f,
+            spring(dampingRatio = 1f, stiffness = PageTurnDimens.CancelStiffness),
+            initialVelocity = velocity,
+        )
         phase = TurnPhase.Idle
     }
 

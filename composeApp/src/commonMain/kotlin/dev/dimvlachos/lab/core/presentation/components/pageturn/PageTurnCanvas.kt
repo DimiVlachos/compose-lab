@@ -116,16 +116,17 @@ internal class BookPainter(private val ink: BookInk) {
         val stripWidth = frame.stripWidth
         val outer = stripIsOuterEdge(index)
         val seam = if (outer) 0f else PageTurnDimens.SeamPx
-        // In image pixels: a page is half the spread image, a slice a strip's share of it.
-        val half = image.width / 2f
-        val slice = half / PageTurnDimens.Strips
-        val pageStart = if (facing) half.roundToInt() else 0
+        // In image pixels: a page is half the spread image, a slice a strip's share of it. Whole
+        // pixels, as the flat pages use, so a strip starts exactly where its page lay.
+        val half = image.width / 2
+        val slice = half.toFloat() / PageTurnDimens.Strips
+        val pageStart = if (facing) half else 0
         val srcWidth = (slice * stripSliceScale(stripWidth, seam)).roundToInt()
         // Kept inside its own page: the seam on the back's spine strip would reach the other half.
         val srcLeft =
             (pageStart + stripSliceStart(facing, index) * half)
                 .roundToInt()
-                .coerceIn(pageStart, pageStart + half.roundToInt() - srcWidth)
+                .coerceIn(pageStart, (pageStart + half - srcWidth).coerceAtLeast(pageStart))
         // Where the image lands in the strip's space: the seam trails off the outer edge on the
         // front and off the spine edge on the back.
         val left = if (facing) 0f else -seam
