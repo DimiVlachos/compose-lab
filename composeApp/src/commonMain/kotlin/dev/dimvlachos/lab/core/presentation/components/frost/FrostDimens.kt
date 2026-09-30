@@ -14,4 +14,10 @@ internal object FrostDimens {
 
     const val NoiseTileSize = 96
     const val NoiseMaxAlpha = 0.22f
+
+    /** The fog's soft edge, as a share of the window height. */
+    const val FogEdge = 0.12f
+
+    /** How long a press must stay still to breathe rather than wipe. */
+    const val HoldDelayMillis = 400L
 }
