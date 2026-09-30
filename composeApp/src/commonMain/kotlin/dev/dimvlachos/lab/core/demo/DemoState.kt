@@ -11,6 +11,7 @@ class DemoState : DemoController {
         private set
 
     private var scrollHandler: (suspend (Float) -> Unit)? = null
+    private var pageDragHandler: (suspend (PageDrag) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -20,7 +21,15 @@ class DemoState : DemoController {
         scrollHandler?.invoke(px)
     }
 
+    override suspend fun dragPage(drag: PageDrag) {
+        pageDragHandler?.invoke(drag)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
+    }
+
+    fun setPageDragHandler(handler: (suspend (PageDrag) -> Unit)?) {
+        pageDragHandler = handler
     }
 }

@@ -6,4 +6,6 @@ interface DemoController {
     fun select(index: Int)
 
     suspend fun scrollBy(px: Float)
+
+    suspend fun dragPage(drag: PageDrag)
 }

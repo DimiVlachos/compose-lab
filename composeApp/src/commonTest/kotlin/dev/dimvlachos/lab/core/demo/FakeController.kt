@@ -18,4 +18,8 @@ class FakeController(private val now: () -> Long) : DemoController {
         netScroll += px
         calls += now() to "scrollBy($px)"
     }
+
+    override suspend fun dragPage(drag: PageDrag) {
+        calls += now() to "dragPage(${drag.moves.joinToString { "${it.toFraction}" }})"
+    }
 }
