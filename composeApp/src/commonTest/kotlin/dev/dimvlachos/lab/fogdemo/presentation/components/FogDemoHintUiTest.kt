@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -100,5 +101,17 @@ class FogDemoHintUiTest {
         waitForIdle()
 
         onNodeWithText(wipeHint).assertDoesNotExist()
+    }
+
+    @Test
+    fun aDropsStreakIsNotTheUsersFirstWipe() = runComposeUiTest {
+        val fog = FogState()
+        // A running drop leaves a thin, part-clear streak: not a wipe of the user's.
+        fog.beginStroke(Offset(0.5f, 0.2f), clarity = 0.85f).also {
+            fog.extendStroke(it, Offset(0.5f, 0.4f))
+        }
+        showDemo(MicAccess.Unavailable, fog)
+
+        onNodeWithText(wipeHint).assertExists()
     }
 }

@@ -245,9 +245,10 @@ internal fun FogDemo(
         }
     }
 
-    // The first wipe, remembered: a breath may fog it over, but the mirror has been found.
+    // The first wipe, remembered: a breath may fog it over, but the mirror has been found. A
+    // drop's part-clear streak is not a wipe.
     LaunchedEffect(fog) {
-        snapshotFlow { fog.marks.any { it is WipeStroke } }.first { it }
+        snapshotFlow { fog.marks.any { it is WipeStroke && it.clarity >= 1f } }.first { it }
         wiped = true
     }
 
