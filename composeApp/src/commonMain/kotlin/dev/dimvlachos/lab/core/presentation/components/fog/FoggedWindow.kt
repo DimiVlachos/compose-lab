@@ -173,8 +173,8 @@ fun FoggedWindow(
                         when (mark) {
                             is WipeStroke ->
                                 when (val own = mark.radius?.toPx()) {
-                                    null -> drawWipe(mark.points, radius, brush)
-                                    else -> drawWipe(mark.points, own, softBrush(own))
+                                    null -> drawWipe(mark.points, radius, brush, mark.clarity)
+                                    else -> drawWipe(mark.points, own, softBrush(own), mark.clarity)
                                 }
                             is Breath -> drawFog(mark.level)
                             is Evaporation ->
@@ -215,12 +215,29 @@ fun FoggedWindow(
     }
 }
 
-private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush) {
+private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush, clarity: Float) {
     val pixels = stroke.map { Offset(it.x * size.width, it.y * size.height) }
-    for (dab in wipeDabs(pixels, radius * FogDimens.DabSpacingRatio)) {
-        translate(dab.x, dab.y) {
-            drawCircle(brush, radius, Offset.Zero, blendMode = BlendMode.DstOut)
+    val dabs = wipeDabs(pixels, radius * FogDimens.DabSpacingRatio)
+    if (clarity >= 1f) {
+        for (dab in dabs) {
+            translate(dab.x, dab.y) {
+                drawCircle(brush, radius, Offset.Zero, blendMode = BlendMode.DstOut)
+            }
         }
+        return
+    }
+    // Part of the way: the dabs join up in a layer of their own, which then clears the fog only
+    // [clarity] of the way, so overlapping dabs cannot compound past it.
+    drawIntoCanvas { canvas ->
+        canvas.saveLayer(
+            Rect(Offset.Zero, size),
+            Paint().apply {
+                blendMode = BlendMode.DstOut
+                alpha = clarity
+            },
+        )
+        for (dab in dabs) translate(dab.x, dab.y) { drawCircle(brush, radius, Offset.Zero) }
+        canvas.restore()
     }
 }
 

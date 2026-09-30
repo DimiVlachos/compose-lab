@@ -31,10 +31,11 @@ class FogState(startClear: Boolean = false) {
 
     /**
      * Starts a stroke and returns it. Each finger extends only its own, so a real finger and the
-     * script's can wipe at once without joining up.
+     * script's can wipe at once without joining up. [clarity] is how much of the fog it clears: 1
+     * wipes it away, less leaves a wet film, as a running drop does.
      */
-    fun beginStroke(at: Offset, radius: Dp? = null): WipeStroke {
-        val stroke = WipeStroke(mutableStateListOf(at), radius)
+    fun beginStroke(at: Offset, radius: Dp? = null, clarity: Float = 1f): WipeStroke {
+        val stroke = WipeStroke(mutableStateListOf(at), radius, clarity)
         _marks += stroke
         return stroke
     }
@@ -99,11 +100,14 @@ sealed interface FogMark
 
 /**
  * One finger's stroke on a [FogState], from [FogState.beginStroke]; [radius] its own brush, a
- * fingertip say, or null for the window's.
+ * fingertip say, or null for the window's; [clarity] how much of the fog it clears.
  */
 class WipeStroke
-internal constructor(internal val points: SnapshotStateList<Offset>, val radius: Dp? = null) :
-    FogMark
+internal constructor(
+    internal val points: SnapshotStateList<Offset>,
+    val radius: Dp? = null,
+    val clarity: Float = 1f,
+) : FogMark
 
 /** The fog evaporating evenly, from [FogState.beginEvaporation]; at 1 the glass is clear. */
 class Evaporation internal constructor() : FogMark {
