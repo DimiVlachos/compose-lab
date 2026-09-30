@@ -9,9 +9,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -52,7 +55,8 @@ import org.jetbrains.compose.resources.imageResource
  *
  * Every finger wipes its own stroke, so several can wipe at once. With [onHoldChange] set, a finger
  * that stays still for [FogDimens.HoldDelayMillis] holds instead of wiping: `true` when the first
- * finger starts holding, `false` when the last lets go or the window goes away.
+ * finger starts holding, `false` when the last lets go or the window goes away. [beads] are drops
+ * of water on the glass, read while drawing, so a moving drop only redraws.
  */
 @Composable
 fun FoggedWindow(
@@ -61,6 +65,7 @@ fun FoggedWindow(
     modifier: Modifier = Modifier,
     brushRadius: Dp = FogDimens.BrushRadius,
     onHoldChange: ((Boolean) -> Unit)? = null,
+    beads: () -> List<Bead> = { emptyList() },
 ) {
     // A caller's lambda changes on every recomposition; the gesture reads the latest without
     // restarting.
@@ -212,6 +217,8 @@ fun FoggedWindow(
                 colorFilter = milky,
             )
         }
+        // Drops sit on the glass, over the fog and the clear patches alike.
+        Box(Modifier.matchParentSize().drawBehind { for (bead in beads()) drawBead(bead) })
     }
 }
 
@@ -258,6 +265,29 @@ private fun ContentDrawScope.drawFog(level: Float) {
         canvas.restore()
         canvas.restore()
     }
+}
+
+// A drop of water on glass: the scene behind it a little darker, a darker rim along its lower
+// edge, where it gathers, and one bright glint near its top.
+private fun DrawScope.drawBead(bead: Bead) {
+    val radius = bead.radius.toPx()
+    if (radius <= 0f) return
+    val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
+    drawCircle(Color.Black.copy(alpha = FogDimens.BeadShade), radius, centre)
+    drawArc(
+        Color.Black.copy(alpha = FogDimens.BeadRim),
+        startAngle = 20f,
+        sweepAngle = 140f,
+        useCenter = false,
+        topLeft = centre - Offset(radius, radius),
+        size = Size(radius * 2, radius * 2),
+        style = Stroke(width = radius * 0.35f),
+    )
+    drawCircle(
+        Color.White.copy(alpha = FogDimens.BeadHighlight),
+        radius * 0.3f,
+        centre + Offset(-radius * 0.3f, -radius * 0.35f),
+    )
 }
 
 // Each dab is faint on its own: along a stroke some eight overlap, and DstOut compounds them, so a
