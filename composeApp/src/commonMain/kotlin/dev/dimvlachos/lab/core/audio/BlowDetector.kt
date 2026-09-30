@@ -7,16 +7,18 @@ import kotlin.math.sqrt
 private const val MarginDb = 15f
 private const val StrengthRangeDb = 25f
 
-// Below this a frame is too quiet to be a blow, however quiet the room: blowing into a phone's
-// microphone nearly saturates it, while talking at arm's length sits well under this.
-private const val MinLevelDb = -30f
+// Below this a frame is too quiet to be a blow, however quiet the room. Measured on a phone: blows
+// sit around -12 dBFS, while the frames of talking that pass the other checks sit around -25.
+private const val MinLevelDb = -22f
 
 // A voice, a hum or music repeats at its pitch; a blow's turbulent air does not.
 private const val MaxPeriodicity = 0.5f
 
-// About 100 ms to start and 130 ms to stop, so a breath does not flicker; past about 4 s, a steady
-// "blow" is the room, a fan or a vacuum, and becomes the new background.
-private const val OnsetFrames = 3
+// About 250 ms to start and 130 ms to stop, so a breath does not flicker; past about 4 s, a steady
+// "blow" is the room, a fan or a vacuum, and becomes the new background. Measured on a phone:
+// talking and room noise pass every other check only in runs of up to 3 frames, a blow runs 30 and
+// more.
+private const val OnsetFrames = 8
 private const val ReleaseFrames = 4
 private const val MaxBlowFrames = 125
 
