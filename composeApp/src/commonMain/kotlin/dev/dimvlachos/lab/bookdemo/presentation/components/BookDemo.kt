@@ -41,12 +41,14 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
     LaunchedEffect(book) { snapshotFlow { book.spread }.collect { currentOnSpreadChange(it) } }
     LaunchedEffect(book, state.selectedIndex) {
         val target = state.selectedIndex.coerceIn(0, SpreadCount - 1)
-        while (book.spread != target) {
+        while (true) {
+            // One tap per landed page: a page still up (a flick settling, a drag) finishes first,
+            // so the book's spread is where the next tap really starts from.
+            snapshotFlow { book.isTurning }.first { !it }
+            if (book.spread == target) break
             val forward = target > book.spread
-            val landing = book.spread + if (forward) 1 else -1
             launch { touch.tap(forward) }
             if (forward) book.next() else book.previous()
-            snapshotFlow { book.spread }.first { it == landing }
         }
     }
     DisposableEffect(state, book) {

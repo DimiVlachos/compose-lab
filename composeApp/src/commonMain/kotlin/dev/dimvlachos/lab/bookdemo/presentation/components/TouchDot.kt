@@ -19,7 +19,9 @@ import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.demo.PageDrag
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnState
 import kotlin.math.sign
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 // Where the scripted finger lands, as fractions of the book: on the outer part of a page, a little
 // below the middle, where a thumb would take it.
@@ -45,9 +47,13 @@ internal class TouchDot {
 
     suspend fun tap(forward: Boolean) {
         x = if (forward) RightPageX else LeftPageX
-        alpha.animateTo(1f, tween(DownMs))
-        delay(TapHoldMs)
-        alpha.animateTo(0f, tween(UpMs))
+        try {
+            alpha.animateTo(1f, tween(DownMs))
+            delay(TapHoldMs)
+            alpha.animateTo(0f, tween(UpMs))
+        } finally {
+            lift()
+        }
     }
 
     /**
@@ -60,8 +66,12 @@ internal class TouchDot {
         val leftwards = moves.first().toFraction < 0f
         val startX = if (leftwards) RightPageX else LeftPageX
         x = startX
-        alpha.animateTo(1f, tween(DownMs))
-        if (book.dragStart(dx = sign(moves.first().toFraction))) {
+        var dragging = false
+        // A script stopped mid-drag still lets go of the page, or the book stays held.
+        try {
+            alpha.animateTo(1f, tween(DownMs))
+            dragging = book.dragStart(dx = sign(moves.first().toFraction))
+            if (!dragging) return
             var at = 0f
             moves.forEachIndexed { index, move ->
                 val from = at
@@ -83,8 +93,17 @@ internal class TouchDot {
                 }
             }
             book.dragEnd(drag.releaseSpeed * book.bookWidthPx)
+            dragging = false
+            alpha.animateTo(0f, tween(UpMs))
+        } finally {
+            if (dragging) book.dragEnd(velocityPxPerSecond = 0f)
+            lift()
         }
-        alpha.animateTo(0f, tween(UpMs))
+    }
+
+    // Gone at once when a script is stopped; a no-op after a finished fade.
+    private suspend fun lift() {
+        withContext(NonCancellable) { alpha.snapTo(0f) }
     }
 
     fun Modifier.drawTouch(color: Color): Modifier = drawWithContent {

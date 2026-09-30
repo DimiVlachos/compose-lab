@@ -26,8 +26,9 @@ ACTIVITY = f"{APP_ID}/.MainActivity"
 DEVICE_FILE = "/sdcard/compose-lab-demo.mp4"
 MAX_BYTES = 5 * 1024 * 1024
 MARKER_TIMEOUT_S = 60
-# How long a landscape demo takes to turn the screen before recording starts.
-LANDSCAPE_SETTLE_S = 2.5
+# How long to wait for a landscape demo to turn the screen, and for the turn's animation to end.
+LANDSCAPE_TIMEOUT_S = 10
+LANDSCAPE_ANIMATION_S = 0.8
 # screenrecord captures its first frame about this long before the file has any bytes (measured on a Galaxy S23 Ultra).
 ANDROID_CAPTURE_LEAD_S = 0.08
 
@@ -82,6 +83,20 @@ def android_record_size():
     return 1080, round(height * 1080 / width / 2) * 2
 
 
+def wait_for_landscape():
+    """Wait until the display has turned to landscape, or exit: a portrait capture would crop wrong."""
+    deadline = time.monotonic() + LANDSCAPE_TIMEOUT_S
+    while time.monotonic() < deadline:
+        out = subprocess.run(
+            ["adb", "shell", "dumpsys", "window", "displays"], capture_output=True, text=True
+        ).stdout
+        if "mCurrentRotation=ROTATION_90" in out or "mCurrentRotation=ROTATION_270" in out:
+            time.sleep(LANDSCAPE_ANIMATION_S)
+            return
+        time.sleep(0.2)
+    sys.exit(f"The screen did not turn to landscape within {LANDSCAPE_TIMEOUT_S}s (is auto-rotate blocking it?)")
+
+
 def wait_for_recording_file(deadline_s=5.0, poll_s=0.05):
     """Poll until the device recording file is non-empty and return when that poll was sent.
 
@@ -123,7 +138,7 @@ def record_android(demo_id, label, raw, landscape):
             # A landscape demo turns the screen as it opens, and screenrecord keeps the orientation it
             # started in: start it once the app has turned, well inside the warm-up run.
             run(launch)
-            time.sleep(LANDSCAPE_SETTLE_S)
+            wait_for_landscape()
         recorder = subprocess.Popen(
             ["adb", "shell", "screenrecord", "--bit-rate", "20000000", "--size", f"{width}x{height}", DEVICE_FILE]
         )
