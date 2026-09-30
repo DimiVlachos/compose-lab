@@ -42,8 +42,9 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
     var blocked by rememberSaveable { mutableStateOf(false) }
     var refusals by rememberSaveable { mutableIntStateOf(0) }
     var rationaleBefore by rememberSaveable { mutableStateOf(false) }
-    // Sent to settings, where "don't allow" may have become "ask every time".
-    var sentToSettings by rememberSaveable { mutableStateOf(false) }
+    // The trips to settings this permission has seen, where "don't allow" may have become "ask
+    // every time". Counted across permissions: one trip from the card may change them all.
+    var tripsSeen by rememberSaveable { mutableIntStateOf(SettingsTrips.count) }
     fun rationale() =
         context.findActivity()?.shouldShowRequestPermissionRationale(permission) == true
     val launcher =
@@ -59,15 +60,15 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
         granted = isGranted()
         // Back from settings, the system may ask again: offer to ask. If it still won't, the
         // next refusal comes at once, with no rationale, and blocks it again.
-        if (sentToSettings) {
-            sentToSettings = false
+        if (SettingsTrips.count != tripsSeen) {
+            tripsSeen = SettingsTrips.count
             blocked = false
         }
         onPauseOrDispose {}
     }
     val blockedStatus = remember {
         PermissionStatus.Blocked {
-            sentToSettings = true
+            SettingsTrips.count++
             context.startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -97,3 +98,10 @@ private tailrec fun Context.findActivity(): Activity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
+
+// Every trip to the app's settings, from any permission: back from one, each permission refused for
+// good offers to ask again. Lost with the process, which errs towards asking, never towards a card
+// stuck on settings.
+private object SettingsTrips {
+    var count by mutableIntStateOf(0)
+}
