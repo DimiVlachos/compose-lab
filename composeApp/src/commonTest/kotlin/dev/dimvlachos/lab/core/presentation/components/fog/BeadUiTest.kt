@@ -92,4 +92,35 @@ class BeadUiTest {
         val middle = pixels[pixels.width / 2, pixels.height / 2]
         assertTrue(middle.red > 0.9f && middle.green < 0.1f, "$middle")
     }
+
+    // The red channel just inside a big drop on clear red glass: darker the more the drop stands
+    // out.
+    private fun insideRed(softness: Float): Float {
+        var red = 0f
+        runComposeUiTest {
+            setContent {
+                FoggedWindow(
+                    photo = ColorPainter(Color.Red),
+                    state = FogState(startClear = true),
+                    modifier = Modifier.size(200.dp).testTag("window"),
+                    beads = {
+                        listOf(Bead(Offset(0.5f, 0.5f), 40.dp, resting = true, softness = softness))
+                    },
+                )
+            }
+            val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+            // Low in the drop, on its rim: where a crisp drop is darkest.
+            red =
+                pixels[pixels.width / 2, (pixels.height / 2 + pixels.width * 36f / 200f).toInt()]
+                    .red
+        }
+        return red
+    }
+
+    @Test
+    fun aSettledDropStandsOutLessThanAFreshOne() {
+        val crisp = insideRed(0f)
+        val settled = insideRed(1f)
+        assertTrue(settled > crisp + 0.05f, "a softer rim: $settled against $crisp")
+    }
 }

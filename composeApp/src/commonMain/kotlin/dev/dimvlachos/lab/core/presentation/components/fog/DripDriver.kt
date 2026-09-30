@@ -20,7 +20,8 @@ import kotlin.random.Random
 /**
  * A drop of water on the glass: [at] as a fraction of it, [resting] once it has stopped, and
  * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs,
- * and [alpha], how much of it still shows as fog covers it or it is smeared away.
+ * [alpha], how much of it still shows as fog covers it or it is smeared away, and [softness], from
+ * 0, a fresh bead, to 1, settled into the condensation around it once it has stopped.
  */
 @Immutable
 data class Bead(
@@ -29,6 +30,7 @@ data class Bead(
     val resting: Boolean,
     val stretch: Float = 0f,
     val alpha: Float = 1f,
+    val softness: Float = 0f,
 )
 
 /**
@@ -350,12 +352,24 @@ class DripDriver(
             return fadeLeft * (1f - cover)
         }
 
-        /** Stopped, but not yet relaxed into its resting shape. */
-        val relaxing: Boolean
-            get() = abs(stretch - RestingStretch) > RelaxedWithin
+        // How long it has rested: over [SoftenSeconds] it settles into the fog around it.
+        private var rested = 0f
 
-        /** Stuck or resting, a drop relaxes towards round, keeping a slight sag. */
-        fun settle(seconds: Float) = ease(RestingStretch, seconds)
+        private val softness: Float
+            get() = (rested / SoftenSeconds).coerceIn(0f, 1f)
+
+        /** Stopped, but not yet relaxed into its resting shape and settled into the fog. */
+        val relaxing: Boolean
+            get() = abs(stretch - RestingStretch) > RelaxedWithin || softness < 1f
+
+        /**
+         * Stuck or resting, a drop relaxes towards round, keeping a slight sag; at rest, it
+         * softens.
+         */
+        fun settle(seconds: Float) {
+            ease(RestingStretch, seconds)
+            if (stopped) rested += seconds
+        }
 
         private fun ease(target: Float, seconds: Float) {
             stretch += (target - stretch) * min(1f, seconds * StretchEasing)
@@ -373,6 +387,7 @@ class DripDriver(
                 resting = stopped,
                 stretch = stretch,
                 alpha = alpha,
+                softness = if (stopped) softness else 0f,
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
@@ -471,6 +486,7 @@ private const val RelaxedWithin = 0.01f
 private const val WipedFadeSeconds = 0.2f
 private const val PushedOutFadeSeconds = 1f
 private const val BlendSeconds = 0.5f
+private const val SoftenSeconds = 1.5f
 private const val BlendSpread = 0.4f
 private const val EdgeStepDp = 2f
 
