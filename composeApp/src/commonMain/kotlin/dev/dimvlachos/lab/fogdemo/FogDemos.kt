@@ -19,43 +19,48 @@ internal object FogDemos {
 
     // The oval the finger scrubs, in fractions of the clip's frame; the brush's width around it
     // makes the clear oval.
-    val PortholeCentre = Offset(0.5f, 0.44f)
-    val PortholeRadii = Offset(0.33f, 0.18f)
+    val PortholeCentre = Offset(0.5f, 0.46f)
+    val PortholeRadii = Offset(0.4f, 0.24f)
 
-    // A hand clearing a porthole to look through: thirteen quick sweeps from the top of the oval to
-    // the bottom, none quite like the last. Thirteen, and bows this shallow, so the rows overlap
-    // everywhere, down into the oval's lower corners.
+    // A hand clearing a porthole to look through: sixteen quick sweeps from the top of the oval to
+    // the bottom, none quite like the last. Sixteen, and bows this shallow, so the rows overlap
+    // everywhere, up into the oval's narrow top and, the last sweep coming in from the right,
+    // down into both its lower corners.
     val porthole =
         ovalScrub(
             PortholeCentre,
             PortholeRadii,
             feel =
                 listOf(
-                    SweepFeel(bow = 0.004f, duration = 350.milliseconds),
-                    SweepFeel(bow = 0.005f, duration = 400.milliseconds, reach = 0.97f),
-                    SweepFeel(bow = 0.004f, duration = 430.milliseconds, reach = 1.03f),
-                    SweepFeel(bow = 0.006f, duration = 450.milliseconds),
-                    SweepFeel(bow = 0.005f, duration = 470.milliseconds, reach = 0.98f),
-                    SweepFeel(bow = 0.005f, duration = 470.milliseconds, reach = 1.02f),
-                    SweepFeel(bow = 0.004f, duration = 480.milliseconds, reach = 0.99f),
-                    SweepFeel(bow = 0.005f, duration = 470.milliseconds, reach = 1.01f),
-                    SweepFeel(bow = 0.004f, duration = 470.milliseconds, reach = 0.98f),
-                    SweepFeel(bow = 0.006f, duration = 450.milliseconds, reach = 1.02f),
-                    SweepFeel(bow = 0.005f, duration = 430.milliseconds, reach = 0.99f),
-                    SweepFeel(bow = 0.004f, duration = 400.milliseconds),
-                    SweepFeel(bow = 0.004f, duration = 350.milliseconds),
+                    SweepFeel(bow = 0.004f, duration = 280.milliseconds),
+                    SweepFeel(bow = 0.005f, duration = 300.milliseconds, reach = 0.97f),
+                    SweepFeel(bow = 0.004f, duration = 320.milliseconds, reach = 1.03f),
+                    SweepFeel(bow = 0.006f, duration = 340.milliseconds),
+                    SweepFeel(bow = 0.005f, duration = 350.milliseconds, reach = 0.98f),
+                    SweepFeel(bow = 0.005f, duration = 360.milliseconds, reach = 1.02f),
+                    SweepFeel(bow = 0.004f, duration = 370.milliseconds, reach = 0.99f),
+                    SweepFeel(bow = 0.004f, duration = 380.milliseconds, reach = 0.98f),
+                    SweepFeel(bow = 0.006f, duration = 370.milliseconds, reach = 1.02f),
+                    SweepFeel(bow = 0.005f, duration = 370.milliseconds, reach = 0.99f),
+                    SweepFeel(bow = 0.004f, duration = 360.milliseconds, reach = 1.01f),
+                    SweepFeel(bow = 0.005f, duration = 350.milliseconds, reach = 0.98f),
+                    SweepFeel(bow = 0.006f, duration = 340.milliseconds, reach = 1.02f),
+                    SweepFeel(bow = 0.004f, duration = 320.milliseconds, reach = 0.99f),
+                    SweepFeel(bow = 0.005f, duration = 300.milliseconds),
+                    SweepFeel(bow = 0.004f, duration = 280.milliseconds),
                 ),
         )
 
     // Fogged glass: a beat, a hand scrubs a porthole clear with the flat of a finger, two drops of
-    // condensation run down either side of it while it is looked through, then a breath fogs it
+    // condensation run down in the corners beside it while it is looked through, then a breath fogs
+    // it
     // all over, back to the fogged glass the loop starts from.
     private val wipeTour = demoScript {
         val start = 0.3.seconds
         at(start) { wipe(porthole.path(), porthole.duration) }
         val scrubbed = start + porthole.duration
-        at(scrubbed + 0.1.seconds) { drip(Offset(0.12f, 0.1f), 0.18f) }
-        at(scrubbed + 0.6.seconds) { drip(Offset(0.88f, 0.6f), 0.18f) }
+        at(scrubbed + 0.1.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
+        at(scrubbed + 0.6.seconds) { drip(Offset(0.94f, 0.76f), 0.14f) }
         at(scrubbed + LookThrough) { breathe(2.4.seconds, strength = 1f) }
     }
 
