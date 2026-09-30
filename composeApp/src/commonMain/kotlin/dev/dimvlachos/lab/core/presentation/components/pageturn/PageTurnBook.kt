@@ -24,8 +24,6 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.abs
 import kotlin.math.max
 
-private const val BookAspect = 2f
-
 /**
  * An open book of [spreads], each one image across both pages, turned by [state]. Tap the right
  * page for the next spread and the left for the previous one, or drag a page over: it follows the
@@ -50,6 +48,12 @@ fun PageTurnBook(
                     gutter = colors.bookGutter,
                     thread = colors.bookThread,
                     crease = colors.bookCrease,
+                    cover = colors.cover,
+                    coverLit = colors.coverLit,
+                    coverRule = colors.coverRule,
+                    coverSpine = colors.coverSpine,
+                    pageEdge = colors.pageEdge,
+                    pageEdgeLine = colors.pageEdgeLine,
                 )
             )
         }
@@ -63,8 +67,15 @@ fun PageTurnBook(
     )
 }
 
-// The pages' outer corners, as a percentage of the height (a page is square).
-private val BookShape = RoundedCornerShape(CornerSize(PageTurnDimens.CornerFraction * 100f))
+// The boards' corners, as a percentage of the book's height (a page plus the boards above and
+// below it), so the shadow follows the covers.
+private val BookShape =
+    RoundedCornerShape(
+        CornerSize(
+            PageTurnDimens.CoverCornerFraction * 100f /
+                (1f + 2f * PageTurnDimens.CoverMarginYFraction)
+        )
+    )
 
 // The book resting on a table: three shadows under it, soft to sharp, all falling towards the
 // reader.

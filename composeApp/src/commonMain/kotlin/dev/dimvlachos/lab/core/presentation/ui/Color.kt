@@ -21,6 +21,14 @@ data class AppColors(
     val bookThread: Color = Color(0xFFEFE6D4),
     val bookCrease: Color = Color(0xFF4F412C),
     val bookShadow: Color = Color(0xFF000000),
+    // The hardcover: burgundy leather boards with a tooled gold line, a darker spine, and the paper
+    // edges of the page stacks.
+    val cover: Color = Color(0xFF5E1F1C),
+    val coverLit: Color = Color(0xFF74302A),
+    val coverRule: Color = Color(0xFFC9A55C),
+    val coverSpine: Color = Color(0xFF3A1311),
+    val pageEdge: Color = Color(0xFFEDE3CB),
+    val pageEdgeLine: Color = Color(0xFFA8926A),
     // The table the book demo lies on, lit from above its centre, and the scripted finger.
     val table: Color = Color(0xFF2B1F17),
     val tableLit: Color = Color(0xFF4A3727),

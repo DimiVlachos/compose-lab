@@ -41,6 +41,33 @@ internal object PageTurnDimens {
     const val ShadowMax = 0.62f
     const val GlareMax = 0.2f
 
+    // The open book at rest: each page stands this high at its crest, as a fraction of its width,
+    // and ends this much lower at its outer edge (as a fraction of RestLift). A gentle bow.
+    const val RestLift = 0.06f
+    const val RestFall = 0.6f
+
+    // The paper falling into the spine darkens by up to this much, over this share of the page.
+    const val GutterRestAlpha = 0.3f
+    const val GutterRestSpan = 0.3f
+
+    // And past the crest, where the page curls down onto its stack, a lighter shade over this much.
+    const val EdgeRestAlpha = 0.12f
+    const val EdgeRestSpan = 0.16f
+
+    // The page stacks at the outer edges: the thickest is this share of a page's width, the
+    // thinnest this share of the thickest; the paper edges show as lines this far apart.
+    const val StackFraction = 0.045f
+    const val StackMinShare = 0.35f
+    val StackLineSpacing = 1.4.dp
+
+    // The hardcover boards: how far they reach past the pages and their stacks, as fractions of a
+    // page's width, and their rounding; the gold line inset on them.
+    const val CoverMarginXFraction = 0.024f
+    const val CoverMarginYFraction = 0.034f
+    const val CoverCornerFraction = 0.014f
+    const val CoverRuleInsetFraction = 0.4f
+    val CoverRuleWidth = 1.dp
+
     val TapSlop = 6.dp
 
     // Strips overlap by this much so no hairline of the page under them shows between two of

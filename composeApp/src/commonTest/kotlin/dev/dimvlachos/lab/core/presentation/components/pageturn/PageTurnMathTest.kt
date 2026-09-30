@@ -26,7 +26,7 @@ class PageTurnMathTest {
 
     @Test
     fun theLeafLiesFlatOnTheRightPageBeforeTheTurn() {
-        val frame = turnFrame(t = 0f, leafWidth = leafWidth)
+        val frame = turnFrame(t = 0f, leafWidth = leafWidth, restLift = 0f)
         frame.poses.forEachIndexed { i, pose ->
             assertNear(0f, pose.angle)
             assertNear(i * frame.stripWidth, pose.hingeX, 0.1f)
@@ -36,7 +36,7 @@ class PageTurnMathTest {
 
     @Test
     fun theLeafLiesFlatOnTheLeftPageAfterTheTurn() {
-        val frame = turnFrame(t = 1f, leafWidth = leafWidth)
+        val frame = turnFrame(t = 1f, leafWidth = leafWidth, restLift = 0f)
         frame.poses.forEachIndexed { i, pose ->
             assertNear(-PI.toFloat(), pose.angle, 0.001f)
             assertNear(-i * frame.stripWidth, pose.hingeX, 0.1f)
@@ -67,8 +67,8 @@ class PageTurnMathTest {
 
     @Test
     fun aReversedBendMirrorsTheBow() {
-        val ahead = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = 1f)
-        val behind = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = -1f)
+        val ahead = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = 1f, restLift = 0f)
+        val behind = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = -1f, restLift = 0f)
         // Bent ahead, the outer strip lags the spine strip (a larger angle is less far round).
         assertTrue(ahead.poses.last().angle > ahead.poses.first().angle)
         assertTrue(behind.poses.last().angle < behind.poses.first().angle)
@@ -92,7 +92,7 @@ class PageTurnMathTest {
 
     @Test
     fun flatStripsDrawAtTheirPlaceOnTheRightPage() {
-        val frame = turnFrame(t = 0f, leafWidth = leafWidth)
+        val frame = turnFrame(t = 0f, leafWidth = leafWidth, restLift = 0f)
         val pose = frame.poses[5]
         val corner = pointAt(pose, frame.stripWidth, 300f)
         assertNear(spineX + 6 * frame.stripWidth, corner.x, 0.5f)
@@ -126,7 +126,7 @@ class PageTurnMathTest {
 
     @Test
     fun theLeafIsUnshadedAtRestAndDarkensAwayFromTheReader() {
-        val rest = turnFrame(t = 0f, leafWidth = leafWidth)
+        val rest = turnFrame(t = 0f, leafWidth = leafWidth, restLift = 0f)
         val (restStart, restEnd) = stripShadeAlphas(rest, 3)
         assertNear(0f, restStart)
         assertNear(0f, restEnd)
@@ -172,5 +172,62 @@ class PageTurnMathTest {
         assertEquals(-1f, bend)
         assertEquals(-1f, bendAfterDrag(-1f, forward = true, delta = 0f))
         assertTrue(abs(bendAfterDrag(-1f, forward = true, delta = 0.075f)) < 0.001f)
+    }
+
+    @Test
+    fun aRestingPageRisesOutOfTheGutterCrestsAndFallsOntoItsStack() {
+        assertNear(0f, restHeight(0f))
+        val heights = (0..20).map { restHeight(it / 20f) }
+        val crest = heights.indices.maxBy { heights[it] } / 20f
+        assertTrue(crest in 0.3f..0.6f, "crest at $crest")
+        assertTrue(heights.last() in 0.1f..heights.max(), "edge ${heights.last()}")
+        val frame = turnFrame(t = 0f, leafWidth = leafWidth)
+        // Rising, the strips lean towards the reader (negative); past the crest, away.
+        assertTrue(frame.poses.first().angle < 0f)
+        assertTrue(frame.poses.last().angle > 0f)
+        assertTrue(frame.poses.drop(1).all { it.hingeZ < 0f }, "the page stands above the spine")
+    }
+
+    @Test
+    fun theLeftPageRestsInTheMirrorOfTheRight() {
+        val right = turnFrame(t = 0f, leafWidth = leafWidth)
+        val left = turnFrame(t = 1f, leafWidth = leafWidth)
+        right.poses.zip(left.poses).forEach { (r, l) ->
+            assertNear(-PI.toFloat() - r.angle, l.angle, 0.001f)
+            assertNear(-r.hingeX, l.hingeX, 0.1f)
+            assertNear(r.hingeZ, l.hingeZ, 0.1f)
+        }
+    }
+
+    @Test
+    fun aTurnStartsAndEndsInTheShapeOfTheRestingPages() {
+        // A whisker into the turn the leaf has barely moved from the page under it: no snap.
+        val rest = turnFrame(t = 0f, leafWidth = leafWidth)
+        val started = turnFrame(t = 0.002f, leafWidth = leafWidth)
+        rest.poses.zip(started.poses).forEach { (r, s) -> assertNear(r.angle, s.angle, 0.02f) }
+        val landed = turnFrame(t = 0.998f, leafWidth = leafWidth)
+        turnFrame(t = 1f, leafWidth = leafWidth).poses.zip(landed.poses).forEach { (r, s) ->
+            assertNear(r.angle, s.angle, 0.02f)
+        }
+    }
+
+    @Test
+    fun aTurnMovesPaperFromTheRightStackToTheLeft() {
+        val (firstLeft, firstRight) = stackShares(position = 0f, spreadCount = 4)
+        val (lastLeft, lastRight) = stackShares(position = 3f, spreadCount = 4)
+        assertTrue(firstLeft < firstRight)
+        assertTrue(lastLeft > lastRight)
+        assertNear(PageTurnDimens.StackMinShare, firstLeft)
+        assertNear(1f, lastLeft)
+        val (midLeft, midRight) = stackShares(position = 1.5f, spreadCount = 4)
+        assertNear(midLeft, midRight)
+    }
+
+    @Test
+    fun theGutterDarkensARestingPageAndLeavesALiftedOne() {
+        assertTrue(gutterRestShade(0f, lift = 0f) > gutterRestShade(0.1f, lift = 0f))
+        assertNear(0f, gutterRestShade(0.5f, lift = 0f))
+        assertTrue(gutterRestShade(1f, lift = 0f) > 0f, "the edge curling onto its stack dims")
+        assertNear(0f, gutterRestShade(0f, lift = 1f))
     }
 }
