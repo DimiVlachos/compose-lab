@@ -3,7 +3,10 @@ package dev.dimvlachos.lab.frostdemo.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,6 +42,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
@@ -206,5 +210,30 @@ class FrostDemoUiTest {
         showDemo(DemoState(recording = true), FrostState(), MicAccess.Unavailable)
         onNodeWithText(holdHint).assertDoesNotExist()
         onNodeWithText(blowHint).assertDoesNotExist()
+    }
+
+    @Test
+    fun recomposingWhileListeningKeepsTheSameMicrophoneRunning() = runComposeUiTest {
+        // On Android the access is a fresh wrapper around the same microphone at every
+        // recomposition; listening must not restart for it, or a new detector learns the blow as
+        // the room's level the moment the first breath recomposes the demo.
+        var listens = 0
+        val microphone =
+            FakeMicrophone(flow<FloatArray> { awaitCancellation() }.onStart { listens++ })
+        var recomposition by mutableIntStateOf(0)
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                LabTheme {
+                    recomposition.let {
+                        FrostDemo(DemoState(), FrostState(), MicAccess.Granted(microphone))
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        recomposition++
+        waitForIdle()
+
+        assertEquals(1, listens)
     }
 }

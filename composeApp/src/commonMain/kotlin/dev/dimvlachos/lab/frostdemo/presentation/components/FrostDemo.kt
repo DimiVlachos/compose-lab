@@ -108,13 +108,16 @@ internal fun FrostDemo(
 
     // A blow on the microphone fogs the glass, only while the demo is in front of the user.
     if (micAccess is MicAccess.Granted && !micFailed) {
+        // Keyed on the microphone, not the access around it: a new wrapper at a recomposition must
+        // not restart listening, or a fresh detector would take a blow for the room's own level.
+        val microphone = micAccess.microphone
         val lifecycle = LocalLifecycleOwner.current.lifecycle
-        LaunchedEffect(micAccess, lifecycle) {
+        LaunchedEffect(microphone, lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 val detector = BlowDetector()
                 var silentFrames = 0
                 try {
-                    micAccess.microphone.frames.collect { frame ->
+                    microphone.frames.collect { frame ->
                         silentFrames = if (frame.all { it == 0f }) silentFrames + 1 else 0
                         check(silentFrames < SilentMicFrames) {
                             "the microphone hears only silence"
