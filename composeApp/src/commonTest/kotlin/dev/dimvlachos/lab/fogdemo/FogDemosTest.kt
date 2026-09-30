@@ -90,17 +90,20 @@ class FogDemosTest {
     @Test
     fun theClipsDripsRunBesideThePorthole() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
-        val drawing = FogDemos.porthole.path()
+        FogDemos.all.first().script.play(controller)
+        // In dp on the clip's 400 × 500 frame, measured to the scrub's segments: a drop that
+        // came within the finger's reach of them would stop and blend in.
+        fun dp(point: Offset) = Offset(point.x * 400f, point.y * 500f)
+        val scrub = FogDemos.porthole.path().map(::dp)
+        val clearance = FogDemos.FingerBrush.value + MaxDropRadius
 
         for ((at, length) in controller.drips) {
             var y = at.y
             while (y <= at.y + length) {
-                val point = Offset(at.x, y)
-                val nearest = drawing.minOf { (it - point).getDistance() }
-                // Clear of the scrub by more than the finger's width.
-                assertTrue(nearest > 0.12f, "a drip at $point comes $nearest from the porthole")
-                y += 0.01f
+                val point = dp(Offset(at.x, y))
+                val nearest = scrub.zipWithNext().minOf { (a, b) -> distanceToSegment(point, a, b) }
+                assertTrue(nearest > clearance, "a drip at $point comes $nearest dp from the scrub")
+                y += 0.005f
             }
         }
     }
@@ -140,4 +143,15 @@ class FogDemosTest {
         assertTrue(bathroom.script === camera.script)
         assertFalse(camera.autoplay)
     }
+}
+
+// The biggest drop's radius, in dp.
+private const val MaxDropRadius = 8f
+
+private fun distanceToSegment(p: Offset, a: Offset, b: Offset): Float {
+    val ab = b - a
+    val length = ab.getDistanceSquared()
+    if (length == 0f) return (p - a).getDistance()
+    val t = (((p - a).x * ab.x + (p - a).y * ab.y) / length).coerceIn(0f, 1f)
+    return (p - (a + ab * t)).getDistance()
 }

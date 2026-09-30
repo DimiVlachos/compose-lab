@@ -69,6 +69,14 @@ class FogDemoCameraUiTest {
             abs(middle.blue - Color.Magenta.blue) < 0.1f
     }
 
+    // The still bathroom photo, not plain glass: a picture varies across the middle.
+    private fun ComposeUiTest.stillIsShown(): Boolean {
+        waitForIdle()
+        val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
+        val row = pixels.height / 2
+        return (3..7).map { pixels[pixels.width * it / 10, row] }.distinct().size > 1
+    }
+
     @Test
     fun aGrantedCameraShowsTheLiveMirror() = runComposeUiTest {
         val camera = FakeMirrorCamera()
@@ -96,6 +104,7 @@ class FogDemoCameraUiTest {
         showMirror({ CameraAccess.Granted(camera) })
 
         assertFalse(middleIsMagenta())
+        assertTrue(stillIsShown(), "the still photo, not plain glass")
         assertEquals(1, camera.starts)
     }
 
@@ -103,6 +112,7 @@ class FogDemoCameraUiTest {
     fun withoutACameraTheMirrorShowsTheStillReflection() = runComposeUiTest {
         showMirror({ CameraAccess.Unavailable })
         assertFalse(middleIsMagenta())
+        assertTrue(stillIsShown(), "the still photo, not plain glass")
     }
 
     @Test
