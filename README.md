@@ -117,13 +117,13 @@ Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](
 | [Mykonos](https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a) | Johnny Africa |
 | [Crete](https://images.unsplash.com/photo-1575237402880-4b496a83ae04) | Joshua Kettle |
 | [Rhodes](https://images.unsplash.com/photo-1572375901777-1b257481cbb0) | Vlad Kiselov |
+| [Zakynthos](https://images.unsplash.com/photo-1612279427382-f8349a383af8) | Julian Timmerman |
+| [Kefalonia](https://images.unsplash.com/photo-1598959594958-34761147b7b0) | Mac McDade |
+| [Folegandros](https://images.unsplash.com/photo-1688765866663-0fd353e7d5df) | Tom Waldek |
 
 Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](https://www.pexels.com/license/):
 
 | Photo | Photographer |
 |---|---|
-| [Sea view from a balcony](https://www.pexels.com/photo/35678987/) (behind the fogged window) | Dexter110pan |
+| [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the fogged mirror's reflection without a camera) | nana |
 | [Water droplets on foggy glass](https://www.pexels.com/photo/water-droplets-on-foggy-glass-8628343/) (the fog's condensation, via `scripts/fog-texture.py`) | Chris F |
-| [Zakynthos](https://images.unsplash.com/photo-1612279427382-f8349a383af8) | Julian Timmerman |
-| [Kefalonia](https://images.unsplash.com/photo-1598959594958-34761147b7b0) | Mac McDade |
-| [Folegandros](https://images.unsplash.com/photo-1688765866663-0fd353e7d5df) | Tom Waldek |

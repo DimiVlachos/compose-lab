@@ -61,7 +61,7 @@ import dev.dimvlachos.lab.resources.fog_hint_hold
 import dev.dimvlachos.lab.resources.fog_hint_wipe
 import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.ic_photo_camera
-import dev.dimvlachos.lab.resources.window_view
+import dev.dimvlachos.lab.resources.mirror_view
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -257,7 +257,7 @@ internal fun FogDemo(
             // A camera still starting shows plain glass: the still is for when there is none.
             photo =
                 when {
-                    camera == null -> painterResource(Res.drawable.window_view)
+                    camera == null -> painterResource(Res.drawable.mirror_view)
                     camera.showing -> camera.mirror
                     else -> startingGlass
                 },
