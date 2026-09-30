@@ -37,6 +37,7 @@ kotlin {
             implementation(libs.kermit)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.navigationevent.compose)
+            implementation(libs.lifecycle.runtime.compose)
         }
         androidMain.dependencies { implementation(libs.androidx.activity.compose) }
         commonTest.dependencies {
