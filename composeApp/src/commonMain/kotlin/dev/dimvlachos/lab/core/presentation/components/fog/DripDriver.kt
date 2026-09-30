@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
@@ -131,7 +132,12 @@ class DripDriver(
         if (stepSeconds > 0f) {
             for (drip in running.toList()) {
                 drip.advance(stepSeconds)
-                if (drip.stopped) {
+                if (drip.blending) {
+                    // Reached a wiped patch: it merges into the clear glass at its edge.
+                    running -= drip
+                    finished += drip
+                    fadeOut(drip, BlendSeconds)
+                } else if (drip.stopped) {
                     running -= drip
                     resting += drip
                     finished += drip
@@ -220,6 +226,10 @@ class DripDriver(
         val growing: Boolean
             get() = grown < GrowSeconds
 
+        /** Met the edge of a wiped patch and merging into it. */
+        var blending = false
+            private set
+
         fun advance(seconds: Float) {
             if (grown < GrowSeconds) {
                 grown += seconds
@@ -248,8 +258,15 @@ class DripDriver(
                 start.x +
                     (sin(phase + travelled / WaveLengthDp * 2 * PI.toFloat()) - sin(phase)) *
                         wobble / glass.width.value
-            head = Offset(x.coerceIn(0f, 1f), y)
+            val next = Offset(x.coerceIn(0f, 1f), y)
+            // Feel down in small steps: at a wiped patch's edge, it stops and blends in.
+            val edge = edgeBefore(head, next)
+            head = edge ?: next
             fog.extendStroke(current, head)
+            if (edge != null) {
+                blending = true
+                return
+            }
             if (y >= stops[burst]) {
                 burst++
                 speed = 0f
@@ -268,6 +285,27 @@ class DripDriver(
         }
 
         // A trail as wide as the drop leaves, narrower where it first broke away.
+        // The last point on fog on the way from [from] to [to], if wiped glass lies between.
+        private fun edgeBefore(from: Offset, to: Offset): Offset? {
+            val steps =
+                ((to - from).let { hypot(it.x * glass.width.value, it.y * glass.height.value) } /
+                        EdgeStepDp)
+                    .toInt()
+                    .coerceAtLeast(1)
+            var last = from
+            for (i in 1..steps) {
+                val point = from + (to - from) * (i / steps.toFloat())
+                // A real wipe, not a drop's part-clear trail, its own fresh one included.
+                val wiped =
+                    fog.marks.any {
+                        it is WipeStroke && it.clarity >= 1f && it.covers(point, glass, wipeRadius)
+                    }
+                if (wiped) return last
+                last = point
+            }
+            return null
+        }
+
         private fun streakRadius() =
             (diameter / 2 * if (burst == 0) TopStreakWidth else StreakWidth).dp
 
@@ -289,6 +327,8 @@ class DripDriver(
 
         fun fade(seconds: Float) {
             fadeLeft = (fadeLeft - fadeRate * seconds).coerceAtLeast(0f)
+            // Merging into the clear glass, it lets go of its teardrop.
+            if (blending) ease(0f, seconds)
         }
 
         /**
@@ -327,6 +367,7 @@ class DripDriver(
                 radius =
                     when {
                         grown < GrowSeconds -> (diameter / 2 * (grown / GrowSeconds)).dp
+                        blending -> (diameter / 2 * (1f + BlendSpread * (1f - fadeLeft))).dp
                         else -> (diameter / 2).dp
                     },
                 resting = stopped,
@@ -429,6 +470,9 @@ private const val StretchEasing = 6f
 private const val RelaxedWithin = 0.01f
 private const val WipedFadeSeconds = 0.2f
 private const val PushedOutFadeSeconds = 1f
+private const val BlendSeconds = 0.5f
+private const val BlendSpread = 0.4f
+private const val EdgeStepDp = 2f
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
 private val StartClearance = 12.dp

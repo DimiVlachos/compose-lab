@@ -228,18 +228,34 @@ class DripDriverTest {
     }
 
     @Test
-    fun aDropRunsOnThroughAWipedPatch() {
+    fun aDropStopsAtTheEdgeOfAWipedPatchAndBlendsIntoIt() {
         val fog = FogState()
         // A wiped band across the mirror, below where the drop starts.
-        fog.beginStroke(Offset(0f, 0.3f), radius = 20.dp).also {
-            fog.extendStroke(it, Offset(1f, 0.3f))
+        fog.beginStroke(Offset(0f, 0.4f), radius = 20.dp).also {
+            fog.extendStroke(it, Offset(1f, 0.4f))
         }
         val drips = driver(fog)
-        drips.drip(Offset(0.5f, 0.2f), 0.3f)
-        drips.run(12f)
-
-        val bead = drips.beads.single()
-        assertTrue(bead.at.y > 0.45f, "it ran on past the wiped band: ${bead.at}")
+        drips.drip(Offset(0.5f, 0.2f), 0.4f)
+        val edge = 0.4f - 20f / 800f
+        var blending = false
+        var runningRadius = 0f
+        var lastAlpha = 1f
+        drips.run(12f) {
+            val bead = drips.beads.singleOrNull() ?: return@run
+            assertTrue(bead.at.y <= edge + 0.001f, "never onto the wiped glass: ${bead.at.y}")
+            if (bead.alpha < 1f) {
+                blending = true
+                assertTrue(bead.alpha <= lastAlpha, "only ever fading: ${bead.alpha}")
+                assertTrue(bead.radius.value >= runningRadius, "spreading as it blends")
+                lastAlpha = bead.alpha
+            } else {
+                runningRadius = bead.radius.value
+            }
+        }
+        assertTrue(blending, "it blended into the edge")
+        assertTrue(drips.beads.isEmpty(), "and is gone: ${drips.beads}")
+        val stoppedAt = fog.streaks().maxOf { s -> s.points.maxOf { it.y } }
+        assertTrue(stoppedAt > edge - 0.01f, "right at the edge: $stoppedAt")
     }
 
     @Test
