@@ -29,6 +29,7 @@ import dev.dimvlachos.lab.core.audio.silence
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.frost.Breath
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
+import dev.dimvlachos.lab.core.presentation.components.frost.Thaw
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.frost_hint_blow
@@ -50,7 +51,7 @@ import org.jetbrains.compose.resources.getString
 @OptIn(ExperimentalTestApi::class)
 class FrostDemoUiTest {
     @Test
-    fun scriptedWipesDrawStrokesAndTheLoopRefrosts() = runComposeUiTest {
+    fun scriptedWipesDrawStrokesAndTheLoopEvaporates() = runComposeUiTest {
         mainClock.autoAdvance = false
         val state = DemoState()
         val frost = FrostState()
@@ -84,9 +85,15 @@ class FrostDemoUiTest {
 
         runOnUiThread { state.select(0) }
         Snapshot.sendApplyNotifications()
-        mainClock.advanceTimeByFrame()
+        mainClock.advanceTimeBy(500)
 
-        assertTrue(frost.strokes.isEmpty())
+        // Back on 0 the frost evaporates: partly gone halfway through, clear glass after.
+        val thaw = frost.marks.last() as Thaw
+        assertTrue(thaw.amount in 0.1f..0.95f, "melting: ${thaw.amount}")
+        assertEquals(1, frost.strokes.size)
+
+        mainClock.advanceTimeBy(700)
+        assertEquals(1f, (frost.marks.single() as Thaw).amount)
     }
 
     @Test
