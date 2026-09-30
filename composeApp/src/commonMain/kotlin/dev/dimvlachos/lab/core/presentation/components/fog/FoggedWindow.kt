@@ -19,7 +19,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ShaderBrush
@@ -63,6 +65,8 @@ fun FoggedWindow(
     // restarting.
     val holdChange by rememberUpdatedState(onHoldChange)
     val noise = remember { fogNoiseTile() }
+    val density = remember { fogDensityMap() }
+    val milky = remember { ColorFilter.colorMatrix(milkyColorMatrix()) }
     val grain =
         remember(noise) { ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated)) }
     Box(
@@ -129,15 +133,30 @@ fun FoggedWindow(
                 photo,
                 null,
                 // The film and grain draw over the blur's layer, not inside it, so the grain stays
-                // sharp.
+                // sharp. The film is milky and uneven: an even base, thicker patches from the
+                // density map, and a glow where the light comes through, toward the top right.
                 Modifier.matchParentSize()
                     .drawWithContent {
                         drawContent()
-                        drawRect(Color.White.copy(alpha = FogDimens.TintAlpha))
+                        drawRect(Color.White.copy(alpha = FogDimens.FilmAlpha))
+                        drawImage(
+                            density,
+                            dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                            filterQuality = FilterQuality.High,
+                        )
+                        drawRect(
+                            Brush.radialGradient(
+                                0f to Color.White.copy(alpha = FogDimens.GlowAlpha),
+                                1f to Color.Transparent,
+                                center = Offset(size.width * 0.85f, size.height * 0.1f),
+                                radius = size.maxDimension * 0.7f,
+                            )
+                        )
                         drawRect(grain)
                     }
                     .blur(FogDimens.FogBlur),
                 contentScale = ContentScale.Crop,
+                colorFilter = milky,
             )
         }
     }

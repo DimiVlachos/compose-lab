@@ -62,4 +62,22 @@ class FogLayersUiTest {
         assertTrue(greenAt(0.1f) < 0.12f, "the top is still clear: ${greenAt(0.1f)}")
         assertTrue(greenAt(0.8f) > 0.2f, "the bottom is fogged: ${greenAt(0.8f)}")
     }
+
+    @Test
+    fun fogOverAStrongColourIsMilkyGrey() = runComposeUiTest {
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = FogState(),
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val pixel = pixels[pixels.width / 2, pixels.height / 2]
+        val channels = listOf(pixel.red, pixel.green, pixel.blue)
+
+        // The reference: colours fade to grey-white behind the fog.
+        assertTrue(channels.max() - channels.min() < 0.3f, "washed out, not pink: $pixel")
+        assertTrue(channels.min() > 0.45f, "milky and light: $pixel")
+    }
 }
