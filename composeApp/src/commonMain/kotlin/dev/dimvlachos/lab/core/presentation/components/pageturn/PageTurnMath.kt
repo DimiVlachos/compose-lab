@@ -34,9 +34,9 @@ internal class TurnFrame(
 
 /**
  * The leaf's chain of strips at progress [t]. The leaf as a whole turns by pi t, and the bow is
- * spread along it: the strip at the spine leans back by the bend, the free edge leads by it, and
- * [bendDirection] (-1..1) says which way. A page pulled forward leads with its edge; pushed back,
- * the edge trails.
+ * spread along it. With [bendDirection] 1 the strip at the spine is a bend ahead of the turn and
+ * the free edge a bend behind it, so the paper bulges the way the turn goes, as air and the hand
+ * hold the edge back; -1 mirrors it for a turn running the other way.
  */
 internal fun turnFrame(
     t: Float,
@@ -138,7 +138,7 @@ internal fun shouldCommit(progress: Float, velocity: Float): Boolean =
 
 /**
  * The bend direction for a turn that is going [forward], while its progress is increasing or not:
- * the edge always leads the way the page is moving.
+ * the bow always bulges the way the page is moving.
  */
 internal fun bendTowards(forward: Boolean, progressIncreasing: Boolean): Float =
     if (forward == progressIncreasing) 1f else -1f

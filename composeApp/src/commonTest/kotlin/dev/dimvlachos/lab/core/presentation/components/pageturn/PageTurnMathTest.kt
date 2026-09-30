@@ -69,7 +69,7 @@ class PageTurnMathTest {
     fun aReversedBendMirrorsTheBow() {
         val ahead = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = 1f)
         val behind = turnFrame(t = 0.3f, leafWidth = leafWidth, bendDirection = -1f)
-        // Leading, the outer strip is further round than the spine strip; trailing, it is behind.
+        // Bent ahead, the outer strip lags the spine strip (a larger angle is less far round).
         assertTrue(ahead.poses.last().angle > ahead.poses.first().angle)
         assertTrue(behind.poses.last().angle < behind.poses.first().angle)
         val theta = -(PI * 0.3).toFloat()
