@@ -29,6 +29,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
@@ -249,11 +250,17 @@ internal fun FogDemo(
         }
     }
 
+    val surface = LabTheme.colors.surface
+    val startingGlass = remember(surface) { ColorPainter(surface) }
     Box(Modifier.fillMaxSize()) {
         FoggedWindow(
+            // A camera still starting shows plain glass: the still is for when there is none.
             photo =
-                if (camera?.showing == true) camera.mirror
-                else painterResource(Res.drawable.window_view),
+                when {
+                    camera == null -> painterResource(Res.drawable.window_view)
+                    camera.showing -> camera.mirror
+                    else -> startingGlass
+                },
             state = fog,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
             brushRadius = FogDemos.FingerBrush,

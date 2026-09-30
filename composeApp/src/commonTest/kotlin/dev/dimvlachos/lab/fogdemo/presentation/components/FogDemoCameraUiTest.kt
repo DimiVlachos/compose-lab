@@ -79,6 +79,18 @@ class FogDemoCameraUiTest {
     }
 
     @Test
+    fun aCameraStillStartingShowsPlainGlassNotTheStill() = runComposeUiTest {
+        showMirror({ CameraAccess.Granted(FakeMirrorCamera(starting = true)) })
+        waitForIdle()
+
+        // Flat behind the glass: the same colour across the middle, where a photo would vary.
+        val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
+        val row = pixels.height / 2
+        val samples = (3..7).map { pixels[pixels.width * it / 10, row] }
+        assertTrue(samples.distinct().size == 1, "a picture behind the glass: $samples")
+    }
+
+    @Test
     fun aCameraThatFailsLeavesTheStillReflection() = runComposeUiTest {
         val camera = FakeMirrorCamera(failure = IllegalStateException("in use"))
         showMirror({ CameraAccess.Granted(camera) })
