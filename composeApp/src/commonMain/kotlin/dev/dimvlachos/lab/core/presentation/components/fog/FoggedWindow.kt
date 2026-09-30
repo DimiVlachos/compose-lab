@@ -175,12 +175,20 @@ fun FoggedWindow(
                     // One brush per width, centred on the origin and moved to each dab, not a
                     // gradient per dab.
                     val brush = softBrush(radius)
-                    for (mark in state.marks) {
-                        when (mark) {
+                    val marks = state.marks
+                    var i = 0
+                    while (i < marks.size) {
+                        when (val mark = marks[i]) {
                             is WipeStroke ->
-                                when (val own = mark.radius?.toPx()) {
-                                    null -> drawWipe(mark.points, radius, brush, mark.clarity)
-                                    else -> drawWipe(mark.points, own, softBrush(own), mark.clarity)
+                                if (mark.clarity >= 1f) {
+                                    drawWipe(mark, brushPx(mark, radius), brush)
+                                } else {
+                                    // A run of streaks, drops' wet trails, share one layer: where
+                                    // they cross, one wet film, not two.
+                                    var end = i + 1
+                                    while (end < marks.size && marks[end].isStreakLike(mark)) end++
+                                    drawStreaks(marks.subList(i, end), radius, mark.clarity)
+                                    i = end - 1
                                 }
                             is Breath -> drawFog(mark.level)
                             is Evaporation ->
@@ -194,6 +202,7 @@ fun FoggedWindow(
                                     filterQuality = FilterQuality.High,
                                 )
                         }
+                        i++
                     }
                 }
         ) {
@@ -223,40 +232,61 @@ fun FoggedWindow(
     }
 }
 
-private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush, clarity: Float) {
-    val pixels = stroke.map { Offset(it.x * size.width, it.y * size.height) }
-    val dabs = wipeDabs(pixels, radius * FogDimens.DabSpacingRatio)
-    if (clarity >= 1f) {
-        for (dab in dabs) {
-            translate(dab.x, dab.y) {
-                drawCircle(brush, radius, Offset.Zero, blendMode = BlendMode.DstOut)
-            }
+private fun DrawScope.drawWipe(stroke: WipeStroke, radius: Float, brush: Brush) {
+    val soft = if (stroke.radius == null) brush else softBrush(radius)
+    for (dab in stroke.dabs(size, radius * FogDimens.DabSpacingRatio)) {
+        translate(dab.x, dab.y) {
+            drawCircle(soft, radius, Offset.Zero, blendMode = BlendMode.DstOut)
         }
-        return
     }
-    // Part of the way: the dabs join up in a layer of their own, which then clears the fog only
-    // [clarity] of the way, so overlapping dabs cannot compound past it.
-    if (dabs.isEmpty()) return
-    // Only as big as the streak itself: a thin drip needs no layer the size of the glass.
-    val bounds =
-        Rect(
-            dabs.minOf { it.x } - radius,
-            dabs.minOf { it.y } - radius,
-            dabs.maxOf { it.x } + radius,
-            dabs.maxOf { it.y } + radius,
-        )
+}
+
+// Part of the way: the streaks' dabs join up in one layer of their own, as big as the streaks
+// alone, which then clears the fog only [clarity] of the way, so overlapping dabs, and crossing
+// streaks, cannot compound past it.
+private fun DrawScope.drawStreaks(streaks: List<FogMark>, windowRadius: Float, clarity: Float) {
+    var left = Float.MAX_VALUE
+    var top = Float.MAX_VALUE
+    var right = -Float.MAX_VALUE
+    var bottom = -Float.MAX_VALUE
+    for (streak in streaks) {
+        streak as WipeStroke
+        val radius = brushPx(streak, windowRadius)
+        for (dab in streak.dabs(size, radius * FogDimens.DabSpacingRatio)) {
+            left = minOf(left, dab.x - radius)
+            top = minOf(top, dab.y - radius)
+            right = maxOf(right, dab.x + radius)
+            bottom = maxOf(bottom, dab.y + radius)
+        }
+    }
+    if (left > right) return
     drawIntoCanvas { canvas ->
         canvas.saveLayer(
-            bounds,
+            Rect(left, top, right, bottom),
             Paint().apply {
                 blendMode = BlendMode.DstOut
                 alpha = clarity
             },
         )
-        for (dab in dabs) translate(dab.x, dab.y) { drawCircle(brush, radius, Offset.Zero) }
+        for (streak in streaks) {
+            streak as WipeStroke
+            val radius = brushPx(streak, windowRadius)
+            val brush = softBrush(radius)
+            for (dab in streak.dabs(size, radius * FogDimens.DabSpacingRatio)) {
+                translate(dab.x, dab.y) { drawCircle(brush, radius, Offset.Zero) }
+            }
+        }
         canvas.restore()
     }
 }
+
+// A stroke's brush in px: its own, or the window's.
+private fun DrawScope.brushPx(stroke: WipeStroke, windowRadius: Float): Float =
+    stroke.radius?.toPx() ?: windowRadius
+
+// Another streak like [first], to share its layer: part-clear, and just as clear.
+private fun FogMark.isStreakLike(first: WipeStroke) =
+    this is WipeStroke && clarity < 1f && clarity == first.clarity
 
 // Fog fills in what is missing rather than piling onto fog already there: under the breath's mask
 // the glass becomes the fog's natural state, existing × (1 − mask) + fog × mask. So the existing

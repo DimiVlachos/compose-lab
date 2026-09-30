@@ -194,4 +194,34 @@ class FogLayersUiTest {
         assertTrue(wet > clear + 0.01f, "some fog is left: $wet over clear $clear")
         assertTrue(wet < fogged * 0.4f, "most of it is gone: $wet under fogged $fogged")
     }
+
+    // How much fog is left, as green over red, where [streaks] part-clear streaks cross.
+    private fun fogLeftUnder(streaks: Int): Float {
+        var green = 0f
+        runComposeUiTest {
+            val fog = FogState()
+            repeat(streaks) {
+                fog.beginStroke(Offset(0.1f, 0.5f), clarity = 0.85f).also { s ->
+                    fog.extendStroke(s, Offset(0.9f, 0.5f))
+                }
+            }
+            setContent {
+                FoggedWindow(
+                    photo = ColorPainter(Color.Red),
+                    state = fog,
+                    modifier = Modifier.size(200.dp).testTag("window"),
+                )
+            }
+            val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+            green = pixels[pixels.width / 2, pixels.height / 2].green
+        }
+        return green
+    }
+
+    @Test
+    fun crossingStreaksLeaveTheSameWetFilmAsOne() {
+        val once = fogLeftUnder(1)
+        val twice = fogLeftUnder(2)
+        assertTrue(abs(twice - once) < 0.02f, "one film, not two: $twice against $once")
+    }
 }

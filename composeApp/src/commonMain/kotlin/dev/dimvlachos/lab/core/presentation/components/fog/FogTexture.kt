@@ -12,6 +12,8 @@ import kotlin.math.roundToInt
  * round on a tall phone and in the clip's 4:5 frame alike.
  */
 internal fun coverCrop(image: IntSize, window: Size): Pair<IntOffset, IntSize> {
+    // Nothing to cover yet: the whole texture, rather than 0 / 0.
+    if (window.width <= 0f || window.height <= 0f) return IntOffset.Zero to image
     val scale = max(window.width / image.width, window.height / image.height)
     val width = (window.width / scale).roundToInt().coerceAtMost(image.width)
     val height = (window.height / scale).roundToInt().coerceAtMost(image.height)

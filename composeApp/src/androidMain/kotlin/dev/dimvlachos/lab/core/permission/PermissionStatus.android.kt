@@ -42,6 +42,8 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
     var blocked by rememberSaveable { mutableStateOf(false) }
     var refusals by rememberSaveable { mutableIntStateOf(0) }
     var rationaleBefore by rememberSaveable { mutableStateOf(false) }
+    // Sent to settings, where "don't allow" may have become "ask every time".
+    var sentToSettings by rememberSaveable { mutableStateOf(false) }
     fun rationale() =
         context.findActivity()?.shouldShowRequestPermissionRationale(permission) == true
     val launcher =
@@ -55,10 +57,17 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
         }
     LifecycleResumeEffect(Unit) {
         granted = isGranted()
+        // Back from settings, the system may ask again: offer to ask. If it still won't, the
+        // next refusal comes at once, with no rationale, and blocks it again.
+        if (sentToSettings) {
+            sentToSettings = false
+            blocked = false
+        }
         onPauseOrDispose {}
     }
     val blockedStatus = remember {
         PermissionStatus.Blocked {
+            sentToSettings = true
             context.startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

@@ -1,8 +1,11 @@
 package dev.dimvlachos.lab.core.presentation.components.fog
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class WipeDabsTest {
     @Test
@@ -39,5 +42,18 @@ class WipeDabsTest {
             listOf(Offset(1f, 1f)),
             wipeDabs(listOf(Offset(1f, 1f), Offset(1f, 1f), Offset(1f, 1f)), spacing = 2f),
         )
+    }
+
+    @Test
+    fun aStrokesDabsAreWorkedOutOnceUntilItGrowsOrTheWindowChanges() {
+        val stroke = FogState().beginStroke(Offset(0.1f, 0.5f))
+        stroke.points += Offset(0.9f, 0.5f)
+        val first = stroke.dabs(Size(200f, 200f), spacing = 5f)
+        assertSame(first, stroke.dabs(Size(200f, 200f), spacing = 5f))
+
+        stroke.points += Offset(0.9f, 0.9f)
+        val grown = stroke.dabs(Size(200f, 200f), spacing = 5f)
+        assertTrue(grown.size > first.size)
+        assertTrue(grown !== stroke.dabs(Size(400f, 400f), spacing = 5f))
     }
 }

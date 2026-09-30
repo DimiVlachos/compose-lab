@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.fogdemo
 
 import dev.dimvlachos.lab.core.presentation.components.fog.Breath
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
+import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -18,11 +19,21 @@ internal class BreathDriver(
 ) {
     private var breath: Breath? = null
 
+    private fun Breath.isLatestBesidesStreaks(): Boolean {
+        val index = fog.marks.indexOfLast { it === this }
+        if (index < 0) return false
+        for (i in index + 1 until fog.marks.size) {
+            val mark = fog.marks[i]
+            if (mark !is WipeStroke || mark.clarity >= 1f) return false
+        }
+        return true
+    }
+
     fun advance(strength: Float, seconds: Float) {
         if (strength <= 0f || seconds <= 0f) return
+        // Carries on unless the user has wiped since: a running drop's thin streak is not a wipe.
         val current =
-            breath?.takeIf { fog.marks.lastOrNull() === it }
-                ?: fog.beginBreath().also { breath = it }
+            breath?.takeIf { it.isLatestBesidesStreaks() } ?: fog.beginBreath().also { breath = it }
         fog.setBreathLevel(current, current.level + strength * seconds / secondsToCover)
     }
 }

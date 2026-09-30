@@ -3,12 +3,15 @@ package dev.dimvlachos.lab.core.camera
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -109,5 +112,55 @@ class MirrorFramePainterTest {
         val at = painter.render(Size(20f, 10f))
         val middle = at(0.5f, 0.5f)
         assertTrue(middle.red in 0.35f..0.45f, "four times brighter: $middle")
+    }
+
+    @Test
+    fun theGainBrightensBeforeTheCallersFilterEvenTurnedAndPadded() {
+        // A grey frame one column wider than it uses, the padding bright green.
+        val image = ImageBitmap(3, 2)
+        val canvas = Canvas(image)
+        canvas.drawRect(0f, 0f, 2f, 2f, Paint().apply { color = Color(0.1f, 0.1f, 0.1f) })
+        canvas.drawRect(2f, 0f, 3f, 2f, Paint().apply { color = Color.Green })
+        val painter = MirrorFramePainter()
+        painter.show(CameraFrame(image, width = 2, height = 2, rotationDegrees = 90, gain = 4f))
+        // The caller's filter lifts every channel by a fixed 0.2: brightened first, the grey
+        // becomes 0.4 + 0.2 = 0.6; lifted first, it would be (0.1 + 0.2) × 4, clipped to 1.
+        val lift =
+            ColorFilter.colorMatrix(
+                ColorMatrix(
+                    floatArrayOf(
+                        1f,
+                        0f,
+                        0f,
+                        0f,
+                        51f,
+                        0f,
+                        1f,
+                        0f,
+                        0f,
+                        51f,
+                        0f,
+                        0f,
+                        1f,
+                        0f,
+                        51f,
+                        0f,
+                        0f,
+                        0f,
+                        1f,
+                        0f,
+                    )
+                )
+            )
+        val target = ImageBitmap(20, 20)
+        CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(target), Size(20f, 20f)) {
+            with(painter) { draw(Size(20f, 20f), colorFilter = lift) }
+        }
+        val pixels = target.toPixelMap()
+        for ((x, y) in listOf(3 to 3, 16 to 3, 3 to 16, 16 to 16, 10 to 10)) {
+            val pixel = pixels[x, y]
+            assertTrue(pixel.red in 0.55f..0.65f, "brightened, then lifted, at $x,$y: $pixel")
+            assertTrue(abs(pixel.green - pixel.red) < 0.05f, "no padding shows at $x,$y: $pixel")
+        }
     }
 }

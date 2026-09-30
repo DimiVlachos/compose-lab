@@ -252,16 +252,17 @@ internal fun FogDemo(
         wiped = true
     }
 
-    // Drops run only while the demo is in front of the user. Between drops there is nothing to
-    // draw, so the loop sleeps until the next is due rather than asking for frames.
+    // Drops run only while the demo is in front of the user. Between drops, once the last has
+    // relaxed into its resting shape, there is nothing to draw, so the loop sleeps until the next
+    // is due rather than asking for frames.
     val dripLifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(drips, dripLifecycle) {
         dripLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             while (true) {
-                if (!drips.moving) {
+                if (!drips.needsFrames) {
                     val wait = drips.secondsToNextStart
                     if (wait == null) {
-                        snapshotFlow { drips.moving }.first { it }
+                        snapshotFlow { drips.needsFrames }.first { it }
                     } else {
                         delay((wait * 1000).toLong().coerceAtLeast(1))
                         drips.advance(wait)
@@ -269,7 +270,7 @@ internal fun FogDemo(
                     continue
                 }
                 var previous = withFrameNanos { it }
-                while (drips.moving) {
+                while (drips.needsFrames) {
                     withFrameNanos { now ->
                         drips.advance((now - previous) / 1_000_000_000f)
                         previous = now
