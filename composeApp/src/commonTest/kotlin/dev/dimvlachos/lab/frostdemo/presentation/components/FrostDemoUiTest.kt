@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
@@ -15,7 +16,9 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -34,6 +37,11 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.frost_hint_blow
 import dev.dimvlachos.lab.resources.frost_hint_hold
+import dev.dimvlachos.lab.resources.mic_card_allow
+import dev.dimvlachos.lab.resources.mic_card_blocked
+import dev.dimvlachos.lab.resources.mic_card_not_now
+import dev.dimvlachos.lab.resources.mic_card_open_settings
+import dev.dimvlachos.lab.resources.mic_card_title
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -242,5 +250,127 @@ class FrostDemoUiTest {
         waitForIdle()
 
         assertEquals(1, listens)
+    }
+
+    private val cardTitle = runBlocking { getString(Res.string.mic_card_title) }
+    private val allow = runBlocking { getString(Res.string.mic_card_allow) }
+    private val notNow = runBlocking { getString(Res.string.mic_card_not_now) }
+    private val openSettings = runBlocking { getString(Res.string.mic_card_open_settings) }
+    private val blockedLine = runBlocking { getString(Res.string.mic_card_blocked) }
+
+    // The access the demo is shown with, changeable mid-test as Android would change it.
+    private fun ComposeUiTest.showDemoWith(
+        access: () -> MicAccess,
+        frost: FrostState = FrostState(),
+    ) {
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
+                        FrostDemo(DemoState(), frost, access())
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theCardExplainsBeforeAndroidAsks() = runComposeUiTest {
+        showDemoWith({ MicAccess.Askable {} })
+
+        onNodeWithText(cardTitle).assertExists()
+        onNodeWithText(holdHint).assertDoesNotExist()
+        onNodeWithText(blowHint).assertDoesNotExist()
+    }
+
+    @Test
+    fun allowingHandsOverToAndroid() = runComposeUiTest {
+        var asks = 0
+        showDemoWith({ MicAccess.Askable { asks++ } })
+
+        onNodeWithText(allow).performClick()
+
+        assertEquals(1, asks)
+    }
+
+    @Test
+    fun aRefusalInAndroidsDialogClosesTheCardAndOffersHolding() = runComposeUiTest {
+        // Android hands over a new Askable after each refusal it asked about.
+        var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
+        showDemoWith({ access })
+
+        onNodeWithText(allow).performClick()
+        access = MicAccess.Askable {}
+        waitForIdle()
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
+        onNodeWithText(holdHint).assertExists()
+    }
+
+    @Test
+    fun whenAndroidWillNotAskAnyMoreTheCardOffersSettings() = runComposeUiTest {
+        var settings = 0
+        var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
+        showDemoWith({ access })
+
+        onNodeWithText(allow).performClick()
+        access = MicAccess.Blocked { settings++ }
+        waitForIdle()
+
+        onNodeWithText(blockedLine).assertExists()
+        onNodeWithText(openSettings).performClick()
+        assertEquals(1, settings)
+    }
+
+    @Test
+    fun alreadyBlockedTheCardOpensOnSettings() = runComposeUiTest {
+        showDemoWith({ MicAccess.Blocked {} })
+
+        onNodeWithText(openSettings).assertExists()
+        onNodeWithText(allow).assertDoesNotExist()
+    }
+
+    @Test
+    fun notNowLeadsToHoldingAndTheHintBringsTheCardBack() = runComposeUiTest {
+        showDemoWith({ MicAccess.Askable {} })
+
+        onNodeWithText(notNow).performClick()
+        onNodeWithText(cardTitle).assertDoesNotExist()
+
+        onNodeWithText(holdHint).performClick()
+        onNodeWithText(cardTitle).assertExists()
+    }
+
+    @Test
+    fun theGlassIgnoresTouchesWhileTheCardIsOpen() = runComposeUiTest {
+        val frost = FrostState()
+        showDemoWith({ MicAccess.Askable {} }, frost)
+
+        onNodeWithTag("demo").performTouchInput { swipe(topLeft, topRight) }
+
+        assertTrue(frost.strokes.isEmpty())
+    }
+
+    @Test
+    fun noCardWithoutAMicrophoneToAskFor() = runComposeUiTest {
+        showDemoWith({ MicAccess.Unavailable })
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
+        onNodeWithText(holdHint).assertExists()
+    }
+
+    @Test
+    fun noCardOnceTheMicrophoneIsGranted() = runComposeUiTest {
+        showDemoWith({ micHearing(flow { awaitCancellation() }) })
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
+        onNodeWithText(blowHint).assertExists()
+    }
+
+    @Test
+    fun noCardInTheRecording() = runComposeUiTest {
+        showDemo(DemoState(recording = true), FrostState(), MicAccess.Askable {})
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
     }
 }
