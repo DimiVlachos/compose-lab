@@ -57,4 +57,14 @@ class MirrorOnWallTest {
         val onScreen = glassOnScreen(photo, Size(500f, 100f), glass, frame)
         assertTrue(onScreen.top == 0f && onScreen.bottom == 100f, "$onScreen")
     }
+
+    @Test
+    fun aWindowNarrowerThanTheWallNeverCrashesOnRounding() {
+        // Scaled to the height, the photo's height times the scale can come out a hair under the
+        // window's: the crop's range must not go below nothing.
+        for (height in 1000..3500) {
+            val onScreen = wallGlassOn(Size(height * 0.4f, height.toFloat()))
+            assertTrue(onScreen.width > 0f && onScreen.height > 0f, "at $height: $onScreen")
+        }
+    }
 }
