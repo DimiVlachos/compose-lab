@@ -39,7 +39,12 @@ kotlin {
             implementation(libs.navigationevent.compose)
             implementation(libs.lifecycle.runtime.compose)
         }
-        androidMain.dependencies { implementation(libs.androidx.activity.compose) }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.camera.core)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
