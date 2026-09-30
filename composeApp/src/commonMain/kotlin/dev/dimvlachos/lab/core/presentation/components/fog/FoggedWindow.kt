@@ -70,6 +70,7 @@ fun FoggedWindow(
     val detail = imageResource(Res.drawable.fog_detail)
     val density = imageResource(Res.drawable.fog_density)
     val milky = remember { ColorFilter.colorMatrix(milkyColorMatrix()) }
+    val edgeMask = remember { edgeFogMask() }
     Box(
         modifier.pointerInput(state, onHoldChange != null) {
             val holdEnabled = onHoldChange != null
@@ -122,9 +123,14 @@ fun FoggedWindow(
                             is WipeStroke -> drawWipe(mark.points, radius, brush)
                             is Breath -> drawFog(mark.level)
                             is Evaporation ->
-                                drawRect(
-                                    Color.Black.copy(alpha = mark.amount),
+                                // Clear glass keeps a ragged band of fog round its edges.
+                                drawImage(
+                                    edgeMask,
+                                    dstSize =
+                                        IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                                    alpha = mark.amount,
                                     blendMode = BlendMode.DstOut,
+                                    filterQuality = FilterQuality.High,
                                 )
                         }
                     }

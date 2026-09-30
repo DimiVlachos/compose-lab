@@ -59,7 +59,8 @@ class FogLayersUiTest {
         val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
         fun greenAt(y: Float) = pixels[pixels.width / 2, (y * (pixels.height - 1)).toInt()].green
 
-        assertTrue(greenAt(0.1f) < 0.12f, "the top is still clear: ${greenAt(0.1f)}")
+        // Below the band of fog clear glass keeps round its edges.
+        assertTrue(greenAt(0.2f) < 0.12f, "the top is still clear: ${greenAt(0.2f)}")
         assertTrue(greenAt(0.8f) > 0.2f, "the bottom is fogged: ${greenAt(0.8f)}")
     }
 
@@ -88,5 +89,22 @@ class FogLayersUiTest {
         // The reference: colours fade to grey-white behind the fog.
         assertTrue(channels.max() - channels.min() < 0.3, "washed out, not pink: $channels")
         assertTrue(channels.min() > 0.3, "milky, not dark: $channels")
+    }
+
+    @Test
+    fun clearGlassKeepsFogRoundItsEdges() = runComposeUiTest {
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = FogState(startClear = true),
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val middle = pixels[pixels.width / 2, pixels.height / 2].green
+        val corner = pixels[2, pixels.height - 3].green
+
+        assertTrue(middle < 0.12f, "the middle is clear: $middle")
+        assertTrue(corner > 0.2f, "the corner stays fogged: $corner")
     }
 }
