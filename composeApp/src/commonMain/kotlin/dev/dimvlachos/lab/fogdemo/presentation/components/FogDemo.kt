@@ -21,7 +21,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,8 +57,13 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
 import dev.dimvlachos.lab.resources.ic_mic
+import dev.dimvlachos.lab.resources.ic_photo_camera
 import dev.dimvlachos.lab.resources.window_view
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,18 +93,38 @@ internal fun FogDemo(
     var breathed by remember { mutableStateOf(false) }
     var holding by remember { mutableStateOf(false) }
     val listening = micAccess is MicAccess.Granted && !micFailed
-    val canAsk = micAccess is MicAccess.Askable || micAccess is MicAccess.Blocked
+    val cameraNeed = cameraAccess.need()
+    val micNeed = micAccess.need()
+    val canAsk = cameraNeed != Need.Nothing || micNeed != Need.Nothing
     // Not over a clip the user asked to replay: they came to watch it.
     var cardOpen by remember { mutableStateOf(!state.replay) }
-    var asked by remember { mutableStateOf(false) }
     val cardShown = cardOpen && canAsk && !state.recording
 
-    // The system's answer: a refusal in its dialog closes the card for holding; refused for good,
-    // the card stays, now offering settings.
-    LaunchedEffect(micAccess) {
-        if (!asked) return@LaunchedEffect
-        asked = false
-        if (micAccess !is MicAccess.Blocked) cardOpen = false
+    // Allow asks for the camera, waits for the system's answer, then the microphone: Android shows
+    // one permission dialog at a time. A refusal in its dialog closes the card for holding and the
+    // still reflection; refused for good, the card stays, now offering settings.
+    val currentCamera by rememberUpdatedState(cameraAccess)
+    val currentMic by rememberUpdatedState(micAccess)
+    val scope = rememberCoroutineScope()
+    var asking by remember { mutableStateOf<Job?>(null) }
+    fun askInTurn() {
+        // A second tap while the system asks must not ask again.
+        if (asking?.isActive == true) return
+        // Undispatched: the first dialog is asked for within the tap itself.
+        asking =
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                (currentCamera as? CameraAccess.Askable)?.let { asked ->
+                    asked.ask()
+                    snapshotFlow { currentCamera }.first { it !== asked }
+                }
+                (currentMic as? MicAccess.Askable)?.let { asked ->
+                    asked.ask()
+                    snapshotFlow { currentMic }.first { it !== asked }
+                }
+                if (currentCamera !is CameraAccess.Blocked && currentMic !is MicAccess.Blocked) {
+                    cardOpen = false
+                }
+            }
     }
 
     // The script's wipe plays its fingertip back sample by sample: the path already holds the
@@ -242,10 +270,13 @@ internal fun FogDemo(
                     horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // A way back to the card, where there is a microphone to ask for.
+                    // A way back to the card, where there is something to ask for.
                     if (canAsk) {
                         Icon(
-                            painterResource(Res.drawable.ic_mic),
+                            painterResource(
+                                if (cameraNeed != Need.Nothing) Res.drawable.ic_photo_camera
+                                else Res.drawable.ic_mic
+                            ),
                             contentDescription = null,
                             tint = LabTheme.colors.accent,
                             modifier = Modifier.size(HintIconSize),
@@ -270,16 +301,31 @@ internal fun FogDemo(
                 },
                 contentAlignment = Alignment.Center,
             ) {
-                MicPermissionCard(
-                    blocked = micAccess is MicAccess.Blocked,
-                    onAllow = {
-                        asked = true
-                        (micAccess as? MicAccess.Askable)?.ask?.invoke()
+                MirrorPermissionCard(
+                    camera = cameraNeed,
+                    mic = micNeed,
+                    onAllow = ::askInTurn,
+                    onOpenSettings = {
+                        (cameraAccess as? CameraAccess.Blocked)?.openSettings?.invoke()
+                            ?: (micAccess as? MicAccess.Blocked)?.openSettings?.invoke()
                     },
-                    onOpenSettings = { (micAccess as? MicAccess.Blocked)?.openSettings?.invoke() },
                     onNotNow = { cardOpen = false },
                 )
             }
         }
     }
 }
+
+private fun CameraAccess.need() =
+    when (this) {
+        is CameraAccess.Askable -> Need.Ask
+        is CameraAccess.Blocked -> Need.Settings
+        else -> Need.Nothing
+    }
+
+private fun MicAccess.need() =
+    when (this) {
+        is MicAccess.Askable -> Need.Ask
+        is MicAccess.Blocked -> Need.Settings
+        else -> Need.Nothing
+    }
