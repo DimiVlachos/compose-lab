@@ -63,7 +63,7 @@ import org.jetbrains.compose.resources.getString
 @OptIn(ExperimentalTestApi::class)
 class FogDemoUiTest {
     @Test
-    fun scriptedWipesDrawStrokesAndTheLoopEvaporates() = runComposeUiTest {
+    fun scriptedWipesDrawStrokesThatStayWhenTheSelectionMoves() = runComposeUiTest {
         mainClock.autoAdvance = false
         val state = DemoState()
         val fog = FogState()
@@ -99,13 +99,10 @@ class FogDemoUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(500)
 
-        // Back on 0 the fog evaporates: partly gone halfway through, clear glass after.
-        val evaporation = fog.marks.last() as Evaporation
-        assertTrue(evaporation.amount in 0.1f..0.95f, "melting: ${evaporation.amount}")
+        // The breath is the clip's reset now: going back to 0 leaves the drawing on the glass.
+        mainClock.advanceTimeBy(1_200)
         assertEquals(1, fog.strokes.size)
-
-        mainClock.advanceTimeBy(700)
-        assertEquals(1f, (fog.marks.single() as Evaporation).amount)
+        assertTrue(fog.marks.none { it is Evaporation }, "${fog.marks}")
     }
 
     @Test
