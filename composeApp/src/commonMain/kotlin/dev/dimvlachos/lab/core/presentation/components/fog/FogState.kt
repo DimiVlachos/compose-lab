@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -112,7 +113,29 @@ internal constructor(
     internal val points: SnapshotStateList<Offset>,
     val radius: Dp? = null,
     val clarity: Float = 1f,
-) : FogMark
+) : FogMark {
+    private var cachedDabs: List<Offset> = emptyList()
+    private var cachedPoints = -1
+    private var cachedSize = Size.Zero
+    private var cachedSpacing = 0f
+
+    /**
+     * Where the brush lands along this stroke on a window of [size], one dab every [spacing] px,
+     * worked out once and kept until the stroke grows or the window changes: the fog redraws every
+     * stroke on every frame.
+     */
+    internal fun dabs(size: Size, spacing: Float): List<Offset> {
+        val count = points.size
+        if (count != cachedPoints || size != cachedSize || spacing != cachedSpacing) {
+            cachedDabs =
+                wipeDabs(points.map { Offset(it.x * size.width, it.y * size.height) }, spacing)
+            cachedPoints = count
+            cachedSize = size
+            cachedSpacing = spacing
+        }
+        return cachedDabs
+    }
+}
 
 /** The fog evaporating evenly, from [FogState.beginEvaporation]; at 1 the glass is clear. */
 class Evaporation internal constructor() : FogMark {

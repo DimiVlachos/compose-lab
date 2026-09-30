@@ -11,6 +11,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -242,5 +243,24 @@ class FogDemoCardUiTest {
         mic = grantedMic()
         showBathroom()
         onNodeWithText(title).assertDoesNotExist()
+    }
+
+    @Test
+    fun inLandscapeTheCardScrollsSoAllowCanStillBeTapped() = runComposeUiTest {
+        camera = askableCamera()
+        mic = askableMic()
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                LabTheme {
+                    Box(Modifier.size(700.dp, 320.dp)) {
+                        FogDemo(DemoState(), FogState(), mic, camera)
+                    }
+                }
+            }
+        }
+
+        onNodeWithText(allow).performScrollTo().performTouchInput { click() }
+        waitForIdle()
+        assertEquals(listOf("camera"), asked)
     }
 }

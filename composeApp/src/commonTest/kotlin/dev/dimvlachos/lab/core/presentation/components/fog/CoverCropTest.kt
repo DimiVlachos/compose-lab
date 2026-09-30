@@ -25,4 +25,9 @@ class CoverCropTest {
         // A 1000 x 400 window takes a 1296 x 518 slice from the middle.
         assertEquals(IntOffset(0, 551) to IntSize(1296, 518), coverCrop(texture, Size(1000f, 400f)))
     }
+
+    @Test
+    fun anEmptyWindowTakesTheWholeTextureRatherThanCrashing() {
+        assertEquals(IntOffset(0, 0) to texture, coverCrop(texture, Size(0f, 0f)))
+    }
 }

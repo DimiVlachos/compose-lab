@@ -73,4 +73,18 @@ class BreathDriverTest {
         assertNear(0.8f, scriptedBreathStrength(0.5f, peak = 0.8f))
         assertTrue(scriptedBreathStrength(1f, peak = 1f) < 0.001f)
     }
+
+    @Test
+    fun aDropsStreakMidBreathDoesNotRestartTheFog() {
+        val fog = FogState(startClear = true)
+        val driver = BreathDriver(fog)
+        driver.advance(1f, 0.3f)
+        // A running drop's burst lays a thin, part-clear streak on the glass.
+        fog.beginStroke(Offset(0.5f, 0.2f), clarity = 0.9f)
+        driver.advance(1f, 0.3f)
+
+        val breaths = fog.marks.filterIsInstance<Breath>()
+        assertEquals(1, breaths.size, "one breath rising on: ${fog.marks}")
+        assertTrue(breaths.single().level > 0.45f, "${breaths.single().level}")
+    }
 }

@@ -331,4 +331,34 @@ class DripDriverTest {
         assertTrue(resting.resting)
         assertTrue(resting.stretch in 0.05f..0.35f, "a slight sag at rest: ${resting.stretch}")
     }
+
+    @Test
+    fun aLongScrubThatStartedBeforeADropStoppedStillClearsIt() {
+        val fog = FogState()
+        val drips = driver(fog)
+        // The finger goes down far away and keeps scrubbing while the drop runs and stops.
+        val scrub = fog.beginStroke(Offset(0.1f, 0.9f))
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        drips.run(10f)
+        val at = drips.beads.single().at
+        assertTrue(drips.beads.single().resting)
+
+        fog.extendStroke(scrub, at + Offset(-0.05f, 0f))
+        fog.extendStroke(scrub, at + Offset(0.05f, 0f))
+
+        assertTrue(drips.beads.isEmpty(), "wiped away: ${drips.beads}")
+    }
+
+    @Test
+    fun aDropThatJustStoppedStillNeedsFramesUntilItHasRelaxed() {
+        val drips = driver()
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        while (!drips.beads.single().resting) drips.advance(step)
+        assertFalse(drips.moving)
+        assertTrue(drips.needsFrames, "still pulled long: ${drips.beads.single().stretch}")
+
+        drips.run(3f)
+        assertFalse(drips.needsFrames)
+        assertTrue(abs(drips.beads.single().stretch - 0.2f) < 0.02f)
+    }
 }

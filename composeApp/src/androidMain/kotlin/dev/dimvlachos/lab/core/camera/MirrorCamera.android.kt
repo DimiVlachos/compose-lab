@@ -75,6 +75,10 @@ private class AndroidMirrorCamera(
 ) : MirrorCamera {
     private val painter = MirrorFramePainter()
 
+    // The dim-room brightening, kept across pauses: back from one, the picture carries on as
+    // bright as it was rather than starting dark again.
+    private val gain = CameraGain()
+
     override val mirror: Painter = painter
 
     override val showing: Boolean
@@ -109,7 +113,7 @@ private class AndroidMirrorCamera(
         }
         val analysis = builder.build()
         val executor = Executors.newSingleThreadExecutor()
-        val ring = FrameRing()
+        val ring = FrameRing(gain)
         // Off once the mirror stops, so a frame still on its way cannot show after it.
         val live = AtomicBoolean(true)
         var first = true
@@ -193,12 +197,15 @@ private fun slowestFrameRates(provider: ProcessCameraProvider): Range<Int>? =
  * Three bitmaps the camera's frames are copied into in turn, so no frame allocates one: one on
  * screen, one being drawn, one being filled. Never recycled, as the last may still be on screen.
  */
-private class FrameRing {
+/** The brightening a dim room needs, eased from frame to frame. */
+private class CameraGain {
+    @Volatile var value = 1f
+}
+
+private class FrameRing(private val gain: CameraGain) {
     private val bitmaps = arrayOfNulls<Bitmap>(3)
     private var index = 0
     private var scratch: ByteBuffer? = null
-    // Brightening for a dim room, eased from frame to frame.
-    private var gain = 1f
 
     fun next(image: ImageProxy): CameraFrame {
         val plane = image.planes[0]
@@ -211,7 +218,8 @@ private class FrameRing {
                     bitmaps[index] = it
                 }
         val buffer = plane.buffer.apply { rewind() }
-        gain = autoGain(gain, meanBrightness(buffer, plane.rowStride, image.width, image.height))
+        gain.value =
+            autoGain(gain.value, meanBrightness(buffer, plane.rowStride, image.width, image.height))
         if (buffer.remaining() >= bitmap.byteCount) {
             bitmap.copyPixelsFromBuffer(buffer)
         } else {
@@ -229,7 +237,7 @@ private class FrameRing {
             width = image.width,
             height = image.height,
             rotationDegrees = image.imageInfo.rotationDegrees,
-            gain = gain,
+            gain = gain.value,
         )
     }
 

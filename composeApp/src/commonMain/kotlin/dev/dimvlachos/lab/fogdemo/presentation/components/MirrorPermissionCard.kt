@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -75,6 +77,9 @@ internal fun MirrorPermissionCard(
             .widthIn(max = CardMaxWidth)
             .padding(horizontal = LabTheme.spacing.large)
             .background(LabTheme.colors.surface, LabTheme.shapes.ExtraLarge)
+            // Landscape or large text can make it taller than the stage: it scrolls, so the
+            // buttons are always within reach.
+            .verticalScroll(rememberScrollState())
             .padding(LabTheme.spacing.large),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
