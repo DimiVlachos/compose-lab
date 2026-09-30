@@ -170,4 +170,28 @@ class FogLayersUiTest {
         val average = difference / count
         assertTrue(average < 0.01f, "the fog changed by $average")
     }
+
+    @Test
+    fun aPartClearStrokeLeavesSomeOfTheFog() = runComposeUiTest {
+        val fog = FogState()
+        fog.beginStroke(Offset(0.1f, 0.3f)).also { fog.extendStroke(it, Offset(0.9f, 0.3f)) }
+        fog.beginStroke(Offset(0.1f, 0.7f), clarity = 0.85f).also {
+            fog.extendStroke(it, Offset(0.9f, 0.7f))
+        }
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = fog,
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        fun greenAt(y: Float) = pixels[pixels.width / 2, (y * (pixels.height - 1)).toInt()].green
+
+        val clear = greenAt(0.3f)
+        val fogged = greenAt(0.5f)
+        val wet = greenAt(0.7f)
+        assertTrue(wet > clear + 0.01f, "some fog is left: $wet over clear $clear")
+        assertTrue(wet < fogged * 0.4f, "most of it is gone: $wet under fogged $fogged")
+    }
 }

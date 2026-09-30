@@ -165,4 +165,11 @@ class FogStateTest {
         assertEquals(16.dp, fingertip.radius)
         assertEquals(null, flat.radius)
     }
+
+    @Test
+    fun aStrokeRemembersHowClearItWipes() {
+        val fog = FogState()
+        assertEquals(1f, fog.beginStroke(Offset(0.5f, 0.5f)).clarity)
+        assertEquals(0.85f, fog.beginStroke(Offset(0.5f, 0.5f), clarity = 0.85f).clarity)
+    }
 }
