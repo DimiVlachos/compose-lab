@@ -216,4 +216,46 @@ class DripDriverTest {
         drips.randomStarts = false
         assertEquals(null, drips.secondsToNextStart)
     }
+
+    @Test
+    fun aDropRunsOnThroughAWipedPatch() {
+        val fog = FogState()
+        // A wiped band across the mirror, below where the drop starts.
+        fog.beginStroke(Offset(0f, 0.3f), radius = 20.dp).also {
+            fog.extendStroke(it, Offset(1f, 0.3f))
+        }
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.3f)
+        drips.run(12f)
+
+        val bead = drips.beads.single()
+        assertTrue(bead.at.y > 0.45f, "it ran on past the wiped band: ${bead.at}")
+    }
+
+    @Test
+    fun aDropStillGrowingWhenWipedIsGone() {
+        val fog = FogState()
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.1f)
+        drips.run(0.3f)
+        fog.beginStroke(Offset(0.3f, 0.2f)).also { fog.extendStroke(it, Offset(0.7f, 0.2f)) }
+
+        assertTrue(drips.beads.isEmpty(), "gone at once: ${drips.beads}")
+        drips.run(3f)
+        assertTrue(drips.beads.isEmpty(), "and stays gone: ${drips.beads}")
+        assertFalse(drips.moving)
+    }
+
+    @Test
+    fun aDropNeverStartsAtTheSoftEdgeOfAWipe() {
+        val fog = FogState()
+        val wipe = FogDimens.BrushRadius.value
+        fog.beginStroke(Offset(0.5f, 0.5f))
+        val glass = DpSize(400.dp, 800.dp)
+        // Just outside the brush's reach the glass still looks wiped; a little further it is fog.
+        val nearEdge = Offset(0.5f + (wipe + 5f) / 400f, 0.5f)
+        val wellClear = Offset(0.5f + (wipe + 20f) / 400f, 0.5f)
+        assertFalse(fog.isFoggedAt(nearEdge, glass, FogDimens.BrushRadius))
+        assertTrue(fog.isFoggedAt(wellClear, glass, FogDimens.BrushRadius))
+    }
 }

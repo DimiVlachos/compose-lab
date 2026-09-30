@@ -11,7 +11,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
-import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
@@ -59,7 +58,8 @@ class DripDriver(
     val beads: List<Bead>
         get() {
             version
-            return resting.filter { it.stillShows() }.map { it.bead() } + running.map { it.bead() }
+            return resting.filter { it.stillShows() }.map { it.bead() } +
+                running.filter { !it.growing || it.stillShows() }.map { it.bead() }
         }
 
     /** Starts a drop at [at], to run [length] of the glass's height. */
@@ -81,6 +81,8 @@ class DripDriver(
         }
         // However long since the last step, a drop moves at most a short step's worth.
         val stepSeconds = min(seconds, MaxStepSeconds)
+        // A drop wiped away before it starts to run has not started at all.
+        running.removeAll { it.growing && !it.stillShows() }
         for (drip in running.toList()) {
             drip.advance(stepSeconds)
             if (drip.stopped) {
@@ -132,6 +134,10 @@ class DripDriver(
         private var head = start
         var stopped = false
             private set
+
+        /** Still gathering where it formed, not yet running. */
+        val growing: Boolean
+            get() = grown < GrowSeconds
 
         fun advance(seconds: Float) {
             if (grown < GrowSeconds) {
@@ -185,7 +191,11 @@ class DripDriver(
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
         fun stillShows(): Boolean {
-            val last = lastStreak ?: return true
+            val last =
+                lastStreak
+                    ?: return fog.marks.none {
+                        it is WipeStroke && it !in streaks && it.covers(head, glass, wipeRadius)
+                    }
             val index = fog.marks.indexOfFirst { it === last }
             if (index < 0) return false
             return fog.marks.drop(index + 1).none {
@@ -202,13 +212,29 @@ class DripDriver(
  */
 internal fun FogState.isFoggedAt(point: Offset, glass: DpSize, wipeRadius: Dp): Boolean =
     marks.none { it is Evaporation } &&
-        marks.none { it is WipeStroke && it.covers(point, glass, wipeRadius) }
+        marks.none { it is WipeStroke && it.covers(point, glass, wipeRadius, StartClearance) }
 
-internal fun WipeStroke.covers(point: Offset, glass: DpSize, wipeRadius: Dp): Boolean {
-    val reach = (radius ?: wipeRadius).value
-    return points.any {
-        hypot((it.x - point.x) * glass.width.value, (it.y - point.y) * glass.height.value) <= reach
-    }
+internal fun WipeStroke.covers(
+    point: Offset,
+    glass: DpSize,
+    wipeRadius: Dp,
+    clearance: Dp = 0.dp,
+): Boolean {
+    val reach = (radius ?: wipeRadius).value + clearance.value
+    // In dp, so the reach is round however the glass is shaped; along each segment, not just at
+    // the points a fast swipe leaves far apart.
+    fun dp(p: Offset) = Offset(p.x * glass.width.value, p.y * glass.height.value)
+    val target = dp(point)
+    if (points.size == 1) return (dp(points[0]) - target).getDistance() <= reach
+    return points.zipWithNext().any { (a, b) -> segmentDistance(target, dp(a), dp(b)) <= reach }
+}
+
+private fun segmentDistance(p: Offset, a: Offset, b: Offset): Float {
+    val ab = b - a
+    val lengthSquared = ab.getDistanceSquared()
+    if (lengthSquared == 0f) return (p - a).getDistance()
+    val t = (((p - a).x * ab.x + (p - a).y * ab.y) / lengthSquared).coerceIn(0f, 1f)
+    return (p - (a + ab * t)).getDistance()
 }
 
 private fun Random.between(from: Float, until: Float) = from + nextFloat() * (until - from)
@@ -239,3 +265,6 @@ private const val WaveLengthDp = 60f
 private const val StreakClarity = 0.85f
 private val StreakRadius = 4.dp
 private val TopStreakRadius = 3.dp
+
+// A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
+private val StartClearance = 12.dp
