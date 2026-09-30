@@ -29,6 +29,7 @@ import dev.dimvlachos.lab.core.audio.FakeMicrophone
 import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.audio.noise
 import dev.dimvlachos.lab.core.audio.silence
+import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.Breath
 import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
@@ -76,7 +77,7 @@ class FogDemoUiTest {
             // The clip's own 4:5 frame, so the script's points land where they say.
             LabTheme {
                 Box(Modifier.size(400.dp, 500.dp)) {
-                    FogDemo(state, fog, MicAccess.Unavailable)
+                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
                 }
             }
         }
@@ -118,7 +119,7 @@ class FogDemoUiTest {
             scope = rememberCoroutineScope()
             LabTheme {
                 Box(Modifier.size(400.dp, 500.dp)) {
-                    FogDemo(state, fog, MicAccess.Unavailable)
+                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
                 }
             }
         }
@@ -148,7 +149,7 @@ class FogDemoUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
-                        FogDemo(state, fog, micAccess)
+                        FogDemo(state, fog, micAccess, CameraAccess.Unavailable)
                     }
                 }
             }
@@ -247,7 +248,12 @@ class FogDemoUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
                 LabTheme {
                     recomposition.let {
-                        FogDemo(DemoState(), FogState(), MicAccess.Granted(microphone))
+                        FogDemo(
+                            DemoState(),
+                            FogState(),
+                            MicAccess.Granted(microphone),
+                            CameraAccess.Unavailable,
+                        )
                     }
                 }
             }
@@ -277,7 +283,7 @@ class FogDemoUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
-                        FogDemo(DemoState(), fog, access())
+                        FogDemo(DemoState(), fog, access(), CameraAccess.Unavailable)
                     }
                 }
             }
@@ -450,7 +456,9 @@ class FogDemoUiTest {
         setContent {
             scope = rememberCoroutineScope()
             LabTheme {
-                Box(Modifier.size(400.dp, 500.dp)) { FogDemo(state, fog, MicAccess.Unavailable) }
+                Box(Modifier.size(400.dp, 500.dp)) {
+                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
+                }
             }
         }
         mainClock.advanceTimeByFrame()

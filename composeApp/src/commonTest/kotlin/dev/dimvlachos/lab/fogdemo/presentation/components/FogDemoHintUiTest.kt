@@ -19,6 +19,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.dimvlachos.lab.core.audio.FakeMicrophone
 import dev.dimvlachos.lab.core.audio.MicAccess
+import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -49,7 +50,7 @@ class FogDemoHintUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
-                        FogDemo(DemoState(), fog, mic)
+                        FogDemo(DemoState(), fog, mic, CameraAccess.Unavailable)
                     }
                 }
             }
