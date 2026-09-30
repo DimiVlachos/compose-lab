@@ -17,8 +17,9 @@ internal class DrawnStroke(val path: List<Offset>, val duration: Duration)
  * A heart pierced by an arrow, drawn on fogged glass with a fingertip, in fractions of the clip's
  * frame, stroke by stroke as a hand draws it: the heart in one go from the dip at its top, round
  * the right lobe, down to the point and up the left; the shaft from lower left to upper right in
- * two pieces, up to the heart and out beyond it, left out inside so the arrow pierces it rather
- * than lying on top; two strokes of arrowhead at the tip; two feathers at the tail.
+ * two pieces, in through the heart to its middle, where it is stuck, and out again from its far
+ * edge, so the arrow pierces it rather than lying on top; two strokes of arrowhead at the tip; two
+ * feathers at the tail.
  */
 internal fun heartWithArrow(step: Duration = 16.milliseconds): List<DrawnStroke> {
     val tail = Offset(0.18f, 0.76f)
@@ -42,10 +43,22 @@ internal fun heartWithArrow(step: Duration = 16.milliseconds): List<DrawnStroke>
         }
     }
     val heart = heart(step)
-    val (entry, exit) = crossings(heart.path, tail, tip)
+    val exit = crossings(heart.path, tail, tip).second
+    // The point of the shaft's line nearest the heart's middle: where the arrow is stuck.
+    val middle =
+        Offset(
+            (heart.path.minOf { it.x } + heart.path.maxOf { it.x }) / 2,
+            (heart.path.minOf { it.y } + heart.path.maxOf { it.y }) / 2,
+        )
+    val shaft = tip - tail
+    val stuck =
+        tail +
+            shaft *
+                (((middle - tail).x * shaft.x + (middle - tail).y * shaft.y) /
+                    shaft.getDistanceSquared())
     return listOf(
         heart,
-        line(tail, entry, 450.milliseconds),
+        line(tail, stuck, 600.milliseconds),
         line(exit, tip, 400.milliseconds),
         head(1f),
         head(-1f),
