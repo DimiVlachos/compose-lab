@@ -40,6 +40,9 @@ class BlowDetector(private val sampleRate: Int = MicSampleRate) {
     private var strength = 0f
 
     fun process(frame: FloatArray): Float {
+        // Digital silence is a recorder starting up, not the room: it would pin the room's level at
+        // the floor, where the room itself would then count as loud and never be learned.
+        if (frame.all { it == 0f }) return strength
         val level = loudnessDb(frame)
         if (background.isNaN()) background = level
         val margin = level - background
