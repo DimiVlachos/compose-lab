@@ -228,45 +228,59 @@ class DripDriverTest {
     }
 
     @Test
-    fun aDropStopsAtTheEdgeOfAWipedPatchAndMergesIntoItGradually() {
+    fun aDropSlidesIntoAWipedPatchSlowingAndSpreadingThenDissolves() {
         val fog = FogState()
-        // A wiped band across the mirror, below where the drop starts.
-        fog.beginStroke(Offset(0f, 0.4f), radius = 20.dp).also {
-            fog.extendStroke(it, Offset(1f, 0.4f))
+        // A wide wiped band across the mirror, below where the drop starts.
+        fog.beginStroke(Offset(0f, 0.45f), radius = 40.dp).also {
+            fog.extendStroke(it, Offset(1f, 0.45f))
         }
         val drips = driver(fog)
-        drips.drip(Offset(0.5f, 0.2f), 0.4f)
-        val edge = 0.4f - 20f / 800f
-        var merging = 0f
+        drips.drip(Offset(0.5f, 0.2f), 0.5f)
+        val edge = 0.45f - 40f / 800f
+        var inside = false
+        var deepest = 0f
+        var lastY = 0f
+        var lastStep = Float.MAX_VALUE
         var lastAlpha = 1f
         var lastSpread = 0f
         var seconds = 0f
-        drips.run(12f) {
+        var diameter = 0f
+        drips.run(15f) {
             val bead = drips.beads.singleOrNull() ?: return@run
-            // Its centre may sink into the rim as it slumps, never past its own radius.
-            assertTrue(
-                bead.at.y <= edge + bead.radius.value / 800f + 0.001f,
-                "never out onto the wiped glass: ${bead.at.y}",
-            )
-            if (bead.spread > 0f || bead.alpha < 1f) {
-                seconds += step
-                assertTrue(bead.alpha <= lastAlpha, "only ever thinning: ${bead.alpha}")
-                assertTrue(
-                    lastAlpha - bead.alpha < 0.05f,
-                    "no sudden drop: $lastAlpha to ${bead.alpha}",
-                )
-                assertTrue(bead.spread >= lastSpread, "spreading along the edge: ${bead.spread}")
-                if (seconds > 0.35f) assertTrue(bead.softness > 0.9f, "gloss gone first")
-                lastAlpha = bead.alpha
-                lastSpread = bead.spread
-                merging = seconds
+            if (!inside && bead.at.y > edge) {
+                inside = true
+                diameter = bead.radius.value * 2
             }
+            if (!inside) {
+                lastY = bead.at.y
+                return@run
+            }
+            seconds += step
+            val moved = (bead.at.y - lastY) * 800f
+            assertTrue(moved <= lastStep + 0.05f, "slowing as it spreads: $moved after $lastStep")
+            lastStep = moved
+            lastY = bead.at.y
+            deepest = maxOf(deepest, bead.at.y)
+            assertTrue(bead.alpha <= lastAlpha, "only ever thinning: ${bead.alpha}")
+            assertTrue(
+                lastAlpha - bead.alpha < 0.05f,
+                "no sudden drop: $lastAlpha to ${bead.alpha}",
+            )
+            assertTrue(bead.spread >= lastSpread, "only ever spreading: ${bead.spread}")
+            lastAlpha = bead.alpha
+            lastSpread = bead.spread
         }
-        assertTrue(merging in 1f..1.5f, "merges over about a second: $merging")
-        assertTrue(lastSpread > 0.8f, "spread right out: $lastSpread")
+        assertTrue(inside, "it went into the wiped patch")
+        val depth = (deepest - edge) * 800f
+        assertTrue(
+            depth in diameter * 1.5f..diameter * 3.2f,
+            "a short slide: $depth dp for $diameter",
+        )
+        assertTrue(seconds in 1.6f..3f, "slides and dissolves in a couple of seconds: $seconds")
+        assertTrue(lastSpread > 0.9f, "spread right out: $lastSpread")
         assertTrue(drips.beads.isEmpty(), "and is gone: ${drips.beads}")
-        val stoppedAt = fog.streaks().maxOf { s -> s.points.maxOf { it.y } }
-        assertTrue(stoppedAt > edge - 0.01f, "right at the edge: $stoppedAt")
+        val trail = fog.streaks().maxOf { s -> s.points.maxOf { it.y } }
+        assertTrue(trail <= edge + 0.01f, "no trail cut on the clear glass: $trail")
     }
 
     @Test

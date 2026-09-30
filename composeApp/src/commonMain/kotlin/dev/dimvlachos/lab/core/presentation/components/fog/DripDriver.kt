@@ -15,6 +15,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -233,13 +234,24 @@ class DripDriver(
         val growing: Boolean
             get() = grown < GrowSeconds
 
-        /** Met the edge of a wiped patch and merging into it. */
+        /** Slid onto a wiped patch and now dissolving into its film. */
         var blending = false
             private set
+
+        // Sliding on onto a wiped patch: how fast it went in, how far it has gone, how far it will.
+        private var sliding = false
+        private var slideSpeed = 0f
+        private var slid = 0f
+        private val slideLength: Float
+            get() = diameter * SlideLengths
 
         fun advance(seconds: Float) {
             if (grown < GrowSeconds) {
                 grown += seconds
+                return
+            }
+            if (sliding) {
+                slide(seconds)
                 return
             }
             if (stuck > 0f) {
@@ -266,12 +278,16 @@ class DripDriver(
                     (sin(phase + travelled / WaveLengthDp * 2 * PI.toFloat()) - sin(phase)) *
                         wobble / glass.width.value
             val next = Offset(x.coerceIn(0f, 1f), y)
-            // Feel down in small steps: at a wiped patch's edge, it stops and blends in.
+            // Feel down in small steps: at a wiped patch's edge, its trail ends and it slides on
+            // onto the wet, clear glass.
             val edge = edgeBefore(head, next)
             head = edge ?: next
             fog.extendStroke(current, head)
             if (edge != null) {
-                blending = true
+                streak = null
+                sliding = true
+                slideSpeed = maxOf(speed, MinSlideSpeedDp)
+                noteWipesSoFar()
                 return
             }
             if (y >= stops[burst]) {
@@ -280,19 +296,38 @@ class DripDriver(
                 streak = null
                 if (burst == stops.size) {
                     stopped = true
-                    // How far each wipe had got: from here on, only newer points can clear it.
-                    val ours = ownStreaks()
-                    wipedBefore =
-                        fog.marks
-                            .filterIsInstance<WipeStroke>()
-                            .filter { it !in ours }
-                            .associateWith { it.points.size }
+                    noteWipesSoFar()
                     fogAtStop =
                         fog.marks
                             .filter { it is Breath || it is Mist }
                             .associateWith { it.fogAt(head.y) }
                 } else stuck = random.between(MinStickSeconds, MaxStickSeconds)
             }
+        }
+
+        // On clear, wet glass: it brakes steadily to a stop over a couple of its own sizes,
+        // relaxing out of its teardrop, then dissolves into the film.
+        private fun slide(seconds: Float) {
+            val left = (1f - slid / slideLength).coerceAtLeast(0f)
+            val speedNow = slideSpeed * sqrt(left)
+            val move = min(speedNow * seconds, slideLength - slid)
+            slid += move
+            head = Offset(head.x, (head.y + move / glass.height.value).coerceAtMost(1f))
+            ease(0f, seconds)
+            if (slid >= slideLength - 0.01f || speedNow < 1f || head.y >= 1f) {
+                sliding = false
+                blending = true
+            }
+        }
+
+        // How far each wipe had got: from here on, only newer points can clear it.
+        private fun noteWipesSoFar() {
+            val ours = ownStreaks()
+            wipedBefore =
+                fog.marks
+                    .filterIsInstance<WipeStroke>()
+                    .filter { it !in ours }
+                    .associateWith { it.points.size }
         }
 
         // A trail as wide as the drop leaves, narrower where it first broke away.
@@ -318,7 +353,17 @@ class DripDriver(
         private var fadeLeft = 1f
         private var fadeRate = 0f
 
-        private fun spreadNow() = 1f - (1f - merged) * (1f - merged)
+        private fun slideProgress() = (slid / slideLength).coerceIn(0f, 1f)
+
+        private fun easeOut(t: Float) = 1f - (1f - t) * (1f - t)
+
+        // Spreading into the film: a little as it slides, the rest as it dissolves.
+        private fun spreadNow() =
+            when {
+                sliding -> SlideSpread * easeOut(slideProgress())
+                blending -> SlideSpread + (1f - SlideSpread) * easeOut(merged)
+                else -> 0f
+            }
 
         // How far through merging into a wipe's edge, from 0 to 1.
         private val merged: Float
@@ -349,8 +394,9 @@ class DripDriver(
          * since its streak as the breath's front passes it. A running drop clears its own way.
          */
         fun visibility(): Float {
-            // Merging into a wipe's edge, it thins out gently, with no snap at either end.
-            if (blending) return 1f - smoothstep(merged)
+            // Onto a wipe, it thins as it slides, then dissolves with no snap at either end.
+            if (sliding) return 1f - SlideThinning * slideProgress()
+            if (blending) return (1f - SlideThinning) * (1f - smoothstep(merged))
             if (!stopped || fadeLeft <= 0f) return fadeLeft
             val last = lastStreak ?: return fadeLeft
             val index = fog.marks.indexOfFirst { it === last }
@@ -395,12 +441,7 @@ class DripDriver(
 
         fun bead(alpha: Float) =
             Bead(
-                // Slumping into the wipe's rim as it spreads.
-                if (blending) {
-                    head + Offset(0f, diameter / 2 * SinkInto * spreadNow() / glass.height.value)
-                } else {
-                    head
-                },
+                head,
                 radius =
                     when {
                         grown < GrowSeconds -> (diameter / 2 * (grown / GrowSeconds)).dp
@@ -411,12 +452,13 @@ class DripDriver(
                 alpha = alpha,
                 softness =
                     when {
-                        // Merging, it loses its gloss first.
-                        blending -> (merged * GlossGoneBy).coerceAtMost(1f)
+                        // On the wet glass it loses its gloss as it slides.
+                        sliding -> (slideProgress() * 2f).coerceAtMost(1f)
+                        blending -> 1f
                         stopped -> softness
                         else -> 0f
                     },
-                spread = if (blending) spreadNow() else 0f,
+                spread = spreadNow(),
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
@@ -431,7 +473,9 @@ class DripDriver(
             for (i in marks.indices) {
                 val mark = marks[i]
                 if (mark !is WipeStroke || mark in ours) continue
-                val from = if (stopped) ((wipedBefore[mark] ?: 0) - 1).coerceAtLeast(0) else 0
+                // Stopped, or on a wiped patch by design: only a wipe's newer points clear it.
+                val settledOn = stopped || sliding || blending
+                val from = if (settledOn) ((wipedBefore[mark] ?: 0) - 1).coerceAtLeast(0) else 0
                 if (
                     mark.covers(head, glass, wipeRadius, from = from) &&
                         !fog.foggedOverSince(i, head)
@@ -553,10 +597,12 @@ private const val StretchEasing = 6f
 private const val RelaxedWithin = 0.01f
 private const val WipedFadeSeconds = 0.2f
 private const val PushedOutFadeSeconds = 1f
-private const val BlendSeconds = 1.2f
+private const val BlendSeconds = 1.5f
 private const val SoftenSeconds = 1.5f
-private const val GlossGoneBy = 4f
-private const val SinkInto = 0.6f
+private const val SlideLengths = 2.2f
+private const val MinSlideSpeedDp = 60f
+private const val SlideThinning = 0.15f
+private const val SlideSpread = 0.45f
 private const val EdgeStepDp = 2f
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
