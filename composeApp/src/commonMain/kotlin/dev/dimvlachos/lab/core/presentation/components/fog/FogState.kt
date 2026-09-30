@@ -83,6 +83,11 @@ class FogState(startClear: Boolean = false) {
         if (amount >= 1f) _marks.removeRange(0, index)
     }
 
+    /** Takes [mark] off the glass, as if it had never been made. */
+    internal fun remove(mark: FogMark) {
+        _marks.remove(mark)
+    }
+
     /** Clears the whole window at once. */
     fun evaporate() {
         _marks.clear()
