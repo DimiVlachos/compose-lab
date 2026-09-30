@@ -82,9 +82,9 @@ class FogDemoCameraUiTest {
         showMirror({ CameraAccess.Granted(FakeMirrorCamera()) })
         assertTrue(middleIsMagenta(), "the glass shows the camera")
 
-        // Low down, below the glass, the wall and the basin.
+        // At the bottom, below the mirror's frame, the tiled wall.
         val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
-        val low = pixels[pixels.width / 2, pixels.height * 9 / 10]
+        val low = pixels[pixels.width / 2, pixels.height - 2]
         assertTrue(abs(low.red - low.green) < 0.1f, "the wall, not the mirror: $low")
     }
 
