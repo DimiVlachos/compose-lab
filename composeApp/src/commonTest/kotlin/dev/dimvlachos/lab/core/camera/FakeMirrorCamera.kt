@@ -7,12 +7,13 @@ import androidx.compose.ui.graphics.Paint
 import kotlinx.coroutines.awaitCancellation
 
 /**
- * A camera that shows one solid [color] frame while it runs, or throws [failure] instead. Counts
- * how often it was started and how many runs are live.
+ * A camera that shows one solid [color] frame while it runs (none while it is still [starting]), or
+ * throws [failure] instead. Counts how often it was started and how many runs are live.
  */
 internal class FakeMirrorCamera(
     private val color: Color = Color.Magenta,
     private val failure: Throwable? = null,
+    private val starting: Boolean = false,
 ) : MirrorCamera {
     private val painter = MirrorFramePainter()
     var starts = 0
@@ -30,6 +31,7 @@ internal class FakeMirrorCamera(
         failure?.let { throw it }
         running++
         try {
+            if (starting) awaitCancellation()
             val image = ImageBitmap(4, 4)
             Canvas(image)
                 .drawRect(0f, 0f, 4f, 4f, Paint().apply { color = this@FakeMirrorCamera.color })
