@@ -63,4 +63,48 @@ class FrostStateTest {
 
         assertTrue(frost.strokes.isEmpty())
     }
+
+    @Test
+    fun wipesAndBreathsKeepTheOrderTheyWereMadeIn() {
+        val frost = FrostState()
+        val first = frost.beginStroke(Offset(0.1f, 0.1f))
+        val breath = frost.beginBreath()
+        val second = frost.beginStroke(Offset(0.2f, 0.2f))
+
+        assertEquals(listOf<FrostMark>(first, breath, second), frost.marks.toList())
+    }
+
+    @Test
+    fun aBreathRisesButNeverFalls() {
+        val frost = FrostState()
+        val breath = frost.beginBreath()
+        frost.setBreathLevel(breath, 0.4f)
+        frost.setBreathLevel(breath, 0.2f)
+
+        assertEquals(0.4f, breath.level)
+    }
+
+    @Test
+    fun aBreathReachingTheTopFrostsOverEverythingBeforeIt() {
+        val frost = FrostState()
+        frost.beginStroke(Offset(0.1f, 0.1f))
+        val earlier = frost.beginBreath()
+        frost.setBreathLevel(earlier, 0.3f)
+        val breath = frost.beginBreath()
+        val after = frost.beginStroke(Offset(0.5f, 0.5f))
+
+        frost.setBreathLevel(breath, 1f)
+
+        assertEquals(listOf<FrostMark>(after), frost.marks.toList())
+    }
+
+    @Test
+    fun aBreathDroppedByClearStaysGone() {
+        val frost = FrostState()
+        val breath = frost.beginBreath()
+        frost.clear()
+        frost.setBreathLevel(breath, 0.5f)
+
+        assertTrue(frost.marks.isEmpty())
+    }
 }
