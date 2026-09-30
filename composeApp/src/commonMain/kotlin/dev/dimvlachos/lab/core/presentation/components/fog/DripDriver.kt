@@ -298,12 +298,7 @@ class DripDriver(
             var last = from
             for (i in 1..steps) {
                 val point = from + (to - from) * (i / steps.toFloat())
-                // A real wipe, not a drop's part-clear trail, its own fresh one included.
-                val wiped =
-                    fog.marks.any {
-                        it is WipeStroke && it.clarity >= 1f && it.covers(point, glass, wipeRadius)
-                    }
-                if (wiped) return last
+                if (fog.isWipedAt(point, glass, wipeRadius)) return last
                 last = point
             }
             return null
@@ -399,16 +394,20 @@ class DripDriver(
             val last = lastStreak
             if (stopped && last != null && fog.marks.none { it === last }) return false
             // Stopped, only a wipe's points since then clear it: it may rest on glass it ran into.
-            return fog.marks.none {
-                it is WipeStroke &&
-                    it !in ours &&
-                    it.covers(
-                        head,
-                        glass,
-                        wipeRadius,
-                        from = if (stopped) ((wipedBefore[it] ?: 0) - 1).coerceAtLeast(0) else 0,
-                    )
+            // A wipe a breath has fogged back over clears nothing.
+            val marks = fog.marks
+            for (i in marks.indices) {
+                val mark = marks[i]
+                if (mark !is WipeStroke || mark in ours) continue
+                val from = if (stopped) ((wipedBefore[mark] ?: 0) - 1).coerceAtLeast(0) else 0
+                if (
+                    mark.covers(head, glass, wipeRadius, from = from) &&
+                        !fog.foggedOverSince(i, head)
+                ) {
+                    return false
+                }
             }
+            return true
         }
     }
 }
@@ -421,6 +420,32 @@ class DripDriver(
 internal fun FogState.isFoggedAt(point: Offset, glass: DpSize, wipeRadius: Dp): Boolean =
     marks.none { it is Evaporation } &&
         marks.none { it is WipeStroke && it.covers(point, glass, wipeRadius, StartClearance) }
+
+/**
+ * Whether [point] is on glass a wipe has cleared and nothing has fogged over since: a real wipe,
+ * not a drop's part-clear trail, and no later breath's fog over it.
+ */
+internal fun FogState.isWipedAt(point: Offset, glass: DpSize, wipeRadius: Dp): Boolean {
+    for (i in marks.indices) {
+        val mark = marks[i]
+        if (mark !is WipeStroke || mark.clarity < 1f) continue
+        if (!mark.covers(point, glass, wipeRadius)) continue
+        if (!foggedOverSince(i, point)) return true
+    }
+    return false
+}
+
+/** Whether a breath after the mark at [index] has fogged [point] back over. */
+internal fun FogState.foggedOverSince(index: Int, point: Offset): Boolean {
+    for (j in index + 1 until marks.size) {
+        val later = marks[j]
+        if (later is Breath && fogCoverAt(point.y, later.level) >= FoggedOver) return true
+    }
+    return false
+}
+
+// How much of a breath's fog makes glass count as fogged over again.
+private const val FoggedOver = 0.9f
 
 internal fun WipeStroke.covers(
     point: Offset,
