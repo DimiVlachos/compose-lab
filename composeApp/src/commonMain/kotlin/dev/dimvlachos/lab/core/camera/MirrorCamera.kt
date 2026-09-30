@@ -6,8 +6,9 @@ import androidx.compose.ui.graphics.painter.Painter
 /** The front camera, shown as a mirror. */
 interface MirrorCamera {
     /**
-     * Shows the camera in [mirror] until cancelled, which stops it. Throws if the camera cannot
-     * work at all; a camera that drops out for a moment only stops [showing] until it is back.
+     * Shows the camera in [mirror] until cancelled, which stops it but keeps its last frame, so a
+     * pause never flashes something else. Throws if the camera cannot work at all; a camera that
+     * drops out for a moment only stops [showing] until it is back.
      */
     suspend fun run()
 

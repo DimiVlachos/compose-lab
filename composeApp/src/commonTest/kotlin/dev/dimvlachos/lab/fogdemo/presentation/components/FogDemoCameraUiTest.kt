@@ -108,7 +108,17 @@ class FogDemoCameraUiTest {
         runOnUiThread { owner.lifecycle.currentState = Lifecycle.State.STARTED }
         waitForIdle()
         assertEquals(0, camera.running)
-        assertFalse(middleIsMagenta())
+    }
+
+    @Test
+    fun aPausedMirrorKeepsYourLastFrameRatherThanFlashingTheStill() = runComposeUiTest {
+        val camera = FakeMirrorCamera()
+        val owner = Owner()
+        showMirror({ CameraAccess.Granted(camera) }, owner)
+        assertTrue(middleIsMagenta())
+
+        runOnUiThread { owner.lifecycle.currentState = Lifecycle.State.STARTED }
+        assertTrue(middleIsMagenta())
     }
 
     @Test

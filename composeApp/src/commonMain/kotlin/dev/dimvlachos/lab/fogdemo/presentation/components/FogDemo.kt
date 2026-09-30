@@ -110,22 +110,30 @@ internal fun FogDemo(
     val currentMic by rememberUpdatedState(micAccess)
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf<Job?>(null) }
+    var askingInTurn by remember { mutableStateOf(false) }
     fun askInTurn() {
         // A second tap while the system asks must not ask again.
         if (asking?.isActive == true) return
         // Undispatched: the first dialog is asked for within the tap itself.
+        askingInTurn = true
         asking =
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                (currentCamera as? CameraAccess.Askable)?.let { asked ->
-                    asked.ask()
-                    snapshotFlow { currentCamera }.first { it !== asked }
-                }
-                (currentMic as? MicAccess.Askable)?.let { asked ->
-                    asked.ask()
-                    snapshotFlow { currentMic }.first { it !== asked }
-                }
-                if (currentCamera !is CameraAccess.Blocked && currentMic !is MicAccess.Blocked) {
-                    cardOpen = false
+                try {
+                    (currentCamera as? CameraAccess.Askable)?.let { asked ->
+                        asked.ask()
+                        snapshotFlow { currentCamera }.first { it !== asked }
+                    }
+                    (currentMic as? MicAccess.Askable)?.let { asked ->
+                        asked.ask()
+                        snapshotFlow { currentMic }.first { it !== asked }
+                    }
+                    if (
+                        currentCamera !is CameraAccess.Blocked && currentMic !is MicAccess.Blocked
+                    ) {
+                        cardOpen = false
+                    }
+                } finally {
+                    askingInTurn = false
                 }
             }
     }
@@ -204,7 +212,8 @@ internal fun FogDemo(
     // The front camera is the mirror, only while the demo is in front of the user: leaving turns
     // it off, and its light with it.
     val camera = (cameraAccess as? CameraAccess.Granted)?.camera?.takeUnless { cameraFailed }
-    if (camera != null) {
+    // Not while Allow is still asking: the microphone's dialog would pause a camera just started.
+    if (camera != null && !askingInTurn) {
         // Keyed on the camera, not the access around it, like the microphone.
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(camera, lifecycle) {
