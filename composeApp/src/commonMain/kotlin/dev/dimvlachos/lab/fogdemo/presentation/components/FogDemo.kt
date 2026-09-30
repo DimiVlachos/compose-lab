@@ -354,7 +354,8 @@ internal fun FogDemo(
         // breath; the hold pill stays while it is the way back to the card.
         val hint =
             when {
-                state.recording || cardShown -> null
+                // Not over a clip being recorded or replayed: it is there to be watched.
+                state.recording || state.replay || cardShown -> null
                 !wiped -> Res.string.fog_hint_wipe
                 !breathing -> null
                 listening -> if (breathed) null else Res.string.fog_hint_blow
@@ -419,6 +420,7 @@ internal fun FogDemo(
                             ?: (micAccess as? MicAccess.Blocked)?.openSettings?.invoke()
                     },
                     onNotNow = { cardOpen = false },
+                    blowing = micAccess != MicAccess.Unavailable && !micFailed,
                 )
             }
         }
