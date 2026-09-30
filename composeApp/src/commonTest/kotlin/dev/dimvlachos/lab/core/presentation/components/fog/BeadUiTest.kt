@@ -125,24 +125,34 @@ class BeadUiTest {
     }
 
     @Test
-    fun aMergingDropSpreadsWideAndFlat() = runComposeUiTest {
+    fun aDropSpreadIntoTheFilmIsASoftPatchWithNoEdge() = runComposeUiTest {
         setContent {
             FoggedWindow(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
-                beads = { listOf(Bead(Offset(0.5f, 0.5f), 30.dp, resting = false, spread = 1f)) },
+                beads = { listOf(Bead(Offset(0.5f, 0.5f), 20.dp, resting = false, spread = 1f)) },
             )
         }
         val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
         val centre = Offset(pixels.width / 2f, pixels.height / 2f)
-        val radius = pixels.width * 30f / 200f
-        fun at(offset: Offset) =
-            pixels[(centre.x + offset.x).toInt(), (centre.y + offset.y).toInt()]
-        val clear = at(Offset(radius * 3f, -radius * 2f))
-        val wide = at(Offset(radius * 1.4f, radius * 0.2f))
-        val high = at(Offset(0f, -radius * 0.8f))
-        assertTrue(wide.red < clear.red - 0.03f, "spread out along the edge: ${wide.red}")
-        assertTrue(high.red > clear.red - 0.03f, "slumped low: ${high.red}")
+        val radius = pixels.width * 20f / 200f
+        // Out from the middle, sideways and up: only ever lighter, no rim, no glint.
+        for (direction in
+            listOf(Offset(1f, 0f), Offset(-1f, 0f), Offset(0f, -1f), Offset(0f, 1f))) {
+            var last = -1f
+            for (step in 0..12) {
+                val at = centre + direction * (radius * 0.25f * step)
+                val red = pixels[at.x.toInt(), at.y.toInt()].red
+                assertTrue(red >= last - 0.01f, "a soft patch, no edge: $red after $last at $at")
+                last = red
+            }
+        }
+        val middle = pixels[centre.x.toInt(), centre.y.toInt()].red
+        val far = pixels[(centre.x + radius * 3.5f).toInt(), centre.y.toInt()].red
+        assertTrue(
+            middle < far - 0.02f,
+            "still a little darker in the middle: $middle against $far",
+        )
     }
 }
