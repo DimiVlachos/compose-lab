@@ -56,13 +56,17 @@ class FogState(startClear: Boolean = false) {
     /**
      * Raises [breath]'s fog to [level], a fraction of the window height from the bottom. Fog never
      * sinks, and a breath already dropped stays gone. At 1 the fog covers the window, which is then
-     * fresh fog: the breath and every mark before it are dropped.
+     * fresh fog: the breath and every mark before it are dropped, and so are drops' part-clear
+     * trails laid while it rose, which it has fogged over too.
      */
     fun setBreathLevel(breath: Breath, level: Float) {
         val index = _marks.indexOf(breath)
         if (index < 0 || level <= breath.level) return
         breath.level = level
-        if (level >= 1f) _marks.removeRange(0, index + 1)
+        if (level >= 1f) {
+            _marks.removeRange(0, index + 1)
+            _marks.removeAll { it is WipeStroke && it.clarity < 1f }
+        }
     }
 
     /** Starts the fog evaporating evenly over the whole window, and returns the evaporation. */

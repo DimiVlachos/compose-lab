@@ -217,6 +217,8 @@ class DripDriver(
         private var streak: WipeStroke? = null
         private var lastStreak: WipeStroke? = null
         private var wipedBefore: Map<WipeStroke, Int> = emptyMap()
+        // How far each breath under way when it stopped had already fogged it.
+        private var fogAtStop: Map<Breath, Float> = emptyMap()
         private var head = start
         private var stretch = 0f
         var stopped = false
@@ -283,6 +285,10 @@ class DripDriver(
                             .filterIsInstance<WipeStroke>()
                             .filter { it !in ours }
                             .associateWith { it.points.size }
+                    fogAtStop =
+                        fog.marks.filterIsInstance<Breath>().associateWith {
+                            fogCoverAt(head.y, it.level)
+                        }
                 } else stuck = random.between(MinStickSeconds, MaxStickSeconds)
             }
         }
@@ -345,6 +351,12 @@ class DripDriver(
             for (i in index + 1 until fog.marks.size) {
                 val mark = fog.marks[i]
                 if (mark is Breath) cover = maxOf(cover, fogCoverAt(head.y, mark.level))
+            }
+            // A breath already under way when it stopped fogs it over as its front rises past.
+            for ((breath, before) in fogAtStop) {
+                if (before >= 1f || fog.marks.none { it === breath }) continue
+                val now = fogCoverAt(head.y, breath.level)
+                cover = maxOf(cover, ((now - before) / (1f - before)).coerceIn(0f, 1f))
             }
             return fadeLeft * (1f - cover)
         }
