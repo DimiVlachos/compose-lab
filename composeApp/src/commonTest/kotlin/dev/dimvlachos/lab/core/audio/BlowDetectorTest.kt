@@ -67,11 +67,13 @@ class BlowDetectorTest {
         val soft = BlowDetector().apply { settleInAQuietRoom() }
         val hard = BlowDetector().apply { settleInAQuietRoom() }
         repeat(4) {
-            soft.process(blow(0.05f))
+            soft.process(blow(0.1f))
             hard.process(blow(0.5f))
         }
+        val softer = soft.process(blow(0.1f))
 
-        assertTrue(soft.process(blow(0.05f)) < hard.process(blow(0.5f)))
+        assertTrue(softer > 0f, "a soft blow is still a blow")
+        assertTrue(softer < hard.process(blow(0.5f)))
     }
 
     @Test
@@ -83,5 +85,39 @@ class BlowDetectorTest {
 
         assertTrue(strengths[10] > 0f, "it starts out as a blow")
         assertTrue(strengths.takeLast(50).all { it == 0f }, "then it is the room")
+    }
+
+    @Test
+    fun aRealBlowIsALowRumbleAndStillCounts() {
+        val detector = BlowDetector()
+        detector.settleInAQuietRoom()
+
+        // About -20 dBFS, as a blow measured on a phone.
+        val strengths = rumble(6, rms = 0.1f, random).map { detector.process(it) }
+
+        assertTrue(strengths.drop(2).all { it > 0f }, "$strengths")
+    }
+
+    @Test
+    fun aLoudSoundThatIsNoBlowDoesNotRaiseTheRoomsLevel() {
+        val detector = BlowDetector()
+        detector.settleInAQuietRoom()
+        repeat(30) { detector.process(tone(0.3f, it, 180f, 360f, 540f, 720f)) }
+
+        val strengths = rumble(6, rms = 0.1f, random).map { detector.process(it) }
+
+        assertTrue(strengths.drop(2).all { it > 0f }, "$strengths")
+    }
+
+    @Test
+    fun talkingAtArmsLengthIsTooQuietToBeABlow() {
+        val detector = BlowDetector()
+        detector.settleInAQuietRoom()
+
+        // About -35 dBFS: well above the room, well below a blow; hiss, so only loudness rejects
+        // it.
+        val strengths = List(30) { detector.process(noise(0.03f, random)) }
+
+        assertTrue(strengths.all { it == 0f }, "$strengths")
     }
 }
