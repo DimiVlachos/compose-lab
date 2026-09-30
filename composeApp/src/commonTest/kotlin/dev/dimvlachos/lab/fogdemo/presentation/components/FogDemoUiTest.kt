@@ -444,7 +444,7 @@ class FogDemoUiTest {
         showDemo(DemoState(replay = true), wipedFog(), MicAccess.Askable {})
 
         onNodeWithText(cardTitle).assertDoesNotExist()
-        onNodeWithText(holdHint).assertExists()
+        onNodeWithText(holdHint).assertDoesNotExist()
     }
 
     @Test

@@ -114,4 +114,25 @@ class FogDemoHintUiTest {
 
         onNodeWithText(wipeHint).assertExists()
     }
+
+    @Test
+    fun aReplayedClipShowsNoHints() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 500.dp)) {
+                        FogDemo(
+                            DemoState(replay = true),
+                            FogState(),
+                            MicAccess.Unavailable,
+                            CameraAccess.Unavailable,
+                        )
+                    }
+                }
+            }
+        }
+        onNodeWithText(wipeHint).assertDoesNotExist()
+        onNodeWithText(holdHint).assertDoesNotExist()
+        onNodeWithText(blowHint).assertDoesNotExist()
+    }
 }
