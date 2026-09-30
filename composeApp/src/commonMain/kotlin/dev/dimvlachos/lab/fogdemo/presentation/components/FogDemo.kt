@@ -43,7 +43,6 @@ import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.core.audio.BlowDetector
 import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.audio.MicFrameSeconds
-import dev.dimvlachos.lab.core.audio.rememberMicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
@@ -90,10 +89,13 @@ private val log = Logger.withTag("FogDemo")
 internal fun FogDemo(
     state: DemoState,
     fog: FogState = remember { newFogDemoState() },
-    micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
-    // No default: each version says which camera it shows, so the bathroom can never ask for one.
+    // No defaults: each version says which microphone and camera it uses, so the bathroom can
+    // never ask for either.
+    micAccess: MicAccess,
     cameraAccess: CameraAccess,
-    reflection: Boolean = true,
+    // Whether the user can breathe on the glass: by blowing, or holding a finger still. Off, only
+    // the clip's own breath fogs it over.
+    breathing: Boolean = true,
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
     val driver = remember(fog) { BreathDriver(fog) }
@@ -323,7 +325,8 @@ internal fun FogDemo(
             brushRadius = FogDemos.FingerBrush,
             beads = { drips.beads },
             onHoldChange =
-                if (listening || state.recording || cardShown) null else { held -> holding = held },
+                if (!breathing || listening || state.recording || cardShown) null
+                else { held -> holding = held },
         )
         // First the wipe hint, until the mirror is found. The blow hint goes after the first
         // breath; the hold pill stays while it is the way back to the card.
@@ -331,6 +334,7 @@ internal fun FogDemo(
             when {
                 state.recording || cardShown -> null
                 !wiped -> Res.string.fog_hint_wipe
+                !breathing -> null
                 listening -> if (breathed) null else Res.string.fog_hint_blow
                 breathed && !canAsk -> null
                 else -> Res.string.fog_hint_hold
@@ -393,7 +397,6 @@ internal fun FogDemo(
                             ?: (micAccess as? MicAccess.Blocked)?.openSettings?.invoke()
                     },
                     onNotNow = { cardOpen = false },
-                    reflection = reflection,
                 )
             }
         }

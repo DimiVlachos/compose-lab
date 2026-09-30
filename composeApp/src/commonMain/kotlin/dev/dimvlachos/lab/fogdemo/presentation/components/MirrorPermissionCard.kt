@@ -28,7 +28,6 @@ import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.ic_photo_camera
 import dev.dimvlachos.lab.resources.mirror_card_allow
 import dev.dimvlachos.lab.resources.mirror_card_body_what
-import dev.dimvlachos.lab.resources.mirror_card_body_what_bathroom
 import dev.dimvlachos.lab.resources.mirror_card_camera_blocked
 import dev.dimvlachos.lab.resources.mirror_card_camera_why
 import dev.dimvlachos.lab.resources.mirror_card_mic_blocked
@@ -69,7 +68,6 @@ internal fun MirrorPermissionCard(
     onOpenSettings: () -> Unit,
     onNotNow: () -> Unit,
     modifier: Modifier = Modifier,
-    reflection: Boolean = true,
 ) {
     val canAsk = camera == Need.Ask || mic == Need.Ask
     Column(
@@ -89,11 +87,7 @@ internal fun MirrorPermissionCard(
             if (mic != Need.Nothing) CardIcon(Res.drawable.ic_mic)
         }
         CardText(Res.string.mirror_card_title, LabTheme.colors.textPrimary, title = true)
-        CardText(
-            if (reflection) Res.string.mirror_card_body_what
-            else Res.string.mirror_card_body_what_bathroom,
-            LabTheme.colors.textPrimary,
-        )
+        CardText(Res.string.mirror_card_body_what, LabTheme.colors.textPrimary)
         if (camera == Need.Ask)
             CardText(Res.string.mirror_card_camera_why, LabTheme.colors.textMuted)
         if (mic == Need.Ask) CardText(Res.string.mirror_card_mic_why, LabTheme.colors.textMuted)
