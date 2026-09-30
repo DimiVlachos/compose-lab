@@ -19,18 +19,18 @@ internal object FogDimens {
     const val HoldDelayMillis = 400L
 
     // What fog does to the scene behind: little colour left, contrast pressed toward light grey.
-    const val MilkySaturation = 0.25f
-    const val MilkyContrast = 0.5f
-    const val MilkyLift = 0.38f
+    const val MilkySaturation = 0.35f
+    const val MilkyContrast = 0.7f
+    const val MilkyLift = 0.2f
 
     /** The even part of the milky film; the density map adds thicker patches on top. */
-    const val FilmAlpha = 0.18f
+    const val FilmAlpha = 0.1f
 
     const val DensityMapWidth = 48
     const val DensityMapHeight = 64
     const val DensityBlobs = 16
-    const val DensityMaxAlpha = 0.45f
+    const val DensityMaxAlpha = 0.4f
 
     /** The soft brightness where the light comes through, toward the top right. */
-    const val GlowAlpha = 0.22f
+    const val GlowAlpha = 0.2f
 }
