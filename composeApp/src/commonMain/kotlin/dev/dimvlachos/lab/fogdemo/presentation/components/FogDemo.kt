@@ -148,7 +148,7 @@ internal fun FogDemo(
             }
     }
 
-    // The script's wipe plays its fingertip back sample by sample: the path already holds the
+    // The script's wipe plays its finger back sample by sample: the path already holds the
     // hand's
     // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
     // whatever window this is.
@@ -158,7 +158,7 @@ internal fun FogDemo(
             val stroke =
                 fog.beginStroke(
                     clipFrameToWindow(path.first(), window),
-                    radius = FogDemos.FingertipBrush,
+                    radius = FogDemos.FingerBrush,
                 )
             animate(
                 0f,

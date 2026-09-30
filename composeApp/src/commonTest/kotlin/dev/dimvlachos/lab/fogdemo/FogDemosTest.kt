@@ -57,7 +57,7 @@ class FogDemosTest {
 
         val calls = controller.calls.map { it.second }
         assertTrue(calls.last().startsWith("breathe"), "calls: $calls")
-        assertEquals(heartWithArrow().size, calls.count { it.startsWith("wipe") })
+        assertEquals(1, calls.count { it.startsWith("wipe") })
         assertTrue(calls.none { it.startsWith("select") }, "calls: $calls")
     }
 
@@ -85,17 +85,18 @@ class FogDemosTest {
     }
 
     @Test
-    fun theClipsDripsRunClearOfTheHeart() = runTest {
+    fun theClipsDripsRunBesideThePorthole() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.bathroom.script.play(controller)
-        val drawing = heartWithArrow().flatMap { it.path }
+        val drawing = FogDemos.porthole.path()
 
         for ((at, length) in controller.drips) {
             var y = at.y
             while (y <= at.y + length) {
                 val point = Offset(at.x, y)
                 val nearest = drawing.minOf { (it - point).getDistance() }
-                assertTrue(nearest > 0.06f, "a drip at $point comes $nearest from the heart")
+                // Clear of the scrub by more than the finger's width.
+                assertTrue(nearest > 0.12f, "a drip at $point comes $nearest from the porthole")
                 y += 0.01f
             }
         }
