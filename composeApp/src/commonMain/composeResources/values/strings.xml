@@ -9,7 +9,7 @@
     <string name="nav_profile">Profile</string>
     <string name="demo_navbar">Nav bar</string>
     <string name="demo_morph_app">Profile gallery</string>
-    <string name="demo_fog">Foged window</string>
+    <string name="demo_fog">Fogged window</string>
     <string name="fog_hint_blow">Blow on the screen</string>
     <string name="fog_hint_hold">Hold to breathe</string>
     <string name="mic_card_title">Breathe on the glass</string>
