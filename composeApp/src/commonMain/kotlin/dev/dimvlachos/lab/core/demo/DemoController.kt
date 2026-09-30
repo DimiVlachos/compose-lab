@@ -18,4 +18,10 @@ interface DemoController {
 
     /** Breathes on the stage for [duration], swelling to [strength], from 0 to 1, and fading. */
     suspend fun breathe(duration: Duration, strength: Float)
+
+    /**
+     * Starts a drop of condensation at [at], a fraction of the stage, to run [length] of its
+     * height. Returns at once; the drop runs on its own.
+     */
+    suspend fun drip(at: Offset, length: Float)
 }

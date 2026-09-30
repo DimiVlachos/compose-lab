@@ -14,6 +14,8 @@ class FakeController(private val now: () -> Long) : DemoController {
 
     val breaths = mutableListOf<Pair<Duration, Float>>()
 
+    val drips = mutableListOf<Pair<Offset, Float>>()
+
     val calls = mutableListOf<Pair<Long, String>>()
 
     override fun select(index: Int) {
@@ -34,5 +36,10 @@ class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun breathe(duration: Duration, strength: Float) {
         breaths += duration to strength
         calls += now() to "breathe($duration, $strength)"
+    }
+
+    override suspend fun drip(at: Offset, length: Float) {
+        drips += at to length
+        calls += now() to "drip($at, $length)"
     }
 }

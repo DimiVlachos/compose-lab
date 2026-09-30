@@ -48,4 +48,20 @@ class DemoStateTest {
         assertEquals(false, DemoState().recording)
         assertEquals(true, DemoState(recording = true).recording)
     }
+
+    @Test
+    fun aDripGoesToTheDemosHandler() = runTest {
+        val state = DemoState()
+        val drips = mutableListOf<Pair<Offset, Float>>()
+        state.setDripHandler { at, length -> drips += at to length }
+
+        state.drip(Offset(0.1f, 0.2f), 0.3f)
+
+        assertEquals(listOf(Offset(0.1f, 0.2f) to 0.3f), drips)
+    }
+
+    @Test
+    fun aDripWithNoHandlerIsIgnored() = runTest {
+        DemoState().drip(Offset(0.5f, 0.5f), 0.2f)
+    }
 }
