@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.fog
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -125,34 +128,41 @@ class BeadUiTest {
     }
 
     @Test
-    fun aDropSpreadIntoTheFilmIsASoftPatchWithNoEdge() = runComposeUiTest {
+    fun aDropSpreadingIntoTheFilmWidensAndThinsWithNoDarkPatch() = runComposeUiTest {
+        var spread by mutableStateOf(0f)
         setContent {
             FoggedWindow(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
-                beads = { listOf(Bead(Offset(0.5f, 0.5f), 20.dp, resting = false, spread = 1f)) },
+                beads = {
+                    listOf(
+                        Bead(
+                            Offset(0.5f, 0.5f),
+                            20.dp,
+                            resting = true,
+                            softness = 1f,
+                            spread = spread,
+                        )
+                    )
+                },
             )
         }
-        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
-        val centre = Offset(pixels.width / 2f, pixels.height / 2f)
-        val radius = pixels.width * 20f / 200f
-        // Out from the middle, sideways and up: only ever lighter, no rim, no glint.
-        for (direction in
-            listOf(Offset(1f, 0f), Offset(-1f, 0f), Offset(0f, -1f), Offset(0f, 1f))) {
-            var last = -1f
-            for (step in 0..12) {
-                val at = centre + direction * (radius * 0.25f * step)
-                val red = pixels[at.x.toInt(), at.y.toInt()].red
-                assertTrue(red >= last - 0.01f, "a soft patch, no edge: $red after $last at $at")
-                last = red
-            }
+        fun red(dx: Float): Float {
+            val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+            val radius = pixels.width * 20f / 200f
+            return pixels[(pixels.width / 2f + radius * dx).toInt(), pixels.height / 2].red
         }
-        val middle = pixels[centre.x.toInt(), centre.y.toInt()].red
-        val far = pixels[(centre.x + radius * 3.5f).toInt(), centre.y.toInt()].red
+        val beadMiddle = red(0f)
+        val beadBeside = red(1.6f)
+        spread = 1f
+        waitForIdle()
+        val spreadMiddle = red(0f)
+        val spreadBeside = red(1.6f)
         assertTrue(
-            middle < far - 0.02f,
-            "still a little darker in the middle: $middle against $far",
+            spreadMiddle > beadMiddle + 0.02f,
+            "thinner, never a dark patch: $spreadMiddle against $beadMiddle",
         )
+        assertTrue(spreadBeside < beadBeside - 0.005f, "wider: $spreadBeside against $beadBeside")
     }
 }
