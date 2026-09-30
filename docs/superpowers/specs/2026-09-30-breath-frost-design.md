@@ -162,3 +162,29 @@ On the device (not automated):
 - Real microphone input on iOS (the stub stays until a follow-up).
 - A frost mask bitmap, droplets, slow refrosting over time, and sound output.
 - Brighter "fresh fog" that settles into frost.
+
+## Amendment (2026-09-30, after testing on the phone)
+
+Testing on a real phone changed three things. Where this section and the sections above disagree,
+this section wins.
+
+- **The glass starts clear, and a breath frosts it.** Blowing on glass that is already frosted
+  shows nothing, so the first version looked broken. `FrostState(startClear = true)` begins with a
+  `Thaw` mark at full strength; a breath reaching the top drops it, and the glass is frosted.
+- **The frost demo does not play its script on the phone.** `Demo.autoplay = false`: the glass is
+  there to breathe on and wipe, and Replay plays the clip. Recording always plays it.
+- **The clip is breath → oval scrub → pause → evaporate.** On the return to `select(0)` the frost
+  melts away over one second (`beginThaw` / `setThawAmount`), back to the clear glass the loop
+  starts from:
+
+  | Time | Step |
+  |---|---|
+  | 0 s | `select(1)` |
+  | 0.4–2.8 s | `breathe(2.4.seconds, strength = 1f)`: the glass frosts from the bottom |
+  | 3.2–8.8 s | the oval scrub |
+  | 10.8 s | `select(0)`: the frost evaporates |
+
+- **Blow detection** tells breath from voice by periodicity (autocorrelation after pre-emphasis),
+  not spectral flatness: on the phone a blow is a steep low rumble, which flatness scored as tonal.
+  A blow must also reach -30 dBFS, the room's level is learned only from quiet frames, and the
+  recorder's digitally silent first buffers are ignored.
