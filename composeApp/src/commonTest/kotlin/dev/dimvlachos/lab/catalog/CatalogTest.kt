@@ -4,6 +4,7 @@ package dev.dimvlachos.lab.catalog
 
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.test.Test
@@ -17,9 +18,9 @@ import kotlinx.coroutines.test.runTest
 class CatalogTest {
     @Test
     fun keepsTheFinishedDemoOfEachComponent() {
-        assertEquals(listOf("navbar.all", "morph.app"), Catalog.demos.map { it.id })
+        assertEquals(listOf("navbar.all", "morph.app", "book.turn"), Catalog.demos.map { it.id })
         assertEquals(
-            listOf(Res.string.demo_navbar, Res.string.demo_morph_app),
+            listOf(Res.string.demo_navbar, Res.string.demo_morph_app, Res.string.demo_book_turn),
             Catalog.demos.map { it.title },
         )
     }

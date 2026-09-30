@@ -21,4 +21,8 @@ data class AppColors(
     val bookThread: Color = Color(0xFFEFE6D4),
     val bookCrease: Color = Color(0xFF4F412C),
     val bookShadow: Color = Color(0xFF000000),
+    // The table the book demo lies on, lit from above its centre, and the scripted finger.
+    val table: Color = Color(0xFF2B1F17),
+    val tableLit: Color = Color(0xFF4A3727),
+    val touch: Color = Color(0xFFFFFFFF),
 )

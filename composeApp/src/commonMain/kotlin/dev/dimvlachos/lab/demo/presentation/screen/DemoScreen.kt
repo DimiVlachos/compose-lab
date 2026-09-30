@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
@@ -33,6 +34,7 @@ import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
+import dev.dimvlachos.lab.core.platform.LockLandscape
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
@@ -50,6 +52,7 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
     var runId by remember { mutableIntStateOf(0) }
     var playing by remember { mutableStateOf(true) }
     val state = remember(runId) { DemoState() }
+    if (demo.landscape) LockLandscape()
     LaunchedEffect(runId, playing) {
         if (!playing) return@LaunchedEffect
         if (record) {
@@ -85,8 +88,15 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
     }
     Box(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
         if (record) {
-            // The clip's 4:5 frame, centred; the recorder crops to it.
-            stage(Modifier.align(Alignment.Center).fillMaxWidth().aspectRatio(4f / 5f))
+            // The clip's frame, centred; the recorder crops to it: 4:5, or 16:9 for a demo that
+            // runs in landscape.
+            val frame =
+                if (demo.landscape) {
+                    Modifier.fillMaxHeight().aspectRatio(16f / 9f)
+                } else {
+                    Modifier.fillMaxWidth().aspectRatio(4f / 5f)
+                }
+            stage(Modifier.align(Alignment.Center).then(frame))
         } else {
             // On the phone the demo is something to use, so it fills the screen under the bar:
             // a 4:5 frame would leave bands above and below it that look like the demo but never

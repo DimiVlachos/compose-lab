@@ -9,6 +9,7 @@
     <string name="nav_profile">Profile</string>
     <string name="demo_navbar">Nav bar</string>
     <string name="demo_morph_app">Profile gallery</string>
+    <string name="demo_book_turn">Page-turn book</string>
     <string name="gallery_photo_count">%1$d photos</string>
     <string name="edit_photo_title">Change profile photo</string>
     <string name="profile_name">Alex Morgan</string>
