@@ -5,10 +5,15 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,7 +27,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -45,6 +52,7 @@ import dev.dimvlachos.lab.frostdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.frost_hint_blow
 import dev.dimvlachos.lab.resources.frost_hint_hold
+import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.photo_santorini
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.collectLatest
@@ -55,6 +63,8 @@ import org.jetbrains.compose.resources.stringResource
 
 // A held finger breathes steadily, a little softer than a firm blow.
 private const val HoldStrength = 0.7f
+
+private val HintIconSize = 18.dp
 
 // How long the frost takes to evaporate at the loop's end.
 private const val EvaporateMillis = 1_000
@@ -76,6 +86,18 @@ internal fun FrostDemo(
     var breathed by remember { mutableStateOf(false) }
     var holding by remember { mutableStateOf(false) }
     val listening = micAccess is MicAccess.Granted && !micFailed
+    val canAsk = micAccess is MicAccess.Askable || micAccess is MicAccess.Blocked
+    var cardOpen by remember { mutableStateOf(true) }
+    var asked by remember { mutableStateOf(false) }
+    val cardShown = cardOpen && canAsk && !state.recording
+
+    // The system's answer: a refusal in its dialog closes the card for holding; refused for good,
+    // the card stays, now offering settings.
+    LaunchedEffect(micAccess) {
+        if (!asked) return@LaunchedEffect
+        asked = false
+        if (micAccess !is MicAccess.Blocked) cardOpen = false
+    }
 
     // The script's wipe plays its finger back sample by sample: the path already holds the hand's
     // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
@@ -176,13 +198,13 @@ internal fun FrostDemo(
             state = frost,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
             brushRadius = FrostDemos.ScrubBrush,
-            onHoldChange = if (listening || state.recording) null else { held -> holding = held },
+            onHoldChange =
+                if (listening || state.recording || cardShown) null else { held -> holding = held },
         )
         val hint =
             when {
-                state.recording || breathed -> null
+                state.recording || breathed || cardShown -> null
                 listening -> Res.string.frost_hint_blow
-                micAccess is MicAccess.Pending -> null
                 else -> Res.string.frost_hint_hold
             }
         Crossfade(
@@ -190,19 +212,54 @@ internal fun FrostDemo(
             modifier = Modifier.align(Alignment.BottomCenter).padding(LabTheme.spacing.mediumLarge),
         ) { shown ->
             if (shown != null) {
-                Text(
-                    stringResource(shown),
-                    color = LabTheme.colors.textPrimary,
-                    style = LabTheme.typography.body,
-                    modifier =
-                        Modifier.background(
-                                LabTheme.colors.surface.copy(alpha = 0.7f),
-                                RoundedCornerShape(percent = 50),
-                            )
-                            .padding(
-                                horizontal = LabTheme.spacing.mediumLarge,
-                                vertical = LabTheme.spacing.small,
-                            ),
+                Row(
+                    Modifier.background(
+                            LabTheme.colors.surface.copy(alpha = 0.7f),
+                            RoundedCornerShape(percent = 50),
+                        )
+                        .then(if (canAsk) Modifier.clickable { cardOpen = true } else Modifier)
+                        .padding(
+                            horizontal = LabTheme.spacing.mediumLarge,
+                            vertical = LabTheme.spacing.small,
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // A way back to the card, where there is a microphone to ask for.
+                    if (canAsk) {
+                        Icon(
+                            painterResource(Res.drawable.ic_mic),
+                            contentDescription = null,
+                            tint = LabTheme.colors.accent,
+                            modifier = Modifier.size(HintIconSize),
+                        )
+                    }
+                    Text(
+                        stringResource(shown),
+                        color = LabTheme.colors.textPrimary,
+                        style = LabTheme.typography.body,
+                    )
+                }
+            }
+        }
+        // While the card is up the glass takes no touches, so reaching for a button cannot wipe it.
+        if (cardShown) {
+            Box(
+                Modifier.matchParentSize().pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) awaitPointerEvent().changes.forEach { it.consume() }
+                    }
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                MicPermissionCard(
+                    blocked = micAccess is MicAccess.Blocked,
+                    onAllow = {
+                        asked = true
+                        (micAccess as? MicAccess.Askable)?.ask?.invoke()
+                    },
+                    onOpenSettings = { (micAccess as? MicAccess.Blocked)?.openSettings?.invoke() },
+                    onNotNow = { cardOpen = false },
                 )
             }
         }

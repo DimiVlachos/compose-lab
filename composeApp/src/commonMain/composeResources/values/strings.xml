@@ -12,6 +12,13 @@
     <string name="demo_frost">Frosted window</string>
     <string name="frost_hint_blow">Blow on the screen</string>
     <string name="frost_hint_hold">Hold to breathe</string>
+    <string name="mic_card_title">Breathe on the glass</string>
+    <string name="mic_card_body_what">Blow gently at the bottom of your phone to fog the window, then wipe it clear with your finger.</string>
+    <string name="mic_card_body_why">Your phone can\'t feel your breath, but it can hear it. The microphone listens only while this demo is open, and nothing is recorded or sent anywhere.</string>
+    <string name="mic_card_blocked">The microphone is turned off for Compose Lab in your phone\'s settings.</string>
+    <string name="mic_card_not_now">Not now</string>
+    <string name="mic_card_allow">Allow microphone</string>
+    <string name="mic_card_open_settings">Open settings</string>
     <string name="gallery_photo_count">%1$d photos</string>
     <string name="edit_photo_title">Change profile photo</string>
     <string name="profile_name">Alex Morgan</string>
