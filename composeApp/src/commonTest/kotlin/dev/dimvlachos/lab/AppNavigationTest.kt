@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab
 
 import dev.dimvlachos.lab.catalog.Catalog
+import dev.dimvlachos.lab.catalog.CatalogEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -37,5 +38,29 @@ class AppNavigationTest {
         assertFalse(navigation.canGoBack)
         navigation.back()
         assertEquals(morphApp, navigation.demo)
+    }
+
+    private val folder = Catalog.entries.filterIsInstance<CatalogEntry.Group>().single()
+
+    @Test
+    fun backFromAVersionReturnsToItsFolderThenHome() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        navigation.openGroup(folder)
+        assertTrue(navigation.canGoBack)
+        navigation.openDemo(folder.demos.first())
+        navigation.back()
+        assertNull(navigation.demo)
+        assertEquals(folder, navigation.group)
+        navigation.back()
+        assertNull(navigation.group)
+        assertFalse(navigation.canGoBack)
+    }
+
+    @Test
+    fun aVersionRecordedByIdOpensWithoutItsFolder() {
+        val bathroom = Catalog.find("fog.mirror.bathroom")!!
+        val navigation = AppNavigation(initialDemo = bathroom, record = true)
+        assertNull(navigation.group)
+        assertFalse(navigation.canGoBack)
     }
 }
