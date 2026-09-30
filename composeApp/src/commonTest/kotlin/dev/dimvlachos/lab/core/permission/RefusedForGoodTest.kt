@@ -1,4 +1,4 @@
-package dev.dimvlachos.lab.core.audio
+package dev.dimvlachos.lab.core.permission
 
 import kotlin.test.Test
 import kotlin.test.assertFalse
