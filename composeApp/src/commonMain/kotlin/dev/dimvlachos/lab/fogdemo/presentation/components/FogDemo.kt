@@ -100,13 +100,18 @@ internal fun FogDemo(
         if (micAccess !is MicAccess.Blocked) cardOpen = false
     }
 
-    // The script's wipe plays its finger back sample by sample: the path already holds the hand's
+    // The script's wipe plays its fingertip back sample by sample: the path already holds the
+    // hand's
     // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
     // whatever window this is.
     DisposableEffect(state, fog, driver) {
         state.setWipeHandler { path, duration ->
             if (window.isEmpty()) return@setWipeHandler
-            val stroke = fog.beginStroke(clipFrameToWindow(path.first(), window))
+            val stroke =
+                fog.beginStroke(
+                    clipFrameToWindow(path.first(), window),
+                    radius = FogDemos.FingertipBrush,
+                )
             animate(
                 0f,
                 1f,
@@ -199,7 +204,7 @@ internal fun FogDemo(
             photo = painterResource(Res.drawable.window_view),
             state = fog,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
-            brushRadius = FogDemos.ScrubBrush,
+            brushRadius = FogDemos.FingerBrush,
             onHoldChange =
                 if (listening || state.recording || cardShown) null else { held -> holding = held },
         )

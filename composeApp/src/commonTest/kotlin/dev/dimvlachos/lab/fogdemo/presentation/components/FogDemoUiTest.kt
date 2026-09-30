@@ -33,7 +33,9 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.Breath
 import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
+import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
@@ -431,5 +433,29 @@ class FogDemoUiTest {
 
         onNodeWithText(cardTitle).assertDoesNotExist()
         onNodeWithText(holdHint).assertExists()
+    }
+
+    @Test
+    fun theScriptDrawsWithAFingertip() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        val fog = FogState()
+        var scope: CoroutineScope? = null
+        setContent {
+            scope = rememberCoroutineScope()
+            LabTheme {
+                Box(Modifier.size(400.dp, 500.dp)) { FogDemo(state, fog, MicAccess.Unavailable) }
+            }
+        }
+        mainClock.advanceTimeByFrame()
+        runOnUiThread {
+            scope!!.launch {
+                state.wipe(listOf(Offset(0.2f, 0.5f), Offset(0.8f, 0.5f)), 300.milliseconds)
+            }
+        }
+        mainClock.advanceTimeBy(500)
+
+        val stroke = fog.marks.single() as WipeStroke
+        assertEquals(FogDemos.FingertipBrush, stroke.radius)
     }
 }

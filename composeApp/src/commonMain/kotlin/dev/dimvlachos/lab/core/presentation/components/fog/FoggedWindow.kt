@@ -166,12 +166,16 @@ fun FoggedWindow(
                 .drawWithContent {
                     drawContent()
                     val radius = brushRadius.toPx()
-                    // One brush, centred on the origin and moved to each dab, not a gradient per
-                    // dab.
+                    // One brush per width, centred on the origin and moved to each dab, not a
+                    // gradient per dab.
                     val brush = softBrush(radius)
                     for (mark in state.marks) {
                         when (mark) {
-                            is WipeStroke -> drawWipe(mark.points, radius, brush)
+                            is WipeStroke ->
+                                when (val own = mark.radius?.toPx()) {
+                                    null -> drawWipe(mark.points, radius, brush)
+                                    else -> drawWipe(mark.points, own, softBrush(own))
+                                }
                             is Breath -> drawFog(mark.level)
                             is Evaporation ->
                                 // Clear glass keeps a ragged band of fog round its edges.
