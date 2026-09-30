@@ -528,4 +528,27 @@ class DripDriverTest {
         assertTrue(bead.resting, "it ran its course: $bead")
         assertTrue(bead.at.y > 0.55f, "past where the old wipe was: ${bead.at.y}")
     }
+
+    @Test
+    fun aDropThatStopsWhileABreathRisesIsFoggedOverAsItCarriesOn() {
+        val fog = FogState()
+        val breath = fog.beginBreath()
+        fog.setBreathLevel(breath, 0.3f)
+        val drips = driver(fog)
+        // It runs and rests above the front, while the same breath is still under way.
+        drips.drip(Offset(0.5f, 0.1f), 0.2f)
+        drips.run(10f)
+        assertEquals(1f, drips.beads.single().alpha)
+
+        var level = 0.3f
+        while (level < 0.99f) {
+            level += 0.01f
+            fog.setBreathLevel(breath, level)
+        }
+        assertEquals(0f, drips.beads.single().alpha, "fogged over by the breath it stopped in")
+        fog.setBreathLevel(breath, 1f)
+        assertTrue(fog.streaks().isEmpty(), "its trail fogged over too: ${fog.streaks()}")
+        drips.run(0.5f)
+        assertTrue(drips.beads.isEmpty())
+    }
 }
