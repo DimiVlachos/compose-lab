@@ -44,4 +44,22 @@ class FrostFogUiTest {
         assertTrue(greenAt(0.5f) > 0.2f, "the wipe under the fog is covered: ${greenAt(0.5f)}")
         assertTrue(greenAt(0.7f) < 0.12f, "the wipe after the breath clears it: ${greenAt(0.7f)}")
     }
+
+    @Test
+    fun clearGlassFogsFromTheBottomUp() = runComposeUiTest {
+        val frost = FrostState(startClear = true)
+        frost.setBreathLevel(frost.beginBreath(), 0.5f)
+        setContent {
+            FrostedWindow(
+                photo = ColorPainter(Color.Red),
+                state = frost,
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        fun greenAt(y: Float) = pixels[pixels.width / 2, (y * (pixels.height - 1)).toInt()].green
+
+        assertTrue(greenAt(0.1f) < 0.12f, "the top is still clear: ${greenAt(0.1f)}")
+        assertTrue(greenAt(0.8f) > 0.2f, "the bottom is fogged: ${greenAt(0.8f)}")
+    }
 }
