@@ -108,4 +108,11 @@ class HeartArrowTest {
     fun theSameDrawingEveryTime() {
         assertEquals(heart, heartWithArrow()[0].path)
     }
+
+    @Test
+    fun theTwoFeathersKeepAGapBetweenThem() {
+        val (first, second) = strokes.subList(5, 7).map { it.path }
+        val closest = first.minOf { a -> second.minOf { b -> (a - b).getDistance() } }
+        assertTrue(closest > 0.06f, "the feathers come within $closest of each other")
+    }
 }

@@ -224,13 +224,17 @@ private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush
     }
 }
 
-// The fog drawn again, kept only where the fog mask is: the mask goes into a layer, then the
-// fog is drawn into a nested layer that SrcIn composites onto the mask alone.
+// Fog fills in what is missing rather than piling onto fog already there: under the breath's mask
+// the glass becomes the fog's natural state, existing × (1 − mask) + fog × mask. So the existing
+// layer is first cleared through the mask, then the fog, kept only where the mask is, is added.
 private fun ContentDrawScope.drawFog(level: Float) {
     if (level <= 0f) return
     val bounds = Rect(Offset.Zero, size)
     drawIntoCanvas { canvas ->
-        canvas.saveLayer(bounds, Paint())
+        canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.DstOut })
+        drawFogMask(level)
+        canvas.restore()
+        canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.Plus })
         drawFogMask(level)
         canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.SrcIn })
         drawContent()

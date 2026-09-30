@@ -63,7 +63,7 @@ internal fun heartWithArrow(step: Duration = 16.milliseconds): List<DrawnStroke>
         head(1f),
         head(-1f),
         feather(0.02f),
-        feather(0.06f),
+        feather(0.11f),
     )
 }
 
