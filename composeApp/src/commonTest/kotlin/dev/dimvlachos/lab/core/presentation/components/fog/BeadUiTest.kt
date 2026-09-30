@@ -123,4 +123,26 @@ class BeadUiTest {
         val settled = insideRed(1f)
         assertTrue(settled > crisp + 0.05f, "a softer rim: $settled against $crisp")
     }
+
+    @Test
+    fun aMergingDropSpreadsWideAndFlat() = runComposeUiTest {
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = FogState(startClear = true),
+                modifier = Modifier.size(200.dp).testTag("window"),
+                beads = { listOf(Bead(Offset(0.5f, 0.5f), 30.dp, resting = false, spread = 1f)) },
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val centre = Offset(pixels.width / 2f, pixels.height / 2f)
+        val radius = pixels.width * 30f / 200f
+        fun at(offset: Offset) =
+            pixels[(centre.x + offset.x).toInt(), (centre.y + offset.y).toInt()]
+        val clear = at(Offset(radius * 3f, -radius * 2f))
+        val wide = at(Offset(radius * 1.4f, radius * 0.2f))
+        val high = at(Offset(0f, -radius * 0.8f))
+        assertTrue(wide.red < clear.red - 0.03f, "spread out along the edge: ${wide.red}")
+        assertTrue(high.red > clear.red - 0.03f, "slumped low: ${high.red}")
+    }
 }

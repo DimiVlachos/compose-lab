@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.PointerId
@@ -320,42 +321,50 @@ private fun DrawScope.drawBead(bead: Bead) {
     val alpha = bead.alpha
     if (radius <= 0f || alpha <= 0f) return
     val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
-    val bulb = radius * (1f - BeadNarrowing * bead.stretch)
-    val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
-    // Settled into the condensation, it stands out less, and a soft halo feathers its edge.
-    val crisp = alpha * (1f - BeadSoftening * bead.softness)
-    if (bead.softness > 0f) {
+    // Merging into a wipe's edge, it slumps: wider along the edge, lower, flatter.
+    withTransform({
+        scale(1f + BeadSpreadWide * bead.spread, 1f - BeadSpreadFlat * bead.spread, pivot = centre)
+    }) {
+        val bulb = radius * (1f - BeadNarrowing * bead.stretch)
+        val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
+        // Settled into the condensation, it stands out less, and a soft halo feathers its edge.
+        val crisp = alpha * (1f - BeadSoftening * bead.softness)
+        if (bead.softness > 0f) {
+            drawCircle(
+                Brush.radialGradient(
+                    0f to
+                        Color.Black.copy(
+                            alpha = FogDimens.BeadShade * alpha * bead.softness * 0.6f
+                        ),
+                    1f to Color.Transparent,
+                    center = centre,
+                    radius = bulb * BeadHalo,
+                ),
+                bulb * BeadHalo,
+                centre,
+            )
+        }
+        drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade * crisp))
+        drawPath(
+            drop,
+            Color.White.copy(alpha = FogDimens.BeadEdgeLight * crisp),
+            style = Stroke(width = bulb * 0.14f),
+        )
+        drawArc(
+            Color.Black.copy(alpha = FogDimens.BeadRim * crisp),
+            startAngle = 20f,
+            sweepAngle = 140f,
+            useCenter = false,
+            topLeft = centre - Offset(bulb, bulb),
+            size = Size(bulb * 2, bulb * 2),
+            style = Stroke(width = bulb * 0.35f),
+        )
         drawCircle(
-            Brush.radialGradient(
-                0f to Color.Black.copy(alpha = FogDimens.BeadShade * alpha * bead.softness * 0.6f),
-                1f to Color.Transparent,
-                center = centre,
-                radius = bulb * BeadHalo,
-            ),
-            bulb * BeadHalo,
-            centre,
+            Color.White.copy(alpha = FogDimens.BeadHighlight * crisp),
+            bulb * 0.3f,
+            centre + Offset(-bulb * 0.3f, -bulb * 0.35f),
         )
     }
-    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade * crisp))
-    drawPath(
-        drop,
-        Color.White.copy(alpha = FogDimens.BeadEdgeLight * crisp),
-        style = Stroke(width = bulb * 0.14f),
-    )
-    drawArc(
-        Color.Black.copy(alpha = FogDimens.BeadRim * crisp),
-        startAngle = 20f,
-        sweepAngle = 140f,
-        useCenter = false,
-        topLeft = centre - Offset(bulb, bulb),
-        size = Size(bulb * 2, bulb * 2),
-        style = Stroke(width = bulb * 0.35f),
-    )
-    drawCircle(
-        Color.White.copy(alpha = FogDimens.BeadHighlight * crisp),
-        bulb * 0.3f,
-        centre + Offset(-bulb * 0.3f, -bulb * 0.35f),
-    )
 }
 
 // A round bulb of [bulb] radius about [centre], its top drawn up into a point [tail] above it;
@@ -399,6 +408,10 @@ private const val BeadTail = 2.2f
 // How much a settled drop's rim, light and shade fade back, and how far its soft halo reaches.
 private const val BeadSoftening = 0.55f
 private const val BeadHalo = 1.5f
+
+// How much wider and flatter a drop is, fully slumped into the edge of a wipe.
+private const val BeadSpreadWide = 0.8f
+private const val BeadSpreadFlat = 0.45f
 
 // Each dab is faint on its own: along a stroke some eight overlap, and DstOut compounds them, so a
 // full-strength dab would harden the edge the gradient is there to soften.

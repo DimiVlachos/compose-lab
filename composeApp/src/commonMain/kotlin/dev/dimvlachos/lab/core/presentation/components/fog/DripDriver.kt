@@ -21,7 +21,8 @@ import kotlin.random.Random
  * A drop of water on the glass: [at] as a fraction of it, [resting] once it has stopped, and
  * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs,
  * [alpha], how much of it still shows as fog covers it or it is smeared away, and [softness], from
- * 0, a fresh bead, to 1, settled into the condensation around it once it has stopped.
+ * 0, a fresh bead, to 1, settled into the condensation around it once it has stopped, and [spread],
+ * from 0 to 1 as a drop meeting a wiped patch slumps and spreads along its edge, merging in.
  */
 @Immutable
 data class Bead(
@@ -31,6 +32,7 @@ data class Bead(
     val stretch: Float = 0f,
     val alpha: Float = 1f,
     val softness: Float = 0f,
+    val spread: Float = 0f,
 )
 
 /**
@@ -316,6 +318,12 @@ class DripDriver(
         private var fadeLeft = 1f
         private var fadeRate = 0f
 
+        private fun spreadNow() = 1f - (1f - merged) * (1f - merged)
+
+        // How far through merging into a wipe's edge, from 0 to 1.
+        private val merged: Float
+            get() = if (blending) 1f - fadeLeft else 0f
+
         /** Faded right out. */
         val gone: Boolean
             get() = fadeLeft <= 0f
@@ -341,6 +349,8 @@ class DripDriver(
          * since its streak as the breath's front passes it. A running drop clears its own way.
          */
         fun visibility(): Float {
+            // Merging into a wipe's edge, it thins out gently, with no snap at either end.
+            if (blending) return 1f - smoothstep(merged)
             if (!stopped || fadeLeft <= 0f) return fadeLeft
             val last = lastStreak ?: return fadeLeft
             val index = fog.marks.indexOfFirst { it === last }
@@ -385,17 +395,28 @@ class DripDriver(
 
         fun bead(alpha: Float) =
             Bead(
-                head,
+                // Slumping into the wipe's rim as it spreads.
+                if (blending) {
+                    head + Offset(0f, diameter / 2 * SinkInto * spreadNow() / glass.height.value)
+                } else {
+                    head
+                },
                 radius =
                     when {
                         grown < GrowSeconds -> (diameter / 2 * (grown / GrowSeconds)).dp
-                        blending -> (diameter / 2 * (1f + BlendSpread * (1f - fadeLeft))).dp
                         else -> (diameter / 2).dp
                     },
                 resting = stopped,
                 stretch = stretch,
                 alpha = alpha,
-                softness = if (stopped) softness else 0f,
+                softness =
+                    when {
+                        // Merging, it loses its gloss first.
+                        blending -> (merged * GlossGoneBy).coerceAtMost(1f)
+                        stopped -> softness
+                        else -> 0f
+                    },
+                spread = if (blending) spreadNow() else 0f,
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
@@ -532,10 +553,16 @@ private const val StretchEasing = 6f
 private const val RelaxedWithin = 0.01f
 private const val WipedFadeSeconds = 0.2f
 private const val PushedOutFadeSeconds = 1f
-private const val BlendSeconds = 0.5f
+private const val BlendSeconds = 1.2f
 private const val SoftenSeconds = 1.5f
-private const val BlendSpread = 0.4f
+private const val GlossGoneBy = 4f
+private const val SinkInto = 0.6f
 private const val EdgeStepDp = 2f
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
 private val StartClearance = 12.dp
+
+private fun smoothstep(t: Float): Float {
+    val x = t.coerceIn(0f, 1f)
+    return x * x * (3f - 2f * x)
+}
