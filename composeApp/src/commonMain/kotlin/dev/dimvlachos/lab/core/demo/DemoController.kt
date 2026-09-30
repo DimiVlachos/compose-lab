@@ -15,4 +15,7 @@ interface DemoController {
      * even time steps, so their spacing sets the finger's speed.
      */
     suspend fun wipe(path: List<Offset>, duration: Duration)
+
+    /** Breathes on the stage for [duration], swelling to [strength], from 0 to 1, and fading. */
+    suspend fun breathe(duration: Duration, strength: Float)
 }
