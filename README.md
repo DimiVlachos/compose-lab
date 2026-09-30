@@ -69,6 +69,27 @@ ProfileGallery(
 
 The photo morph also ships on its own as `ImageMorph` (`core/presentation/components/imagemorph/`), with `MorphLayers` to switch its fixes on one by one.
 
+## Page-turn book (`core/presentation/components/pageturn/`)
+
+![](docs/media/book.turn.gif)
+
+An open book whose pages turn in 3D under your finger, drawn in plain Compose `DrawScope` with no platform canvas, so the same code turns the page on Android and iOS.
+
+- **A leaf of strips.** The turning page is 18 strips hinged end to end. Each one is drawn under its own perspective `Matrix` (the 3×3 projection written into Compose's 4×4 layout), so the page curls instead of flipping as a flat card.
+- **A bow that follows the hand.** The curl is spread along the strips and bulges the way the page is moving. Reverse a drag halfway and the bow flips across over a short stretch of the turn, so the paper looks pulled, not snapped.
+- **Let go anywhere.** Past 0.42 of a turn, or on a flick, the page finishes; otherwise it sinks back. Both are critically damped springs, so a page lands without bouncing off the spine, and a page still landing can be caught mid-air.
+- **Light and binding.** Each strip shades by how far it faces away, with a sheen while it is up. The gutter darkens under a standing leaf, stitches cross from under the leaf to over it at the ends of the turn, and three stacked drop shadows sit the book on the table.
+
+Taps and drags go through one `PageTurnState`, so the demo's scripted drags take the same path as a finger.
+
+```kotlin
+val book = rememberPageTurnState(spreadCount = spreads.size)
+PageTurnBook(
+    spreads = spreads, // List<ImageBitmap>, one 2:1 image across both pages
+    state = book,
+)
+```
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
@@ -89,6 +110,7 @@ scripts/record.py ios navbar.all
 scripts/record.py android navbar.all --label && scripts/record.py ios navbar.all --label
 scripts/side-by-side.sh navbar.all                 # out/navbar.all-both.mp4
 scripts/gif.sh navbar.all                          # docs/media/navbar.all.gif
+scripts/record.py android book.turn --landscape    # a landscape demo: 1920×1080 (Android only)
 ```
 
 Needs Python 3 and ffmpeg.
@@ -98,6 +120,8 @@ Needs Python 3 and ffmpeg.
 The nav bar supports 2–4 tabs, at a minimum slot width of about 64 dp.
 
 The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo straight from another is not a morph: close to the grid first.
+
+The page-turn book is a two-page spread, 2:1, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
 
 ## Licence
 
@@ -120,3 +144,7 @@ Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](
 | [Zakynthos](https://images.unsplash.com/photo-1612279427382-f8349a383af8) | Julian Timmerman |
 | [Kefalonia](https://images.unsplash.com/photo-1598959594958-34761147b7b0) | Mac McDade |
 | [Folegandros](https://images.unsplash.com/photo-1688765866663-0fd353e7d5df) | Tom Waldek |
+| [Book: castle on a hill](https://unsplash.com/photos/6wOqtucPjLU) | Alex Vasey |
+| [Book: canal cottages](https://unsplash.com/photos/thatched-roof-cottages-beside-a-tranquil-canal-with-flowers-br1KAsuMSX0) | mana5280 |
+| [Book: harbour town](https://unsplash.com/photos/colorful-buildings-line-a-coastal-towns-harbor-haVcuj4buqE) | Daniel Seßler |
+| [Book: balloons](https://unsplash.com/photos/assorted-color-hot-air-balloons-on-sky-0tKc9vaYUAw) | Jesse Gardner |
