@@ -39,6 +39,8 @@ import dev.dimvlachos.lab.resources.frost_hint_blow
 import dev.dimvlachos.lab.resources.frost_hint_hold
 import dev.dimvlachos.lab.resources.mic_card_allow
 import dev.dimvlachos.lab.resources.mic_card_blocked
+import dev.dimvlachos.lab.resources.mic_card_body_what
+import dev.dimvlachos.lab.resources.mic_card_body_why
 import dev.dimvlachos.lab.resources.mic_card_not_now
 import dev.dimvlachos.lab.resources.mic_card_open_settings
 import dev.dimvlachos.lab.resources.mic_card_title
@@ -372,5 +374,18 @@ class FrostDemoUiTest {
         showDemo(DemoState(recording = true), FrostState(), MicAccess.Askable {})
 
         onNodeWithText(cardTitle).assertDoesNotExist()
+    }
+
+    @Test
+    fun theCardsWordsShowNoEscapeCharacters() {
+        // Compose resources print an Android-style \' as it is, backslash and all.
+        val words =
+            listOf(
+                    Res.string.mic_card_title,
+                    Res.string.mic_card_body_what,
+                    Res.string.mic_card_body_why,
+                )
+                .map { runBlocking { getString(it) } } + blockedLine
+        assertTrue(words.none { '\\' in it }, "$words")
     }
 }
