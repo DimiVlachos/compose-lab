@@ -39,13 +39,16 @@ import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
-import dev.dimvlachos.lab.resources.mic_card_allow
-import dev.dimvlachos.lab.resources.mic_card_blocked
-import dev.dimvlachos.lab.resources.mic_card_body_what
-import dev.dimvlachos.lab.resources.mic_card_body_why
-import dev.dimvlachos.lab.resources.mic_card_not_now
-import dev.dimvlachos.lab.resources.mic_card_open_settings
-import dev.dimvlachos.lab.resources.mic_card_title
+import dev.dimvlachos.lab.resources.mirror_card_allow
+import dev.dimvlachos.lab.resources.mirror_card_body_what
+import dev.dimvlachos.lab.resources.mirror_card_camera_blocked
+import dev.dimvlachos.lab.resources.mirror_card_camera_why
+import dev.dimvlachos.lab.resources.mirror_card_mic_blocked
+import dev.dimvlachos.lab.resources.mirror_card_mic_why
+import dev.dimvlachos.lab.resources.mirror_card_not_now
+import dev.dimvlachos.lab.resources.mirror_card_open_settings
+import dev.dimvlachos.lab.resources.mirror_card_promise
+import dev.dimvlachos.lab.resources.mirror_card_title
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -253,11 +256,11 @@ class FogDemoUiTest {
         assertEquals(1, listens)
     }
 
-    private val cardTitle = runBlocking { getString(Res.string.mic_card_title) }
-    private val allow = runBlocking { getString(Res.string.mic_card_allow) }
-    private val notNow = runBlocking { getString(Res.string.mic_card_not_now) }
-    private val openSettings = runBlocking { getString(Res.string.mic_card_open_settings) }
-    private val blockedLine = runBlocking { getString(Res.string.mic_card_blocked) }
+    private val cardTitle = runBlocking { getString(Res.string.mirror_card_title) }
+    private val allow = runBlocking { getString(Res.string.mirror_card_allow) }
+    private val notNow = runBlocking { getString(Res.string.mirror_card_not_now) }
+    private val openSettings = runBlocking { getString(Res.string.mirror_card_open_settings) }
+    private val blockedLine = runBlocking { getString(Res.string.mirror_card_mic_blocked) }
 
     // Taps on the card go through real touch handling, not the click action: a layer over the glass
     // once swallowed every tap before the buttons saw it, and performClick() never noticed.
@@ -383,9 +386,12 @@ class FogDemoUiTest {
         // Compose resources print an Android-style \' as it is, backslash and all.
         val words =
             listOf(
-                    Res.string.mic_card_title,
-                    Res.string.mic_card_body_what,
-                    Res.string.mic_card_body_why,
+                    Res.string.mirror_card_title,
+                    Res.string.mirror_card_body_what,
+                    Res.string.mirror_card_camera_why,
+                    Res.string.mirror_card_mic_why,
+                    Res.string.mirror_card_promise,
+                    Res.string.mirror_card_camera_blocked,
                 )
                 .map { runBlocking { getString(it) } } + blockedLine
         assertTrue(words.none { '\\' in it }, "$words")
