@@ -53,7 +53,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
 import dev.dimvlachos.lab.resources.ic_mic
-import dev.dimvlachos.lab.resources.photo_santorini
+import dev.dimvlachos.lab.resources.window_view
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
@@ -196,7 +196,7 @@ internal fun FogDemo(
 
     Box(Modifier.fillMaxSize()) {
         FoggedWindow(
-            photo = painterResource(Res.drawable.photo_santorini),
+            photo = painterResource(Res.drawable.window_view),
             state = fog,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
             brushRadius = FogDemos.ScrubBrush,
