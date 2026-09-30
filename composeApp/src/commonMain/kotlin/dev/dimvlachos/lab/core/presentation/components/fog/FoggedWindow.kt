@@ -318,9 +318,29 @@ private fun ContentDrawScope.drawFog(mask: DrawScope.() -> Unit) {
 // behind it.
 private fun DrawScope.drawBead(bead: Bead) {
     val radius = bead.radius.toPx()
-    val alpha = bead.alpha
-    if (radius <= 0f || alpha <= 0f) return
+    if (radius <= 0f || bead.alpha <= 0f) return
     val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
+    // Spreading into the wet film of a wiped patch, the drop crossfades from a crisp bead, its
+    // outline, rim and glint going first, to a soft patch with no edge that widens as it thins.
+    val film = smoothstep(bead.spread * FilmTakesOver)
+    val beadWeight = 1f - smoothstep(bead.spread * OutlineGoneBy)
+    if (film > 0f) {
+        val reach = radius * (FilmStart + FilmGrowth * bead.spread)
+        val shade = FogDimens.BeadShade * FilmDepth * bead.alpha * film
+        drawCircle(
+            Brush.radialGradient(
+                0f to Color.Black.copy(alpha = shade),
+                0.5f to Color.Black.copy(alpha = shade * 0.45f),
+                1f to Color.Transparent,
+                center = centre,
+                radius = reach,
+            ),
+            reach,
+            centre,
+        )
+    }
+    val alpha = bead.alpha * beadWeight
+    if (alpha <= 0f) return
     // Merging into a wipe's edge, it slumps: wider along the edge, lower, flatter.
     withTransform({
         scale(1f + BeadSpreadWide * bead.spread, 1f - BeadSpreadFlat * bead.spread, pivot = centre)
@@ -408,6 +428,19 @@ private const val BeadTail = 2.2f
 // How much a settled drop's rim, light and shade fade back, and how far its soft halo reaches.
 private const val BeadSoftening = 0.55f
 private const val BeadHalo = 1.5f
+
+// Spreading into a wipe's film: by when its crisp outline has gone and the soft patch has taken
+// over (as fractions of the spread), how big the patch starts and grows, and how dark it is.
+private const val OutlineGoneBy = 2f
+private const val FilmTakesOver = 1.6f
+private const val FilmStart = 1.2f
+private const val FilmGrowth = 1.3f
+private const val FilmDepth = 1.3f
+
+private fun smoothstep(t: Float): Float {
+    val x = t.coerceIn(0f, 1f)
+    return x * x * (3f - 2f * x)
+}
 
 // How much wider and flatter a drop is, fully slumped into the edge of a wipe.
 private const val BeadSpreadWide = 0.8f
