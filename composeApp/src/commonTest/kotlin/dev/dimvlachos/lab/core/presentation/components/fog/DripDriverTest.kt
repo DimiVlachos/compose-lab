@@ -443,4 +443,32 @@ class DripDriverTest {
         drips.advance(step)
         assertTrue(drips.needsFrames, "while it fades")
     }
+
+    @Test
+    fun aStoppedDropSoftensIntoTheFogOverASecondOrTwo() {
+        val drips = driver()
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        while (!drips.beads.single().resting) drips.advance(step)
+        val justStopped = drips.beads.single().softness
+        assertTrue(justStopped < 0.1f, "crisp as it stops: $justStopped")
+        assertTrue(drips.needsFrames, "still settling in")
+
+        drips.run(0.7f)
+        val halfway = drips.beads.single().softness
+        assertTrue(halfway in 0.2f..0.8f, "softening: $halfway")
+
+        drips.run(2f)
+        assertEquals(1f, drips.beads.single().softness)
+        assertFalse(drips.needsFrames, "settled in, the glass can sleep")
+    }
+
+    @Test
+    fun aRunningDropStaysCrisp() {
+        val drips = driver()
+        drips.drip(Offset(0.5f, 0.1f), 0.4f)
+        drips.run(1.5f)
+        val bead = drips.beads.single()
+        assertFalse(bead.resting)
+        assertEquals(0f, bead.softness)
+    }
 }

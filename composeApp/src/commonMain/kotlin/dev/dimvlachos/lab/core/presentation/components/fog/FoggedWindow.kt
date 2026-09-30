@@ -318,14 +318,28 @@ private fun DrawScope.drawBead(bead: Bead) {
     val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
     val bulb = radius * (1f - BeadNarrowing * bead.stretch)
     val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
-    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade * alpha))
+    // Settled into the condensation, it stands out less, and a soft halo feathers its edge.
+    val crisp = alpha * (1f - BeadSoftening * bead.softness)
+    if (bead.softness > 0f) {
+        drawCircle(
+            Brush.radialGradient(
+                0f to Color.Black.copy(alpha = FogDimens.BeadShade * alpha * bead.softness * 0.6f),
+                1f to Color.Transparent,
+                center = centre,
+                radius = bulb * BeadHalo,
+            ),
+            bulb * BeadHalo,
+            centre,
+        )
+    }
+    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade * crisp))
     drawPath(
         drop,
-        Color.White.copy(alpha = FogDimens.BeadEdgeLight * alpha),
+        Color.White.copy(alpha = FogDimens.BeadEdgeLight * crisp),
         style = Stroke(width = bulb * 0.14f),
     )
     drawArc(
-        Color.Black.copy(alpha = FogDimens.BeadRim * alpha),
+        Color.Black.copy(alpha = FogDimens.BeadRim * crisp),
         startAngle = 20f,
         sweepAngle = 140f,
         useCenter = false,
@@ -334,7 +348,7 @@ private fun DrawScope.drawBead(bead: Bead) {
         style = Stroke(width = bulb * 0.35f),
     )
     drawCircle(
-        Color.White.copy(alpha = FogDimens.BeadHighlight * alpha),
+        Color.White.copy(alpha = FogDimens.BeadHighlight * crisp),
         bulb * 0.3f,
         centre + Offset(-bulb * 0.3f, -bulb * 0.35f),
     )
@@ -377,6 +391,10 @@ private fun teardrop(centre: Offset, bulb: Float, tail: Float): Path {
 // How much narrower the bulb gets, and how long the tail, fully stretched, in bead radii.
 private const val BeadNarrowing = 0.2f
 private const val BeadTail = 2.2f
+
+// How much a settled drop's rim, light and shade fade back, and how far its soft halo reaches.
+private const val BeadSoftening = 0.55f
+private const val BeadHalo = 1.5f
 
 // Each dab is faint on its own: along a stroke some eight overlap, and DstOut compounds them, so a
 // full-strength dab would harden the edge the gradient is there to soften.
