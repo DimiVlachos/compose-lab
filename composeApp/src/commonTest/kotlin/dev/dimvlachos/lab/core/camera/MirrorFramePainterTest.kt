@@ -99,4 +99,15 @@ class MirrorFramePainterTest {
         val at = painter.render(Size(4f, 2f))
         assertEquals(0f, at(0.5f, 0.5f).alpha)
     }
+
+    @Test
+    fun aGainBrightensADarkFrame() {
+        val image = ImageBitmap(2, 1)
+        Canvas(image).drawRect(0f, 0f, 2f, 1f, Paint().apply { color = Color(0.1f, 0.1f, 0.1f) })
+        val painter = MirrorFramePainter()
+        painter.show(CameraFrame(image, width = 2, height = 1, rotationDegrees = 0, gain = 4f))
+        val at = painter.render(Size(20f, 10f))
+        val middle = at(0.5f, 0.5f)
+        assertTrue(middle.red in 0.35f..0.45f, "four times brighter: $middle")
+    }
 }
