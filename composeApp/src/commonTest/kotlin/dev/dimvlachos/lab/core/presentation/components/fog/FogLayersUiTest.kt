@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.fog
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -12,6 +15,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -132,5 +136,38 @@ class FogLayersUiTest {
         val wide = clearRowsAround(0.3f)
         val narrow = clearRowsAround(0.7f)
         assertTrue(narrow in 1 until wide, "narrow $narrow, wide $wide")
+    }
+
+    @Test
+    fun breathingOnFoggedGlassDoesNotStackASecondFog() = runComposeUiTest {
+        // Fog fills in what is missing; it does not pile up on fog that is already there.
+        var withBreath by mutableStateOf(false)
+        val plain = FogState()
+        val breathed = FogState().apply { setBreathLevel(beginBreath(), 0.6f) }
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = if (withBreath) breathed else plain,
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val before = onNodeWithTag("window").captureToImage().toPixelMap()
+        withBreath = true
+        waitForIdle()
+        val after = onNodeWithTag("window").captureToImage().toPixelMap()
+
+        // Under the breath's solid fog, the lower part of the glass.
+        var difference = 0f
+        var count = 0
+        for (y in before.height / 2 until before.height) {
+            for (x in 0 until before.width step 2) {
+                difference +=
+                    abs(before[x, y].red - after[x, y].red) +
+                        abs(before[x, y].green - after[x, y].green)
+                count++
+            }
+        }
+        val average = difference / count
+        assertTrue(average < 0.01f, "the fog changed by $average")
     }
 }
