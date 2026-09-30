@@ -47,7 +47,10 @@ class FogDemosTest {
             fog.marks.none { it is WipeStroke || it is Evaporation },
             "the drawing is still on the glass: ${fog.marks}",
         )
-        assertTrue(dripper.beads.isEmpty(), "a drop left on the fresh fog: ${dripper.beads}")
+        assertTrue(
+            dripper.beads.none { it.alpha > 0.01f },
+            "a drop still showing on the fresh fog: ${dripper.beads}",
+        )
     }
 
     @Test

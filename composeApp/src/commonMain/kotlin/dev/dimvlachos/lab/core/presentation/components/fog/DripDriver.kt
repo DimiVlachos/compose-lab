@@ -18,10 +18,17 @@ import kotlin.random.Random
 
 /**
  * A drop of water on the glass: [at] as a fraction of it, [resting] once it has stopped, and
- * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs.
+ * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs,
+ * and [alpha], how much of it still shows as fog covers it or it is smeared away.
  */
 @Immutable
-data class Bead(val at: Offset, val radius: Dp, val resting: Boolean, val stretch: Float = 0f)
+data class Bead(
+    val at: Offset,
+    val radius: Dp,
+    val resting: Boolean,
+    val stretch: Float = 0f,
+    val alpha: Float = 1f,
+)
 
 /**
  * Condensation running down a [FogState]: every few seconds a drop gathers somewhere on the fogged
@@ -59,27 +66,40 @@ class DripDriver(
     private val resting = mutableListOf<Drip>()
     // Drops that have stopped, oldest first: only the last few keep their streaks on the glass.
     private val finished = ArrayDeque<Drip>()
+    // Drops on their way off the glass: smeared by a wipe, or pushed out by newer ones.
+    private val fading = mutableListOf<Drip>()
 
     /** How many streaks the driver still holds on to. */
     internal val trackedStreaks: Int
-        get() = (finished + running).sumOf { it.streaks.size }
+        get() = (finished + running + fading).sumOf { it.streaks.size }
 
     // Every streak of a drop the driver still holds, so no drop is ever cleared by one.
     private fun ownStreaks(): Set<WipeStroke> =
-        (finished + running).flatMapTo(HashSet()) { it.streaks }
+        (finished + running + fading).flatMapTo(HashSet()) { it.streaks }
 
     private var untilNext = nextGap()
 
     /**
-     * The drops to draw. A resting drop that a breath has fogged over or a wipe has cleared is left
-     * out at once, as the fog changes, not at the next step.
+     * The drops to draw, each as clear as it still is: a resting drop is fogged over as a breath's
+     * front passes it, and one that is wiped or pushed out fades away rather than vanishing.
      */
     val beads: List<Bead>
         get() {
             version
+            return (resting + running + fading).map { it.bead(it.visibility()) }
+        }
+
+    /**
+     * Whether the glass needs frames now, or will once a drop starts to fade: read in a snapshot,
+     * so a sleeping loop wakes when a wipe or a breath takes a drop off the glass.
+     */
+    val wantsFrames: Boolean
+        get() {
+            version
+            if (needsFrames) return true
             val ours = ownStreaks()
-            return resting.filter { it.stillShows(ours) }.map { it.bead() } +
-                running.filter { !it.growing || it.stillShows(ours) }.map { it.bead() }
+            return resting.any { !it.stillShows(ours) } ||
+                running.any { it.growing && !it.stillShows(ours) }
         }
 
     /** Starts a drop at [at], to run [length] of the glass's height. */
@@ -88,9 +108,10 @@ class DripDriver(
         changed()
     }
 
+    /** Moves everything on by [seconds]; with none, only takes wiped drops off the glass. */
     fun advance(seconds: Float) {
-        if (seconds <= 0f || glass.width <= 0.dp || glass.height <= 0.dp) return
-        if (randomStarts) {
+        if (glass.width <= 0.dp || glass.height <= 0.dp) return
+        if (seconds > 0f && randomStarts) {
             untilNext -= seconds
             if (untilNext <= 0f) {
                 untilNext = nextGap()
@@ -100,16 +121,21 @@ class DripDriver(
             }
         }
         // However long since the last step, a drop moves at most a short step's worth.
-        val stepSeconds = min(seconds, MaxStepSeconds)
+        val stepSeconds = min(seconds.coerceAtLeast(0f), MaxStepSeconds)
         // A drop wiped away before it starts to run has not started at all.
         val ours = ownStreaks()
-        running.removeAll { it.growing && !it.stillShows(ours) }
-        for (drip in running.toList()) {
-            drip.advance(stepSeconds)
-            if (drip.stopped) {
-                running -= drip
-                resting += drip
-                finished += drip
+        for (drip in running.filter { it.growing && !it.stillShows(ours) }) {
+            running -= drip
+            fadeOut(drip, WipedFadeSeconds)
+        }
+        if (stepSeconds > 0f) {
+            for (drip in running.toList()) {
+                drip.advance(stepSeconds)
+                if (drip.stopped) {
+                    running -= drip
+                    resting += drip
+                    finished += drip
+                }
             }
         }
         // A long-idle mirror keeps only the latest drops' streaks, or the glass would slow down
@@ -117,20 +143,34 @@ class DripDriver(
         while (finished.size > MaxResting) {
             val oldest = finished.removeFirst()
             oldest.streaks.forEach { fog.remove(it) }
-            resting -= oldest
+            if (resting.remove(oldest)) fadeOut(oldest, PushedOutFadeSeconds)
         }
         // Forget streaks a breath has already fogged over.
-        for (drip in finished + running) drip.streaks.removeAll { s -> fog.marks.none { it === s } }
+        for (drip in finished + running + fading) {
+            drip.streaks.removeAll { s -> fog.marks.none { it === s } }
+        }
         for (drip in resting) drip.settle(stepSeconds)
-        resting.removeAll { !it.stillShows(ours) }
-        while (resting.size > MaxResting) resting.removeAt(0)
+        for (drip in resting.filter { !it.stillShows(ours) }) {
+            resting -= drip
+            // Fogged over by a full breath, it is already out of sight; wiped, it smears away.
+            fadeOut(drip, if (drip.fogged) 0f else WipedFadeSeconds)
+        }
+        for (drip in fading.toList()) {
+            drip.fade(stepSeconds)
+            if (drip.gone) fading -= drip
+        }
         changed()
+    }
+
+    private fun fadeOut(drip: Drip, seconds: Float) {
+        drip.startFading(seconds)
+        if (!drip.gone) fading += drip
     }
 
     private fun changed() {
         version++
         moving = running.isNotEmpty()
-        needsFrames = moving || resting.any { it.relaxing }
+        needsFrames = moving || resting.any { it.relaxing } || fading.isNotEmpty()
     }
 
     private fun nextGap() = random.between(MinGapSeconds, MaxGapSeconds)
@@ -231,6 +271,45 @@ class DripDriver(
         private fun streakRadius() =
             (diameter / 2 * if (burst == 0) TopStreakWidth else StreakWidth).dp
 
+        private var fadeLeft = 1f
+        private var fadeRate = 0f
+
+        /** Faded right out. */
+        val gone: Boolean
+            get() = fadeLeft <= 0f
+
+        /** Fogged over for good: a full breath has taken its streak off the glass. */
+        val fogged: Boolean
+            get() = lastStreak.let { last -> last != null && fog.marks.none { it === last } }
+
+        /** Starts fading out over [seconds]; none, and it is gone at once. */
+        fun startFading(seconds: Float) {
+            if (seconds <= 0f) fadeLeft = 0f else fadeRate = 1f / seconds
+        }
+
+        fun fade(seconds: Float) {
+            fadeLeft = (fadeLeft - fadeRate * seconds).coerceAtLeast(0f)
+        }
+
+        /**
+         * How much of the drop shows: fading away, and, once it rests, fogged over by any breath
+         * since its streak as the breath's front passes it. A running drop clears its own way.
+         */
+        fun visibility(): Float {
+            if (!stopped || fadeLeft <= 0f) return fadeLeft
+            val last = lastStreak ?: return fadeLeft
+            val index = fog.marks.indexOfFirst { it === last }
+            // Its streak gone: fogged over by a full breath, unless it is being pushed out, when
+            // its streak went first and the drop fades after it.
+            if (index < 0) return if (fadeRate > 0f) fadeLeft else 0f
+            var cover = 0f
+            for (i in index + 1 until fog.marks.size) {
+                val mark = fog.marks[i]
+                if (mark is Breath) cover = maxOf(cover, fogCoverAt(head.y, mark.level))
+            }
+            return fadeLeft * (1f - cover)
+        }
+
         /** Stopped, but not yet relaxed into its resting shape. */
         val relaxing: Boolean
             get() = abs(stretch - RestingStretch) > RelaxedWithin
@@ -242,7 +321,7 @@ class DripDriver(
             stretch += (target - stretch) * min(1f, seconds * StretchEasing)
         }
 
-        fun bead() =
+        fun bead(alpha: Float) =
             Bead(
                 head,
                 radius =
@@ -252,6 +331,7 @@ class DripDriver(
                     },
                 resting = stopped,
                 stretch = stretch,
+                alpha = alpha,
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
@@ -347,6 +427,8 @@ private const val RunningStretch = 0.3f
 private const val RestingStretch = 0.2f
 private const val StretchEasing = 6f
 private const val RelaxedWithin = 0.01f
+private const val WipedFadeSeconds = 0.2f
+private const val PushedOutFadeSeconds = 1f
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
 private val StartClearance = 12.dp
