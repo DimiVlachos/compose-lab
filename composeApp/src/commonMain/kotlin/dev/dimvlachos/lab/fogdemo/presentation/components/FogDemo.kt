@@ -92,6 +92,7 @@ internal fun FogDemo(
     fog: FogState = remember { newFogDemoState() },
     micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
     cameraAccess: CameraAccess = rememberCameraAccess(enabled = !state.recording),
+    reflection: Boolean = true,
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
     val driver = remember(fog) { BreathDriver(fog) }
@@ -380,6 +381,7 @@ internal fun FogDemo(
                             ?: (micAccess as? MicAccess.Blocked)?.openSettings?.invoke()
                     },
                     onNotNow = { cardOpen = false },
+                    reflection = reflection,
                 )
             }
         }

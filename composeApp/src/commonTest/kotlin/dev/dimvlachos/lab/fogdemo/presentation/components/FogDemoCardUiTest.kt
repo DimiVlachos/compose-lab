@@ -27,6 +27,8 @@ import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.mirror_card_allow
+import dev.dimvlachos.lab.resources.mirror_card_body_what
+import dev.dimvlachos.lab.resources.mirror_card_body_what_bathroom
 import dev.dimvlachos.lab.resources.mirror_card_camera_blocked
 import dev.dimvlachos.lab.resources.mirror_card_camera_why
 import dev.dimvlachos.lab.resources.mirror_card_mic_why
@@ -204,6 +206,45 @@ class FogDemoCardUiTest {
         mic = grantedMic()
         showDemo()
 
+        onNodeWithText(title).assertDoesNotExist()
+    }
+
+    private fun ComposeUiTest.showBathroom() {
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 700.dp)) {
+                        FogDemo(
+                            DemoState(),
+                            FogState(),
+                            mic,
+                            CameraAccess.Unavailable,
+                            reflection = false,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theBathroomCardExplainsOnlyTheMicrophone() = runComposeUiTest {
+        mic = askableMic()
+        showBathroom()
+
+        onNodeWithText(text(Res.string.mirror_card_body_what_bathroom)).assertExists()
+        onNodeWithText(text(Res.string.mirror_card_body_what)).assertDoesNotExist()
+        onNodeWithText(micWhy).assertExists()
+        onNodeWithText(cameraWhy).assertDoesNotExist()
+        onNodeWithText(allow).performTouchInput { click() }
+        waitForIdle()
+        assertEquals(listOf("mic"), asked)
+    }
+
+    @Test
+    fun theBathroomShowsNoCardOnceTheMicrophoneIsGranted() = runComposeUiTest {
+        mic = grantedMic()
+        showBathroom()
         onNodeWithText(title).assertDoesNotExist()
     }
 }

@@ -21,7 +21,7 @@ class FogDemosTest {
     @Test
     fun theClipsBreathFogsOverTheDrawingSoTheLoopNeedsNoReset() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.all.single().script.play(controller)
+        FogDemos.bathroom.script.play(controller)
         val (duration, peak) = controller.breaths.single()
 
         val fog = newFogDemoState()
@@ -53,7 +53,7 @@ class FogDemosTest {
     @Test
     fun theBreathComesAfterTheDrawing() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.all.single().script.play(controller)
+        FogDemos.bathroom.script.play(controller)
 
         val calls = controller.calls.map { it.second }
         assertTrue(calls.last().startsWith("breathe"), "calls: $calls")
@@ -68,13 +68,13 @@ class FogDemosTest {
 
     @Test
     fun onThePhoneTheDemoWaitsToBePlayedWith() {
-        assertFalse(FogDemos.all.single().autoplay)
+        assertFalse(FogDemos.bathroom.autoplay)
     }
 
     @Test
     fun theClipDripsTwiceBetweenTheDrawingAndTheBreath() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.all.single().script.play(controller)
+        FogDemos.bathroom.script.play(controller)
 
         val calls = controller.calls.map { it.second }
         val lastWipe = calls.indexOfLast { it.startsWith("wipe") }
@@ -87,7 +87,7 @@ class FogDemosTest {
     @Test
     fun theClipsDripsRunClearOfTheHeart() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.all.single().script.play(controller)
+        FogDemos.bathroom.script.play(controller)
         val drawing = heartWithArrow().flatMap { it.path }
 
         for ((at, length) in controller.drips) {
@@ -104,7 +104,7 @@ class FogDemosTest {
     @Test
     fun theClipsDripsHaveStoppedBeforeTheBreath() = runTest {
         val controller = FakeController { testScheduler.currentTime }
-        FogDemos.all.single().script.play(controller)
+        FogDemos.bathroom.script.play(controller)
         val times = controller.calls.filter { it.second.startsWith("drip") }.map { it.first }
         val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first
 
@@ -126,5 +126,14 @@ class FogDemosTest {
             }
             assertTrue(!drips.moving, "seed $seed: a drop still running at the breath")
         }
+    }
+
+    @Test
+    fun bothVersionsPlayTheSameClip() {
+        val (bathroom, camera) = FogDemos.all
+        assertEquals("fog.mirror.bathroom", bathroom.id)
+        assertEquals("fog.mirror.camera", camera.id)
+        assertTrue(bathroom.script === camera.script)
+        assertFalse(camera.autoplay)
     }
 }

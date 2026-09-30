@@ -10,11 +10,14 @@
     <string name="demo_navbar">Nav bar</string>
     <string name="demo_morph_app">Profile gallery</string>
     <string name="demo_fog">Fogged mirror</string>
+    <string name="demo_fog_bathroom">Bathroom</string>
+    <string name="demo_fog_reflection">Your reflection</string>
     <string name="fog_hint_blow">Blow on the screen</string>
     <string name="fog_hint_hold">Hold to breathe</string>
     <string name="fog_hint_wipe">Wipe away the steam</string>
     <string name="mirror_card_title">A steamed-up mirror</string>
     <string name="mirror_card_body_what">Wipe the steam away with your finger to find yourself, then blow at the bottom of your phone to fog it up again.</string>
+    <string name="mirror_card_body_what_bathroom">Wipe the steam away with your finger, then blow at the bottom of your phone to fog it up again.</string>
     <string name="mirror_card_camera_why">The front camera is the mirror.</string>
     <string name="mirror_card_mic_why">The microphone hears your breath, because your phone can’t feel it.</string>
     <string name="mirror_card_promise">They work only while this demo is open, and nothing is recorded, saved or sent anywhere.</string>
