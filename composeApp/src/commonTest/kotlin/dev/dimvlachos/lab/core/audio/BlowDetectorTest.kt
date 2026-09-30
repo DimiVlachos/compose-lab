@@ -165,4 +165,23 @@ class BlowDetectorTest {
 
         assertTrue(strengths.all { it == 0f }, "$strengths")
     }
+
+    @Test
+    fun aFanThatFlickersStillBecomesTheRoomAfterAbout4s() {
+        // Loud all along, but now and then failing a check, as borderline noise does: the fan
+        // rule counts loud time, not unbroken blowing.
+        val detector = BlowDetector()
+        detector.settleInAQuietRoom()
+
+        val strengths =
+            (0 until 240).map { i ->
+                if (i % 25 >= 20) detector.process(tone(0.3f, i, 180f, 360f, 540f, 720f))
+                else detector.process(blow())
+            }
+
+        assertTrue(
+            strengths.takeLast(60).all { it == 0f },
+            "then it is the room: ${strengths.takeLast(60)}",
+        )
+    }
 }

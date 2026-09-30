@@ -87,7 +87,8 @@ internal fun FogDemo(
     var holding by remember { mutableStateOf(false) }
     val listening = micAccess is MicAccess.Granted && !micFailed
     val canAsk = micAccess is MicAccess.Askable || micAccess is MicAccess.Blocked
-    var cardOpen by remember { mutableStateOf(true) }
+    // Not over a clip the user asked to replay: they came to watch it.
+    var cardOpen by remember { mutableStateOf(!state.replay) }
     var asked by remember { mutableStateOf(false) }
     val cardShown = cardOpen && canAsk && !state.recording
 
@@ -202,10 +203,14 @@ internal fun FogDemo(
             onHoldChange =
                 if (listening || state.recording || cardShown) null else { held -> holding = held },
         )
+        // The blow hint goes after the first breath; the hold pill stays while it is the way back
+        // to
+        // the card.
         val hint =
             when {
-                state.recording || breathed || cardShown -> null
-                listening -> Res.string.fog_hint_blow
+                state.recording || cardShown -> null
+                listening -> if (breathed) null else Res.string.fog_hint_blow
+                breathed && !canAsk -> null
                 else -> Res.string.fog_hint_hold
             }
         Crossfade(

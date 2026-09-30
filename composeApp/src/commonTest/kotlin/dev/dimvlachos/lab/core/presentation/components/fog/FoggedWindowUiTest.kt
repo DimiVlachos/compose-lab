@@ -119,4 +119,28 @@ class FoggedWindowUiTest {
 
         assertEquals(listOf(true, false), holds)
     }
+
+    @Test
+    fun switchingHoldingOffMidHoldStillLetsGo() = runComposeUiTest {
+        val fog = FogState()
+        val holds = mutableListOf<Boolean>()
+        var enabled by mutableStateOf(true)
+        setContent {
+            LabTheme {
+                FoggedWindow(
+                    photo = painterResource(Res.drawable.photo_santorini),
+                    state = fog,
+                    modifier = Modifier.size(200.dp).testTag("window"),
+                    onHoldChange = if (enabled) { held -> holds += held } else null,
+                )
+            }
+        }
+
+        onNodeWithTag("window").performTouchInput { down(center) }
+        mainClock.advanceTimeBy(600)
+        enabled = false
+        waitForIdle()
+
+        assertEquals(listOf(true, false), holds)
+    }
 }

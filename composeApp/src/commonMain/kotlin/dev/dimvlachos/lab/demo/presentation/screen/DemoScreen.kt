@@ -49,7 +49,7 @@ private val RecordPreRoll = 1_500.milliseconds
 fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)?) {
     var runId by remember { mutableIntStateOf(0) }
     var playing by remember { mutableStateOf(record || demo.autoplay) }
-    val state = remember(runId) { DemoState(recording = record) }
+    val state = remember(runId) { DemoState(recording = record, replay = runId > 0) }
     LaunchedEffect(runId, playing) {
         if (!playing) return@LaunchedEffect
         if (record) {

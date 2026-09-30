@@ -406,4 +406,30 @@ class FogDemoUiTest {
 
         onNodeWithText(cardTitle).assertDoesNotExist()
     }
+
+    @Test
+    fun afterHoldingThePillStillBringsTheCardBack() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        showDemoWith({ MicAccess.Askable {} })
+        mainClock.advanceTimeByFrame()
+        onNodeWithText(notNow).performTouchInput { click() }
+        mainClock.advanceTimeBy(500)
+
+        onNodeWithTag("demo").performTouchInput { down(center) }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithTag("demo").performTouchInput { up() }
+        mainClock.advanceTimeBy(500)
+
+        onNodeWithText(holdHint).performTouchInput { click() }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText(cardTitle).assertExists()
+    }
+
+    @Test
+    fun replayingTheClipShowsNoCardOverIt() = runComposeUiTest {
+        showDemo(DemoState(replay = true), FogState(), MicAccess.Askable {})
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
+        onNodeWithText(holdHint).assertExists()
+    }
 }

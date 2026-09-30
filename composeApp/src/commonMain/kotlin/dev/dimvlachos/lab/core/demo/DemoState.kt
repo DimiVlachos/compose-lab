@@ -7,9 +7,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import kotlin.time.Duration
 
-/** A demo's scripted state; [recording] when the recorder is capturing it as a clip. */
+/**
+ * A demo's scripted state; [recording] when the recorder is capturing it as a clip, [replay] when
+ * the user asked to watch the script again.
+ */
 @Stable
-class DemoState(val recording: Boolean = false) : DemoController {
+class DemoState(val recording: Boolean = false, val replay: Boolean = false) : DemoController {
     override var selectedIndex: Int by mutableIntStateOf(0)
         private set
 
