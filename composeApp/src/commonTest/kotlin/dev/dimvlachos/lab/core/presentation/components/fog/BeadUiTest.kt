@@ -54,4 +54,27 @@ class BeadUiTest {
         val middle = pixels[pixels.width / 2, pixels.height / 2]
         assertTrue(middle.red > 0.9f && middle.green < 0.1f, "$middle")
     }
+
+    @Test
+    fun aRunningDropIsPulledIntoATeardrop() = runComposeUiTest {
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = FogState(startClear = true),
+                modifier = Modifier.size(200.dp).testTag("window"),
+                beads = { listOf(Bead(Offset(0.5f, 0.6f), 30.dp, resting = false, stretch = 1f)) },
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val centre = Offset(pixels.width / 2f, pixels.height * 0.6f)
+        val radius = pixels.width * 30f / 200f
+        fun at(offset: Offset) =
+            pixels[(centre.x + offset.x).toInt(), (centre.y + offset.y).toInt()]
+
+        val clear = at(Offset(radius * 2.5f, 0f))
+        val tail = at(Offset(0f, -radius * 1.8f))
+        val side = at(Offset(radius * 1.05f, radius * 0.1f))
+        assertTrue(tail.red < clear.red - 0.05f, "a tail up above the bead: ${tail.red}")
+        assertTrue(side.red > clear.red - 0.02f, "narrower than a round bead: ${side.red}")
+    }
 }

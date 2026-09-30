@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -277,36 +278,74 @@ private fun ContentDrawScope.drawFog(level: Float) {
 }
 
 // A drop of water on glass: the scene behind it a little darker, a darker rim along its lower
-// edge, where it gathers, and one bright glint near its top.
+// edge, where it gathers, the light caught along its upper edge and one bright glint. Running, its
+// weight pulls it into a teardrop: the bulb at the bottom narrows a little, and a tail draws up
+// behind it.
 private fun DrawScope.drawBead(bead: Bead) {
     val radius = bead.radius.toPx()
     if (radius <= 0f) return
     val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
-    drawCircle(Color.Black.copy(alpha = FogDimens.BeadShade), radius, centre)
+    val bulb = radius * (1f - BeadNarrowing * bead.stretch)
+    val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
+    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade))
+    drawPath(
+        drop,
+        Color.White.copy(alpha = FogDimens.BeadEdgeLight),
+        style = Stroke(width = bulb * 0.14f),
+    )
     drawArc(
         Color.Black.copy(alpha = FogDimens.BeadRim),
         startAngle = 20f,
         sweepAngle = 140f,
         useCenter = false,
-        topLeft = centre - Offset(radius, radius),
-        size = Size(radius * 2, radius * 2),
-        style = Stroke(width = radius * 0.35f),
-    )
-    drawArc(
-        Color.White.copy(alpha = FogDimens.BeadEdgeLight),
-        startAngle = 200f,
-        sweepAngle = 140f,
-        useCenter = false,
-        topLeft = centre - Offset(radius, radius),
-        size = Size(radius * 2, radius * 2),
-        style = Stroke(width = radius * 0.18f),
+        topLeft = centre - Offset(bulb, bulb),
+        size = Size(bulb * 2, bulb * 2),
+        style = Stroke(width = bulb * 0.35f),
     )
     drawCircle(
         Color.White.copy(alpha = FogDimens.BeadHighlight),
-        radius * 0.3f,
-        centre + Offset(-radius * 0.3f, -radius * 0.35f),
+        bulb * 0.3f,
+        centre + Offset(-bulb * 0.3f, -bulb * 0.35f),
     )
 }
+
+// A round bulb of [bulb] radius about [centre], its top drawn up into a point [tail] above it;
+// with no tail, a circle.
+private fun teardrop(centre: Offset, bulb: Float, tail: Float): Path {
+    val top = Offset(centre.x, centre.y - bulb - tail)
+    // With no tail, these are a circle's quarter-arc handles (0.552 of the radius).
+    val reach = 0.552f + 0.3f * (tail / (tail + bulb))
+    return Path().apply {
+        moveTo(top.x, top.y)
+        cubicTo(
+            centre.x + bulb * (0.552f - 0.3f * (tail / (tail + bulb))),
+            top.y + (bulb + tail) * (1f - reach) * 0.5f,
+            centre.x + bulb,
+            centre.y - bulb * 0.552f,
+            centre.x + bulb,
+            centre.y,
+        )
+        arcTo(
+            Rect(centre - Offset(bulb, bulb), Size(bulb * 2, bulb * 2)),
+            startAngleDegrees = 0f,
+            sweepAngleDegrees = 180f,
+            forceMoveTo = false,
+        )
+        cubicTo(
+            centre.x - bulb,
+            centre.y - bulb * 0.552f,
+            centre.x - bulb * (0.552f - 0.3f * (tail / (tail + bulb))),
+            top.y + (bulb + tail) * (1f - reach) * 0.5f,
+            top.x,
+            top.y,
+        )
+        close()
+    }
+}
+
+// How much narrower the bulb gets, and how long the tail, fully stretched, in bead radii.
+private const val BeadNarrowing = 0.2f
+private const val BeadTail = 2.2f
 
 // Each dab is faint on its own: along a stroke some eight overlap, and DstOut compounds them, so a
 // full-strength dab would harden the edge the gradient is there to soften.
