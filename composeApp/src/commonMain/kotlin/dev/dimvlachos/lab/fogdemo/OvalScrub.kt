@@ -1,6 +1,8 @@
 package dev.dimvlachos.lab.fogdemo
 
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sqrt
 import kotlin.time.Duration
 
@@ -15,8 +17,10 @@ internal class SweepFeel(val bow: Float, val duration: Duration, val reach: Floa
  */
 internal fun ovalScrub(centre: Offset, radii: Offset, feel: List<SweepFeel>): Scrub {
     fun turn(i: Int, reach: Float): Offset {
-        // From -1 at the top of the oval to 1 at the bottom.
-        val height = -1f + 2f * i / feel.size
+        // From -1 at the top of the oval to 1 at the bottom, the rows closer together where the
+        // oval narrows to its top and bottom, as a hand works into a curve.
+        val t = i.toFloat() / feel.size
+        val height = -(CapCrowding * cos(PI * t).toFloat() + (1f - CapCrowding) * (1f - 2f * t))
         val side = if (i % 2 == 1) 1f else -1f
         val halfWidth = radii.x * sqrt(1f - height * height) * reach
         return Offset(centre.x + side * halfWidth, centre.y + height * radii.y)
@@ -26,3 +30,6 @@ internal fun ovalScrub(centre: Offset, radii: Offset, feel: List<SweepFeel>): Sc
         sweeps = feel.mapIndexed { i, it -> Sweep(turn(i + 1, it.reach), it.bow, it.duration) },
     )
 }
+
+// How much of the rows' spacing follows the oval's curve rather than an even step.
+private const val CapCrowding = 0.6f
