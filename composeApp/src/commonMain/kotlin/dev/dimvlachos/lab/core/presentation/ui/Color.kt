@@ -13,4 +13,12 @@ data class AppColors(
     val accent: Color = Color(0xFF7C5CFF),
     val accentSoft: Color = Color(0x337C5CFF),
     val onAccent: Color = Color(0xFFFFFFFF),
+    // The open book: the shade across a lifted leaf, the sheen on it, the shadow in the gutter,
+    // the binding thread and the crease down the spine, all warm like paper under a lamp.
+    val pageShade: Color = Color(0xFF2E2416),
+    val pageGlare: Color = Color(0xFFFFF8EC),
+    val bookGutter: Color = Color(0xFF2B2014),
+    val bookThread: Color = Color(0xFFEFE6D4),
+    val bookCrease: Color = Color(0xFF4F412C),
+    val bookShadow: Color = Color(0xFF000000),
 )

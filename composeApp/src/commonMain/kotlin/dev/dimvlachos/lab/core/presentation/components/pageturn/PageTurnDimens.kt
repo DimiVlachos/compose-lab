@@ -67,6 +67,22 @@ internal object PageTurnDimens {
     val StitchUnderExtra = 3.dp
     const val StitchShadowAlpha = 0.25f
 
+    // The book resting on a table: a wide soft shadow falling towards the reader, a closer one and
+    // a thin dark line where the pages meet the table. Each shrinks under the book (negative
+    // spread) so it shows below it, not around it.
+    val SoftShadowRadius = 28.dp
+    val SoftShadowSpread = (-10).dp
+    val SoftShadowOffset = 16.dp
+    const val SoftShadowAlpha = 0.3f
+    val MidShadowRadius = 10.dp
+    val MidShadowSpread = (-4).dp
+    val MidShadowOffset = 6.dp
+    const val MidShadowAlpha = 0.32f
+    val ContactShadowRadius = 3.dp
+    val ContactShadowSpread = (-1).dp
+    val ContactShadowOffset = 2.dp
+    const val ContactShadowAlpha = 0.35f
+
     // The stitches sit on the pages, under a turning leaf; they fade from under it to over it over
     // the first and last stretch of the turn, so the leaf never pops in front of them.
     const val StitchFadeSpan = 0.15f
