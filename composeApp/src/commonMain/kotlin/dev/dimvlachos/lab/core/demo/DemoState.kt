@@ -19,6 +19,7 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
     private var scrollHandler: (suspend (Float) -> Unit)? = null
     private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
     private var breatheHandler: (suspend (Duration, Float) -> Unit)? = null
+    private var dripHandler: (suspend (Offset, Float) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -36,6 +37,10 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
         breatheHandler?.invoke(duration, strength)
     }
 
+    override suspend fun drip(at: Offset, length: Float) {
+        dripHandler?.invoke(at, length)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -46,5 +51,9 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
 
     fun setBreatheHandler(handler: (suspend (Duration, Float) -> Unit)?) {
         breatheHandler = handler
+    }
+
+    fun setDripHandler(handler: (suspend (Offset, Float) -> Unit)?) {
+        dripHandler = handler
     }
 }
