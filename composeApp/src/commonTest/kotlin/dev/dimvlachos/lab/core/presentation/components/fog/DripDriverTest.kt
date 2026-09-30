@@ -511,4 +511,21 @@ class DripDriverTest {
             assertTrue(hidden.all { it.alpha == 0f }, "never back into view: $hidden")
         }
     }
+
+    @Test
+    fun aDropRunsStraightPastAWipeABreathHasFoggedOver() {
+        val fog = FogState()
+        fog.beginStroke(Offset(0f, 0.4f), radius = 20.dp).also {
+            fog.extendStroke(it, Offset(1f, 0.4f))
+        }
+        // Fogged over again: the breath's front is far above the old wipe.
+        fog.setBreathLevel(fog.beginBreath(), 0.8f)
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.1f), 0.5f)
+        drips.run(15f)
+
+        val bead = drips.beads.single()
+        assertTrue(bead.resting, "it ran its course: $bead")
+        assertTrue(bead.at.y > 0.55f, "past where the old wipe was: ${bead.at.y}")
+    }
 }
