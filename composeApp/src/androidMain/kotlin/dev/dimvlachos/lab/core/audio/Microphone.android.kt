@@ -48,9 +48,9 @@ actual fun rememberMicAccess(enabled: Boolean): MicAccess {
             .getSystemService(AudioManager::class.java)
             .getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true"
     }
-    val microphone = remember(unprocessed) { AndroidMicrophone(unprocessed) }
+    val access = remember(unprocessed) { MicAccess.Granted(AndroidMicrophone(unprocessed)) }
     return when {
-        granted -> MicAccess.Granted(microphone)
+        granted -> access
         answered -> MicAccess.Unavailable
         else -> MicAccess.Pending
     }
