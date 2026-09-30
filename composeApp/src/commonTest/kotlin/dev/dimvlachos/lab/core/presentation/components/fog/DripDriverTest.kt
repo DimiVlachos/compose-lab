@@ -139,7 +139,10 @@ class DripDriverTest {
 
         fog.setBreathLevel(fog.beginBreath(), 1f)
 
-        assertTrue(drips.beads.isEmpty(), "gone at once, before the next step")
+        // Fogged over already as the breath rose: nothing left to see, and soon nothing at all.
+        assertTrue(drips.beads.none { it.alpha > 0.01f }, "${drips.beads}")
+        drips.run(1f)
+        assertTrue(drips.beads.isEmpty())
     }
 
     @Test
@@ -152,6 +155,11 @@ class DripDriverTest {
 
         fog.beginStroke(at).also { fog.extendStroke(it, at + Offset(0.01f, 0f)) }
 
+        // Smeared away quickly, not switched off.
+        drips.run(0.08f)
+        val fading = drips.beads.single().alpha
+        assertTrue(fading in 0.1f..0.9f, "fading: $fading")
+        drips.run(0.4f)
         assertTrue(drips.beads.isEmpty())
     }
 
@@ -242,7 +250,8 @@ class DripDriverTest {
         drips.run(0.3f)
         fog.beginStroke(Offset(0.3f, 0.2f)).also { fog.extendStroke(it, Offset(0.7f, 0.2f)) }
 
-        assertTrue(drips.beads.isEmpty(), "gone at once: ${drips.beads}")
+        drips.run(0.5f)
+        assertTrue(drips.beads.isEmpty(), "smeared away: ${drips.beads}")
         drips.run(3f)
         assertTrue(drips.beads.isEmpty(), "and stays gone: ${drips.beads}")
         assertFalse(drips.moving)
@@ -346,6 +355,7 @@ class DripDriverTest {
         fog.extendStroke(scrub, at + Offset(-0.05f, 0f))
         fog.extendStroke(scrub, at + Offset(0.05f, 0f))
 
+        drips.run(0.5f)
         assertTrue(drips.beads.isEmpty(), "wiped away: ${drips.beads}")
     }
 
@@ -360,5 +370,61 @@ class DripDriverTest {
         drips.run(3f)
         assertFalse(drips.needsFrames)
         assertTrue(abs(drips.beads.single().stretch - 0.2f) < 0.02f)
+    }
+
+    @Test
+    fun aRisingBreathFogsARestingDropOverAsItsFrontPasses() {
+        val fog = FogState()
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        drips.run(10f)
+        val y = drips.beads.single().at.y
+        val breath = fog.beginBreath()
+
+        var last = 1f
+        var level = 0f
+        while (level < 1f) {
+            level += 0.01f
+            fog.setBreathLevel(breath, level.coerceAtMost(0.999f))
+            val alpha = drips.beads.singleOrNull()?.alpha ?: 0f
+            assertTrue(alpha <= last + 1e-4f, "never brighter as the fog rises: $alpha after $last")
+            if (level < 1f - y - 0.13f) assertEquals(1f, alpha, "untouched below the front")
+            if (level > 1f - y + 0.01f) assertEquals(0f, alpha, "covered once the front is past")
+            last = alpha
+        }
+    }
+
+    @Test
+    fun aDropPushedOutByTheLimitFadesRatherThanVanishing() {
+        val drips = driver()
+        repeat(12) { drips.drip(Offset(0.05f + it * 0.07f, 0.1f), 0.1f) }
+        drips.run(10f)
+        drips.drip(Offset(0.5f, 0.5f), 0.1f)
+        while (
+            drips.beads.count { it.resting && it.alpha == 1f } < 13 &&
+                drips.beads.none { it.alpha < 1f }
+        ) {
+            drips.advance(step)
+        }
+        val oldest = drips.beads.minBy { it.alpha }
+        assertTrue(oldest.alpha < 1f && oldest.alpha > 0.5f, "starting to fade: ${oldest.alpha}")
+        drips.run(1.5f)
+        assertEquals(12, drips.beads.size)
+    }
+
+    @Test
+    fun aFadingDropKeepsTheGlassAskingForFrames() {
+        val fog = FogState()
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        drips.run(10f)
+        assertFalse(drips.needsFrames)
+        val at = drips.beads.single().at
+
+        fog.beginStroke(at).also { fog.extendStroke(it, at + Offset(0.01f, 0f)) }
+
+        assertTrue(drips.wantsFrames, "a wipe over a resting drop wakes the glass")
+        drips.advance(step)
+        assertTrue(drips.needsFrames, "while it fades")
     }
 }

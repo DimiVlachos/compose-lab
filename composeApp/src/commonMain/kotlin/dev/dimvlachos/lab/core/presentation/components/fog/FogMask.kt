@@ -55,3 +55,14 @@ internal fun DrawScope.drawFogMask(level: Float, edge: Float = FogDimens.FogEdge
         )
     }
 }
+
+/**
+ * How much of the glass at height [y] (a fraction, 0 at the top) a breath at [level] has fogged,
+ * from 0 to 1: all of it below the front, fading through the soft band of [edge] above it, as
+ * [drawFogMask] draws it (leaving out the puffs).
+ */
+internal fun fogCoverAt(y: Float, level: Float, edge: Float = FogDimens.FogEdge): Float {
+    if (level <= 0f) return 0f
+    val front = 1f - level
+    return ((y - (front - edge)) / edge).coerceIn(0f, 1f)
+}

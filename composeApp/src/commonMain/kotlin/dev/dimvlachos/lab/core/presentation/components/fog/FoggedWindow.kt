@@ -313,18 +313,19 @@ private fun ContentDrawScope.drawFog(level: Float) {
 // behind it.
 private fun DrawScope.drawBead(bead: Bead) {
     val radius = bead.radius.toPx()
-    if (radius <= 0f) return
+    val alpha = bead.alpha
+    if (radius <= 0f || alpha <= 0f) return
     val centre = Offset(bead.at.x * size.width, bead.at.y * size.height)
     val bulb = radius * (1f - BeadNarrowing * bead.stretch)
     val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
-    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade))
+    drawPath(drop, Color.Black.copy(alpha = FogDimens.BeadShade * alpha))
     drawPath(
         drop,
-        Color.White.copy(alpha = FogDimens.BeadEdgeLight),
+        Color.White.copy(alpha = FogDimens.BeadEdgeLight * alpha),
         style = Stroke(width = bulb * 0.14f),
     )
     drawArc(
-        Color.Black.copy(alpha = FogDimens.BeadRim),
+        Color.Black.copy(alpha = FogDimens.BeadRim * alpha),
         startAngle = 20f,
         sweepAngle = 140f,
         useCenter = false,
@@ -333,7 +334,7 @@ private fun DrawScope.drawBead(bead: Bead) {
         style = Stroke(width = bulb * 0.35f),
     )
     drawCircle(
-        Color.White.copy(alpha = FogDimens.BeadHighlight),
+        Color.White.copy(alpha = FogDimens.BeadHighlight * alpha),
         bulb * 0.3f,
         centre + Offset(-bulb * 0.3f, -bulb * 0.35f),
     )

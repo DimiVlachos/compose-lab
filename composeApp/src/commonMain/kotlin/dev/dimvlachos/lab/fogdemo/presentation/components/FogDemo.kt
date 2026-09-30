@@ -67,6 +67,7 @@ import dev.dimvlachos.lab.resources.mirror_view
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -261,12 +262,21 @@ internal fun FogDemo(
             while (true) {
                 if (!drips.needsFrames) {
                     val wait = drips.secondsToNextStart
-                    if (wait == null) {
-                        snapshotFlow { drips.needsFrames }.first { it }
-                    } else {
-                        delay((wait * 1000).toLong().coerceAtLeast(1))
-                        drips.advance(wait)
+                    // Asleep until the next drop is due, or until a wipe or a breath takes one
+                    // off the glass, or the script starts one: whichever comes first.
+                    // A plain delay: it follows the frame clock, as a timeout's timer would not.
+                    var due by mutableStateOf(false)
+                    coroutineScope {
+                        val timer = wait?.let {
+                            launch {
+                                delay((it * 1000).toLong().coerceAtLeast(1))
+                                due = true
+                            }
+                        }
+                        snapshotFlow { due || drips.wantsFrames }.first { it }
+                        timer?.cancel()
                     }
+                    if (due && wait != null) drips.advance(wait) else drips.advance(0f)
                     continue
                 }
                 var previous = withFrameNanos { it }

@@ -77,4 +77,19 @@ class BeadUiTest {
         assertTrue(tail.red < clear.red - 0.05f, "a tail up above the bead: ${tail.red}")
         assertTrue(side.red > clear.red - 0.02f, "narrower than a round bead: ${side.red}")
     }
+
+    @Test
+    fun aDropFadedRightOutLeavesTheGlassUntouched() = runComposeUiTest {
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = FogState(startClear = true),
+                modifier = Modifier.size(200.dp).testTag("window"),
+                beads = { listOf(Bead(Offset(0.5f, 0.5f), 40.dp, resting = true, alpha = 0f)) },
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        val middle = pixels[pixels.width / 2, pixels.height / 2]
+        assertTrue(middle.red > 0.9f && middle.green < 0.1f, "$middle")
+    }
 }
