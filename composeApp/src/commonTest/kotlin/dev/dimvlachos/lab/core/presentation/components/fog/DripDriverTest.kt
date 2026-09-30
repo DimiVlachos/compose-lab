@@ -359,9 +359,10 @@ class DripDriverTest {
         repeat(40) { drips.drip(Offset(0.05f + it * 0.022f, 0.1f), 0.05f) }
         drips.run(1f)
         val radii = drips.beads.map { it.radius.value }
-        assertTrue(radii.min() < 4f, "some small: ${radii.min()}")
-        assertTrue(radii.max() > 6.5f, "some big: ${radii.max()}")
-        assertTrue(radii.count { it < 5f } > radii.size / 2, "mostly small: $radii")
+        assertTrue(radii.min() < 3.5f, "some small: ${radii.min()}")
+        assertTrue(radii.max() > 4.5f, "some bigger: ${radii.max()}")
+        assertTrue(radii.max() <= 5.5f, "none huge: ${radii.max()}")
+        assertTrue(radii.count { it < 4f } > radii.size / 2, "mostly small: $radii")
     }
 
     @Test

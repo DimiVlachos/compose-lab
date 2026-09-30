@@ -268,7 +268,7 @@ private fun wipeOnto(fog: FogState, controller: FakeController) {
 }
 
 // The biggest drop's radius, in dp.
-private const val MaxDropRadius = 8f
+private const val MaxDropRadius = 5.5f
 
 private fun distanceToSegment(p: Offset, a: Offset, b: Offset): Float {
     val ab = b - a
