@@ -11,12 +11,13 @@ import androidx.compose.ui.geometry.Offset
 /**
  * The marks on a [FrostedWindow], in the order they were made: wipes that clear the frost and
  * breaths that fog it back over. The order is the point: a wipe after a breath clears its fog, a
- * breath after a wipe covers it. Wipe points are fractions of the window, so the marks stay put
- * when the window changes size.
+ * breath after a wipe covers it. A window can start clear, as if already thawed. Wipe points are
+ * fractions of the window, so the marks stay put when the window changes size.
  */
 @Stable
-class FrostState {
-    private val _marks = mutableStateListOf<FrostMark>()
+class FrostState(startClear: Boolean = false) {
+    private val _marks =
+        mutableStateListOf<FrostMark>().apply { if (startClear) add(Thaw().apply { amount = 1f }) }
 
     val marks: List<FrostMark>
         get() = _marks
@@ -59,6 +60,30 @@ class FrostState {
         if (level >= 1f) _marks.removeRange(0, index + 1)
     }
 
+    /** Starts the frost melting away evenly over the whole window, and returns the thaw. */
+    fun beginThaw(): Thaw {
+        val thaw = Thaw()
+        _marks += thaw
+        return thaw
+    }
+
+    /**
+     * Melts [thaw] to [amount], from 0, untouched, to 1, clear glass. It never freezes back, and a
+     * thaw already dropped stays gone. At 1 nothing before it shows: the thaw is all that is left.
+     */
+    fun setThawAmount(thaw: Thaw, amount: Float) {
+        val index = _marks.indexOf(thaw)
+        if (index < 0 || amount <= thaw.amount) return
+        thaw.amount = amount.coerceAtMost(1f)
+        if (amount >= 1f) _marks.removeRange(0, index)
+    }
+
+    /** Clears the whole window at once. */
+    fun thaw() {
+        _marks.clear()
+        _marks += Thaw().apply { amount = 1f }
+    }
+
     /** Frosts the whole window over again. */
     fun clear() {
         _marks.clear()
@@ -70,6 +95,12 @@ sealed interface FrostMark
 
 /** One finger's stroke on a [FrostState], from [FrostState.beginStroke]. */
 class WipeStroke internal constructor(internal val points: SnapshotStateList<Offset>) : FrostMark
+
+/** The frost melting away evenly, from [FrostState.beginThaw]; at 1 the glass is clear. */
+class Thaw internal constructor() : FrostMark {
+    var amount by mutableFloatStateOf(0f)
+        internal set
+}
 
 /** Fog rising from the bottom of a [FrostState], from [FrostState.beginBreath]. */
 class Breath internal constructor() : FrostMark {

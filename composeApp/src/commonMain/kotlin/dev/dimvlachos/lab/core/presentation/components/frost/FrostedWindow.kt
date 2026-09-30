@@ -114,6 +114,11 @@ fun FrostedWindow(
                         when (mark) {
                             is WipeStroke -> drawWipe(mark.points, radius, brush)
                             is Breath -> drawFog(mark.level)
+                            is Thaw ->
+                                drawRect(
+                                    Color.Black.copy(alpha = mark.amount),
+                                    blendMode = BlendMode.DstOut,
+                                )
                         }
                     }
                 }

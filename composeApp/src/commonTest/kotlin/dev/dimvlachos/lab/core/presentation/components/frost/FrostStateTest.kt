@@ -107,4 +107,51 @@ class FrostStateTest {
 
         assertTrue(frost.marks.isEmpty())
     }
+
+    @Test
+    fun aWindowCanStartClear() {
+        val thaw = FrostState(startClear = true).marks.single() as Thaw
+        assertEquals(1f, thaw.amount)
+    }
+
+    @Test
+    fun aFullBreathFrostsClearGlass() {
+        val frost = FrostState(startClear = true)
+        frost.setBreathLevel(frost.beginBreath(), 1f)
+
+        assertTrue(frost.marks.isEmpty())
+    }
+
+    @Test
+    fun aThawClearsEverythingBeforeItOnceItIsComplete() {
+        val frost = FrostState()
+        frost.beginStroke(Offset(0.1f, 0.1f))
+        frost.setBreathLevel(frost.beginBreath(), 0.5f)
+        val thaw = frost.beginThaw()
+
+        frost.setThawAmount(thaw, 0.5f)
+        assertEquals(3, frost.marks.size)
+
+        frost.setThawAmount(thaw, 1f)
+        assertEquals(listOf<FrostMark>(thaw), frost.marks.toList())
+    }
+
+    @Test
+    fun aThawNeverFreezesBack() {
+        val frost = FrostState()
+        val thaw = frost.beginThaw()
+        frost.setThawAmount(thaw, 0.6f)
+        frost.setThawAmount(thaw, 0.3f)
+
+        assertEquals(0.6f, thaw.amount)
+    }
+
+    @Test
+    fun thawingAtOnceLeavesClearGlass() {
+        val frost = FrostState()
+        frost.beginStroke(Offset(0.1f, 0.1f))
+        frost.thaw()
+
+        assertEquals(1f, (frost.marks.single() as Thaw).amount)
+    }
 }
