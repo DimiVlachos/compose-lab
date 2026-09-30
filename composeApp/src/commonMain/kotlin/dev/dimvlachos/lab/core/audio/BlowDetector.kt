@@ -7,11 +7,12 @@ import kotlin.math.sqrt
 private const val MarginDb = 15f
 private const val StrengthRangeDb = 25f
 
-// Below this a frame is too quiet to be a blow, however quiet the room.
-private const val MinLevelDb = -50f
+// Below this a frame is too quiet to be a blow, however quiet the room: blowing into a phone's
+// microphone nearly saturates it, while talking at arm's length sits well under this.
+private const val MinLevelDb = -30f
 
-// Breath is hiss; a voice or music is tones.
-private const val MinFlatness = 0.35f
+// A voice, a hum or music repeats at its pitch; a blow's turbulent air does not.
+private const val MaxPeriodicity = 0.5f
 
 // About 100 ms to start and 130 ms to stop, so a breath does not flicker; past about 4 s, a steady
 // "blow" is the room, a fan or a vacuum, and becomes the new background.
@@ -26,9 +27,10 @@ private const val BackgroundFollow = 0.05f
 private const val MinStrength = 0.3f
 
 /**
- * Hears a blow on the microphone: sound well above the room's own level, noise-like rather than
- * tonal, for long enough to be a breath. Feed it [MicFrameSize]-sample frames in order; each
- * returns the blow's strength, from 0, no blow, to 1, a firm one.
+ * Hears a blow on the microphone: loud sound well above the room's own level that does not repeat
+ * at a pitch, as a voice or music does, for long enough to be a breath. Feed it
+ * [MicFrameSize]-sample frames in order; each returns the blow's strength, from 0, no blow, to 1, a
+ * firm one.
  */
 class BlowDetector(private val sampleRate: Int = MicSampleRate) {
     private var background = Float.NaN
@@ -41,10 +43,9 @@ class BlowDetector(private val sampleRate: Int = MicSampleRate) {
         val level = loudnessDb(frame)
         if (background.isNaN()) background = level
         val margin = level - background
+        val loud = margin >= MarginDb
         val blowing =
-            level >= MinLevelDb &&
-                margin >= MarginDb &&
-                spectralFlatness(powerSpectrum(frame), sampleRate, 100f, 4_000f) >= MinFlatness
+            loud && level >= MinLevelDb && periodicity(frame, sampleRate) <= MaxPeriodicity
         if (strength > 0f) {
             if (blowing) {
                 quietFrames = 0
@@ -64,7 +65,8 @@ class BlowDetector(private val sampleRate: Int = MicSampleRate) {
             }
         } else {
             candidateFrames = 0
-            background += (level - background) * BackgroundFollow
+            // Only quiet frames are the room: a loud sound that is no blow must not raise it.
+            if (!loud) background += (level - background) * BackgroundFollow
         }
         return strength
     }
