@@ -4,10 +4,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.IntOffset
@@ -16,13 +20,15 @@ import kotlin.math.roundToInt
 
 /**
  * One frame from a camera, as its sensor saw it: the top-left [width] by [height] pixels of [image]
- * (rows may be padded wider), to be turned [rotationDegrees] clockwise to stand upright.
+ * (rows may be padded wider), to be turned [rotationDegrees] clockwise to stand upright, and
+ * brightened [gain] times, for a dim room.
  */
 class CameraFrame(
     val image: ImageBitmap,
     val width: Int,
     val height: Int,
     val rotationDegrees: Int,
+    val gain: Float = 1f,
 )
 
 /**
@@ -34,6 +40,9 @@ class MirrorFramePainter : Painter() {
     private var frame by mutableStateOf<CameraFrame?>(null)
     private var uprightSize by mutableStateOf(Size.Unspecified)
     private var colorFilter: ColorFilter? = null
+    // One brightening filter per gain, reused while the gain holds.
+    private var brighteningGain = 1f
+    private var brightening: ColorFilter? = null
 
     /** Whether there is a frame to show. Changes only when frames start or stop coming. */
     var hasFrame by mutableStateOf(false)
@@ -61,26 +70,59 @@ class MirrorFramePainter : Painter() {
 
     override fun DrawScope.onDraw() {
         val frame = frame ?: return
+        val brighten = brighteningFor(frame.gain)
         // The frame as the sensor has it, sized so that once turned it fills the upright box.
         val sensorSize =
             if (frame.rotationDegrees.isQuarterTurn())
                 IntSize(size.height.roundToInt(), size.width.roundToInt())
             else IntSize(size.width.roundToInt(), size.height.roundToInt())
+        val filter = colorFilter
         withTransform({
             translate(size.width / 2, size.height / 2)
             // The mirror's flip, left to right as the frame will be seen, after it is turned.
             scale(-1f, 1f, pivot = Offset.Zero)
             rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
         }) {
-            drawImage(
-                frame.image,
-                srcSize = IntSize(frame.width, frame.height),
-                dstOffset = IntOffset(-sensorSize.width / 2, -sensorSize.height / 2),
-                dstSize = sensorSize,
-                colorFilter = colorFilter,
-            )
+            if (brighten != null && filter != null) {
+                // Brightened first, then the caller's filter (the fog's milky one) over the result.
+                drawIntoCanvas { canvas ->
+                    canvas.saveLayer(
+                        Rect(
+                            -sensorSize.width / 2f,
+                            -sensorSize.height / 2f,
+                            sensorSize.width / 2f,
+                            sensorSize.height / 2f,
+                        ),
+                        Paint().apply { colorFilter = filter },
+                    )
+                    drawFrame(frame, sensorSize, brighten)
+                    canvas.restore()
+                }
+            } else {
+                drawFrame(frame, sensorSize, brighten ?: filter)
+            }
         }
     }
+
+    private fun brighteningFor(gain: Float): ColorFilter? {
+        if (gain <= 1.001f) return null
+        if (gain != brighteningGain || brightening == null) {
+            brighteningGain = gain
+            brightening =
+                ColorFilter.colorMatrix(ColorMatrix().apply { setToScale(gain, gain, gain, 1f) })
+        }
+        return brightening
+    }
+}
+
+private fun DrawScope.drawFrame(frame: CameraFrame, sensorSize: IntSize, filter: ColorFilter?) {
+    drawImage(
+        frame.image,
+        srcSize = IntSize(frame.width, frame.height),
+        dstOffset = IntOffset(-sensorSize.width / 2, -sensorSize.height / 2),
+        dstSize = sensorSize,
+        colorFilter = filter,
+    )
 }
 
 private fun Int.isQuarterTurn() = (this / 90) % 2 != 0

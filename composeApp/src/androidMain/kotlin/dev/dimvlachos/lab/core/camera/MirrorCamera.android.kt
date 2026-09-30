@@ -4,8 +4,14 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CaptureRequest
 import android.hardware.display.DisplayManager
+import android.util.Range
 import android.util.Size
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.CameraState
 import androidx.camera.core.ImageAnalysis
@@ -22,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.core.permission.PermissionStatus
 import dev.dimvlachos.lab.core.permission.rememberPermissionStatus
 import java.nio.ByteBuffer
@@ -56,6 +63,8 @@ actual fun rememberCameraAccess(enabled: Boolean): CameraAccess {
 // About 720p: sharp enough behind the fog, light enough to blur every frame.
 private val AnalysisSize = Size(1280, 720)
 
+private val log = Logger.withTag("MirrorCamera")
+
 /**
  * The front camera through CameraX's image analysis rather than a preview surface: the fog draws
  * the mirror twice, sharp and blurred, so each frame has to be an image it can paint.
@@ -72,11 +81,12 @@ private class AndroidMirrorCamera(
         get() = painter.hasFrame
 
     // Only called once CAMERA is granted, on the main thread.
+    @OptIn(ExperimentalCamera2Interop::class)
     override suspend fun run() {
         val provider = ProcessCameraProvider.awaitInstance(context)
         check(provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) { "no front camera" }
         val display = checkNotNull(context.display) { "no display to face" }
-        val analysis =
+        val builder =
             ImageAnalysis.Builder()
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -91,13 +101,28 @@ private class AndroidMirrorCamera(
                         .build()
                 )
                 .setTargetRotation(display.rotation)
-                .build()
+        // A front camera's small sensor sees little in a dim bathroom: let it expose each frame
+        // for longer, down to the slowest frame rate it offers, rather than stay dark.
+        slowestFrameRates(provider)?.let {
+            Camera2Interop.Extender(builder)
+                .setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, it)
+        }
+        val analysis = builder.build()
         val executor = Executors.newSingleThreadExecutor()
         val ring = FrameRing()
         // Off once the mirror stops, so a frame still on its way cannot show after it.
         val live = AtomicBoolean(true)
+        var first = true
         analysis.setAnalyzer(executor) { image ->
-            image.use { if (live.get()) painter.show(ring.next(it)) }
+            image.use {
+                if (!live.get()) return@use
+                val frame = ring.next(it)
+                if (first) {
+                    first = false
+                    log.i { "first frame ${frame.width}x${frame.height}" }
+                }
+                painter.show(frame)
+            }
         }
 
         // The activity turns itself, so the frames' rotation follows the display by hand.
@@ -125,6 +150,7 @@ private class AndroidMirrorCamera(
                         IllegalStateException("camera error ${error.code}")
                     )
                 } else {
+                    log.w { "the camera dropped out (${error.code}), waiting for it" }
                     painter.show(null)
                 }
             }
@@ -155,6 +181,14 @@ private class AndroidMirrorCamera(
     }
 }
 
+// The slowest frame rates the front camera offers that still reach 24 a second in good light.
+@OptIn(ExperimentalCamera2Interop::class)
+private fun slowestFrameRates(provider: ProcessCameraProvider): Range<Int>? =
+    Camera2CameraInfo.from(provider.getCameraInfo(CameraSelector.DEFAULT_FRONT_CAMERA))
+        .getCameraCharacteristic(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
+        ?.filter { it.upper >= 24 }
+        ?.minByOrNull { it.lower }
+
 /**
  * Three bitmaps the camera's frames are copied into in turn, so no frame allocates one: one on
  * screen, one being drawn, one being filled. Never recycled, as the last may still be on screen.
@@ -163,6 +197,8 @@ private class FrameRing {
     private val bitmaps = arrayOfNulls<Bitmap>(3)
     private var index = 0
     private var scratch: ByteBuffer? = null
+    // Brightening for a dim room, eased from frame to frame.
+    private var gain = 1f
 
     fun next(image: ImageProxy): CameraFrame {
         val plane = image.planes[0]
@@ -175,6 +211,7 @@ private class FrameRing {
                     bitmaps[index] = it
                 }
         val buffer = plane.buffer.apply { rewind() }
+        gain = autoGain(gain, meanBrightness(buffer, plane.rowStride, image.width, image.height))
         if (buffer.remaining() >= bitmap.byteCount) {
             bitmap.copyPixelsFromBuffer(buffer)
         } else {
@@ -192,6 +229,24 @@ private class FrameRing {
             width = image.width,
             height = image.height,
             rotationDegrees = image.imageInfo.rotationDegrees,
+            gain = gain,
         )
     }
+
+    // The frame's average brightness, 0 to 1, from a sparse grid of its RGBA pixels.
+    private fun meanBrightness(buffer: ByteBuffer, rowStride: Int, width: Int, height: Int): Float {
+        var sum = 0
+        var count = 0
+        for (gy in 1..BrightnessGrid) {
+            val row = height * gy / (BrightnessGrid + 1) * rowStride
+            for (gx in 1..BrightnessGrid) {
+                val at = row + width * gx / (BrightnessGrid + 1) * 4
+                for (channel in 0..2) sum += buffer.get(at + channel).toInt() and 0xff
+                count += 3
+            }
+        }
+        return sum / (count * 255f)
+    }
 }
+
+private const val BrightnessGrid = 8
