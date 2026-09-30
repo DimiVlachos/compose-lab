@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
 
 /**
  * The marks on a [FoggedWindow], in the order they were made: wipes that clear the fog and breaths
@@ -32,8 +33,8 @@ class FogState(startClear: Boolean = false) {
      * Starts a stroke and returns it. Each finger extends only its own, so a real finger and the
      * script's can wipe at once without joining up.
      */
-    fun beginStroke(at: Offset): WipeStroke {
-        val stroke = WipeStroke(mutableStateListOf(at))
+    fun beginStroke(at: Offset, radius: Dp? = null): WipeStroke {
+        val stroke = WipeStroke(mutableStateListOf(at), radius)
         _marks += stroke
         return stroke
     }
@@ -96,8 +97,13 @@ class FogState(startClear: Boolean = false) {
 /** A wipe or a breath on a [FogState]. */
 sealed interface FogMark
 
-/** One finger's stroke on a [FogState], from [FogState.beginStroke]. */
-class WipeStroke internal constructor(internal val points: SnapshotStateList<Offset>) : FogMark
+/**
+ * One finger's stroke on a [FogState], from [FogState.beginStroke]; [radius] its own brush, a
+ * fingertip say, or null for the window's.
+ */
+class WipeStroke
+internal constructor(internal val points: SnapshotStateList<Offset>, val radius: Dp? = null) :
+    FogMark
 
 /** The fog evaporating evenly, from [FogState.beginEvaporation]; at 1 the glass is clear. */
 class Evaporation internal constructor() : FogMark {

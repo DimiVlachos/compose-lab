@@ -107,4 +107,30 @@ class FogLayersUiTest {
         assertTrue(middle < 0.12f, "the middle is clear: $middle")
         assertTrue(corner > 0.2f, "the corner stays fogged: $corner")
     }
+
+    @Test
+    fun aNarrowStrokeClearsANarrowerLine() = runComposeUiTest {
+        val fog = FogState()
+        fog.extendStroke(fog.beginStroke(Offset(0.1f, 0.3f)), Offset(0.9f, 0.3f))
+        fog.extendStroke(fog.beginStroke(Offset(0.1f, 0.7f), radius = 8.dp), Offset(0.9f, 0.7f))
+        setContent {
+            FoggedWindow(
+                photo = ColorPainter(Color.Red),
+                state = fog,
+                modifier = Modifier.size(200.dp).testTag("window"),
+            )
+        }
+        val pixels = onNodeWithTag("window").captureToImage().toPixelMap()
+        // How many rows are clear across each line, down the middle of the window.
+        fun clearRowsAround(y: Float): Int {
+            val centre = (y * (pixels.height - 1)).toInt()
+            return (centre - pixels.height / 5..centre + pixels.height / 5).count { row ->
+                pixels[pixels.width / 2, row.coerceIn(0, pixels.height - 1)].green < 0.12f
+            }
+        }
+
+        val wide = clearRowsAround(0.3f)
+        val narrow = clearRowsAround(0.7f)
+        assertTrue(narrow in 1 until wide, "narrow $narrow, wide $wide")
+    }
 }

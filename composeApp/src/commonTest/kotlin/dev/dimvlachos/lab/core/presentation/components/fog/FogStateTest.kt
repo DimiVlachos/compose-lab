@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.fog
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -153,5 +154,15 @@ class FogStateTest {
         fog.evaporate()
 
         assertEquals(1f, (fog.marks.single() as Evaporation).amount)
+    }
+
+    @Test
+    fun aStrokeCanCarryItsOwnWidth() {
+        val fog = FogState()
+        val fingertip = fog.beginStroke(Offset(0.5f, 0.5f), radius = 16.dp)
+        val flat = fog.beginStroke(Offset(0.2f, 0.2f))
+
+        assertEquals(16.dp, fingertip.radius)
+        assertEquals(null, flat.radius)
     }
 }
