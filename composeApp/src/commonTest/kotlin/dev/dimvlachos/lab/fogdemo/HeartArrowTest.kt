@@ -51,16 +51,29 @@ class HeartArrowTest {
     }
 
     @Test
-    fun theArrowPiercesTheHeartGoingInOneSideAndOutTheOther() {
-        // Lower left in, upper right out; nothing of the shaft drawn inside the heart.
+    fun theArrowGoesInToTheHeartsCentreAndComesOutOfItsFarEdge() {
+        // Lower left in, upper right out.
         assertTrue(shaftIn.first().x < shaftOut.last().x && shaftIn.first().y > shaftOut.last().y)
-        assertTrue(distanceToHeart(shaftIn.last()) < 0.015f, "the shaft goes in at the outline")
-        assertTrue(distanceToHeart(shaftOut.first()) < 0.015f, "and comes out at the outline")
-        val drawn = shaftIn.dropLast(2) + shaftOut.drop(2)
-        assertTrue(drawn.none { insideHeart(it) }, "no shaft inside the heart")
         assertTrue(
             !insideHeart(shaftIn.first()) && !insideHeart(shaftOut.last()),
             "tail and tip outside it",
+        )
+        // In through the near edge, stopping at the middle of the heart, as if stuck there.
+        val centre =
+            Offset(
+                (heart.minOf { it.x } + heart.maxOf { it.x }) / 2,
+                (heart.minOf { it.y } + heart.maxOf { it.y }) / 2,
+            )
+        assertTrue(insideHeart(shaftIn.last()), "the shaft ends inside the heart")
+        assertTrue(
+            (shaftIn.last() - centre).getDistance() < 0.06f,
+            "at its centre: ${shaftIn.last()} vs $centre",
+        )
+        // Out again from the far edge, with nothing drawn between the centre and that edge.
+        assertTrue(distanceToHeart(shaftOut.first()) < 0.015f, "it comes out at the outline")
+        assertTrue(
+            shaftOut.drop(2).none { insideHeart(it) },
+            "nothing drawn from the centre to the edge",
         )
     }
 
