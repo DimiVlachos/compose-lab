@@ -149,8 +149,8 @@ private class AndroidMirrorCamera(
             provider.unbind(analysis)
             analysis.clearAnalyzer()
             displays.unregisterDisplayListener(rotation)
+            // The last frame stays: back from a pause, the face waits for the camera, not a still.
             executor.shutdown()
-            painter.show(null)
         }
     }
 }

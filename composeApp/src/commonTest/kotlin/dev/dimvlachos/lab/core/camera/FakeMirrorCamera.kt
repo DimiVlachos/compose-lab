@@ -36,8 +36,8 @@ internal class FakeMirrorCamera(
             painter.show(CameraFrame(image, width = 4, height = 4, rotationDegrees = 0))
             awaitCancellation()
         } finally {
+            // Stopped, it keeps its last frame, as the real one does.
             running--
-            painter.show(null)
         }
     }
 }

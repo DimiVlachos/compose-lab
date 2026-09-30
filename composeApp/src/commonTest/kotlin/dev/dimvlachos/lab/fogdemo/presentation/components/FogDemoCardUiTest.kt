@@ -114,6 +114,25 @@ class FogDemoCardUiTest {
     }
 
     @Test
+    fun theCameraWaitsForTheMicrophonesAnswerBeforeStarting() = runComposeUiTest {
+        // Android's microphone dialog pauses the app: a camera started under it would blink on
+        // and off again.
+        val fake = FakeMirrorCamera()
+        camera = askableCamera()
+        mic = askableMic()
+        showDemo()
+
+        onNodeWithText(allow).performTouchInput { click() }
+        camera = CameraAccess.Granted(fake)
+        waitForIdle()
+        assertEquals(0, fake.starts)
+
+        mic = grantedMic()
+        waitForIdle()
+        assertEquals(1, fake.running)
+    }
+
+    @Test
     fun refusingBothClosesTheCard() = runComposeUiTest {
         camera = askableCamera()
         mic = askableMic()
