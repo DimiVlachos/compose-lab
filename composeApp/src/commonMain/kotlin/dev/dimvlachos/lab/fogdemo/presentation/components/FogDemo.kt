@@ -284,8 +284,16 @@ internal fun FogDemo(
     LaunchedEffect(drips, dripLifecycle) {
         dripLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             while (true) {
+                // No glass yet to drip on: wait for one rather than go round and round.
+                if (window.isEmpty()) {
+                    snapshotFlow { window.isEmpty() }.first { !it }
+                    continue
+                }
                 if (!drips.needsFrames) {
                     val wait = drips.secondsToNextStart
+                    // The frame clock's time, to count the sleep towards the next drop however
+                    // it ends.
+                    val asleepSince = withFrameNanos { it }
                     // Asleep until the next drop is due, or until a wipe or a breath takes one
                     // off the glass, or the script starts one: whichever comes first.
                     // A plain delay: it follows the frame clock, as a timeout's timer would not.
@@ -300,7 +308,7 @@ internal fun FogDemo(
                         snapshotFlow { due || drips.wantsFrames }.first { it }
                         timer?.cancel()
                     }
-                    if (due && wait != null) drips.advance(wait) else drips.advance(0f)
+                    drips.advance(withFrameNanos { (it - asleepSince) / 1_000_000_000f })
                     continue
                 }
                 var previous = withFrameNanos { it }
