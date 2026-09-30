@@ -64,9 +64,23 @@ internal object FogDemos {
         at(scrubbed + LookThrough) { breathe(2.4.seconds, strength = 1f) }
     }
 
-    // On the phone the glass is the user's to breathe on and wipe; Replay plays the clip.
+    // The steamy bathroom, left to itself: drops of condensation gather and run down around the
+    // glass, a hand scrubs a porthole clear between them, one more drop runs into it and spreads
+    // away on the wet glass, then the room mists it all back over, to the fogged glass the loop
+    // starts from.
+    private val bathroomTour = demoScript {
+        at(0.3.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
+        at(0.8.seconds) { drip(Offset(0.94f, 0.76f), 0.12f) }
+        at(1.2.seconds) { drip(Offset(0.22f, 0.84f), 0.08f) }
+        at(WipeAfterDrops) { wipe(porthole.path(), porthole.duration) }
+        val scrubbed = WipeAfterDrops + porthole.duration
+        at(scrubbed + 0.3.seconds) { drip(Offset(0.35f, 0.1f), 0.2f) }
+        at(scrubbed + SpreadAway) { mist(MistOver) }
+    }
+
+    // On the phone the glass is the user's to wipe; Replay plays the clip.
     val bathroom =
-        Demo("fog.mirror.bathroom", Res.string.demo_fog_bathroom, wipeTour, autoplay = false) {
+        Demo("fog.mirror.bathroom", Res.string.demo_fog_bathroom, bathroomTour, autoplay = false) {
             BathroomMirror(it)
         }
 
@@ -80,6 +94,15 @@ internal object FogDemos {
 
 // Long enough for both drops to finish running before the breath.
 private val LookThrough = 5.seconds
+
+// Long enough for the drop to run into the porthole and spread away, before the mist.
+private val SpreadAway = 7.5.seconds
+
+// Long enough to watch the first drops run before the hand comes.
+private val WipeAfterDrops = 5.seconds
+
+// The room's mist, quickened for the clip: on the phone it takes about 25 s.
+private val MistOver = 5.seconds
 
 /** The demo's glass: fogged all over, waiting for a wipe. */
 internal fun newFogDemoState() = FogState()
