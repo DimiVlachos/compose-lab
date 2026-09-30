@@ -20,6 +20,7 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
     private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
     private var breatheHandler: (suspend (Duration, Float) -> Unit)? = null
     private var dripHandler: (suspend (Offset, Float) -> Unit)? = null
+    private var mistHandler: (suspend (Duration) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -41,6 +42,10 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
         dripHandler?.invoke(at, length)
     }
 
+    override suspend fun mist(duration: Duration) {
+        mistHandler?.invoke(duration)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -55,5 +60,9 @@ class DemoState(val recording: Boolean = false, val replay: Boolean = false) : D
 
     fun setDripHandler(handler: (suspend (Offset, Float) -> Unit)?) {
         dripHandler = handler
+    }
+
+    fun setMistHandler(handler: (suspend (Duration) -> Unit)?) {
+        mistHandler = handler
     }
 }

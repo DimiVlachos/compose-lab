@@ -24,4 +24,7 @@ interface DemoController {
      * height. Returns at once; the drop runs on its own.
      */
     suspend fun drip(at: Offset, length: Float)
+
+    /** Mists the stage evenly back over in [duration], as a steamy room does on its own. */
+    suspend fun mist(duration: Duration)
 }

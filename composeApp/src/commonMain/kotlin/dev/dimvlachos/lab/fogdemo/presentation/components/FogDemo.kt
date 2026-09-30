@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.fogdemo.presentation.components
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
@@ -189,10 +190,23 @@ internal fun FogDemo(
         state.setDripHandler { at, length ->
             if (!window.isEmpty()) drips.drip(clipFrameToWindow(at, window), length)
         }
+        // The script's mist fogs the glass evenly back over, easing in and out.
+        state.setMistHandler { duration ->
+            val mist = fog.beginMist()
+            animate(
+                0f,
+                1f,
+                animationSpec =
+                    tween(duration.inWholeMilliseconds.toInt(), easing = FastOutSlowInEasing),
+            ) { amount, _ ->
+                fog.setMistAmount(mist, amount)
+            }
+        }
         onDispose {
             state.setWipeHandler(null)
             state.setBreatheHandler(null)
             state.setDripHandler(null)
+            state.setMistHandler(null)
         }
     }
 
