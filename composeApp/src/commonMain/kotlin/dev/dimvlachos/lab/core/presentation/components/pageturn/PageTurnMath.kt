@@ -3,15 +3,16 @@ package dev.dimvlachos.lab.core.presentation.components.pageturn
 import androidx.compose.ui.graphics.Matrix
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * One strip of the turning leaf: its angle about the spine's axis (0 lies flat on the right page,
- * -pi flat on the left) and where its hinge sits, [hingeX] across the book from the spine and
- * [hingeZ] up off the pages (negative is towards the reader).
+ * One strip of a leaf: its angle about the spine's axis (0 lies flat on the right page, -pi flat on
+ * the left) and where its hinge sits, [hingeX] across the book from the spine and [hingeZ] up off
+ * the pages (negative is towards the reader).
  */
 internal data class StripPose(val angle: Float, val hingeX: Float, val hingeZ: Float)
 
@@ -23,13 +24,26 @@ internal class TurnFrame(
     // sin(pi t): 0 with the leaf down, 1 standing up; it drives every shade that comes and goes
     // with the turn.
     val lift: Float,
-    private val theta: Float,
-    private val bend: Float,
-    private val bendDirection: Float,
+    // The angle along the leaf at each edge between two strips, and at both ends: strips + 1.
+    private val boundaryAngles: FloatArray,
 ) {
-    // The angle along the leaf at the edge between strip [boundary] - 1 and [boundary].
-    internal fun boundaryAngle(boundary: Int): Float =
-        -theta + bendDirection * (boundary * 2f * bend / poses.size - bend)
+    internal fun boundaryAngle(boundary: Int): Float = boundaryAngles[boundary]
+}
+
+/**
+ * How high a page resting in the open book stands at [u] across it (0 at the spine, 1 at its outer
+ * edge), as a fraction of [PageTurnDimens.RestLift]: it rises steeply out of the gutter, crests a
+ * little before half way and falls gently onto the stack under its edge.
+ */
+internal fun restHeight(u: Float): Float {
+    val fromEdge = 1f - u
+    return 1f - fromEdge * fromEdge * fromEdge * fromEdge - PageTurnDimens.RestFall * u * u
+}
+
+// The rest curve's slope at [u], per page width, as a fraction of RestLift.
+private fun restSlope(u: Float): Float {
+    val fromEdge = 1f - u
+    return 4f * fromEdge * fromEdge * fromEdge - 2f * PageTurnDimens.RestFall * u
 }
 
 /**
@@ -37,28 +51,44 @@ internal class TurnFrame(
  * spread along it. With [bendDirection] 1 the strip at the spine is a bend ahead of the turn and
  * the free edge a bend behind it, so the paper bulges the way the turn goes, as air and the hand
  * hold the edge back; -1 mirrors it for a turn running the other way.
+ *
+ * At rest a leaf lies in the open book's curve ([restHeight], [restLift] high) on the right page
+ * and in its mirror on the left; the turn carries it from one to the other, flattening it on the
+ * way, so a page starts and ends a turn in exactly the shape of the pages around it.
  */
 internal fun turnFrame(
     t: Float,
     leafWidth: Float,
     bendDirection: Float = 1f,
     strips: Int = PageTurnDimens.Strips,
+    restLift: Float = PageTurnDimens.RestLift,
 ): TurnFrame {
     val theta = (PI * t).toFloat()
     val lift = sin(PI * t).toFloat()
     val bend = PageTurnDimens.BendMax * lift
     val direction = bendDirection.coerceIn(-1f, 1f)
     val stripWidth = leafWidth / strips
+    // The rest curve's angles on the right page, mirrored on the left: 1 - 2t takes one to the
+    // other through flat half way.
+    val restSide = 1f - 2f * t
+    val boundaries =
+        FloatArray(strips + 1) { b ->
+            val rest = -atan(restLift * restSlope(b.toFloat() / strips))
+            -theta + direction * (b * 2f * bend / strips - bend) + rest * restSide
+        }
     val poses = ArrayList<StripPose>(strips)
     var hingeX = 0f
     var hingeZ = 0f
     for (i in 0 until strips) {
-        val angle = -theta + direction * (i * 2f * bend / strips - bend)
+        val u0 = i.toFloat() / strips
+        val u1 = (i + 1).toFloat() / strips
+        val rise = restLift * (restHeight(u1) - restHeight(u0)) * strips
+        val angle = -theta + direction * (i * 2f * bend / strips - bend) - atan(rise) * restSide
         poses += StripPose(angle, hingeX, hingeZ)
         hingeX += stripWidth * cos(angle)
         hingeZ += stripWidth * sin(angle)
     }
-    return TurnFrame(t, stripWidth, poses, lift, theta, bend, direction)
+    return TurnFrame(t, stripWidth, poses, lift, boundaries)
 }
 
 /**
@@ -156,3 +186,27 @@ internal fun bendAfterDrag(current: Float, forward: Boolean, delta: Float): Floa
 
 private fun edgeLight(frame: TurnFrame, boundary: Int): Float =
     abs(cos(frame.boundaryAngle(boundary)))
+
+/**
+ * How thick the page stacks under the left and right pages are, as fractions of the thickest, with
+ * the book open at [position]: a spread index, fractional mid-turn. The first spread has most of
+ * the paper on the right; every turn moves a layer across.
+ */
+internal fun stackShares(position: Float, spreadCount: Int): Pair<Float, Float> {
+    val through = if (spreadCount > 1) (position / (spreadCount - 1)).coerceIn(0f, 1f) else 0.5f
+    val min = PageTurnDimens.StackMinShare
+    return (min + (1f - min) * through) to (min + (1f - min) * (1f - through))
+}
+
+/**
+ * The extra shade on a resting page at [u] across it: the paper falling into the spine is darker,
+ * clearing towards the crest, and it dims again a little as it curls down onto the stack. A lifted
+ * leaf ([lift]) loses it.
+ */
+internal fun gutterRestShade(u: Float, lift: Float): Float {
+    val near = (1f - u / PageTurnDimens.GutterRestSpan).coerceIn(0f, 1f)
+    val falling =
+        ((u - (1f - PageTurnDimens.EdgeRestSpan)) / PageTurnDimens.EdgeRestSpan).coerceIn(0f, 1f)
+    return (PageTurnDimens.GutterRestAlpha * near * near +
+        PageTurnDimens.EdgeRestAlpha * falling * falling) * (1f - lift)
+}

@@ -78,6 +78,7 @@ An open book whose pages turn in 3D under your finger, drawn in plain Compose `D
 - **A leaf of strips.** The turning page is 18 strips hinged end to end. Each one is drawn under its own perspective `Matrix` (the 3×3 projection written into Compose's 4×4 layout), so the page curls instead of flipping as a flat card.
 - **A bow that follows the hand.** The curl is spread along the strips and bulges the way the page is moving. Reverse a drag halfway and the bow flips across over a short stretch of the turn, so the paper looks pulled, not snapped.
 - **Let go anywhere.** Past 0.42 of a turn, or on a flick, the page finishes; otherwise it sinks back. Both are critically damped springs, so a page lands without bouncing off the spine, and a page still landing can be caught mid-air.
+- **An open book at rest.** The pages lie in the curve of an open book: they rise out of the gutter, crest and settle onto a stack of paper whose edges show past them, thicker on the side you have read less of; every turn moves a layer across. Hardcover boards frame it. A turn starts and ends in that same curve, so no page ever snaps flat.
 - **Light and binding.** Each strip shades by how far it faces away, with a sheen while it is up. The gutter darkens under a standing leaf, stitches cross from under the leaf to over it at the ends of the turn, and three stacked drop shadows sit the book on the table.
 
 Taps and drags go through one `PageTurnState`, so the demo's scripted drags take the same path as a finger.
@@ -121,7 +122,7 @@ The nav bar supports 2–4 tabs, at a minimum slot width of about 64 dp.
 
 The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo straight from another is not a morph: close to the grid first.
 
-The page-turn book is a two-page spread, 2:1, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
+The page-turn book shows a two-page spread, 2:1 inside its covers, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
 
 ## Licence
 
