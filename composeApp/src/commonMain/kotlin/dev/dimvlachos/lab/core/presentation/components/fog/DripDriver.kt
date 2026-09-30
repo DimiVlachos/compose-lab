@@ -15,8 +15,12 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** A drop of water on the glass: [at] as a fraction of it, and [resting] once it has stopped. */
-@Immutable data class Bead(val at: Offset, val radius: Dp, val resting: Boolean)
+/**
+ * A drop of water on the glass: [at] as a fraction of it, [resting] once it has stopped, and
+ * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs.
+ */
+@Immutable
+data class Bead(val at: Offset, val radius: Dp, val resting: Boolean, val stretch: Float = 0f)
 
 /**
  * Condensation running down a [FogState]: every few seconds a drop gathers somewhere on the fogged
@@ -110,6 +114,7 @@ class DripDriver(
         }
         // Forget streaks a breath has already fogged over.
         for (drip in finished + running) drip.streaks.removeAll { s -> fog.marks.none { it === s } }
+        for (drip in resting) drip.settle(stepSeconds)
         resting.removeAll { !it.stillShows() }
         while (resting.size > MaxResting) resting.removeAt(0)
         changed()
@@ -136,7 +141,10 @@ class DripDriver(
             .firstOrNull { fog.isFoggedAt(it, glass, wipeRadius) }
 
     private inner class Drip(private val start: Offset, length: Float) {
-        private val diameter = random.between(MinBeadDp, MaxBeadDp)
+        // Mostly small drops, now and then a heavy one: the bigger, the faster it runs.
+        private val size = random.nextFloat().let { it * it }
+        private val diameter = MinBeadDp + (MaxBeadDp - MinBeadDp) * size
+        private val topSpeed = MinSpeedDp + (MaxSpeedDp - MinSpeedDp) * size
         private val wobble = random.between(0.5f, MaxWobbleDp)
         private val phase = random.between(0f, 2 * PI.toFloat())
         // Where each burst ends, down to the drop's length or the bottom edge.
@@ -152,6 +160,7 @@ class DripDriver(
         private var streak: WipeStroke? = null
         private var lastStreak: WipeStroke? = null
         private var head = start
+        private var stretch = 0f
         var stopped = false
             private set
 
@@ -169,6 +178,7 @@ class DripDriver(
             }
             if (stuck > 0f) {
                 stuck -= seconds
+                settle(seconds)
                 return
             }
             // A breath may have fogged over the streak so far: carry on with a fresh one.
@@ -179,7 +189,9 @@ class DripDriver(
                         lastStreak = it
                         streaks += it
                     }
-            speed = min(MaxSpeedDp, speed + AccelerationDp * seconds)
+            speed = min(topSpeed, speed + AccelerationDp * seconds)
+            // Pulled long by its own weight, the more the faster it runs.
+            ease(RunningStretch + (1f - RunningStretch) * speed / topSpeed, seconds)
             val y = min(head.y + speed * seconds / glass.height.value, stops[burst])
             // A gentle wave about the line it started on, never more than 2 × wobble off it.
             val travelled = (y - start.y) * glass.height.value
@@ -198,7 +210,16 @@ class DripDriver(
             }
         }
 
-        private fun streakRadius() = if (burst == 0) TopStreakRadius else StreakRadius
+        // A trail as wide as the drop leaves, narrower where it first broke away.
+        private fun streakRadius() =
+            (diameter / 2 * if (burst == 0) TopStreakWidth else StreakWidth).dp
+
+        /** Stuck or resting, a drop relaxes towards round, keeping a slight sag. */
+        fun settle(seconds: Float) = ease(RestingStretch, seconds)
+
+        private fun ease(target: Float, seconds: Float) {
+            stretch += (target - stretch) * min(1f, seconds * StretchEasing)
+        }
 
         fun bead() =
             Bead(
@@ -209,6 +230,7 @@ class DripDriver(
                         else -> (diameter / 2).dp
                     },
                 resting = stopped,
+                stretch = stretch,
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
@@ -278,15 +300,19 @@ private const val GrowSeconds = 0.6f
 private const val MinStickSeconds = 0.2f
 private const val MaxStickSeconds = 0.8f
 private const val MaxStepSeconds = 0.1f
-private const val MaxSpeedDp = 150f
+private const val MinSpeedDp = 90f
+private const val MaxSpeedDp = 190f
 private const val AccelerationDp = 600f
-private const val MinBeadDp = 9f
-private const val MaxBeadDp = 13f
+private const val MinBeadDp = 6f
+private const val MaxBeadDp = 16f
 private const val MaxWobbleDp = 1.4f
 private const val WaveLengthDp = 60f
 private const val StreakClarity = 0.9f
-private val StreakRadius = 5.dp
-private val TopStreakRadius = 4.dp
+private const val StreakWidth = 0.7f
+private const val TopStreakWidth = 0.55f
+private const val RunningStretch = 0.3f
+private const val RestingStretch = 0.2f
+private const val StretchEasing = 6f
 
 // A wipe's soft edge still looks clear: a drop starts at least this far beyond its brush.
 private val StartClearance = 12.dp

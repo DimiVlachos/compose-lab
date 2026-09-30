@@ -57,8 +57,9 @@ class DripDriverTest {
 
         val bead = drips.beads.single()
         assertEquals(Offset(0.5f, 0.2f), bead.at)
-        assertTrue(bead.radius < 5.dp, "still swelling: ${bead.radius}")
         assertTrue(fog.streaks().isEmpty())
+        drips.run(0.3f)
+        assertTrue(bead.radius < drips.beads.single().radius, "still swelling: ${bead.radius}")
     }
 
     @Test
@@ -95,8 +96,9 @@ class DripDriverTest {
         val streaks = fog.streaks()
         assertTrue(streaks.size >= 2, "one stroke per burst: ${streaks.size}")
         assertTrue(streaks.all { it.clarity == 0.9f })
-        assertEquals(4.dp, streaks.first().radius)
-        assertTrue(streaks.drop(1).all { it.radius == 5.dp })
+        val bead = drips.beads.single().radius
+        assertTrue(streaks.first().radius!! < streaks[1].radius!!, "narrower at the top")
+        assertTrue(streaks.all { it.radius!! < bead }, "a streak is thinner than its drop")
     }
 
     @Test
@@ -177,8 +179,8 @@ class DripDriverTest {
 
         drips.advance(5f)
 
-        // 0.1 s at most, at no more than 150 dp/s, on an 800 dp mirror.
-        assertTrue(drips.beads.single().at.y - before <= 15f / 800f + 1e-4f)
+        // 0.1 s at most, at no more than 190 dp/s, on an 800 dp mirror.
+        assertTrue(drips.beads.single().at.y - before <= 19f / 800f + 1e-4f)
     }
 
     @Test
@@ -299,5 +301,34 @@ class DripDriverTest {
         val resting = drips.beads.single()
         assertTrue(resting.resting)
         assertEquals(running.radius, resting.radius)
+    }
+
+    @Test
+    fun dropsComeInManySizesMostlySmall() {
+        val drips = driver()
+        repeat(40) { drips.drip(Offset(0.05f + it * 0.022f, 0.1f), 0.05f) }
+        drips.run(1f)
+        val radii = drips.beads.map { it.radius.value }
+        assertTrue(radii.min() < 4f, "some small: ${radii.min()}")
+        assertTrue(radii.max() > 6.5f, "some big: ${radii.max()}")
+        assertTrue(radii.count { it < 5f } > radii.size / 2, "mostly small: $radii")
+    }
+
+    @Test
+    fun aRunningDropStretchesIntoATeardropAndSagsWhenItStops() {
+        val drips = driver()
+        drips.drip(Offset(0.5f, 0.1f), 0.3f)
+        drips.run(0.3f)
+        assertEquals(0f, drips.beads.single().stretch, "round while it gathers")
+
+        var stretched = 0f
+        drips.run(12f) {
+            val bead = drips.beads.single()
+            if (!bead.resting) stretched = maxOf(stretched, bead.stretch)
+        }
+        assertTrue(stretched > 0.5f, "pulled long as it runs: $stretched")
+        val resting = drips.beads.single()
+        assertTrue(resting.resting)
+        assertTrue(resting.stretch in 0.05f..0.35f, "a slight sag at rest: ${resting.stretch}")
     }
 }
