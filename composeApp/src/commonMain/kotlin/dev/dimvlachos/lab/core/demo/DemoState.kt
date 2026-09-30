@@ -4,6 +4,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import kotlin.time.Duration
 
 @Stable
 class DemoState : DemoController {
@@ -11,6 +13,7 @@ class DemoState : DemoController {
         private set
 
     private var scrollHandler: (suspend (Float) -> Unit)? = null
+    private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -20,7 +23,15 @@ class DemoState : DemoController {
         scrollHandler?.invoke(px)
     }
 
+    override suspend fun wipe(path: List<Offset>, duration: Duration) {
+        wipeHandler?.invoke(path, duration)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
+    }
+
+    fun setWipeHandler(handler: (suspend (List<Offset>, Duration) -> Unit)?) {
+        wipeHandler = handler
     }
 }
