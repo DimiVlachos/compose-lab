@@ -448,7 +448,7 @@ class FogDemoUiTest {
     }
 
     @Test
-    fun theScriptDrawsWithAFingertip() = runComposeUiTest {
+    fun theScriptScrubsWithTheFlatOfAFinger() = runComposeUiTest {
         mainClock.autoAdvance = false
         val state = DemoState()
         val fog = FogState()
@@ -470,6 +470,6 @@ class FogDemoUiTest {
         mainClock.advanceTimeBy(500)
 
         val stroke = fog.marks.single() as WipeStroke
-        assertEquals(FogDemos.FingertipBrush, stroke.radius)
+        assertEquals(FogDemos.FingerBrush, stroke.radius)
     }
 }
