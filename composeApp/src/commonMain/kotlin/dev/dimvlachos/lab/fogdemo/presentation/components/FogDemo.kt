@@ -46,6 +46,7 @@ import dev.dimvlachos.lab.core.camera.rememberCameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
+import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.BreathDriver
 import dev.dimvlachos.lab.fogdemo.FogDemos
@@ -56,6 +57,7 @@ import dev.dimvlachos.lab.fogdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
+import dev.dimvlachos.lab.resources.fog_hint_wipe
 import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.ic_photo_camera
 import dev.dimvlachos.lab.resources.window_view
@@ -92,6 +94,7 @@ internal fun FogDemo(
     var cameraFailed by remember { mutableStateOf(false) }
     var breathed by remember { mutableStateOf(false) }
     var holding by remember { mutableStateOf(false) }
+    var wiped by remember { mutableStateOf(false) }
     val listening = micAccess is MicAccess.Granted && !micFailed
     val cameraNeed = cameraAccess.need()
     val micNeed = micAccess.need()
@@ -218,6 +221,12 @@ internal fun FogDemo(
         }
     }
 
+    // The first wipe, remembered: a breath may fog it over, but the mirror has been found.
+    LaunchedEffect(fog) {
+        snapshotFlow { fog.marks.any { it is WipeStroke } }.first { it }
+        wiped = true
+    }
+
     // Without a microphone, a held finger breathes on the glass for as long as it stays.
     LaunchedEffect(holding) {
         if (!holding) return@LaunchedEffect
@@ -242,12 +251,12 @@ internal fun FogDemo(
             onHoldChange =
                 if (listening || state.recording || cardShown) null else { held -> holding = held },
         )
-        // The blow hint goes after the first breath; the hold pill stays while it is the way back
-        // to
-        // the card.
+        // First the wipe hint, until the mirror is found. The blow hint goes after the first
+        // breath; the hold pill stays while it is the way back to the card.
         val hint =
             when {
                 state.recording || cardShown -> null
+                !wiped -> Res.string.fog_hint_wipe
                 listening -> if (breathed) null else Res.string.fog_hint_blow
                 breathed && !canAsk -> null
                 else -> Res.string.fog_hint_hold

@@ -137,6 +137,9 @@ class FogDemoUiTest {
             LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
     }
 
+    // Glass already wiped once, past the first hint ("wipe away the steam").
+    private fun wipedFog() = FogState().apply { beginStroke(Offset(0.5f, 0.5f)) }
+
     private val blowHint = runBlocking { getString(Res.string.fog_hint_blow) }
     private val holdHint = runBlocking { getString(Res.string.fog_hint_hold) }
 
@@ -178,7 +181,7 @@ class FogDemoUiTest {
 
     @Test
     fun aListeningMicrophoneInvitesABlow() = runComposeUiTest {
-        showDemo(DemoState(), FogState(), micHearing(flow { awaitCancellation() }))
+        showDemo(DemoState(), wipedFog(), micHearing(flow { awaitCancellation() }))
         onNodeWithText(blowHint).assertExists()
     }
 
@@ -186,7 +189,7 @@ class FogDemoUiTest {
     fun aMicrophoneThatFailsFallsBackToHolding() = runComposeUiTest {
         showDemo(
             DemoState(),
-            FogState(),
+            wipedFog(),
             micHearing(flow { throw IllegalStateException("busy") }),
         )
         onNodeWithText(holdHint).assertExists()
@@ -196,7 +199,7 @@ class FogDemoUiTest {
     fun aMicrophoneThatHearsOnlySilenceFallsBackToHolding() = runComposeUiTest {
         showDemo(
             DemoState(),
-            FogState(),
+            wipedFog(),
             micHearing(
                 flow {
                     repeat(80) { emit(silence()) }
@@ -210,7 +213,7 @@ class FogDemoUiTest {
     @Test
     fun withoutAMicrophoneHoldingTheGlassFogsIt() = runComposeUiTest {
         mainClock.autoAdvance = false
-        val fog = FogState()
+        val fog = wipedFog()
         showDemo(DemoState(), fog, MicAccess.Unavailable)
         mainClock.advanceTimeByFrame()
         onNodeWithText(holdHint).assertExists()
@@ -268,7 +271,7 @@ class FogDemoUiTest {
     // The access the demo is shown with, changeable mid-test as Android would change it.
     private fun ComposeUiTest.showDemoWith(
         access: () -> MicAccess,
-        fog: FogState = FogState(),
+        fog: FogState = wipedFog(),
     ) {
         setContent {
             CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
@@ -432,7 +435,7 @@ class FogDemoUiTest {
 
     @Test
     fun replayingTheClipShowsNoCardOverIt() = runComposeUiTest {
-        showDemo(DemoState(replay = true), FogState(), MicAccess.Askable {})
+        showDemo(DemoState(replay = true), wipedFog(), MicAccess.Askable {})
 
         onNodeWithText(cardTitle).assertDoesNotExist()
         onNodeWithText(holdHint).assertExists()
