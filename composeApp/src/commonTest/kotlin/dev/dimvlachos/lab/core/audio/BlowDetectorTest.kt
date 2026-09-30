@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.audio
 
+import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -119,5 +120,24 @@ class BlowDetectorTest {
         val strengths = List(30) { detector.process(noise(0.03f, random)) }
 
         assertTrue(strengths.all { it == 0f }, "$strengths")
+    }
+
+    @Test
+    fun theRecordersSilentFirstBuffersAreNotTheRoom() {
+        // A recorder hands over digital silence while it starts; the room is what follows.
+        val plain = BlowDetector().apply { settleInAQuietRoom() }
+        val startedSilent =
+            BlowDetector().apply {
+                repeat(5) { process(silence()) }
+                settleInAQuietRoom()
+            }
+        val blow = List(4) { noise(0.17f, random) }
+
+        val expected = blow.map { plain.process(it) }.last()
+        val actual = blow.map { startedSilent.process(it) }.last()
+
+        assertTrue(expected in 0.1f..0.95f, "a moderate blow: $expected")
+        // Each settled on its own random room, so only near-equal.
+        assertTrue(abs(expected - actual) < 0.02f, "expected $expected, got $actual")
     }
 }
