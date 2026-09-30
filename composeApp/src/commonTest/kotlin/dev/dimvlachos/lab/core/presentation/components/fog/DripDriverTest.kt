@@ -471,4 +471,26 @@ class DripDriverTest {
         assertFalse(bead.resting)
         assertEquals(0f, bead.softness)
     }
+
+    @Test
+    fun aDropWipedWhileItRunsIsSmearedAwayNotBlended() {
+        val fog = FogState()
+        // A long run on a tall mirror, so the wipe catches it between bursts or mid-run.
+        val drips = driver(fog).apply { glass = DpSize(400.dp, 4000.dp) }
+        drips.drip(Offset(0.5f, 0.1f), 0.4f)
+        drips.run(2f)
+        val bead = drips.beads.single()
+        assertFalse(bead.resting)
+        val runningRadius = bead.radius
+
+        fog.beginStroke(bead.at + Offset(-0.1f, 0f)).also {
+            fog.extendStroke(it, bead.at + Offset(0.1f, 0f))
+        }
+        drips.run(0.08f)
+        val smearing = drips.beads.single()
+        assertTrue(smearing.alpha in 0.1f..0.9f, "smearing: ${smearing.alpha}")
+        assertTrue(smearing.radius <= runningRadius, "not swelling as it would at an edge")
+        drips.run(0.3f)
+        assertTrue(drips.beads.isEmpty(), "gone: ${drips.beads}")
+    }
 }

@@ -101,8 +101,7 @@ class DripDriver(
             version
             if (needsFrames) return true
             val ours = ownStreaks()
-            return resting.any { !it.stillShows(ours) } ||
-                running.any { it.growing && !it.stillShows(ours) }
+            return resting.any { !it.stillShows(ours) } || running.any { !it.stillShows(ours) }
         }
 
     /** Starts a drop at [at], to run [length] of the glass's height. */
@@ -125,9 +124,9 @@ class DripDriver(
         }
         // However long since the last step, a drop moves at most a short step's worth.
         val stepSeconds = min(seconds.coerceAtLeast(0f), MaxStepSeconds)
-        // A drop wiped away before it starts to run has not started at all.
+        // A wipe over a drop, growing, running or between bursts, smears it away.
         val ours = ownStreaks()
-        for (drip in running.filter { it.growing && !it.stillShows(ours) }) {
+        for (drip in running.filter { !it.stillShows(ours) }) {
             running -= drip
             fadeOut(drip, WipedFadeSeconds)
         }
@@ -392,8 +391,10 @@ class DripDriver(
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
         fun stillShows(ours: Set<WipeStroke>): Boolean {
+            // Stopped, its streak fogged over by a full breath takes it too; running, it carries
+            // on.
             val last = lastStreak
-            if (last != null && fog.marks.none { it === last }) return false
+            if (stopped && last != null && fog.marks.none { it === last }) return false
             // Stopped, only a wipe's points since then clear it: it may rest on glass it ran into.
             return fog.marks.none {
                 it is WipeStroke &&
