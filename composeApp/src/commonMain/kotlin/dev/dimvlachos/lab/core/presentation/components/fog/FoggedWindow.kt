@@ -22,10 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -38,6 +36,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.fog_density
+import dev.dimvlachos.lab.resources.fog_detail
+import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.imageResource
 
 /**
  * A window of [photo] behind fogged glass that a finger wipes clear.
@@ -64,11 +67,9 @@ fun FoggedWindow(
     // A caller's lambda changes on every recomposition; the gesture reads the latest without
     // restarting.
     val holdChange by rememberUpdatedState(onHoldChange)
-    val noise = remember { fogNoiseTile() }
-    val density = remember { fogDensityMap() }
+    val detail = imageResource(Res.drawable.fog_detail)
+    val density = imageResource(Res.drawable.fog_density)
     val milky = remember { ColorFilter.colorMatrix(milkyColorMatrix()) }
-    val grain =
-        remember(noise) { ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated)) }
     Box(
         modifier.pointerInput(state, onHoldChange != null) {
             val holdEnabled = onHoldChange != null
@@ -132,27 +133,18 @@ fun FoggedWindow(
             Image(
                 photo,
                 null,
-                // The film and grain draw over the blur's layer, not inside it, so the grain stays
-                // sharp. The film is milky and uneven: an even base, thicker patches from the
-                // density map, and a glow where the light comes through, toward the top right.
+                // The film and the condensation draw over the blur's layer, not inside it, so the
+                // droplets stay sharp.
                 Modifier.matchParentSize()
                     .drawWithContent {
                         drawContent()
                         drawRect(Color.White.copy(alpha = FogDimens.FilmAlpha))
-                        drawImage(
-                            density,
-                            dstSize = IntSize(size.width.toInt(), size.height.toInt()),
-                            filterQuality = FilterQuality.High,
-                        )
-                        drawRect(
-                            Brush.radialGradient(
-                                0f to Color.White.copy(alpha = FogDimens.GlowAlpha),
-                                1f to Color.Transparent,
-                                center = Offset(size.width * 0.85f, size.height * 0.1f),
-                                radius = size.maxDimension * 0.7f,
-                            )
-                        )
-                        drawRect(grain)
+                        // Real condensation from a photograph: its droplets, drops and trails as
+                        // light and shade over the fog, then its thickness, thinner along the
+                        // drips,
+                        // where the sharp scene shows through as it does through real glass.
+                        drawCovering(detail, BlendMode.Overlay)
+                        drawCovering(density, BlendMode.DstIn)
                     }
                     .blur(FogDimens.FogBlur),
                 contentScale = ContentScale.Crop,
@@ -211,3 +203,16 @@ private sealed interface PressStart {
 private suspend fun AwaitPointerEventScope.awaitDragOrLift(down: PointerInputChange): PressStart =
     awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
         ?.let { PressStart.Dragged(it) } ?: PressStart.Lifted
+
+// Draws [image] over the whole area, cropped to cover it rather than stretched.
+private fun DrawScope.drawCovering(image: ImageBitmap, blendMode: BlendMode) {
+    val (offset, cropped) = coverCrop(IntSize(image.width, image.height), size)
+    drawImage(
+        image,
+        srcOffset = offset,
+        srcSize = cropped,
+        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+        blendMode = blendMode,
+        filterQuality = FilterQuality.High,
+    )
+}
