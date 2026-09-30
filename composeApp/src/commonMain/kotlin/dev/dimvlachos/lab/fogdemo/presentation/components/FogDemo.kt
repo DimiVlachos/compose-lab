@@ -38,6 +38,8 @@ import dev.dimvlachos.lab.core.audio.BlowDetector
 import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.audio.MicFrameSeconds
 import dev.dimvlachos.lab.core.audio.rememberMicAccess
+import dev.dimvlachos.lab.core.camera.CameraAccess
+import dev.dimvlachos.lab.core.camera.rememberCameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
@@ -74,10 +76,12 @@ internal fun FogDemo(
     state: DemoState,
     fog: FogState = remember { newFogDemoState() },
     micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
+    cameraAccess: CameraAccess = rememberCameraAccess(enabled = !state.recording),
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
     val driver = remember(fog) { BreathDriver(fog) }
     var micFailed by remember { mutableStateOf(false) }
+    var cameraFailed by remember { mutableStateOf(false) }
     var breathed by remember { mutableStateOf(false) }
     var holding by remember { mutableStateOf(false) }
     val listening = micAccess is MicAccess.Granted && !micFailed
@@ -166,6 +170,26 @@ internal fun FogDemo(
         }
     }
 
+    // The front camera is the mirror, only while the demo is in front of the user: leaving turns
+    // it off, and its light with it.
+    val camera = (cameraAccess as? CameraAccess.Granted)?.camera?.takeUnless { cameraFailed }
+    if (camera != null) {
+        // Keyed on the camera, not the access around it, like the microphone.
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(camera, lifecycle) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                try {
+                    camera.run()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    log.w(e) { "no camera, so the mirror shows its still reflection" }
+                    cameraFailed = true
+                }
+            }
+        }
+    }
+
     // Without a microphone, a held finger breathes on the glass for as long as it stays.
     LaunchedEffect(holding) {
         if (!holding) return@LaunchedEffect
@@ -181,7 +205,9 @@ internal fun FogDemo(
 
     Box(Modifier.fillMaxSize()) {
         FoggedWindow(
-            photo = painterResource(Res.drawable.window_view),
+            photo =
+                if (camera?.showing == true) camera.mirror
+                else painterResource(Res.drawable.window_view),
             state = fog,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
             brushRadius = FogDemos.FingerBrush,

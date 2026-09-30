@@ -31,7 +31,8 @@ internal class FakeMirrorCamera(
         running++
         try {
             val image = ImageBitmap(4, 4)
-            Canvas(image).drawRect(0f, 0f, 4f, 4f, Paint().apply { this.color = color })
+            Canvas(image)
+                .drawRect(0f, 0f, 4f, 4f, Paint().apply { color = this@FakeMirrorCamera.color })
             painter.show(CameraFrame(image, width = 4, height = 4, rotationDegrees = 0))
             awaitCancellation()
         } finally {
