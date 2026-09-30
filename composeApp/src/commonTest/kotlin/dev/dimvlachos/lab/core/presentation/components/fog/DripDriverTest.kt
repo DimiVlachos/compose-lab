@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -257,5 +258,34 @@ class DripDriverTest {
         val wellClear = Offset(0.5f + (wipe + 20f) / 400f, 0.5f)
         assertFalse(fog.isFoggedAt(nearEdge, glass, FogDimens.BrushRadius))
         assertTrue(fog.isFoggedAt(wellClear, glass, FogDimens.BrushRadius))
+    }
+
+    @Test
+    fun onlyTheLastTwelveDropsLeaveTheirStreaksOnTheGlass() {
+        val fog = FogState()
+        val drips = driver(fog)
+        // One after another, so the order they finish in is the order they started.
+        repeat(20) {
+            drips.drip(Offset(0.05f + it * 0.045f, 0.1f), 0.15f)
+            drips.run(6f)
+        }
+        // Each drop's streaks start within a few dp of its own spot, 0.045 apart from the next.
+        val xs = fog.streaks().map { ((it.points.first().x - 0.05f) / 0.045f).roundToInt() }.toSet()
+        assertTrue(xs.size <= 12, "streaks from ${xs.size} drops")
+        assertTrue(
+            fog.streaks().none { it.points.first().x < 0.05f + 8 * 0.045f - 0.01f },
+            "the oldest drops' streaks are gone",
+        )
+    }
+
+    @Test
+    fun theDriverForgetsStreaksAFullBreathHasFoggedOver() {
+        val fog = FogState()
+        val drips = driver(fog)
+        repeat(3) { drips.drip(Offset(0.2f + it * 0.3f, 0.1f), 0.2f) }
+        drips.run(10f)
+        fog.setBreathLevel(fog.beginBreath(), 1f)
+        drips.run(0.1f)
+        assertEquals(0, drips.trackedStreaks)
     }
 }

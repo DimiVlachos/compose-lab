@@ -235,9 +235,18 @@ private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush
     }
     // Part of the way: the dabs join up in a layer of their own, which then clears the fog only
     // [clarity] of the way, so overlapping dabs cannot compound past it.
+    if (dabs.isEmpty()) return
+    // Only as big as the streak itself: a thin drip needs no layer the size of the glass.
+    val bounds =
+        Rect(
+            dabs.minOf { it.x } - radius,
+            dabs.minOf { it.y } - radius,
+            dabs.maxOf { it.x } + radius,
+            dabs.maxOf { it.y } + radius,
+        )
     drawIntoCanvas { canvas ->
         canvas.saveLayer(
-            Rect(Offset.Zero, size),
+            bounds,
             Paint().apply {
                 blendMode = BlendMode.DstOut
                 alpha = clarity

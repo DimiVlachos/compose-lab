@@ -48,7 +48,17 @@ class DripDriver(
     private var version by mutableIntStateOf(0)
     private val running = mutableListOf<Drip>()
     private val resting = mutableListOf<Drip>()
-    private val streaks = mutableSetOf<WipeStroke>()
+    // Drops that have stopped, oldest first: only the last few keep their streaks on the glass.
+    private val finished = ArrayDeque<Drip>()
+
+    /** How many streaks the driver still holds on to. */
+    internal val trackedStreaks: Int
+        get() = (finished + running).sumOf { it.streaks.size }
+
+    // Every streak of a drop the driver still holds, so no drop is ever cleared by one.
+    private fun ownStreaks(): Set<WipeStroke> =
+        (finished + running).flatMapTo(HashSet()) { it.streaks }
+
     private var untilNext = nextGap()
 
     /**
@@ -88,8 +98,18 @@ class DripDriver(
             if (drip.stopped) {
                 running -= drip
                 resting += drip
+                finished += drip
             }
         }
+        // A long-idle mirror keeps only the latest drops' streaks, or the glass would slow down
+        // under hundreds of them.
+        while (finished.size > MaxResting) {
+            val oldest = finished.removeFirst()
+            oldest.streaks.forEach { fog.remove(it) }
+            resting -= oldest
+        }
+        // Forget streaks a breath has already fogged over.
+        for (drip in finished + running) drip.streaks.removeAll { s -> fog.marks.none { it === s } }
         resting.removeAll { !it.stillShows() }
         while (resting.size > MaxResting) resting.removeAt(0)
         changed()
@@ -134,6 +154,9 @@ class DripDriver(
         private var head = start
         var stopped = false
             private set
+
+        /** This drop's streaks still on the glass, one per burst. */
+        val streaks = mutableListOf<WipeStroke>()
 
         /** Still gathering where it formed, not yet running. */
         val growing: Boolean
@@ -191,15 +214,16 @@ class DripDriver(
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
         fun stillShows(): Boolean {
+            val ours = ownStreaks()
             val last =
                 lastStreak
                     ?: return fog.marks.none {
-                        it is WipeStroke && it !in streaks && it.covers(head, glass, wipeRadius)
+                        it is WipeStroke && it !in ours && it.covers(head, glass, wipeRadius)
                     }
             val index = fog.marks.indexOfFirst { it === last }
             if (index < 0) return false
             return fog.marks.drop(index + 1).none {
-                it is WipeStroke && it !in streaks && it.covers(head, glass, wipeRadius)
+                it is WipeStroke && it !in ours && it.covers(head, glass, wipeRadius)
             }
         }
     }
