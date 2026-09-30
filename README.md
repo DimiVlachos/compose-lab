@@ -69,6 +69,57 @@ ProfileGallery(
 
 The photo morph also ships on its own as `ImageMorph` (`core/presentation/components/imagemorph/`), with `MorphLayers` to switch its fixes on one by one.
 
+## Fogged mirror (`core/presentation/components/fog/`)
+
+![](docs/media/fog.mirror.bathroom.gif)
+
+A steamed-up bathroom mirror, hanging on a tiled wall above the basin, that you wipe clear with a finger. Two versions share one component:
+
+- **Bathroom** (`fog.mirror.bathroom`): a still bathroom behind the glass. It asks for nothing, and mists slowly back over once you stop wiping.
+- **Your reflection** (`fog.mirror.camera`): the live front camera behind the glass, so wiping finds your face. Blow on the microphone, or hold a finger down, to breathe fog back onto it. One card explains both permissions and asks for each in turn.
+
+What's on the glass:
+
+- **Fog from a real photo.** Condensation texture from a photo of wet glass, over a blurred, milky copy of the scene behind it.
+- **Soft wipes.** Soft-edged strokes follow the finger.
+- **Breath.** Fills back in from the bottom up, the way a real breath does.
+- **Running drops.** Now and then a drop gathers, in a range of small sizes, and runs down. The bigger it is, the faster it goes. As it runs it stretches from a sphere into a teardrop, and it cuts a clear trail through the fog behind it. Once it stops, it settles softly into the condensation.
+- **Drops meeting a wipe.** A drop that runs into a wiped patch slips just inside, then spreads out slowly and thins away into the wet glass.
+- **The clip.** Drops run first, then a hand scrubs a porthole clear. One more drop runs into it and spreads away, then the room mists it all back over, so the clip loops.
+
+```kotlin
+val fog = remember { FogState() }                   // starts fully fogged
+val drips = remember(fog) { DripDriver(fog) }       // advance(seconds) on each frame
+
+FoggedWindow(
+    photo = painterResource(Res.drawable.mirror_view), // or the camera's live Painter
+    state = fog,
+    beads = { drips.beads },                         // read while drawing: a running drop only redraws
+)
+```
+
+### Made with Compose
+
+Compose made every part of this simple to build, and the same Kotlin runs on Android and iOS:
+
+- **Blend modes are the whole fog.**
+  - Inside an offscreen `graphicsLayer` (`CompositingStrategy.Offscreen`), `BlendMode.DstOut` wipes holes in the fog, `Overlay` lays the condensation texture on top, and `DstIn` thins it.
+  - Breath and mist *fill back in* rather than pile up: `DstOut`, then `Plus` through a `SrcIn` mask, in `saveLayer` from `drawIntoCanvas`.
+  - That's plain Porter–Duff maths, the same on both platforms.
+- **`Modifier.blur` and `ColorFilter.colorMatrix`** turn one `Painter` into the frosted copy of the scene. The camera is just another `Painter`, so the live mirror needed no special path.
+- **Drops are drawn with ordinary draw calls.** Each teardrop is a `Path` of two cubics and an arc. Its shading, rim and glint are `Brush.radialGradient`s, circles and arcs. `withTransform` stretches and spreads it.
+- **Drawing never triggers recomposition.** Beads are handed over as a lambda and read in `drawBehind`. The fog's marks are a `mutableStateListOf` read in the draw phase, and camera frames sit in snapshot state that only `onDraw` reads. So a running drop or a new frame costs a redraw, not a recomposition.
+- **Clocks and gestures are coroutines.**
+  - `withFrameNanos` drives the drops and the mist.
+  - `snapshotFlow` wakes the drip loop the moment you wipe, and otherwise lets the glass sleep.
+  - `pointerInput` with `awaitEachGesture` tells a wipe from a hold.
+  - `repeatOnLifecycle` keeps the camera and microphone on only while the screen is showing.
+- **Everything is testable.** `runComposeUiTest` plus `captureToImage` read real pixels: a drop is darker in the middle, a spread one is thinner and wider, and a wipe clears the fog. The drip clock runs on the test's own frame clock, so tests that play 15 seconds of drops finish in milliseconds.
+- **The mirror hangs on a real wall with ordinary layout.** `BoxWithConstraints` measures the screen. An `Image` with `ContentScale.Crop` and a custom `Alignment` crops the wall photo around the mirror. The glass is a `Box` placed with `Modifier.offset` and `size`, and clipped with `RoundedCornerShape`. So the fog lands exactly on the photo's glass on any screen, and a finger on the tiles wipes nothing.
+- **`expect`/`actual`** keeps the platform code small: CameraX and the microphone on Android, stubs on iOS. Everything you see is common code.
+
+What makes Compose so good for this is that nothing here needed a custom view, an OpenGL shader or a platform escape hatch. The fog, the water and the wall are ordinary composables, modifiers and draw calls, laid out, animated and tested like any other screen, and one codebase draws them on both platforms. Compose makes a surface that feels physical and alive just another piece of UI.
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
@@ -126,4 +177,5 @@ Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](ht
 | Photo | Photographer |
 |---|---|
 | [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the fogged mirror's reflection without a camera) | nana |
+| [Contemporary bathroom interior with mirror above washbasin at home](https://www.pexels.com/photo/7046159/) (the wall the fogged mirror hangs on, extended with more tiles above and a counter front below) | Max Vakhtbovych |
 | [Water droplets on foggy glass](https://www.pexels.com/photo/water-droplets-on-foggy-glass-8628343/) (the fog's condensation, via `scripts/fog-texture.py`) | Chris F |
