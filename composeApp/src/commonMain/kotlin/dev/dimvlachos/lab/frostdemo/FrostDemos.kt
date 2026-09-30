@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.demoScript
+import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
 import dev.dimvlachos.lab.frostdemo.presentation.components.FrostDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_frost
@@ -44,15 +45,23 @@ internal object FrostDemos {
                 ),
         )
 
-    // The scrub, a moment to look through the oval, then a breath fogs the glass over from the
-    // bottom: by the loop's reset the glass is already fresh frost, so the reset shows nothing.
+    // Clear glass: a breath fogs it from the bottom, the hand scrubs a porthole, a moment to look
+    // through it, then the frost evaporates, back to the clear glass the loop starts from.
     private val wipeTour = demoScript {
         at(0.seconds) { select(1) }
-        at(0.4.seconds) { wipe(porthole.path(), porthole.duration) }
-        at(7.4.seconds) { breathe(2.4.seconds, strength = 1f) }
-        at(10.2.seconds) { select(0) }
+        at(0.4.seconds) { breathe(2.4.seconds, strength = 1f) }
+        at(3.2.seconds) { wipe(porthole.path(), porthole.duration) }
+        at(10.8.seconds) { select(0) }
     }
 
+    // On the phone the glass is the user's to breathe on and wipe; Replay plays the clip.
     val all: List<Demo> =
-        listOf(Demo("frost.window", Res.string.demo_frost, wipeTour) { FrostDemo(it) })
+        listOf(
+            Demo("frost.window", Res.string.demo_frost, wipeTour, autoplay = false) {
+                FrostDemo(it)
+            }
+        )
 }
+
+/** The demo's window: clear glass, waiting for a breath. */
+internal fun newFrostDemoState() = FrostState(startClear = true)

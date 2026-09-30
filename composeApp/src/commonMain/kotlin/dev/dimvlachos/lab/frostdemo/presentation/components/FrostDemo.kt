@@ -39,6 +39,7 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.frostdemo.BreathDriver
 import dev.dimvlachos.lab.frostdemo.FrostDemos
 import dev.dimvlachos.lab.frostdemo.clipFrameToWindow
+import dev.dimvlachos.lab.frostdemo.newFrostDemoState
 import dev.dimvlachos.lab.frostdemo.pointAt
 import dev.dimvlachos.lab.frostdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
@@ -46,6 +47,7 @@ import dev.dimvlachos.lab.resources.frost_hint_blow
 import dev.dimvlachos.lab.resources.frost_hint_hold
 import dev.dimvlachos.lab.resources.photo_santorini
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.painterResource
@@ -53,6 +55,9 @@ import org.jetbrains.compose.resources.stringResource
 
 // A held finger breathes steadily, a little softer than a firm blow.
 private const val HoldStrength = 0.7f
+
+// How long the frost takes to evaporate at the loop's end.
+private const val EvaporateMillis = 1_000
 
 // About 2 s of nothing but zeros: the microphone is taken by something else, a call perhaps.
 private const val SilentMicFrames = 60
@@ -62,7 +67,7 @@ private val log = Logger.withTag("FrostDemo")
 @Composable
 internal fun FrostDemo(
     state: DemoState,
-    frost: FrostState = remember { FrostState() },
+    frost: FrostState = remember { newFrostDemoState() },
     micAccess: MicAccess = rememberMicAccess(enabled = !state.recording),
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
@@ -151,10 +156,18 @@ internal fun FrostDemo(
         }
     }
 
-    // Back on 0, the loop's start, the glass frosts over again. Only on a return to 0: clearing on
-    // the first composition too would race a microphone that is already fogging the glass.
+    // Back on 0, the loop's start, the frost evaporates to clear glass. Only on a return to 0: the
+    // glass already starts clear, and a thaw then would race a microphone already fogging it.
     LaunchedEffect(state, frost) {
-        snapshotFlow { state.selectedIndex }.drop(1).filter { it == 0 }.collect { frost.clear() }
+        snapshotFlow { state.selectedIndex }
+            .drop(1)
+            .filter { it == 0 }
+            .collectLatest {
+                val thaw = frost.beginThaw()
+                animate(0f, 1f, animationSpec = tween(EvaporateMillis)) { amount, _ ->
+                    frost.setThawAmount(thaw, amount)
+                }
+            }
     }
 
     Box(Modifier.fillMaxSize()) {

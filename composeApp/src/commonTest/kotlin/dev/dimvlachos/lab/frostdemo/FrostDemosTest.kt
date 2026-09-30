@@ -2,10 +2,11 @@
 
 package dev.dimvlachos.lab.frostdemo
 
-import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.demo.FakeController
-import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
+import dev.dimvlachos.lab.core.presentation.components.frost.Thaw
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -17,8 +18,7 @@ class FrostDemosTest {
         FrostDemos.all.single().script.play(controller)
         val (duration, peak) = controller.breaths.single()
 
-        val frost = FrostState()
-        frost.beginStroke(Offset(0.5f, 0.5f))
+        val frost = newFrostDemoState()
         val driver = BreathDriver(frost)
         val steps = (duration.inWholeMilliseconds / 16).toInt()
         for (i in 1..steps) driver.advance(
@@ -26,7 +26,21 @@ class FrostDemosTest {
             0.016f,
         )
 
-        // Fog carried on past the top may linger over the fresh frost, unseen; no wipe may.
-        assertTrue(frost.strokes.isEmpty(), "fog left the glass partly clear: ${frost.marks}")
+        // Fog carried on past the top may linger over the fresh frost, unseen; the clear glass may
+        // not.
+        assertTrue(
+            frost.marks.none { it is Thaw },
+            "fog left the glass partly clear: ${frost.marks}",
+        )
+    }
+
+    @Test
+    fun theDemoOpensOnClearGlass() {
+        assertEquals(1f, (newFrostDemoState().marks.single() as Thaw).amount)
+    }
+
+    @Test
+    fun onThePhoneTheDemoWaitsToBePlayedWith() {
+        assertFalse(FrostDemos.all.single().autoplay)
     }
 }
