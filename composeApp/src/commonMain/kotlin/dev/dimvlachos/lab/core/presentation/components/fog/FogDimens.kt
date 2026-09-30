@@ -35,11 +35,14 @@ internal object FogDimens {
     const val EdgeMaskHeight = 128
 
     /** How much a drop darkens the glass behind it. */
-    const val BeadShade = 0.14f
+    const val BeadShade = 0.2f
 
     /** The darker rim along a drop's lower edge. */
-    const val BeadRim = 0.3f
+    const val BeadRim = 0.45f
+
+    /** The light caught along a drop's upper edge. */
+    const val BeadEdgeLight = 0.55f
 
     /** The bright glint near a drop's top. */
-    const val BeadHighlight = 0.75f
+    const val BeadHighlight = 0.9f
 }

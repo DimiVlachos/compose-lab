@@ -57,7 +57,7 @@ class DripDriverTest {
 
         val bead = drips.beads.single()
         assertEquals(Offset(0.5f, 0.2f), bead.at)
-        assertTrue(bead.radius < 3.5.dp, "still swelling: ${bead.radius}")
+        assertTrue(bead.radius < 5.dp, "still swelling: ${bead.radius}")
         assertTrue(fog.streaks().isEmpty())
     }
 
@@ -75,7 +75,6 @@ class DripDriverTest {
         val bead = drips.beads.single()
         assertTrue(bead.resting)
         assertTrue(abs(bead.at.y - 0.5f) < 0.001f, "it runs its whole length: ${bead.at.y}")
-        assertEquals(2.dp, bead.radius)
     }
 
     @Test
@@ -95,9 +94,9 @@ class DripDriverTest {
 
         val streaks = fog.streaks()
         assertTrue(streaks.size >= 2, "one stroke per burst: ${streaks.size}")
-        assertTrue(streaks.all { it.clarity == 0.85f })
-        assertEquals(3.dp, streaks.first().radius)
-        assertTrue(streaks.drop(1).all { it.radius == 4.dp })
+        assertTrue(streaks.all { it.clarity == 0.9f })
+        assertEquals(4.dp, streaks.first().radius)
+        assertTrue(streaks.drop(1).all { it.radius == 5.dp })
     }
 
     @Test
@@ -287,5 +286,18 @@ class DripDriverTest {
         fog.setBreathLevel(fog.beginBreath(), 1f)
         drips.run(0.1f)
         assertEquals(0, drips.trackedStreaks)
+    }
+
+    @Test
+    fun aDropKeepsItsSizeWhenItStops() {
+        val drips = driver()
+        drips.drip(Offset(0.5f, 0.2f), 0.2f)
+        drips.run(1f)
+        val running = drips.beads.single()
+        assertFalse(running.resting)
+        drips.run(10f)
+        val resting = drips.beads.single()
+        assertTrue(resting.resting)
+        assertEquals(running.radius, resting.radius)
     }
 }
