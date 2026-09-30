@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +54,6 @@ import dev.dimvlachos.lab.resources.fog_hint_hold
 import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.window_view
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -67,7 +63,6 @@ private const val HoldStrength = 0.7f
 private val HintIconSize = 18.dp
 
 // How long the fog takes to evaporate at the loop's end.
-private const val EvaporateMillis = 1_000
 
 // About 2 s of nothing but zeros: the microphone is taken by something else, a call perhaps.
 private const val SilentMicFrames = 60
@@ -182,21 +177,6 @@ internal fun FogDemo(
             }
             breathed = true
         }
-    }
-
-    // Back on 0, the loop's start, the fog evaporates to clear glass. Only on a return to 0: the
-    // glass already starts clear, and an evaporation then would race a microphone already fogging
-    // it.
-    LaunchedEffect(state, fog) {
-        snapshotFlow { state.selectedIndex }
-            .drop(1)
-            .filter { it == 0 }
-            .collectLatest {
-                val evaporation = fog.beginEvaporation()
-                animate(0f, 1f, animationSpec = tween(EvaporateMillis)) { amount, _ ->
-                    fog.setEvaporationAmount(evaporation, amount)
-                }
-            }
     }
 
     Box(Modifier.fillMaxSize()) {

@@ -20,18 +20,15 @@ internal object FogDemos {
     // Stroke by stroke, with a moment between, as a hand lifts and places the fingertip again.
     private val drawing = heartWithArrow()
 
-    // Clear glass: a breath fogs it from the bottom, a fingertip draws a heart pierced by an arrow,
-    // a moment to look at it, then the fog evaporates, back to the clear glass the loop starts
-    // from.
+    // Fogged glass: a beat, a fingertip draws a heart pierced by an arrow, a moment to look at it,
+    // then a breath fogs it all over, back to the fogged glass the loop starts from.
     private val wipeTour = demoScript {
-        at(0.seconds) { select(1) }
-        at(0.4.seconds) { breathe(2.4.seconds, strength = 1f) }
-        var start = 3.2.seconds
+        var start = 0.3.seconds
         for (stroke in drawing) {
             at(start) { wipe(stroke.path, stroke.duration) }
             start += stroke.duration + LiftBetweenStrokes
         }
-        at(10.8.seconds) { select(0) }
+        at(start + LookAtTheDrawing) { breathe(2.4.seconds, strength = 1f) }
     }
 
     // On the phone the glass is the user's to breathe on and wipe; Replay plays the clip.
@@ -45,5 +42,7 @@ internal object FogDemos {
 
 private val LiftBetweenStrokes = 250.milliseconds
 
-/** The demo's window: clear glass, waiting for a breath. */
-internal fun newFogDemoState() = FogState(startClear = true)
+private val LookAtTheDrawing = 1.5.seconds
+
+/** The demo's glass: fogged all over, waiting for a wipe. */
+internal fun newFogDemoState() = FogState()
