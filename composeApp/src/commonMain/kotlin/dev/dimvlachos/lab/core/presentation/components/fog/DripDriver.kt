@@ -149,8 +149,10 @@ class DripDriver(
         // under hundreds of them.
         while (finished.size > MaxResting) {
             val oldest = finished.removeFirst()
+            // As clear as it shows now: a drop a breath has fogged over stays out of sight.
+            val shown = oldest.visibility()
             oldest.streaks.forEach { fog.remove(it) }
-            if (resting.remove(oldest)) fadeOut(oldest, PushedOutFadeSeconds)
+            if (resting.remove(oldest)) fadeOut(oldest, PushedOutFadeSeconds, from = shown)
         }
         // Forget streaks a breath has already fogged over.
         for (drip in finished + running + fading) {
@@ -169,8 +171,8 @@ class DripDriver(
         changed()
     }
 
-    private fun fadeOut(drip: Drip, seconds: Float) {
-        drip.startFading(seconds)
+    private fun fadeOut(drip: Drip, seconds: Float, from: Float = 1f) {
+        drip.startFading(seconds, from)
         if (!drip.gone) fading += drip
     }
 
@@ -321,9 +323,10 @@ class DripDriver(
         val fogged: Boolean
             get() = lastStreak.let { last -> last != null && fog.marks.none { it === last } }
 
-        /** Starts fading out over [seconds]; none, and it is gone at once. */
-        fun startFading(seconds: Float) {
-            if (seconds <= 0f) fadeLeft = 0f else fadeRate = 1f / seconds
+        /** Starts fading out over [seconds], from [from] at most; none, and it is gone at once. */
+        fun startFading(seconds: Float, from: Float = 1f) {
+            fadeLeft = minOf(fadeLeft, from)
+            if (seconds <= 0f || fadeLeft <= 0f) fadeLeft = 0f else fadeRate = 1f / seconds
         }
 
         fun fade(seconds: Float) {
