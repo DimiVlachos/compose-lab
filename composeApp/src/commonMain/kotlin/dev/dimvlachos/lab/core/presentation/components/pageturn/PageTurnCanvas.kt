@@ -88,15 +88,18 @@ internal class BookPainter(private val ink: BookInk) {
             )
         fun image(spread: Int): ImageBitmap = spreads.getOrNull(spread) ?: paper
         val leaves = spreads.size - 1
-        val pair = state.pair
-        val t = if (pair == null) 0f else state.leafProgress.coerceIn(0f, 1f)
-        // The leaf on top of each stack (-1 or [leaves]: none, the page is the book's endpaper),
-        // and how far each stack has sunk under a leaf that is up: the right one rises as it
-        // leaves, the left one settles as it lands.
-        val leftTop = (pair?.leaf ?: state.spread) - 1
-        val rightTop = pair?.let { it.leaf + 1 } ?: state.spread
-        val leftSink = if (pair == null) 0f else stackLand(t)
-        val rightSink = if (pair == null) 0f else 1f - stackRise(t)
+        val flights = state.flights
+        val flying = flights.mapTo(HashSet()) { it.leaf }
+        // The leaves lying on each side, the ones in the air aside: the left holds those before the
+        // open spread, the right the rest. The top of each is the page you see (-1 or [leaves]:
+        // none, the page is the book's endpaper).
+        val open = state.spread
+        val leftTop = (open - 1 downTo 0).firstOrNull { it !in flying } ?: -1
+        val rightTop = (open until leaves).firstOrNull { it !in flying } ?: leaves
+        // How far each stack has sunk under the leaves above it: the one they leave rises as they
+        // go, the one they land on settles as they come down.
+        val leftSink = flights.fold(0f) { sum, it -> sum + stackLand(it.t) }
+        val rightSink = flights.fold(0f) { sum, it -> sum + 1f - stackRise(it.t) }
 
         // The sheets under the top pages, deepest first, each showing past the one above it.
         for (d in leftTop downTo 1) {
@@ -108,16 +111,24 @@ internal class BookPainter(private val ink: BookInk) {
         // The top pages: the back of the left top leaf, the front of the right one.
         drawLeaf(geometry, restFrame(geometry, right = false, depth = leftSink), image(leftTop + 1))
         drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
-        if (pair == null) {
+        if (flights.isEmpty()) {
             drawStitches(spineX, alpha = 1f)
             drawCrease(spineX)
             return
         }
-        val frame = turnFrame(t, leafWidth = page, bendDirection = state.bendDirection)
-        drawGutterShades(spineX, page, frame.lift * frame.lift)
-        val over = stitchesOverLeaf(t)
+        val frames = flights.map {
+            it to turnFrame(it.t, leafWidth = page, bendDirection = it.bend)
+        }
+        drawGutterShades(spineX, page, frames.maxOf { (_, frame) -> frame.lift * frame.lift })
+        val over = flights.minOf { stitchesOverLeaf(it.t) }
         if (over < 1f) drawStitches(spineX, alpha = 1f - over)
-        drawLeaf(geometry, frame, front = image(pair.leaf), back = image(pair.leaf + 1))
+        // Leaves in the air keep the order they have in the book: nearer the left, a later leaf
+        // lies over an earlier one; nearer the right, an earlier one over a later.
+        frames
+            .sortedBy { (flight, _) -> if (flight.t >= 0.5f) flight.leaf else -flight.leaf }
+            .forEach { (flight, frame) ->
+                drawLeaf(geometry, frame, front = image(flight.leaf), back = image(flight.leaf + 1))
+            }
         if (over > 0f) drawStitches(spineX, alpha = over)
         drawCrease(spineX)
     }

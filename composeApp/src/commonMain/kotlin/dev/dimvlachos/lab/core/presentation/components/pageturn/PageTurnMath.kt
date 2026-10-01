@@ -162,9 +162,17 @@ internal fun stitchesOverLeaf(t: Float): Float =
 internal fun dragToProgress(dragPx: Float, bookWidthPx: Float): Float =
     dragPx / (PageTurnDimens.DragSpan * bookWidthPx)
 
-/** Whether a page let go at [progress], moving at [velocity] turns a second, finishes turning. */
+/**
+ * Whether a page let go at [progress], moving at [velocity] turns a second, finishes turning. A
+ * flick either way decides by its direction, wherever the page is; a slower release goes by whether
+ * the page is past [PageTurnDimens.CommitProgress].
+ */
 internal fun shouldCommit(progress: Float, velocity: Float): Boolean =
-    progress > PageTurnDimens.CommitProgress || velocity > PageTurnDimens.CommitVelocity
+    when {
+        velocity > PageTurnDimens.CommitVelocity -> true
+        velocity < -PageTurnDimens.CommitVelocity -> false
+        else -> progress > PageTurnDimens.CommitProgress
+    }
 
 /**
  * The bend direction for a turn that is going [forward], while its progress is increasing or not:
