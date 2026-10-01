@@ -5,21 +5,14 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.abs
 import kotlin.math.max
@@ -56,55 +49,11 @@ fun PageTurnBook(
     Spacer(
         modifier
             .aspectRatio(BookAspect)
-            .bookShadows(colors.bookShadow)
             .onSizeChanged { state.bookWidthPx = it.width.toFloat() }
             .pageTurnGestures(state)
             .drawWithCache { onDrawBehind { with(painter) { drawBook(spreads, state) } } }
     )
 }
-
-// The pages' corners, as a percentage of the book's height (a page plus the room above and
-// below it), so the shadow follows the pages.
-private val BookShape =
-    RoundedCornerShape(
-        CornerSize(
-            PageTurnDimens.CornerFraction * 100f / (1f + 2f * PageTurnDimens.EdgeRoomFraction)
-        )
-    )
-
-// The book resting on a table: three shadows under it, soft to sharp, all falling towards the
-// reader.
-private fun Modifier.bookShadows(color: Color): Modifier =
-    dropShadow(
-            BookShape,
-            Shadow(
-                radius = PageTurnDimens.SoftShadowRadius,
-                color = color,
-                spread = PageTurnDimens.SoftShadowSpread,
-                offset = DpOffset(0.dp, PageTurnDimens.SoftShadowOffset),
-                alpha = PageTurnDimens.SoftShadowAlpha,
-            ),
-        )
-        .dropShadow(
-            BookShape,
-            Shadow(
-                radius = PageTurnDimens.MidShadowRadius,
-                color = color,
-                spread = PageTurnDimens.MidShadowSpread,
-                offset = DpOffset(0.dp, PageTurnDimens.MidShadowOffset),
-                alpha = PageTurnDimens.MidShadowAlpha,
-            ),
-        )
-        .dropShadow(
-            BookShape,
-            Shadow(
-                radius = PageTurnDimens.ContactShadowRadius,
-                color = color,
-                spread = PageTurnDimens.ContactShadowSpread,
-                offset = DpOffset(0.dp, PageTurnDimens.ContactShadowOffset),
-                alpha = PageTurnDimens.ContactShadowAlpha,
-            ),
-        )
 
 /**
  * A tap turns a page; a horizontal drag past the slop takes the page and hands every move to

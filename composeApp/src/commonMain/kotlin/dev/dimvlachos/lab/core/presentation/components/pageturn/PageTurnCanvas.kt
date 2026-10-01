@@ -70,12 +70,11 @@ internal class BookPainter(private val ink: BookInk) {
         val top = page * PageTurnDimens.EdgeRoomFraction
         val pair = state.pair
         val t = state.leafProgress.coerceIn(0f, 1f)
-        val position = if (pair != null) pair.leaf + t else state.spread.toFloat()
-        val (leftShare, rightShare) = stackShares(position, spreads.size)
+        val (leftSheets, rightSheets) = stackSheets(state.spread, pair?.leaf, spreads.size)
         inset(left = side, top = top, right = side, bottom = top) {
             restPages(page)
-            drawSheets(leftOutline, leftShare, outwards = -1f, page)
-            drawSheets(rightOutline, rightShare, outwards = 1f, page)
+            drawSheets(leftOutline, leftSheets, outwards = -1f, page)
+            drawSheets(rightOutline, rightSheets, outwards = 1f, page)
             drawPages(spreads, state, pair, t, page)
         }
     }
@@ -132,28 +131,26 @@ internal class BookPainter(private val ink: BookInk) {
     }
 
     /**
-     * The sheets under a resting page: copies of its outline, each fanned a little further out from
-     * the spine than the one above it, as the paper of an open book spreads. [share] of the most
-     * sheets show; the deeper ones are darker, and each has its edge drawn so they read as layers.
+     * The [sheets] under a resting page: copies of its outline, each fanned a little further out
+     * from the spine than the one above it, as the paper of an open book spreads; the deeper ones
+     * are darker, and each has its edge drawn so they read as layers.
      */
     private fun DrawScope.drawSheets(
         outline: PageOutline,
-        share: Float,
+        sheets: Int,
         outwards: Float,
         page: Float,
     ) {
-        val sheets = (PageTurnDimens.MaxSheets * share).roundToInt().coerceAtLeast(1)
-        val step = page * PageTurnDimens.StackFraction / PageTurnDimens.MaxSheets
+        val step = page * PageTurnDimens.SheetStepFraction
         val corner = PageTurnDimens.CornerFraction * size.height
-        val edge = PageTurnDimens.SheetEdgeWidth.toPx()
         for (k in sheets downTo 1) {
             outline.fannedPath(sheetPath, fan = k * step * outwards, corner = corner, outwards)
             val depth = k.toFloat() / PageTurnDimens.MaxSheets
-            drawPath(sheetPath, lerp(ink.pageEdge, ink.pageEdgeLine, depth * 0.45f))
+            drawPath(sheetPath, lerp(ink.pageEdge, ink.pageEdgeLine, depth * 0.5f))
             drawPath(
                 sheetPath,
-                ink.pageEdgeLine.copy(alpha = 0.55f + 0.3f * depth),
-                style = Stroke(edge),
+                ink.pageEdgeLine.copy(alpha = 0.35f + 0.35f * depth),
+                style = Stroke(PageTurnDimens.SheetEdgePx),
             )
         }
     }

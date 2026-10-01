@@ -212,15 +212,14 @@ class PageTurnMathTest {
     }
 
     @Test
-    fun aTurnMovesPaperFromTheRightStackToTheLeft() {
-        val (firstLeft, firstRight) = stackShares(position = 0f, spreadCount = 4)
-        val (lastLeft, lastRight) = stackShares(position = 3f, spreadCount = 4)
-        assertTrue(firstLeft < firstRight)
-        assertTrue(lastLeft > lastRight)
-        assertNear(PageTurnDimens.StackMinShare, firstLeft)
-        assertNear(1f, lastLeft)
-        val (midLeft, midRight) = stackShares(position = 1.5f, spreadCount = 4)
-        assertNear(midLeft, midRight)
+    fun aTurnMovesOneSheetAcrossAndTheStacksHoldStillWhileItIsUp() {
+        val base = PageTurnDimens.BaseSheets
+        assertEquals(base to base + 3, stackSheets(spread = 0, leaf = null, spreadCount = 4))
+        // Leaf 0 up: the right side is already a sheet thinner, the left not yet thicker.
+        assertEquals(base to base + 2, stackSheets(spread = 0, leaf = 0, spreadCount = 4))
+        assertEquals(base to base + 2, stackSheets(spread = 1, leaf = 0, spreadCount = 4))
+        assertEquals(base + 1 to base + 2, stackSheets(spread = 1, leaf = null, spreadCount = 4))
+        assertEquals(base + 3 to base, stackSheets(spread = 3, leaf = null, spreadCount = 4))
     }
 
     @Test

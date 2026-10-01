@@ -20,7 +20,6 @@ data class AppColors(
     val bookGutter: Color = Color(0xFF2B2014),
     val bookThread: Color = Color(0xFFEFE6D4),
     val bookCrease: Color = Color(0xFF4F412C),
-    val bookShadow: Color = Color(0xFF000000),
     // The paper edges of the sheets under the pages.
     val pageEdge: Color = Color(0xFFEDE3CB),
     val pageEdgeLine: Color = Color(0xFFA8926A),

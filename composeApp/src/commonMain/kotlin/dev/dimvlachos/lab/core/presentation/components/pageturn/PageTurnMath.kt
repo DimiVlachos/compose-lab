@@ -188,14 +188,17 @@ private fun edgeLight(frame: TurnFrame, boundary: Int): Float =
     abs(cos(frame.boundaryAngle(boundary)))
 
 /**
- * How thick the page stacks under the left and right pages are, as fractions of the thickest, with
- * the book open at [position]: a spread index, fractional mid-turn. The first spread has most of
- * the paper on the right; every turn moves a layer across.
+ * How many sheets lie under the left and right pages: the open spread, or with [leaf] up, the pages
+ * either side of it. The book is opened part way, BaseSheets under each side besides the
+ * illustrated leaves. The stacks hold still while a page turns: the right side is a sheet thinner
+ * from the moment its top leaf lifts, and the left a sheet thicker once it lands.
  */
-internal fun stackShares(position: Float, spreadCount: Int): Pair<Float, Float> {
-    val through = if (spreadCount > 1) (position / (spreadCount - 1)).coerceIn(0f, 1f) else 0.5f
-    val min = PageTurnDimens.StackMinShare
-    return (min + (1f - min) * through) to (min + (1f - min) * (1f - through))
+internal fun stackSheets(spread: Int, leaf: Int?, spreadCount: Int): Pair<Int, Int> {
+    val base = PageTurnDimens.BaseSheets
+    val left = base + (leaf ?: spread)
+    val right = base + (spreadCount - 1) - (if (leaf != null) leaf + 1 else spread)
+    return left.coerceAtMost(PageTurnDimens.MaxSheets) to
+        right.coerceAtMost(PageTurnDimens.MaxSheets)
 }
 
 /**
