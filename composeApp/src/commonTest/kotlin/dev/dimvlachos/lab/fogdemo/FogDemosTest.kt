@@ -41,13 +41,11 @@ class FogDemosTest {
         assertEquals(mistAt + controller.mists.single() + script.holdEnd, script.nominalDuration)
     }
 
-    // Plays each version's clip, then runs [check] on what it did.
-    private fun forEachClip(check: (FakeController) -> Unit) = runTest {
-        for (demo in FogDemos.all) {
-            val controller = FakeController { testScheduler.currentTime }
-            demo.script.play(controller)
-            check(controller)
-        }
+    // Plays the clip both versions share, then runs [check] on what it did.
+    private fun playTheClip(check: (FakeController) -> Unit) = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.bathroom.script.play(controller)
+        check(controller)
     }
 
     @Test
@@ -60,13 +58,13 @@ class FogDemosTest {
     }
 
     @Test
-    fun bothClipsShowDropsRunningBeforeTheWipe() = forEachClip { controller ->
+    fun theClipShowsDropsRunningBeforeTheWipe() = playTheClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         val before = controller.calls.filter { it.second.startsWith("drip") && it.first < wipeAt }
         assertTrue(before.size >= 2, "drops before the wipe: ${controller.calls}")
 
         // Every one of them has run and stopped before the finger comes, whatever their sizes.
-        for (seed in 1..30) {
+        for (seed in 1..ClipSeeds) {
             val drips = clipDrips(seed)
             playDrips(drips, controller, until = wipeAt)
             assertTrue(drips.beads.size >= 2, "seed $seed: ${drips.beads}")
@@ -75,7 +73,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun bothClipsFirstDropsStayClearOfTheWipeButOne() = forEachClip { controller ->
+    fun theClipsFirstDropsStayClearOfTheWipeButOne() = playTheClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         val before =
             controller.drips
@@ -101,9 +99,9 @@ class FogDemosTest {
     }
 
     @Test
-    fun bothClipsHandsSmearAwayTheDropInTheirPath() = forEachClip { controller ->
+    fun theClipsHandSmearsAwayTheDropInItsPath() = playTheClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
-        for (seed in 1..30) {
+        for (seed in 1..ClipSeeds) {
             val fog = newFogDemoState()
             val drips = clipDrips(seed, fog)
             playDrips(drips, controller, until = wipeAt)
@@ -111,11 +109,16 @@ class FogDemosTest {
             wipeOnto(fog, controller)
             repeat(30) { drips.advance(1 / 60f) }
             assertEquals(resting - 1, drips.beads.size, "seed $seed: one smeared away")
+            // The one in the hand's path, the only one on its line.
+            assertTrue(
+                drips.beads.none { kotlin.math.abs(it.at.x - InPath) < 0.05f },
+                "seed $seed: ${drips.beads}",
+            )
         }
     }
 
     @Test
-    fun bothClipsRunADropIntoTheWipeWhereItSpreadsAwayBeforeTheEnd() = forEachClip { controller ->
+    fun theClipRunsADropIntoTheWipeWhereItSpreadsAwayBeforeTheEnd() = playTheClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         val mistAt = controller.calls.first { it.second.startsWith("mist") }.first
         val calls = controller.calls.filter { it.second.startsWith("drip") }
@@ -123,7 +126,7 @@ class FogDemosTest {
         assertEquals(1, intoWipe.size, "one drop after the wipe: ${controller.calls}")
         val (drip, call) = intoWipe.single()
 
-        for (seed in 1..30) {
+        for (seed in 1..ClipSeeds) {
             val fog = newFogDemoState()
             wipeOnto(fog, controller)
             val drips = clipDrips(seed, fog)
@@ -141,7 +144,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun bothClipsMistBackOverByThemselvesSoTheLoopNeedsNoReset() = forEachClip { controller ->
+    fun theClipMistsBackOverByItselfSoTheLoopNeedsNoReset() = playTheClip { controller ->
         val calls = controller.calls.map { it.second }
         assertTrue(calls.last().startsWith("mist"), "calls: $calls")
         assertEquals(1, calls.count { it.startsWith("wipe") })
@@ -193,6 +196,12 @@ private fun wipeOnto(fog: FogState, controller: FakeController) {
 
 // The mirror's glass in the clip's 400 × 500 dp frame: the stage the drops run on.
 private val ClipGlass = wallGlassOn(Size(400f, 500f)).let { DpSize(it.width.dp, it.height.dp) }
+
+// Whatever the drops' own randomness: as many runs as a phone might give.
+private const val ClipSeeds = 300
+
+// Where the clip's drop in the hand's path runs down, across the glass.
+private const val InPath = 0.62f
 
 // The biggest drop's radius, in dp.
 private const val MaxDropRadius = 5.5f

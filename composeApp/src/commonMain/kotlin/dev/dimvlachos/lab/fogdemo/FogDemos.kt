@@ -56,11 +56,11 @@ internal object FogDemos {
     // more drop runs into it and spreads away on the wet glass, then the room mists it all back
     // over, to the fogged glass the loop starts from. Both versions play it.
     private val showcaseTour = demoScript {
-        at(0.3.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
-        at(0.8.seconds) { drip(Offset(0.94f, 0.76f), 0.12f) }
-        at(1.2.seconds) { drip(Offset(0.22f, 0.84f), 0.08f) }
+        at(0.2.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
+        at(0.4.seconds) { drip(Offset(0.94f, 0.76f), 0.12f) }
+        at(0.6.seconds) { drip(Offset(0.22f, 0.84f), 0.08f) }
         // One settles where the hand will pass, to be smeared away by it.
-        at(1.6.seconds) { drip(Offset(0.62f, 0.3f), 0.1f) }
+        at(0.8.seconds) { drip(Offset(0.62f, 0.3f), 0.1f) }
         at(WipeAfterDrops) { wipe(porthole.path(), porthole.duration) }
         val scrubbed = WipeAfterDrops + porthole.duration
         at(scrubbed + 0.3.seconds) { drip(Offset(0.35f, 0.1f), 0.2f) }
