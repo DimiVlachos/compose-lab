@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MirrorOnWallTest {
@@ -66,5 +67,27 @@ class MirrorOnWallTest {
             val onScreen = wallGlassOn(Size(height * 0.4f, height.toFloat()))
             assertTrue(onScreen.width > 0f && onScreen.height > 0f, "at $height: $onScreen")
         }
+    }
+
+    @Test
+    fun onAScreenThePhotosShapeNoEdgeOfTheGlassIsCut() {
+        assertEquals(CutEdges(), cutEdges(photo, Size(500f, 1000f), glass, frame))
+    }
+
+    @Test
+    fun onALandscapeScreenTheGlassIsCutTopAndBottomOnly() {
+        // 1000 wide: the photo 2000 tall, the screen shows 300 of it, around the frame's middle.
+        assertEquals(
+            CutEdges(top = true, bottom = true),
+            cutEdges(photo, Size(1000f, 300f), glass, frame),
+        )
+    }
+
+    @Test
+    fun onAVeryNarrowScreenTheGlassIsCutAtTheSidesOnly() {
+        assertEquals(
+            CutEdges(left = true, right = true),
+            cutEdges(photo, Size(300f, 1000f), glass, frame),
+        )
     }
 }
