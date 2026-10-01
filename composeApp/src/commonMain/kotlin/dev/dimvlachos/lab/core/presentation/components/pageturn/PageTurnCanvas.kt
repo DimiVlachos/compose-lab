@@ -114,7 +114,8 @@ internal class BookPainter(private val ink: BookInk) {
         drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
         // The fold at the book's middle, with its binding thread, lies under any leaf in the air;
         // the crease, drawn last, darkens over the thread, so it sits down in the fold.
-        if (stitchesShow(spreads.size / 2, leftTop, rightTop, flying)) drawStitches(spineX)
+        val stitches = stitchesShown(spreads.size / 2, leftTop, rightTop, flights)
+        if (stitches > 0f) drawStitches(spineX, alpha = stitches)
         if (flights.isEmpty()) {
             drawCrease(spineX)
             return
@@ -345,7 +346,7 @@ internal class BookPainter(private val ink: BookInk) {
     // The binding thread down the fold, where it shows inside: between the first two holes and the
     // last two. It lies in a soft shadow of the fold, its twist marked along it, and enters the
     // paper through a small dark hole at each end.
-    private fun DrawScope.drawStitches(spineX: Float) {
+    private fun DrawScope.drawStitches(spineX: Float, alpha: Float) {
         val holes = PageTurnDimens.StitchHoles
         val width = PageTurnDimens.ThreadWidth.toPx()
         val twist = PageTurnDimens.ThreadTwist.toPx()
@@ -353,14 +354,14 @@ internal class BookPainter(private val ink: BookInk) {
             val top = size.height * holes[run]
             val bottom = size.height * holes[run + 1]
             drawLine(
-                ink.shade.copy(alpha = PageTurnDimens.ThreadBedAlpha),
+                ink.shade.copy(alpha = PageTurnDimens.ThreadBedAlpha * alpha),
                 start = Offset(spineX, top),
                 end = Offset(spineX, bottom),
                 strokeWidth = PageTurnDimens.ThreadBedWidth.toPx(),
                 cap = StrokeCap.Round,
             )
             drawLine(
-                ink.thread,
+                ink.thread.copy(alpha = alpha),
                 start = Offset(spineX, top),
                 end = Offset(spineX, bottom),
                 strokeWidth = width,
@@ -368,7 +369,7 @@ internal class BookPainter(private val ink: BookInk) {
             var y = top + twist
             while (y < bottom - twist / 2f) {
                 drawLine(
-                    ink.threadTwist.copy(alpha = PageTurnDimens.ThreadTwistAlpha),
+                    ink.threadTwist.copy(alpha = PageTurnDimens.ThreadTwistAlpha * alpha),
                     start = Offset(spineX - width / 2f, y + twist / 3f),
                     end = Offset(spineX + width / 2f, y - twist / 3f),
                     strokeWidth = 1f,
@@ -377,7 +378,7 @@ internal class BookPainter(private val ink: BookInk) {
             }
             for (hole in floatArrayOf(top, bottom)) {
                 drawCircle(
-                    ink.shade.copy(alpha = PageTurnDimens.StitchHoleAlpha),
+                    ink.shade.copy(alpha = PageTurnDimens.StitchHoleAlpha * alpha),
                     radius = PageTurnDimens.StitchHoleWidth.toPx() / 2f,
                     center = Offset(spineX, hole),
                 )

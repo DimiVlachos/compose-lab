@@ -155,13 +155,35 @@ internal fun stripGlareAlpha(frame: TurnFrame, index: Int): Float {
 }
 
 /**
- * Whether the binding thread of a sewn pamphlet shows: it runs through holes in the fold of the
- * innermost sheet, between the two pages of spread [centre], so it is seen only while the leaf on
- * each side of that fold (leaf centre - 1 on the left, leaf centre on the right) lies on top of its
- * stack, [leftTop] or [rightTop], or is in the air ([flying]) with the fold showing under it.
+ * How much of the binding thread of a sewn pamphlet shows, 0 to 1. It runs through the fold of the
+ * innermost sheet, between the two pages of spread [centre]: leaf centre - 1 on the left of the
+ * fold and leaf centre on the right. Each side leaves the fold open while it lies on top of its
+ * stack ([leftTop], [rightTop]); a leaf of the fold in the air ([flights]) leaves it open only
+ * while it leans away from it, and closes it as it passes upright, its edge sweeping over the
+ * thread.
  */
-internal fun stitchesShow(centre: Int, leftTop: Int, rightTop: Int, flying: Set<Int>): Boolean =
-    (leftTop == centre - 1 || centre - 1 in flying) && (rightTop == centre || centre in flying)
+internal fun stitchesShown(centre: Int, leftTop: Int, rightTop: Int, flights: List<Flight>): Float {
+    fun side(leaf: Int, onTop: Boolean, openWhileLeft: Boolean): Float {
+        val flight = flights.firstOrNull { it.leaf == leaf }
+        return when {
+            flight != null -> {
+                val past =
+                    smoothstep(
+                        ((flight.t - (0.5f - PageTurnDimens.FoldCloseSpan / 2f)) /
+                                PageTurnDimens.FoldCloseSpan)
+                            .coerceIn(0f, 1f)
+                    )
+                if (openWhileLeft) past else 1f - past
+            }
+            onTop -> 1f
+            else -> 0f
+        }
+    }
+    // The left leaf opens the fold once it has gone over to the left; the right one while it is
+    // still on the right.
+    return side(centre - 1, leftTop == centre - 1, openWhileLeft = true) *
+        side(centre, rightTop == centre, openWhileLeft = false)
+}
 
 /** A horizontal drag of [dragPx] as turn progress, on a book [bookWidthPx] wide. */
 internal fun dragToProgress(dragPx: Float, bookWidthPx: Float): Float =
