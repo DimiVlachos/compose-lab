@@ -10,9 +10,13 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -63,6 +67,10 @@ internal class BookPainter(private val ink: BookInk) {
     private val edgeClip = Path()
     private val sheetPath = Path()
     private val wedgePath = Path()
+    private val edgeWedgePath = Path()
+    private val imagePath = Path()
+    private val imageMatrix = Matrix()
+    private val pageMatrix = Matrix()
     private val pagePath = Path()
     private val paper = paperPage(ink.pageEdge)
 
@@ -353,6 +361,26 @@ internal class BookPainter(private val ink: BookInk) {
             if (corners[i] >= width - geometry.corner.x) reachesEdge = true
         }
         wedgePath.close()
+        // Out at the page's edge, its corners are rounded.
+        val shape =
+            if (!reachesEdge) wedgePath
+            else {
+                pagePath.rewind()
+                pagePath.addRoundRect(
+                    RoundRect(
+                        left = 0f,
+                        top = 0f,
+                        right = width,
+                        bottom = height,
+                        topLeftCornerRadius = CornerRadius.Zero,
+                        topRightCornerRadius = geometry.corner,
+                        bottomRightCornerRadius = geometry.corner,
+                        bottomLeftCornerRadius = CornerRadius.Zero,
+                    )
+                )
+                edgeWedgePath.op(wedgePath, pagePath, PathOperation.Intersect)
+                edgeWedgePath
+            }
         // Shade runs across the wedge, square to its first ruling, from it to the next.
         val middle = height / 2f
         val start = Offset(frame.rulingX(index, middle), middle)
@@ -360,50 +388,45 @@ internal class BookPainter(private val ink: BookInk) {
         val length = sqrt(leanX * leanX + height * height)
         val across = Offset(height / length, -leanX / length)
         val span = (frame.rulingX(index + 1, middle) - start.x) * across.x
+        // The wedge is filled with its page, not cut out of it: one path, painted with the image
+        // laid over the page, its front's right half or its back's left half seen from behind.
+        val half = image.width / 2f
+        val sx = half / width
+        imageMatrix.reset()
+        imageMatrix[0, 0] = if (facing) sx else -sx
+        imageMatrix[1, 1] = image.height / height
+        imageMatrix[3, 0] = half
+        imagePath.rewind()
+        imagePath.addPath(shape)
+        imagePath.transform(imageMatrix)
+        pageMatrix.reset()
+        pageMatrix[0, 0] = if (facing) 1f / sx else -1f / sx
+        pageMatrix[1, 1] = height / image.height
+        pageMatrix[3, 0] = if (facing) -width else width
         frame.matrix(index, geometry, matrix)
+        withTransform({
+            transform(matrix)
+            transform(pageMatrix)
+        }) {
+            drawPath(imagePath, imageBrush(image))
+        }
         withTransform({ transform(matrix) }) {
-            val draw: DrawScope.() -> Unit = {
-                val half = image.width / 2
-                withTransform({
-                    if (!facing) scale(-1f, 1f, pivot = Offset(width / 2f, 0f))
-                    scale(width / half, height / image.height, pivot = Offset.Zero)
-                }) {
-                    drawImage(
-                        image,
-                        srcOffset = IntOffset(if (facing) half else 0, 0),
-                        srcSize = IntSize(half, image.height),
-                        dstSize = IntSize(half, image.height),
-                        filterQuality = FilterQuality.Medium,
-                    )
-                }
-                drawLight(
-                    frame,
-                    index,
-                    from = start,
-                    to = start + across * span,
-                    area = Rect(0f, 0f, width, height),
-                )
-            }
-            clipPath(wedgePath) {
-                if (reachesEdge) {
-                    pagePath.rewind()
-                    pagePath.addRoundRect(
-                        RoundRect(
-                            left = 0f,
-                            top = 0f,
-                            right = width,
-                            bottom = height,
-                            topLeftCornerRadius = CornerRadius.Zero,
-                            topRightCornerRadius = geometry.corner,
-                            bottomRightCornerRadius = geometry.corner,
-                            bottomLeftCornerRadius = CornerRadius.Zero,
-                        )
-                    )
-                    clipPath(pagePath, block = draw)
-                } else draw()
-            }
+            drawLight(
+                frame,
+                index,
+                from = start,
+                to = start + across * span,
+                area = Rect(0f, 0f, width, height),
+                shape = shape,
+            )
         }
     }
+
+    // One brush per page image, painting it in its own pixels.
+    private val imageBrushes = HashMap<ImageBitmap, Brush>()
+
+    private fun imageBrush(image: ImageBitmap): Brush =
+        imageBrushes.getOrPut(image) { ShaderBrush(ImageShader(image)) }
 
     /**
      * The light on a strip or wedge [index] over [area], varying from [from] to [to] across it: the
@@ -416,37 +439,40 @@ internal class BookPainter(private val ink: BookInk) {
         from: Offset,
         to: Offset,
         area: Rect,
+        shape: Path? = null,
     ) {
         val (shadeFrom, shadeTo) = stripShadeAlphas(frame, index)
-        drawRect(
+        fill(
             Brush.linearGradient(
                 listOf(ink.shade.copy(alpha = shadeFrom), ink.shade.copy(alpha = shadeTo)),
                 start = from,
                 end = to,
             ),
-            topLeft = area.topLeft,
-            size = area.size,
+            area,
+            shape,
         )
         // The rest shade follows its curve across the strip in several stops: one straight
         // ramp per strip kinks at every edge, and the eye finds the kinks on a clear sky.
-        val u0 = index.toFloat() / PageTurnDimens.Strips
-        val du = 1f / PageTurnDimens.Strips
+        val u0 = frame.rulingU(index)
+        val du = frame.rulingU(index + 1) - u0
         if (gutterRestShade(u0, frame.lift) > 0f || gutterRestShade(u0 + du, frame.lift) > 0f) {
             val stops =
                 Array(RestShadeStops) { k ->
                     val f = k.toFloat() / (RestShadeStops - 1)
                     f to ink.gutter.copy(alpha = gutterRestShade(u0 + f * du, frame.lift))
                 }
-            drawRect(
-                Brush.linearGradient(*stops, start = from, end = to),
-                topLeft = area.topLeft,
-                size = area.size,
-            )
+            fill(Brush.linearGradient(*stops, start = from, end = to), area, shape)
         }
         val glare = stripGlareAlpha(frame, index)
         if (glare > 0f) {
-            drawRect(ink.glare.copy(alpha = glare), topLeft = area.topLeft, size = area.size)
+            fill(SolidColor(ink.glare.copy(alpha = glare)), area, shape)
         }
+    }
+
+    // Paints [brush] over [shape], or the whole [area] when there is none.
+    private fun DrawScope.fill(brush: Brush, area: Rect, shape: Path?) {
+        if (shape != null) drawPath(shape, brush)
+        else drawRect(brush, topLeft = area.topLeft, size = area.size)
     }
 
     // The pages darken towards the spine while a leaf stands over them.

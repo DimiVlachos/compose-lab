@@ -8,6 +8,9 @@ internal object PageTurnDimens {
     // bow, more buys nothing a phone can see.
     const val Strips = 18
 
+    // A leaf leaning to peel a corner takes more wedges to reach it, up to this many.
+    const val MaxWedges = 26
+
     // The bow at mid-turn, in radians shared across the whole chain: sin(pi t) puts it at its
     // deepest half way and lets the leaf land flat at both ends.
     const val BendMax = 0.6f
