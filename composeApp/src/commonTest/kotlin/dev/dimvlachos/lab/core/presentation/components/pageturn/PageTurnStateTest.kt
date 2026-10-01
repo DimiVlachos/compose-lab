@@ -202,10 +202,83 @@ class PageTurnStateTest {
         }
         val next = assertIs<TurnPhase.Dragging>(state.phase)
         assertEquals(TurnPair(forward = true, from = 1, to = 2), next.pair)
-        assertEquals(1, state.spread, "the first page landed as the second was taken")
+        assertEquals(1, state.spread, "the spread moves on as the second page is taken")
+        // The first page is not snapped down: it is still in the air, landing by itself.
+        val landing = state.flights.first { it.leaf == 0 }
+        assertTrue(landing.t in 0.2f..0.99f, "first page at ${landing.t}")
+        // The new leaf follows the finger straight away: 100 px of a 620 px turn.
+        assertEquals(100f / 620f, state.leafProgress, 0.01f)
+        repeat(3) {
+            act { state.dragBy(-60f) }
+            assertEquals((100f + 60f * (it + 1)) / 620f, state.leafProgress, 0.01f)
+        }
         act { state.dragEnd(velocityPxPerSecond = -1_500f) }
         settle()
         assertEquals(2, state.spread)
+    }
+
+    @Test
+    fun aPageLeftToLandKeepsFallingAndLandsOnItsOwn() = runComposeUiTest {
+        val state = book()
+        act { state.next() }
+        act { state.next() } // the first is still landing
+        val first = state.flights.first { it.leaf == 0 }.t
+        mainClock.advanceTimeBy(48)
+        val later = state.flights.firstOrNull { it.leaf == 0 }?.t ?: 1f
+        assertTrue(later > first, "the first page goes on falling: $first then $later")
+        assertEquals(2, state.flights.size, "two leaves in the air")
+        settle()
+        assertEquals(2, state.spread)
+        assertTrue(state.flights.isEmpty())
+        assertFalse(state.isTurning)
+    }
+
+    @Test
+    fun aSwipeBackCatchesTheLeafStillComingDown() = runComposeUiTest {
+        val state = book()
+        act { state.next() }
+        act { state.next() } // leaf 0 is left to land, leaf 1 is in hand
+        settle()
+        act { state.next() }
+        act { state.next() } // leaf 2 left to land, leaf 3 in hand, spread at 3
+        settle()
+        assertEquals(4 - 1, state.spread)
+        // Leaf 2 lands; then, while it is still falling, swipe back onto it.
+        act { state.previous() }
+        assertEquals(TurnPair(forward = false, from = 3, to = 2), state.pair)
+        settle()
+        assertEquals(2, state.spread)
+    }
+
+    @Test
+    fun quickSwipesThereAndBackComeHomeOnePageEach() = runComposeUiTest {
+        val state = book(spreads = 12, initialSpread = 3)
+        fun swipe(forward: Boolean) {
+            val sign = if (forward) -1f else 1f
+            act(ms = 48) {
+                state.dragStart(dx = sign * 10f)
+                state.dragBy(sign * 140f)
+            }
+            act(ms = 80) { state.dragEnd(velocityPxPerSecond = sign * 3_000f) }
+        }
+        repeat(5) { swipe(forward = true) }
+        repeat(5) { swipe(forward = false) }
+        settle()
+        assertEquals(3, state.spread)
+        assertFalse(state.isTurning)
+    }
+
+    @Test
+    fun aDragFollowsEveryMoveOfAQuickFinger() = runComposeUiTest {
+        val state = book()
+        // Moves land back to back, faster than frames: each one still shows.
+        runOnUiThread {
+            state.dragStart(dx = -10f)
+            state.dragBy(-62f)
+            state.dragBy(-62f)
+            state.dragBy(-62f)
+            assertEquals(0.3f, state.leafProgress, 0.001f)
+        }
     }
 
     @Test

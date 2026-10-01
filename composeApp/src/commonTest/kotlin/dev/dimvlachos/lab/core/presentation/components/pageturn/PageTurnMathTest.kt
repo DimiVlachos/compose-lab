@@ -146,6 +146,18 @@ class PageTurnMathTest {
     }
 
     @Test
+    fun aFlickDecidesByItsDirectionWhereverThePageIs() {
+        // Flicked back hard past half way: it falls back, it does not finish against the hand.
+        assertFalse(shouldCommit(progress = 0.43f, velocity = -6.7f))
+        assertFalse(shouldCommit(progress = 0.9f, velocity = -2f))
+        // Flicked on before half way: it finishes.
+        assertTrue(shouldCommit(progress = 0.1f, velocity = 2f))
+        // A slow release goes by where the page is.
+        assertTrue(shouldCommit(progress = 0.6f, velocity = -0.5f))
+        assertFalse(shouldCommit(progress = 0.3f, velocity = 0.5f))
+    }
+
+    @Test
     fun aPageFinishesPastTheThresholdOrOnAFlick() {
         assertFalse(shouldCommit(progress = 0.3f, velocity = 0.2f))
         assertTrue(shouldCommit(progress = 0.5f, velocity = 0f))
