@@ -17,6 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
@@ -137,6 +138,25 @@ class FogDemosTest {
             }
             assertTrue(!drips.moving, "seed $seed: a drop still running at the breath")
         }
+    }
+
+    @Test
+    fun theBathroomClipsLengthCountsItsMistToTheEnd() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        val script = FogDemos.bathroom.script
+        script.play(controller)
+        val mistAt = controller.calls.first { it.second.startsWith("mist") }.first.milliseconds
+        assertEquals(mistAt + controller.mists.single() + script.holdEnd, script.nominalDuration)
+    }
+
+    @Test
+    fun theCameraClipsLengthCountsItsBreathToTheEnd() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        val script = FogDemos.reflection.script
+        script.play(controller)
+        val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first.milliseconds
+        val (breath, _) = controller.breaths.single()
+        assertEquals(breathAt + breath + script.holdEnd, script.nominalDuration)
     }
 
     @Test

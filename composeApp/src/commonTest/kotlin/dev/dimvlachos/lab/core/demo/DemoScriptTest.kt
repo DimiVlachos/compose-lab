@@ -52,4 +52,14 @@ class DemoScriptTest {
             }
         assertEquals(2_000.milliseconds, script.nominalDuration)
     }
+
+    @Test
+    fun aStepThatLastsCountsToTheEndOfIt() {
+        val script =
+            demoScript(holdStart = 600.milliseconds, holdEnd = 600.milliseconds) {
+                at(800.milliseconds, lasts = 1_000.milliseconds) { select(1) }
+                at(1_200.milliseconds) { select(0) }
+            }
+        assertEquals(3_000.milliseconds, script.nominalDuration)
+    }
 }
