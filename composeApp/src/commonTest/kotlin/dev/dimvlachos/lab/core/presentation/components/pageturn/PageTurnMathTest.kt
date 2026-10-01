@@ -138,6 +138,28 @@ class PageTurnMathTest {
     }
 
     @Test
+    fun aCurledLeafCanReachBackOverTheSpineWhileItsSpineStripStillShowsItsFront() {
+        // Pulled back past half way, bowed the other way: the strip at the spine has swung round
+        // to show its front, but the rest of the leaf still arches over to the left.
+        val curled = turnFrame(t = 0.55f, leafWidth = leafWidth, bendDirection = -1f, restLift = 0f)
+        assertTrue(stripFacesReader(curled.poses.first()))
+        assertTrue(reachesAcrossSpine(curled, rightOfFold = true))
+        // Lying on its own side, or turning without curling back: it stays there.
+        assertFalse(
+            reachesAcrossSpine(turnFrame(t = 0f, leafWidth = leafWidth), rightOfFold = true)
+        )
+        assertFalse(
+            reachesAcrossSpine(turnFrame(t = 1f, leafWidth = leafWidth), rightOfFold = false)
+        )
+        assertFalse(
+            reachesAcrossSpine(
+                turnFrame(t = 0.3f, leafWidth = leafWidth, restLift = 0f),
+                rightOfFold = true,
+            )
+        )
+    }
+
+    @Test
     fun theStitchesShowOnlyWhereTheCentreFoldIsOpen() {
         val centre = 4
         // A fold leaf in the air, by the angle of its strip at the spine.
