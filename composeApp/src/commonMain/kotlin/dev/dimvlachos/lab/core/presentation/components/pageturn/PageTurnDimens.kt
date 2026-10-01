@@ -56,12 +56,13 @@ internal object PageTurnDimens {
 
     // The sheets under each page: the book is opened part way, with BaseSheets under each side
     // besides the illustrated leaves, and each sheet down reaches SheetStepFraction of a page
-    // further out than the one above it, its edge a hairline. No more than MaxSheets show.
-    const val BaseSheets = 16
-    const val MaxSheets = 22
-    const val SheetStepFraction = 0.0022f
+    // further out than the one above it, far enough to tell apart, its edge drawn. No more than
+    // MaxSheets show.
+    const val BaseSheets = 8
+    const val MaxSheets = 12
+    const val SheetStepFraction = 0.0042f
     const val StackFraction = SheetStepFraction * MaxSheets
-    const val SheetEdgePx = 1f
+    val SheetEdgeWidth = 1.dp
 
     // Room left round the pages, as a share of a page's width: the arch lifts their edges a little
     // past the flat page.

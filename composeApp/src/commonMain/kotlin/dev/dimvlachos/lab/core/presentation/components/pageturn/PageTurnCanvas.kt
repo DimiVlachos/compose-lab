@@ -149,8 +149,8 @@ internal class BookPainter(private val ink: BookInk) {
             drawPath(sheetPath, lerp(ink.pageEdge, ink.pageEdgeLine, depth * 0.5f))
             drawPath(
                 sheetPath,
-                ink.pageEdgeLine.copy(alpha = 0.35f + 0.35f * depth),
-                style = Stroke(PageTurnDimens.SheetEdgePx),
+                ink.pageEdgeLine.copy(alpha = 0.55f + 0.35f * depth),
+                style = Stroke(PageTurnDimens.SheetEdgeWidth.toPx()),
             )
         }
     }
