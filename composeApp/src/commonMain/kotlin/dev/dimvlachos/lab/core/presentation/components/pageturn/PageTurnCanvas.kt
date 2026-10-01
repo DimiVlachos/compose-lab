@@ -114,9 +114,14 @@ internal class BookPainter(private val ink: BookInk) {
         drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
         // The fold at the book's middle, with its binding thread, lies under any leaf in the air;
         // the crease, drawn last, darkens over the thread, so it sits down in the fold.
-        val stitches = stitchesShown(spreads.size / 2, leftTop, rightTop, flights)
-        if (stitches > 0f) drawStitches(spineX, alpha = stitches)
+        // The binding thread lies on the inner faces of the centre fold's two leaves: over them,
+        // whether they rest or are in the air, and under any other leaf. Drawn over a fold leaf all
+        // through its turn, nothing changes the moment it lands.
+        val centre = spreads.size / 2
+        val stitches = stitchesShown(centre, leftTop, rightTop, flights)
+        val foldLeaves = setOf(centre - 1, centre)
         if (flights.isEmpty()) {
+            if (stitches > 0f) drawStitches(spineX, alpha = stitches)
             drawCrease(spineX)
             return
         }
@@ -126,11 +131,15 @@ internal class BookPainter(private val ink: BookInk) {
         drawGutterShades(spineX, page, frames.maxOf { (_, frame) -> frame.lift * frame.lift })
         // Leaves in the air keep the order they have in the book: nearer the left, a later leaf
         // lies over an earlier one; nearer the right, an earlier one over a later.
-        frames
-            .sortedBy { (flight, _) -> if (flight.t >= 0.5f) flight.leaf else -flight.leaf }
-            .forEach { (flight, frame) ->
-                drawLeaf(geometry, frame, front = image(flight.leaf), back = image(flight.leaf + 1))
-            }
+        val ordered = frames.sortedBy { (flight, _) ->
+            if (flight.t >= 0.5f) flight.leaf else -flight.leaf
+        }
+        val lastFoldLeaf = ordered.indexOfLast { (flight, _) -> flight.leaf in foldLeaves }
+        if (stitches > 0f && lastFoldLeaf < 0) drawStitches(spineX, alpha = stitches)
+        ordered.forEachIndexed { index, (flight, frame) ->
+            drawLeaf(geometry, frame, front = image(flight.leaf), back = image(flight.leaf + 1))
+            if (stitches > 0f && index == lastFoldLeaf) drawStitches(spineX, alpha = stitches)
+        }
         drawCrease(spineX)
     }
 
