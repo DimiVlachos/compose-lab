@@ -118,15 +118,21 @@ internal class BookPainter(private val ink: BookInk) {
         // whether they rest or are in the air, and under any other leaf. Drawn over a fold leaf all
         // through its turn, nothing changes the moment it lands.
         val centre = spreads.size / 2
-        val stitches = stitchesShown(centre, leftTop, rightTop, flights)
         val foldLeaves = setOf(centre - 1, centre)
+        val frames = flights.map {
+            it to turnFrame(it.t, leafWidth = page, bendDirection = it.bend)
+        }
+        val spineAngles =
+            frames
+                .filter { (flight, _) -> flight.leaf in foldLeaves }
+                .associate { (flight, frame) -> flight.leaf to frame.boundaryAngle(0) }
+        // Above zero only while every fold leaf in the air shows its inner face at the spine, so
+        // drawing the thread over them is always right.
+        val stitches = stitchesShown(centre, leftTop, rightTop, spineAngles)
         if (flights.isEmpty()) {
             if (stitches > 0f) drawStitches(spineX, alpha = stitches)
             drawCrease(spineX)
             return
-        }
-        val frames = flights.map {
-            it to turnFrame(it.t, leafWidth = page, bendDirection = it.bend)
         }
         drawGutterShades(spineX, page, frames.maxOf { (_, frame) -> frame.lift * frame.lift })
         // Leaves in the air keep the order they have in the book: nearer the left, a later leaf
