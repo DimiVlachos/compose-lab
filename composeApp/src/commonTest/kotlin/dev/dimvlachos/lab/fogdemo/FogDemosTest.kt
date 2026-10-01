@@ -186,7 +186,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipsFirstDropsStayClearOfTheWipe() = runTest {
+    fun theBathroomClipsFirstDropsStayClearOfTheWipeButOne() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.bathroom.script.play(controller)
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
@@ -199,14 +199,33 @@ class FogDemosTest {
             Offset(point.x * ClipGlass.width.value, point.y * ClipGlass.height.value)
         val scrub = FogDemos.porthole.path().map(::dp)
         val clearance = FogDemos.FingerBrush.value + MaxDropRadius
-        for ((at, length) in before) {
-            var y = at.y
-            while (y <= at.y + length) {
-                val point = dp(Offset(at.x, y))
-                val nearest = scrub.zipWithNext().minOf { (a, b) -> distanceToSegment(point, a, b) }
-                assertTrue(nearest > clearance, "a drip at $point comes $nearest dp from the scrub")
-                y += 0.005f
-            }
+        // How near each drop's run comes to the hand's path.
+        val nearest = before.map { (at, length) ->
+            generateSequence(at.y) { it + 0.005f }
+                .takeWhile { it <= at.y + length }
+                .minOf { y ->
+                    val point = dp(Offset(at.x, y))
+                    scrub.zipWithNext().minOf { (a, b) -> distanceToSegment(point, a, b) }
+                }
+        }
+        // All but one stay to watch; that one sits where the hand will pass, deep in its path.
+        assertEquals(1, nearest.count { it <= clearance }, "in the hand's path: $nearest")
+        assertTrue(nearest.min() < FogDemos.FingerBrush.value / 2, "deep in it: $nearest")
+    }
+
+    @Test
+    fun theBathroomClipsHandSmearsAwayTheDropInItsPath() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.bathroom.script.play(controller)
+        val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
+        for (seed in 1..30) {
+            val fog = newFogDemoState()
+            val drips = clipDrips(seed, fog)
+            playDrips(drips, controller, until = wipeAt)
+            val resting = drips.beads.count { it.alpha > 0.9f }
+            wipeOnto(fog, controller)
+            repeat(30) { drips.advance(1 / 60f) }
+            assertEquals(resting - 1, drips.beads.size, "seed $seed: one smeared away")
         }
     }
 
