@@ -54,13 +54,14 @@ internal object PageTurnDimens {
     const val EdgeRestAlpha = 0.12f
     const val EdgeRestSpan = 0.16f
 
-    // The sheets under each page fan out past its outer edge, up to MaxSheets of them across this
-    // share of a page's width; the side with least paper still shows this share of them. Each
-    // sheet's edge is drawn this wide.
-    const val StackFraction = 0.04f
-    const val StackMinShare = 0.3f
-    const val MaxSheets = 9
-    val SheetEdgeWidth = 1.dp
+    // The sheets under each page: the book is opened part way, with BaseSheets under each side
+    // besides the illustrated leaves, and each sheet down reaches SheetStepFraction of a page
+    // further out than the one above it, its edge a hairline. No more than MaxSheets show.
+    const val BaseSheets = 16
+    const val MaxSheets = 22
+    const val SheetStepFraction = 0.0022f
+    const val StackFraction = SheetStepFraction * MaxSheets
+    const val SheetEdgePx = 1f
 
     // Room left round the pages, as a share of a page's width: the arch lifts their edges a little
     // past the flat page.
@@ -91,22 +92,6 @@ internal object PageTurnDimens {
     val StitchUnderWidth = 3.2.dp
     val StitchUnderExtra = 3.dp
     const val StitchShadowAlpha = 0.25f
-
-    // The book resting on a table: a wide soft shadow falling towards the reader, a closer one and
-    // a thin dark line where the pages meet the table. Each shrinks under the book (negative
-    // spread) so it shows below it, not around it.
-    val SoftShadowRadius = 28.dp
-    val SoftShadowSpread = (-10).dp
-    val SoftShadowOffset = 16.dp
-    const val SoftShadowAlpha = 0.3f
-    val MidShadowRadius = 10.dp
-    val MidShadowSpread = (-4).dp
-    val MidShadowOffset = 6.dp
-    const val MidShadowAlpha = 0.32f
-    val ContactShadowRadius = 3.dp
-    val ContactShadowSpread = (-1).dp
-    val ContactShadowOffset = 2.dp
-    const val ContactShadowAlpha = 0.35f
 
     // The stitches sit on the pages, under a turning leaf; they fade from under it to over it over
     // the first and last stretch of the turn, so the leaf never pops in front of them.
