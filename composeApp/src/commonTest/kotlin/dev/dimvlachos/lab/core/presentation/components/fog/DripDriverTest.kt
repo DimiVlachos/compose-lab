@@ -283,6 +283,89 @@ class DripDriverTest {
         assertTrue(trail <= edge + 0.01f, "no trail cut on the clear glass: $trail")
     }
 
+    // A drop running down into a wide wiped band below it, run until [until] holds.
+    private fun intoABand(until: (Bead) -> Boolean): Pair<FogState, DripDriver> {
+        val fog = FogState()
+        fog.beginStroke(Offset(0f, 0.45f), radius = 40.dp).also {
+            fog.extendStroke(it, Offset(1f, 0.45f))
+        }
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.5f)
+        var time = 0f
+        while (drips.beads.singleOrNull()?.let(until) != true) {
+            drips.advance(step)
+            time += step
+            check(time < 10f) { "never got there: ${drips.beads}" }
+        }
+        return fog to drips
+    }
+
+    // Blending: past what a slide alone spreads it.
+    private val blending: (Bead) -> Boolean = { it.spread > 0.5f && it.alpha > 0.5f }
+
+    // Sliding: begun spreading, not yet far.
+    private val sliding: (Bead) -> Boolean = { it.spread > 0.02f && it.spread < 0.3f }
+
+    @Test
+    fun aDropBlendingIntoAWipeIsFoggedOverByAFullBreath() {
+        val (fog, drips) = intoABand(blending)
+        fog.setBreathLevel(fog.beginBreath(), 1f)
+        drips.advance(step)
+        assertTrue(drips.beads.none { it.alpha > 0.01f }, "on the fresh fog: ${drips.beads}")
+    }
+
+    @Test
+    fun aDropBlendingIntoAWipeFadesUnderAMist() {
+        val (fog, drips) = intoABand(blending)
+        val before = drips.beads.single().alpha
+        fog.setMistAmount(fog.beginMist(), 0.5f)
+        drips.advance(step)
+        val after = drips.beads.single().alpha
+        assertTrue(after < before * 0.6f, "half misted over: $after after $before")
+    }
+
+    @Test
+    fun aDropBlendingIntoAWipeThatIsWipedAgainSmearsAway() {
+        val (fog, drips) = intoABand(blending)
+        val bead = drips.beads.single()
+        fog.beginStroke(bead.at + Offset(-0.1f, 0f)).also {
+            fog.extendStroke(it, bead.at + Offset(0.1f, 0f))
+        }
+        drips.run(0.08f)
+        val smearing = drips.beads.single().alpha
+        assertTrue(smearing < bead.alpha * 0.8f, "smearing: $smearing after ${bead.alpha}")
+        drips.run(0.3f)
+        assertTrue(drips.beads.isEmpty(), "gone: ${drips.beads}")
+    }
+
+    @Test
+    fun aDropWipedAsItSlidesSmearsAwayWithoutAPop() {
+        val (fog, drips) = intoABand(sliding)
+        val bead = drips.beads.single()
+        fog.beginStroke(bead.at + Offset(-0.1f, 0f)).also {
+            fog.extendStroke(it, bead.at + Offset(0.1f, 0f))
+        }
+        var last = bead.alpha
+        drips.run(0.4f) {
+            val alpha = drips.beads.singleOrNull()?.alpha ?: 0f
+            assertTrue(last - alpha < 0.2f, "no pop: $last to $alpha")
+            last = alpha
+        }
+        assertTrue(drips.beads.isEmpty(), "gone: ${drips.beads}")
+    }
+
+    @Test
+    fun aDropRunningOntoTheEndOfAShortWipeBlendsInRatherThanSmearing() {
+        val fog = FogState()
+        // One dab of a finger, below where the drop starts.
+        fog.beginStroke(Offset(0.5f, 0.45f), radius = 40.dp)
+        val drips = driver(fog)
+        drips.drip(Offset(0.5f, 0.2f), 0.5f)
+        var spread = 0f
+        drips.run(10f) { spread = maxOf(spread, drips.beads.singleOrNull()?.spread ?: 0f) }
+        assertTrue(spread > 0.9f, "spread right out: $spread")
+    }
+
     @Test
     fun aDropStillGrowingWhenWipedIsGone() {
         val fog = FogState()
@@ -515,7 +598,8 @@ class DripDriverTest {
         drips.run(0.08f)
         val smearing = drips.beads.single()
         assertTrue(smearing.alpha in 0.1f..0.9f, "smearing: ${smearing.alpha}")
-        assertTrue(smearing.radius <= runningRadius, "not swelling as it would at an edge")
+        assertTrue(smearing.radius <= runningRadius, "not swelling")
+        assertEquals(0f, smearing.spread, "not spreading as it would into a wipe")
         drips.run(0.3f)
         assertTrue(drips.beads.isEmpty(), "gone: ${drips.beads}")
     }
