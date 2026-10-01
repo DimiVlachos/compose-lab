@@ -140,11 +140,24 @@ internal class BookPainter(private val ink: BookInk) {
         val ordered = frames.sortedBy { (flight, _) ->
             if (flight.t >= 0.5f) flight.leaf else -flight.leaf
         }
+        // Over the fold's leaves, unless one curls back across the spine: then that paper lies
+        // between the reader and the thread, and the thread goes under it.
+        val firstFoldLeaf = ordered.indexOfFirst { (flight, _) -> flight.leaf in foldLeaves }
         val lastFoldLeaf = ordered.indexOfLast { (flight, _) -> flight.leaf in foldLeaves }
-        if (stitches > 0f && lastFoldLeaf < 0) drawStitches(spineX, alpha = stitches)
+        val overhung = ordered.any { (flight, frame) ->
+            flight.leaf in foldLeaves &&
+                reachesAcrossSpine(frame, rightOfFold = flight.leaf == centre)
+        }
+        val stitchesAt =
+            when {
+                firstFoldLeaf < 0 -> -1
+                overhung -> firstFoldLeaf - 1
+                else -> lastFoldLeaf
+            }
+        if (stitches > 0f && stitchesAt < 0) drawStitches(spineX, alpha = stitches)
         ordered.forEachIndexed { index, (flight, frame) ->
             drawLeaf(geometry, frame, front = image(flight.leaf), back = image(flight.leaf + 1))
-            if (stitches > 0f && index == lastFoldLeaf) drawStitches(spineX, alpha = stitches)
+            if (stitches > 0f && index == stitchesAt) drawStitches(spineX, alpha = stitches)
         }
         drawCrease(spineX)
     }

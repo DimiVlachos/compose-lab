@@ -155,6 +155,18 @@ internal fun stripGlareAlpha(frame: TurnFrame, index: Int): Float {
 }
 
 /**
+ * Whether a leaf, as [frame] lays it, reaches across the spine to the other side: a leaf hinged on
+ * the right of the fold ([rightOfFold]) that curls back over to the left, or the mirror. Seen from
+ * above, such a leaf lies over the fold and anything in it.
+ */
+internal fun reachesAcrossSpine(frame: TurnFrame, rightOfFold: Boolean): Boolean {
+    val last = frame.poses.last()
+    val edges = frame.poses.map { it.hingeX } + (last.hingeX + frame.stripWidth * cos(last.angle))
+    val tolerance = frame.stripWidth * 0.01f
+    return if (rightOfFold) edges.any { it < -tolerance } else edges.any { it > tolerance }
+}
+
+/**
  * How much of the binding thread of a sewn pamphlet shows, 0 to 1. It runs through the fold of the
  * innermost sheet, between the two pages of spread [centre]: leaf centre - 1 on the left of the
  * fold and leaf centre on the right, the thread lying on their inner faces. Each side leaves the
