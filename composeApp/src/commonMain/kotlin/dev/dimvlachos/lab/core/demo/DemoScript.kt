@@ -11,7 +11,7 @@ class DemoScript(
     val steps: List<DemoStep>,
 ) {
     val nominalDuration: Duration
-        get() = holdStart + (steps.maxOfOrNull { it.at } ?: Duration.ZERO) + holdEnd
+        get() = holdStart + (steps.maxOfOrNull { it.at + it.lasts } ?: Duration.ZERO) + holdEnd
 
     suspend fun play(controller: DemoController) {
         delay(holdStart)

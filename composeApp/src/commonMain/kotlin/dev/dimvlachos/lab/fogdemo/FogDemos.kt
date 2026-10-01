@@ -60,7 +60,7 @@ internal object FogDemos {
         val scrubbed = start + porthole.duration
         at(scrubbed + 0.1.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
         at(scrubbed + 0.6.seconds) { drip(Offset(0.94f, 0.76f), 0.14f) }
-        at(scrubbed + LookThrough) { breathe(2.4.seconds, strength = 1f) }
+        at(scrubbed + LookThrough, lasts = ClosingBreath) { breathe(ClosingBreath, strength = 1f) }
     }
 
     // The steamy bathroom, left to itself: drops of condensation gather and run down around the
@@ -74,7 +74,7 @@ internal object FogDemos {
         at(WipeAfterDrops) { wipe(porthole.path(), porthole.duration) }
         val scrubbed = WipeAfterDrops + porthole.duration
         at(scrubbed + 0.3.seconds) { drip(Offset(0.35f, 0.1f), 0.2f) }
-        at(scrubbed + SpreadAway) { mist(MistOver) }
+        at(scrubbed + SpreadAway, lasts = MistOver) { mist(MistOver) }
     }
 
     // On the phone the glass is the user's to wipe; Replay plays the clip.
@@ -99,6 +99,9 @@ private val SpreadAway = 7.5.seconds
 
 // Long enough to watch the first drops run before the hand comes.
 private val WipeAfterDrops = 5.seconds
+
+// The camera clip's closing breath.
+private val ClosingBreath = 2.4.seconds
 
 // The room's mist, quickened for the clip: on the phone it takes about 25 s.
 private val MistOver = 5.seconds
