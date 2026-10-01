@@ -18,9 +18,11 @@ data class AppColors(
     val pageShade: Color = Color(0xFF2E2416),
     val pageGlare: Color = Color(0xFFFFF8EC),
     val bookGutter: Color = Color(0xFF2B2014),
-    val bookThread: Color = Color(0xFFEFE6D4),
     val bookCrease: Color = Color(0xFF4F412C),
     // The paper edges of the sheets under the pages.
+    // The staples through the centre fold: steel, catching the light along the wire.
+    val staple: Color = Color(0xFF9BA1A8),
+    val stapleLit: Color = Color(0xFFE9ECEF),
     val pageEdge: Color = Color(0xFFEDE3CB),
     val pageEdgeLine: Color = Color(0xFFA8926A),
     // The table the book demo lies on, lit from above its centre, and the scripted finger.

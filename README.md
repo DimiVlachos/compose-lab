@@ -79,7 +79,7 @@ An open book whose pages turn in 3D under your finger, drawn in plain Compose `D
 - **A bow that follows the hand.** The curl is spread along the strips and bulges the way the page is moving. Reverse a drag halfway and the bow flips across over a short stretch of the turn, so the paper looks pulled, not snapped.
 - **Let go anywhere.** Past 0.42 of a turn, or on a flick, the page finishes; otherwise it sinks back. Both are critically damped springs, so a page lands without bouncing off the spine, and a page still landing can be caught mid-air.
 - **A book of real leaves.** Every sheet is a leaf you can turn: the demo's book is the first sixteen pages of Winsor McCay's *Little Nemo in Slumberland*. The leaves lie in the curve of an open book, rising out of the gutter and cresting, each one under the top page a little flatter, so their edges fan out past it the way an open book's paper does, each showing its own page. As a leaf lifts, the sheets under it rise to take its place; as it lands, the stack it lands on settles under it. A turn starts and ends in that same curve, so no page ever snaps flat.
-- **Light and binding.** Each strip shades by how far it faces away, with a sheen while it is up. The gutter darkens under a standing leaf, stitches cross from under the leaf to over it at the ends of the turn, and three stacked drop shadows sit the book on the table.
+- **Light and binding.** Each strip shades by how far it faces away, with a sheen while it is up. The gutter darkens under a standing leaf, the book's two staples show in its centre fold and only there, and three stacked drop shadows sit the book on the table.
 
 Taps and drags go through one `PageTurnState`, so the demo's scripted drags take the same path as a finger.
 

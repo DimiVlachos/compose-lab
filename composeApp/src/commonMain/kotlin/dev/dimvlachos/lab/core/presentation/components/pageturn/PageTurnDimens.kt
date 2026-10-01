@@ -97,15 +97,11 @@ internal object PageTurnDimens {
     const val CreaseWidthFraction = 0.05f
     const val CreaseAlpha = 0.07f
 
-    // The binding stitches, at these heights down the spine.
-    val StitchFractions = floatArrayOf(0.12f, 0.5f, 0.88f)
-    const val StitchLengthFraction = 0.055f
-    val StitchWidth = 1.8.dp
-    val StitchUnderWidth = 3.2.dp
-    val StitchUnderExtra = 3.dp
-    const val StitchShadowAlpha = 0.25f
-
-    // The stitches sit on the pages, under a turning leaf; they fade from under it to over it over
-    // the first and last stretch of the turn, so the leaf never pops in front of them.
-    const val StitchFadeSpan = 0.15f
+    // The book is saddle-stitched: two wire staples through the centre fold, at these heights,
+    // each this long, its wire this thick, with a hairline of shadow beside it.
+    val StapleFractions = floatArrayOf(0.25f, 0.75f)
+    const val StapleLengthFraction = 0.075f
+    val StapleWidth = 1.6.dp
+    val StapleShadowOffset = 0.8.dp
+    const val StapleShadowAlpha = 0.45f
 }
