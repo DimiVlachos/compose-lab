@@ -81,4 +81,14 @@ class BackdropPainterTest {
         assertTrue(at(0.9f, 0.5f).isNear(Color.Black), "the person: ${at(0.9f, 0.5f)}")
         assertTrue(at(0.1f, 0.5f).isNear(Color.Black), "the bathroom: ${at(0.1f, 0.5f)}")
     }
+
+    @Test
+    fun withNoMaskTheCamerasWholePictureShowsAndTheBathroomIsNotDrawn() {
+        // A frame with a see-through corner, and no mask: nothing of the bathroom behind it.
+        val image = filled(2, 1) { rect(it, 0, 1, 1, Color.Red) }
+        val whole = MirrorFramePainter().apply { show(CameraFrame(image, 2, 1, 0)) }
+        val at = BackdropPainter(whole, bathroom).render(Size(20f, 10f))
+        assertTrue(at(0.9f, 0.5f).isNear(Color.Red), "the camera: ${at(0.9f, 0.5f)}")
+        assertTrue(at(0.1f, 0.5f).alpha < 0.1f, "no bathroom: ${at(0.1f, 0.5f)}")
+    }
 }
