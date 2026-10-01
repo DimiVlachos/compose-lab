@@ -29,6 +29,9 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        // 64-bit Arm only: every phone the camera demo is for. ML Kit's native library is about
+        // 20 MB for each architecture.
+        ndk { abiFilters += "arm64-v8a" }
     }
     packaging {
         resources {
