@@ -79,68 +79,6 @@ class FogDemosTest {
     }
 
     @Test
-    fun theCameraClipDripsTwiceBetweenTheWipeAndTheBreath() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-
-        val calls = controller.calls.map { it.second }
-        val lastWipe = calls.indexOfLast { it.startsWith("wipe") }
-        val breath = calls.indexOfFirst { it.startsWith("breathe") }
-        val drips = calls.indices.filter { calls[it].startsWith("drip") }
-        assertEquals(2, drips.size, "$calls")
-        assertTrue(drips.all { it in lastWipe..breath }, "$calls")
-    }
-
-    @Test
-    fun theClipsDripsRunBesideThePorthole() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-        // In dp on the clip's glass, measured to the scrub's segments: a drop that
-        // came within the finger's reach of them would stop and blend in.
-        fun dp(point: Offset) =
-            Offset(point.x * ClipGlass.width.value, point.y * ClipGlass.height.value)
-        val scrub = FogDemos.porthole.path().map(::dp)
-        val clearance = FogDemos.FingerBrush.value + MaxDropRadius
-
-        for ((at, length) in controller.drips) {
-            var y = at.y
-            while (y <= at.y + length) {
-                val point = dp(Offset(at.x, y))
-                val nearest = scrub.zipWithNext().minOf { (a, b) -> distanceToSegment(point, a, b) }
-                assertTrue(nearest > clearance, "a drip at $point comes $nearest dp from the scrub")
-                y += 0.005f
-            }
-        }
-    }
-
-    @Test
-    fun theClipsDripsHaveStoppedBeforeTheBreath() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-        val times = controller.calls.filter { it.second.startsWith("drip") }.map { it.first }
-        val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first
-
-        // Whatever the drops' own randomness, over many seeds, on the clip's glass.
-        for (seed in 1..30) {
-            val drips =
-                DripDriver(newFogDemoState(), Random(seed)).apply {
-                    glass = ClipGlass
-                    randomStarts = false
-                }
-            var now = times.first()
-            val pending = controller.drips.zip(times).toMutableList()
-            while (now < breathAt) {
-                pending.removeAll { (drip, at) ->
-                    (at <= now).also { if (it) drips.drip(drip.first, drip.second) }
-                }
-                drips.advance(0.016f)
-                now += 16
-            }
-            assertTrue(!drips.moving, "seed $seed: a drop still running at the breath")
-        }
-    }
-
-    @Test
     fun theBathroomClipsLengthCountsItsMistToTheEnd() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         val script = FogDemos.bathroom.script
@@ -159,6 +97,23 @@ class FogDemosTest {
         assertEquals(breathAt + breath + script.holdEnd, script.nominalDuration)
     }
 
+    // Plays each version's clip, then runs [check] on what it did.
+    private fun forEachClip(check: (FakeController) -> Unit) = runTest {
+        for (demo in FogDemos.all) {
+            val controller = FakeController { testScheduler.currentTime }
+            demo.script.play(controller)
+            check(controller)
+        }
+    }
+
+    @Test
+    fun theCameraClipEndsWithABreathNotAMist() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        FogDemos.reflection.script.play(controller)
+        assertTrue(controller.mists.isEmpty(), "${controller.calls}")
+        assertEquals(1, controller.breaths.size)
+    }
+
     @Test
     fun eachVersionHasItsOwnClip() {
         val (bathroom, camera) = FogDemos.all
@@ -169,9 +124,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipShowsDropsRunningBeforeTheWipe() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
+    fun bothClipsShowDropsRunningBeforeTheWipe() = forEachClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         val before = controller.calls.filter { it.second.startsWith("drip") && it.first < wipeAt }
         assertTrue(before.size >= 2, "drops before the wipe: ${controller.calls}")
@@ -186,9 +139,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipsFirstDropsStayClearOfTheWipeButOne() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
+    fun bothClipsFirstDropsStayClearOfTheWipeButOne() = forEachClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         val before =
             controller.drips
@@ -214,9 +165,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipsHandSmearsAwayTheDropInItsPath() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
+    fun bothClipsHandsSmearAwayTheDropInTheirPath() = forEachClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
         for (seed in 1..30) {
             val fog = newFogDemoState()
@@ -230,11 +179,13 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipRunsADropIntoTheWipeWhereItSpreadsAway() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
+    fun bothClipsRunADropIntoTheWipeWhereItSpreadsAwayBeforeTheEnd() = forEachClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
-        val mistAt = controller.calls.first { it.second.startsWith("mist") }.first
+        // The clip's ending: the bathroom's mist, or the camera's breath.
+        val mistAt =
+            controller.calls
+                .first { it.second.startsWith("mist") || it.second.startsWith("breathe") }
+                .first
         val calls = controller.calls.filter { it.second.startsWith("drip") }
         val intoWipe = controller.drips.zip(calls).filter { (_, call) -> call.first > wipeAt }
         assertEquals(1, intoWipe.size, "one drop after the wipe: ${controller.calls}")
@@ -253,7 +204,7 @@ class FogDemosTest {
                 now += 16
             }
             assertTrue(spread > 0.9f, "seed $seed: it spread right out, $spread")
-            assertTrue(drips.beads.isEmpty(), "seed $seed: gone before the mist: ${drips.beads}")
+            assertTrue(drips.beads.isEmpty(), "seed $seed: gone before the end: ${drips.beads}")
         }
     }
 

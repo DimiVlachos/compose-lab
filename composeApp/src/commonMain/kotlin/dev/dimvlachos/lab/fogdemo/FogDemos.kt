@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.fogdemo
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoScriptBuilder
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
@@ -10,6 +11,7 @@ import dev.dimvlachos.lab.fogdemo.reflection.ReflectionMirror
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -51,23 +53,11 @@ internal object FogDemos {
                 ),
         )
 
-    // Fogged glass: a beat, a hand scrubs a porthole clear with the flat of a finger, two drops of
-    // condensation run down in the corners beside it while it is looked through, then a breath
-    // fogs it all over, back to the fogged glass the loop starts from.
-    private val wipeTour = demoScript {
-        val start = 0.3.seconds
-        at(start) { wipe(porthole.path(), porthole.duration) }
-        val scrubbed = start + porthole.duration
-        at(scrubbed + 0.1.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
-        at(scrubbed + 0.6.seconds) { drip(Offset(0.94f, 0.76f), 0.14f) }
-        at(scrubbed + LookThrough, lasts = ClosingBreath) { breathe(ClosingBreath, strength = 1f) }
-    }
-
-    // The steamy bathroom, left to itself: drops of condensation gather and run down around the
+    // The steamy mirror, left to itself: drops of condensation gather and run down around the
     // glass, a hand scrubs a porthole clear between them, smearing away the one in its path, one
-    // more drop runs into it and spreads away on the wet glass, then the room mists it all back
+    // more drop runs into it and spreads away on the wet glass, then [fogOver] fogs it all back
     // over, to the fogged glass the loop starts from.
-    private val bathroomTour = demoScript {
+    private fun showcase(fogOver: DemoScriptBuilder.(at: Duration) -> Unit) = demoScript {
         at(0.3.seconds) { drip(Offset(0.06f, 0.04f), 0.12f) }
         at(0.8.seconds) { drip(Offset(0.94f, 0.76f), 0.12f) }
         at(1.2.seconds) { drip(Offset(0.22f, 0.84f), 0.08f) }
@@ -76,7 +66,14 @@ internal object FogDemos {
         at(WipeAfterDrops) { wipe(porthole.path(), porthole.duration) }
         val scrubbed = WipeAfterDrops + porthole.duration
         at(scrubbed + 0.3.seconds) { drip(Offset(0.35f, 0.1f), 0.2f) }
-        at(scrubbed + SpreadAway, lasts = MistOver) { mist(MistOver) }
+        fogOver(scrubbed + SpreadAway)
+    }
+
+    // The bathroom's room mists it back over; the camera's mirror is breathed on.
+    private val bathroomTour = showcase { at(it, lasts = MistOver) { mist(MistOver) } }
+
+    private val reflectionTour = showcase {
+        at(it, lasts = ClosingBreath) { breathe(ClosingBreath, strength = 1f) }
     }
 
     // On the phone the glass is the user's to wipe; Replay plays the clip.
@@ -86,23 +83,25 @@ internal object FogDemos {
         }
 
     val reflection =
-        Demo("fog.mirror.camera", Res.string.demo_fog_reflection, wipeTour, autoplay = false) {
+        Demo(
+            "fog.mirror.camera",
+            Res.string.demo_fog_reflection,
+            reflectionTour,
+            autoplay = false,
+        ) {
             ReflectionMirror(it)
         }
 
     val all: List<Demo> = listOf(bathroom, reflection)
 }
 
-// Long enough for both drops to finish running before the breath.
-private val LookThrough = 5.seconds
-
-// Long enough for the drop to run into the porthole and spread away, before the mist.
+// Long enough for the drop to run into the porthole and spread away, before the glass fogs over.
 private val SpreadAway = 7.5.seconds
 
 // Long enough to watch the first drops run before the hand comes.
 private val WipeAfterDrops = 5.seconds
 
-// The camera clip's closing breath.
+// The camera clip's closing breath, filling the glass back in from the bottom.
 private val ClosingBreath = 2.4.seconds
 
 // The room's mist, quickened for the clip: on the phone it takes about 25 s.
