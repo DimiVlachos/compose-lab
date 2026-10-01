@@ -121,6 +121,23 @@ class PageTurnStateTest {
     }
 
     @Test
+    fun aPageLiftsOffItsStackGentlyAtTheFirstPull() = runComposeUiTest {
+        val state = book()
+        act { state.take(rightEdge, leftwards = true) }
+        // The slop alone barely stirs it.
+        assertTrue(state.leafProgress < 0.03f, "taken: ${state.leafProgress}")
+        // Equal steps in: the first lifts it no more than a later one does.
+        val step = 0.02f * page
+        val lifts =
+            (1..6).map { i ->
+                val before = state.leafProgress
+                act { state.dragTo(Offset(rightEdge - step * i, middle)) }
+                state.leafProgress - before
+            }
+        assertTrue(lifts.first() <= lifts.drop(1).max() * 1.2f, "lifts $lifts")
+    }
+
+    @Test
     fun aBackwardDragTurnsThePreviousLeafBack() = runComposeUiTest {
         val state = book(initialSpread = 2)
         act { state.take(leftEdge, leftwards = false) }

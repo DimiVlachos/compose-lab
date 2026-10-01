@@ -128,6 +128,10 @@ internal constructor(
     // the furthest the finger has gone the way it turns the leaf; and which side the leaf's outer
     // edge is on (1: the right).
     private var trail = Offset.Zero
+    // Where across the finger took the leaf, if it took it off its stack, and the end of the turn
+    // it lay at: it lifts off softly.
+    private var liftFrom = Float.NaN
+    private var liftedFrom = Float.NaN
     private var furthest = 0f
     private var outwards = 1f
     private var pinnedFor = Offset.Unspecified
@@ -243,10 +247,26 @@ internal constructor(
                     abs(finger.x - geometry.spineX).coerceIn(0f, geometry.page),
                     finger.y.coerceIn(0f, geometry.height),
                 )
-        grabOffset = frame.project(grab.x, grab.y, geometry) - finger
+        val offTheStack = inFlight == null && start == 0f
+        liftedFrom = if (offTheStack) t else Float.NaN
+        // Measured as the finger's place is solved for, so the leaf stays put until it moves.
+        grabOffset =
+            Offset(
+                heldSeenX(
+                    grab,
+                    t,
+                    paper.bow.value,
+                    paper.tilt.value,
+                    holding,
+                    geometry,
+                    liftedFrom = liftedFrom,
+                ) - finger.x,
+                frame.project(grab.x, grab.y, geometry).y - finger.y,
+            )
         target = finger + grabOffset
         trail = finger
         furthest = finger.x
+        liftFrom = if (offTheStack) finger.x else Float.NaN
         // The leaf's outer edge lies right of the spine while the leaf is on the right.
         outwards = if (t < 0.5f) 1f else -1f
         paper.grip = Grip(grab.x / geometry.page, grab.y / geometry.height)
@@ -299,12 +319,13 @@ internal constructor(
                 val ahead =
                     pinTurn(
                         grab,
-                        (target + velocity * ReleaseLookahead).x,
+                        liftedX((target + velocity * ReleaseLookahead).x, layout.geometry),
                         placed,
                         paper.bow.value,
                         paper.tilt.value,
                         paper.heldGrip ?: Grip(1f, 0.5f),
                         layout.geometry,
+                        liftedFrom = liftedFrom,
                     )
                 (ahead - placed) / ReleaseLookahead
             }
@@ -330,6 +351,14 @@ internal constructor(
     // The leaf in hand, turned and leant so the paper held lies under the finger: solved again
     // only once the finger or the paper's bow has moved. It changes nothing a frame reads, so it
     // can be worked out while one is drawn.
+    // Where across the held paper goes for a finger whose paper would go to [x]: a leaf taken off
+    // its stack trails the finger a little as it lifts off (see liftLag).
+    private fun liftedX(x: Float, geometry: PageGeometry): Float {
+        if (liftFrom.isNaN()) return x
+        val travel = (liftFrom - (x - grabOffset.x)) * outwards
+        return x + outwards * liftLag(travel, PageTurnDimens.LiftOff * geometry.page)
+    }
+
     private fun placed(): Float {
         val layout = layout ?: return pinned
         val geometry = layout.geometry
@@ -346,7 +375,17 @@ internal constructor(
         if (target == pinnedFor && abs(bow - pinnedBow) <= BowStill && tilt == pinnedTilt) {
             return pinned
         }
-        pinned = pinTurn(grab, target.x, pinned, bow, tilt, grip, geometry)
+        pinned =
+            pinTurn(
+                grab,
+                liftedX(target.x, geometry),
+                pinned,
+                bow,
+                tilt,
+                grip,
+                geometry,
+                liftedFrom = liftedFrom,
+            )
         pinnedFor = target
         pinnedBow = bow
         pinnedTilt = tilt

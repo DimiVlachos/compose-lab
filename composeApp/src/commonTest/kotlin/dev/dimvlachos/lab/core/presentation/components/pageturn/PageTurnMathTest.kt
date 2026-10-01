@@ -366,7 +366,17 @@ class PageTurnMathTest {
         var last = 0f
         for (i in 1..30) {
             val target = start - Offset(i * 0.06f * leafWidth, 0f)
-            val t = pinTurn(grab, target.x, last, PageTurnDimens.BowRest, 0f, grip, geometry)
+            val t =
+                pinTurn(
+                    grab,
+                    target.x,
+                    last,
+                    PageTurnDimens.BowRest,
+                    0f,
+                    grip,
+                    geometry,
+                    liftedFrom = 0f,
+                )
             assertTrue(t >= last - 0.001f && t - last < 0.15f, "step $i: $last then $t")
             last = t
             val seen =
@@ -398,6 +408,20 @@ class PageTurnMathTest {
         assertNear(0f, leanFor(corner, down, t = 0f, geometry))
         val lean = leanFor(corner, down, t = 0.4f, geometry)
         assertTrue(lean > 0.3f && lean <= PageTurnDimens.TiltLimit, "lean $lean")
+    }
+
+    @Test
+    fun paperTakenOffItsStackTrailsTheFingerAndThenCatchesUp() {
+        val span = 100f
+        assertNear(0f, liftLag(0f, span))
+        assertNear(0f, liftLag(-20f, span))
+        assertNear(0f, liftLag(3f * span, span))
+        // Smooth all the way, and the paper never runs backwards.
+        val samples = (0..400).map { it * 3f * span / 400f }
+        samples.zipWithNext().forEach { (a, b) ->
+            assertTrue(abs(liftLag(b, span) - liftLag(a, span)) < 1.5f, "a step at $a")
+            assertTrue(b - liftLag(b, span) >= a - liftLag(a, span) - 1e-3f, "back at $a")
+        }
     }
 
     @Test
