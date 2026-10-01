@@ -72,6 +72,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -263,6 +264,10 @@ internal fun FogDemo(
 
     val surface = LabTheme.colors.surface
     val startingGlass = remember(surface) { ColorPainter(surface) }
+    // You, cut out of the camera's picture, in front of the bathroom rather than your own room.
+    val bathroom = imageResource(Res.drawable.mirror_view)
+    val inTheBathroom =
+        remember(camera, bathroom) { camera?.let { BackdropPainter(it.mirror, bathroom) } }
     Box(Modifier.fillMaxSize()) {
         // The fog is the glass of a mirror on the bathroom wall.
         MirrorOnWall { glassModifier ->
@@ -273,7 +278,7 @@ internal fun FogDemo(
                     photo =
                         when {
                             camera == null -> painterResource(Res.drawable.mirror_view)
-                            camera.showing -> camera.mirror
+                            camera.showing && inTheBathroom != null -> inTheBathroom
                             else -> startingGlass
                         },
                     state = fog,

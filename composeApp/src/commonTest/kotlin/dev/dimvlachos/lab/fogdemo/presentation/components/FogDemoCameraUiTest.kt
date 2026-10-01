@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,6 +85,30 @@ class FogDemoCameraUiTest {
         val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
         val low = pixels[pixels.width / 2, pixels.height - 2]
         assertTrue(abs(low.red - low.green) < 0.1f, "the wall, not the mirror: $low")
+    }
+
+    @Test
+    fun behindThePersonTheMirrorShowsTheBathroom() = runComposeUiTest {
+        // First the still bathroom alone, then a camera with nobody in front of it: all of it is
+        // cut away, and the same bathroom shows in its place.
+        var access by mutableStateOf<CameraAccess>(CameraAccess.Unavailable)
+        showMirror({ access })
+        val bathroom = middle()
+        access = CameraAccess.Granted(FakeMirrorCamera(nobodyThere = true))
+        waitForIdle()
+        val behind = middle()
+        assertTrue(
+            abs(bathroom.red - behind.red) < 0.05f &&
+                abs(bathroom.green - behind.green) < 0.05f &&
+                abs(bathroom.blue - behind.blue) < 0.05f,
+            "the bathroom: $behind against $bathroom",
+        )
+    }
+
+    private fun ComposeUiTest.middle(): Color {
+        waitForIdle()
+        val pixels = onNodeWithTag("demo").captureToImage().toPixelMap()
+        return pixels[pixels.width / 2, pixels.height / 2]
     }
 
     @Test

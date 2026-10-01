@@ -8,12 +8,14 @@ import kotlinx.coroutines.awaitCancellation
 
 /**
  * A camera that shows one solid [color] frame while it runs (none while it is still [starting]), or
- * throws [failure] instead. Counts how often it was started and how many runs are live.
+ * throws [failure] instead; [nobodyThere], its frames come with a mask that keeps nothing. Counts
+ * how often it was started and how many runs are live.
  */
 internal class FakeMirrorCamera(
     private val color: Color = Color.Magenta,
     private val failure: Throwable? = null,
     private val starting: Boolean = false,
+    private val nobodyThere: Boolean = false,
 ) : MirrorCamera {
     private val painter = MirrorFramePainter()
     var starts = 0
@@ -35,7 +37,10 @@ internal class FakeMirrorCamera(
             val image = ImageBitmap(4, 4)
             Canvas(image)
                 .drawRect(0f, 0f, 4f, 4f, Paint().apply { color = this@FakeMirrorCamera.color })
-            painter.show(CameraFrame(image, width = 4, height = 4, rotationDegrees = 0))
+            val mask = if (nobodyThere) ImageBitmap(4, 4) else null
+            painter.show(
+                CameraFrame(image, width = 4, height = 4, rotationDegrees = 0, mask = mask)
+            )
             awaitCancellation()
         } finally {
             // Stopped, it keeps its last frame, as the real one does.

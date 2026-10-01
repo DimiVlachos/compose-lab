@@ -163,4 +163,43 @@ class MirrorFramePainterTest {
             assertTrue(abs(pixel.green - pixel.red) < 0.05f, "no padding shows at $x,$y: $pixel")
         }
     }
+
+    /** A mask, upright as the frame stands, keeping only the cells [keep] marks, row by row. */
+    private fun mask(width: Int, height: Int, keep: (Int, Int) -> Boolean): ImageBitmap {
+        val image = ImageBitmap(width, height)
+        val canvas = Canvas(image)
+        for (y in 0 until height) for (x in 0 until width) {
+            if (keep(x, y)) {
+                canvas.drawRect(
+                    x.toFloat(),
+                    y.toFloat(),
+                    x + 1f,
+                    y + 1f,
+                    Paint().apply { color = Color.Black },
+                )
+            }
+        }
+        return image
+    }
+
+    @Test
+    fun aMaskKeepsOnlyThePersonMirroredWithTheFrame() {
+        // Upright and unmirrored, the frame is red then blue; the mask keeps its left, the red.
+        val frame = redBlueFrame(rotation = 0)
+        val masked = CameraFrame(frame.image, 2, 1, 0, mask = mask(2, 1) { x, _ -> x == 0 })
+        val at = MirrorFramePainter().apply { show(masked) }.render(Size(20f, 10f))
+        // Mirrored, the red is on the right, and the rest is see-through.
+        assertTrue(at(0.9f, 0.5f).isNear(Color.Red), "kept: ${at(0.9f, 0.5f)}")
+        assertTrue(at(0.1f, 0.5f).alpha < 0.1f, "cut away: ${at(0.1f, 0.5f)}")
+    }
+
+    @Test
+    fun aMaskStandsUpWithTheFrame() {
+        // A quarter turn stands red on top; the upright mask keeps the top.
+        val frame = redBlueFrame(rotation = 90)
+        val masked = CameraFrame(frame.image, 2, 1, 90, mask = mask(1, 2) { _, y -> y == 0 })
+        val at = MirrorFramePainter().apply { show(masked) }.render(Size(10f, 20f))
+        assertTrue(at(0.5f, 0.1f).isNear(Color.Red), "kept: ${at(0.5f, 0.1f)}")
+        assertTrue(at(0.5f, 0.9f).alpha < 0.1f, "cut away: ${at(0.5f, 0.9f)}")
+    }
 }
