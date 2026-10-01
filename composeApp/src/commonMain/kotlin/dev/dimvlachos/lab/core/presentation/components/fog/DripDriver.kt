@@ -79,10 +79,6 @@ class DripDriver(
     internal val trackedStreaks: Int
         get() = (finished + running + fading).sumOf { it.streaks.size }
 
-    // Every streak of a drop the driver still holds, so no drop is ever cleared by one.
-    private fun ownStreaks(): Set<WipeStroke> =
-        (finished + running + fading).flatMapTo(HashSet()) { it.streaks }
-
     private var untilNext = nextGap()
 
     /**
@@ -103,8 +99,7 @@ class DripDriver(
         get() {
             version
             if (needsFrames) return true
-            val ours = ownStreaks()
-            return resting.any { !it.stillShows(ours) } || running.any { !it.stillShows(ours) }
+            return resting.any { !it.stillShows() } || running.any { !it.stillShows() }
         }
 
     /** Starts a drop at [at], to run [length] of the glass's height. */
@@ -128,8 +123,7 @@ class DripDriver(
         // However long since the last step, a drop moves at most a short step's worth.
         val stepSeconds = min(seconds.coerceAtLeast(0f), MaxStepSeconds)
         // A wipe over a drop, growing, running or between bursts, smears it away.
-        val ours = ownStreaks()
-        for (drip in running.filter { !it.stillShows(ours) }) {
+        for (drip in running.filter { !it.stillShows() }) {
             running -= drip
             smearOut(drip)
         }
@@ -163,14 +157,14 @@ class DripDriver(
             drip.streaks.removeAll { s -> fog.marks.none { it === s } }
         }
         for (drip in resting) drip.settle(stepSeconds)
-        for (drip in resting.filter { !it.stillShows(ours) }) {
+        for (drip in resting.filter { !it.stillShows() }) {
             resting -= drip
             // Fogged over by a full breath, it is already out of sight; wiped, it smears away.
             if (drip.fogged) fadeOut(drip, 0f) else smearOut(drip)
         }
-        // Blending into a wipe, it can still be wiped again, or fogged over for good.
-        for (drip in fading.filter { it.blending && !it.smearing }) {
-            if (!drip.stillShows(ours)) drip.smearAway(WipedFadeSeconds)
+        // Blending into a wipe, or pushed out by the limit, it can still be wiped again.
+        for (drip in fading.filter { (it.blending || it.pushedOut) && !it.smearing }) {
+            if (!drip.stillShows()) drip.smearAway(WipedFadeSeconds)
         }
         for (drip in fading.toList()) {
             drip.fade(stepSeconds)
@@ -336,11 +330,10 @@ class DripDriver(
 
         // How far each wipe had got: from here on, only newer points can clear it.
         private fun noteWipesSoFar() {
-            val ours = ownStreaks()
             wipedBefore =
                 fog.marks
                     .filterIsInstance<WipeStroke>()
-                    .filter { it !in ours }
+                    .filter { it.clarity >= 1f }
                     .associateWith { it.points.size }
         }
 
@@ -499,7 +492,7 @@ class DripDriver(
             )
 
         // Shows until a breath drops its streak or a real wipe after it passes over the drop.
-        fun stillShows(ours: Set<WipeStroke>): Boolean {
+        fun stillShows(): Boolean {
             // Stopped, its streak fogged over by a full breath takes it too; running, it carries
             // on.
             val last = lastStreak
@@ -509,7 +502,8 @@ class DripDriver(
             val marks = fog.marks
             for (i in marks.indices) {
                 val mark = marks[i]
-                if (mark !is WipeStroke || mark in ours) continue
+                // A drop's trail, its own or another's, only part clears the glass: no wipe.
+                if (mark !is WipeStroke || mark.clarity < 1f) continue
                 // Stopped, or on a wiped patch by design: only a wipe's newer points clear it.
                 val settledOn = stopped || sliding || blending
                 val before = wipedBefore[mark] ?: 0

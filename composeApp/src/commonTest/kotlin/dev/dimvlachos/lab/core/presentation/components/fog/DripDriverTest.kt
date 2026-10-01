@@ -367,6 +367,58 @@ class DripDriverTest {
     }
 
     @Test
+    fun aDropNeverWipesItselfOutAsItStops() {
+        // Whatever its bursts, on untouched fog nothing should take it off the glass.
+        for (seed in 1..2000) {
+            val drips = driver(seed = seed)
+            drips.drip(Offset(0.5f, 0.1f), 0.05f + (seed % 10) * 0.05f)
+            drips.run(8f)
+            assertEquals(1, drips.beads.count { it.alpha > 0.9f }, "seed $seed: ${drips.beads}")
+        }
+    }
+
+    @Test
+    fun theTrailOfASmearedDropDoesNotSmearTheNextDownTheSameLine() {
+        for (seed in 1..20) {
+            val fog = FogState()
+            val drips = driver(fog, seed = seed)
+            drips.drip(Offset(0.5f, 0.1f), 0.6f)
+            while (drips.beads.single().let { it.resting || it.at.y < 0.35f }) drips.advance(step)
+            // Wiped as it runs, it smears away, leaving its trail above.
+            val at = drips.beads.single().at
+            fog.beginStroke(at + Offset(-0.05f, 0.02f)).also {
+                fog.extendStroke(it, at + Offset(0.05f, 0.02f))
+            }
+            drips.run(1f)
+            assertTrue(drips.beads.isEmpty(), "seed $seed: smeared")
+
+            // The next runs down its trail and rests above the wipe, on the fog.
+            drips.drip(Offset(0.5f, 0.05f), 0.15f)
+            drips.run(10f)
+            assertEquals(1, drips.beads.count { it.alpha > 0.9f }, "seed $seed: ${drips.beads}")
+        }
+    }
+
+    @Test
+    fun aDropPushedOutByTheLimitStillSmearsAwayWhenWiped() {
+        val fog = FogState()
+        val drips = driver(fog)
+        repeat(12) { drips.drip(Offset(0.05f + it * 0.07f, 0.1f), 0.1f) }
+        drips.run(10f)
+        drips.drip(Offset(0.5f, 0.5f), 0.1f)
+        while (drips.beads.none { it.alpha < 1f }) drips.advance(step)
+        val oldest = drips.beads.minBy { it.alpha }
+        fog.beginStroke(oldest.at + Offset(-0.02f, 0f)).also {
+            fog.extendStroke(it, oldest.at + Offset(0.02f, 0f))
+        }
+        drips.run(0.3f)
+        assertTrue(
+            drips.beads.none { it.at == oldest.at },
+            "smeared, not fading on: ${drips.beads}",
+        )
+    }
+
+    @Test
     fun aDropStillGrowingWhenWipedIsGone() {
         val fog = FogState()
         val drips = driver(fog)
