@@ -26,6 +26,8 @@ class FeatureBoundaryKonsistTest {
                         name == "dev.dimvlachos.lab.navbardemo" ||
                         name.startsWith("dev.dimvlachos.lab.gallerydemo.") ||
                         name == "dev.dimvlachos.lab.gallerydemo" ||
+                        name.startsWith("dev.dimvlachos.lab.fogdemo.") ||
+                        name == "dev.dimvlachos.lab.fogdemo" ||
                         name == "dev.dimvlachos.lab.App"
                 }
             }
