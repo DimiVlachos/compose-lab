@@ -138,18 +138,18 @@ class PageTurnMathTest {
     }
 
     @Test
-    fun theStaplesShowOnlyWhereTheCentreFoldIsOpen() {
+    fun theStitchesShowOnlyWhereTheCentreFoldIsOpen() {
         val centre = 4
         // The centre spread open: leaf 3 on top of the left, leaf 4 on top of the right.
-        assertTrue(staplesShow(centre, leftTop = 3, rightTop = 4, flying = emptySet()))
+        assertTrue(stitchesShow(centre, leftTop = 3, rightTop = 4, flying = emptySet()))
         // A spread either side: a leaf covers the fold.
-        assertFalse(staplesShow(centre, leftTop = 2, rightTop = 3, flying = emptySet()))
-        assertFalse(staplesShow(centre, leftTop = 4, rightTop = 5, flying = emptySet()))
+        assertFalse(stitchesShow(centre, leftTop = 2, rightTop = 3, flying = emptySet()))
+        assertFalse(stitchesShow(centre, leftTop = 4, rightTop = 5, flying = emptySet()))
         // Turning onto the centre spread, or away from it: the fold shows under the leaf.
-        assertTrue(staplesShow(centre, leftTop = 2, rightTop = 4, flying = setOf(3)))
-        assertTrue(staplesShow(centre, leftTop = 3, rightTop = 5, flying = setOf(4)))
+        assertTrue(stitchesShow(centre, leftTop = 2, rightTop = 4, flying = setOf(3)))
+        assertTrue(stitchesShow(centre, leftTop = 3, rightTop = 5, flying = setOf(4)))
         // Turning elsewhere: hidden.
-        assertFalse(staplesShow(centre, leftTop = 1, rightTop = 3, flying = setOf(2)))
+        assertFalse(stitchesShow(centre, leftTop = 1, rightTop = 3, flying = setOf(2)))
     }
 
     @Test

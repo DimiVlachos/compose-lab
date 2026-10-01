@@ -97,11 +97,16 @@ internal object PageTurnDimens {
     const val CreaseWidthFraction = 0.05f
     const val CreaseAlpha = 0.07f
 
-    // The book is saddle-stitched: two wire staples through the centre fold, at these heights,
-    // each this long, its wire this thick, with a hairline of shadow beside it.
-    val StapleFractions = floatArrayOf(0.25f, 0.75f)
-    const val StapleLengthFraction = 0.075f
-    val StapleWidth = 1.6.dp
-    val StapleShadowOffset = 0.8.dp
-    const val StapleShadowAlpha = 0.45f
+    // The book is sewn through its centre fold: the thread goes in and out of four holes, at these
+    // heights, so inside the fold it shows between the first two and between the last two. The
+    // thread is this thick, lying in a soft shadow of the fold this wide, its twist marked this far
+    // apart, and it enters the paper through holes this wide.
+    val StitchHoles = floatArrayOf(0.12f, 0.38f, 0.62f, 0.88f)
+    val ThreadWidth = 1.1.dp
+    val ThreadBedWidth = 2.4.dp
+    const val ThreadBedAlpha = 0.28f
+    val ThreadTwist = 2.6.dp
+    const val ThreadTwistAlpha = 0.22f
+    val StitchHoleWidth = 1.7.dp
+    const val StitchHoleAlpha = 0.55f
 }

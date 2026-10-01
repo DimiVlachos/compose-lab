@@ -32,8 +32,8 @@ internal class BookInk(
     val shade: Color,
     val glare: Color,
     val gutter: Color,
-    val staple: Color,
-    val stapleLit: Color,
+    val thread: Color,
+    val threadTwist: Color,
     val crease: Color,
     val pageEdge: Color,
     val pageEdgeLine: Color,
@@ -112,8 +112,9 @@ internal class BookPainter(private val ink: BookInk) {
         // The top pages: the back of the left top leaf, the front of the right one.
         drawLeaf(geometry, restFrame(geometry, right = false, depth = leftSink), image(leftTop + 1))
         drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
-        // The fold at the book's middle, with its staples, lies under any leaf in the air.
-        if (staplesShow(spreads.size / 2, leftTop, rightTop, flying)) drawStaples(spineX)
+        // The fold at the book's middle, with its binding thread, lies under any leaf in the air;
+        // the crease, drawn last, darkens over the thread, so it sits down in the fold.
+        if (stitchesShow(spreads.size / 2, leftTop, rightTop, flying)) drawStitches(spineX)
         if (flights.isEmpty()) {
             drawCrease(spineX)
             return
@@ -341,32 +342,46 @@ internal class BookPainter(private val ink: BookInk) {
         )
     }
 
-    // Two wire staples down the fold: a hairline of shadow where each presses into the paper, then
-    // the wire, lit along its middle like round steel.
-    private fun DrawScope.drawStaples(spineX: Float) {
-        val length = size.height * PageTurnDimens.StapleLengthFraction
-        val width = PageTurnDimens.StapleWidth.toPx()
-        val shadow = PageTurnDimens.StapleShadowOffset.toPx()
-        for (fraction in PageTurnDimens.StapleFractions) {
-            val top = size.height * fraction - length / 2f
+    // The binding thread down the fold, where it shows inside: between the first two holes and the
+    // last two. It lies in a soft shadow of the fold, its twist marked along it, and enters the
+    // paper through a small dark hole at each end.
+    private fun DrawScope.drawStitches(spineX: Float) {
+        val holes = PageTurnDimens.StitchHoles
+        val width = PageTurnDimens.ThreadWidth.toPx()
+        val twist = PageTurnDimens.ThreadTwist.toPx()
+        for (run in holes.indices step 2) {
+            val top = size.height * holes[run]
+            val bottom = size.height * holes[run + 1]
             drawLine(
-                ink.shade.copy(alpha = PageTurnDimens.StapleShadowAlpha),
-                start = Offset(spineX + shadow, top + shadow),
-                end = Offset(spineX + shadow, top + length + shadow),
-                strokeWidth = width,
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                Brush.horizontalGradient(
-                    listOf(ink.staple, ink.stapleLit, ink.staple),
-                    startX = spineX - width / 2f,
-                    endX = spineX + width / 2f,
-                ),
+                ink.shade.copy(alpha = PageTurnDimens.ThreadBedAlpha),
                 start = Offset(spineX, top),
-                end = Offset(spineX, top + length),
-                strokeWidth = width,
+                end = Offset(spineX, bottom),
+                strokeWidth = PageTurnDimens.ThreadBedWidth.toPx(),
                 cap = StrokeCap.Round,
             )
+            drawLine(
+                ink.thread,
+                start = Offset(spineX, top),
+                end = Offset(spineX, bottom),
+                strokeWidth = width,
+            )
+            var y = top + twist
+            while (y < bottom - twist / 2f) {
+                drawLine(
+                    ink.threadTwist.copy(alpha = PageTurnDimens.ThreadTwistAlpha),
+                    start = Offset(spineX - width / 2f, y + twist / 3f),
+                    end = Offset(spineX + width / 2f, y - twist / 3f),
+                    strokeWidth = 1f,
+                )
+                y += twist
+            }
+            for (hole in floatArrayOf(top, bottom)) {
+                drawCircle(
+                    ink.shade.copy(alpha = PageTurnDimens.StitchHoleAlpha),
+                    radius = PageTurnDimens.StitchHoleWidth.toPx() / 2f,
+                    center = Offset(spineX, hole),
+                )
+            }
         }
     }
 }
