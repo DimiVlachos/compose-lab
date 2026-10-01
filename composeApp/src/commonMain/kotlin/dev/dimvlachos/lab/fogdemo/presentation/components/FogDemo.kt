@@ -19,7 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -29,7 +31,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -101,6 +108,8 @@ internal fun FogDemo(
     val driver = remember(fog) { BreathDriver(fog) }
     // Condensation running down the glass; in the clip, only the script's drops.
     val drips = remember(fog) { DripDriver(fog, wipeRadius = FogDemos.FingerBrush) }
+    // Where the script's finger touches, shown in the clip: read only while drawing.
+    val finger = remember { ScriptFinger() }
     drips.randomStarts = !state.recording && !state.replay
     val density = LocalDensity.current
     var micFailed by remember { mutableStateOf(false) }
@@ -157,17 +166,22 @@ internal fun FogDemo(
     DisposableEffect(state, fog, driver) {
         state.setWipeHandler { path, duration ->
             if (window.isEmpty()) return@setWipeHandler
-            val stroke =
-                fog.beginStroke(
-                    clipFrameToWindow(path.first(), window),
-                    radius = FogDemos.FingerBrush,
-                )
+            val start = clipFrameToWindow(path.first(), window)
+            val stroke = fog.beginStroke(start, radius = FogDemos.FingerBrush)
+            finger.at = start
+            finger.shown = 1f
             animate(
                 0f,
                 1f,
                 animationSpec = tween(duration.inWholeMilliseconds.toInt(), easing = LinearEasing),
             ) { t, _ ->
-                fog.extendStroke(stroke, clipFrameToWindow(pointAt(path, t), window))
+                val point = clipFrameToWindow(pointAt(path, t), window)
+                fog.extendStroke(stroke, point)
+                finger.at = point
+            }
+            // Lifted, the touch fades as a phone's "show taps" does.
+            animate(1f, 0f, animationSpec = tween(FingerLiftMillis)) { shown, _ ->
+                finger.shown = shown
             }
         }
         // The script's breath swells and fades through the same driver as a real one.
@@ -351,26 +365,32 @@ internal fun FogDemo(
     Box(Modifier.fillMaxSize()) {
         // The fog is the glass of a mirror on the bathroom wall.
         MirrorOnWall { glassModifier ->
-            FoggedWindow(
-                // A camera still starting shows plain glass: the still is for when there is none.
-                photo =
-                    when {
-                        camera == null -> painterResource(Res.drawable.mirror_view)
-                        camera.showing -> camera.mirror
-                        else -> startingGlass
-                    },
-                state = fog,
-                modifier =
-                    glassModifier.onSizeChanged {
-                        window = it.toSize()
-                        drips.glass = with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
-                    },
-                brushRadius = FogDemos.FingerBrush,
-                beads = { drips.beads },
-                onHoldChange =
-                    if (!breathing || listening || state.recording || cardShown) null
-                    else { held -> holding = held },
-            )
+            Box(glassModifier) {
+                FoggedWindow(
+                    // A camera still starting shows plain glass: the still is for when there is
+                    // none.
+                    photo =
+                        when {
+                            camera == null -> painterResource(Res.drawable.mirror_view)
+                            camera.showing -> camera.mirror
+                            else -> startingGlass
+                        },
+                    state = fog,
+                    modifier =
+                        Modifier.fillMaxSize().onSizeChanged {
+                            window = it.toSize()
+                            drips.glass =
+                                with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
+                        },
+                    brushRadius = FogDemos.FingerBrush,
+                    beads = { drips.beads },
+                    onHoldChange =
+                        if (!breathing || listening || state.recording || cardShown) null
+                        else { held -> holding = held },
+                )
+                // The script's touches, over the glass, as a phone shows taps.
+                Box(Modifier.fillMaxSize().drawBehind { drawFinger(finger) })
+            }
         }
         // First the wipe hint, until the mirror is found. The blow hint goes after the first
         // breath; the hold pill stays while it is the way back to the card.
@@ -462,3 +482,29 @@ private fun MicAccess.need() =
         is MicAccess.Blocked -> Need.Settings
         else -> Need.Nothing
     }
+
+/** Where the script's finger is on the glass, as a fraction of it, and how plainly it shows. */
+@Stable
+private class ScriptFinger {
+    var at by mutableStateOf(Offset.Zero)
+    var shown by mutableFloatStateOf(0f)
+}
+
+// A fingertip, as a phone's "show taps" marks one: a soft pale disc with a brighter ring.
+private fun DrawScope.drawFinger(finger: ScriptFinger) {
+    val shown = finger.shown
+    if (shown <= 0f) return
+    val centre = Offset(finger.at.x * size.width, finger.at.y * size.height)
+    val radius = FingerMarkRadius.toPx()
+    drawCircle(Color.Black.copy(alpha = 0.12f * shown), radius + 1.dp.toPx(), centre)
+    drawCircle(Color.White.copy(alpha = 0.45f * shown), radius, centre)
+    drawCircle(
+        Color.White.copy(alpha = 0.85f * shown),
+        radius,
+        centre,
+        style = Stroke(width = 2.dp.toPx()),
+    )
+}
+
+private val FingerMarkRadius = 18.dp
+private const val FingerLiftMillis = 250
