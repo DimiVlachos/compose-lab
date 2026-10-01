@@ -76,16 +76,16 @@ The photo morph also ships on its own as `ImageMorph` (`core/presentation/compon
 A steamed-up bathroom mirror, hanging on a tiled wall above the basin, that you wipe clear with a finger. Two versions share one component:
 
 - **Bathroom** (`fog.mirror.bathroom`): a still bathroom behind the glass. It asks for nothing, and mists slowly back over once you stop wiping.
-- **Your reflection** (`fog.mirror.camera`): the live front camera behind the glass, so wiping finds your face. Blow on the microphone, or hold a finger down, to breathe fog back onto it. One card explains both permissions and asks for each in turn.
+- **Your reflection** (`fog.mirror.camera`): the live front camera behind the glass, so wiping finds your face. Like the bathroom, it mists slowly back over once you stop wiping. One card explains why it needs the camera before asking; without it, the mirror shows the bathroom's still reflection.
 
 What's on the glass:
 
 - **Fog from a real photo.** Condensation texture from a photo of wet glass, over a blurred, milky copy of the scene behind it.
 - **Soft wipes.** Soft-edged strokes follow the finger.
-- **Breath.** Fills back in from the bottom up, the way a real breath does.
+- **Mist.** Once you stop wiping, the steamy room slowly fogs the glass evenly back over. (`FogState` can also fill fog back in from the bottom up, like a breath; the demo doesn't use it.)
 - **Running drops.** Now and then a drop gathers, in a range of small sizes, and runs down. The bigger it is, the faster it goes. As it runs it stretches from a sphere into a teardrop, and it cuts a clear trail through the fog behind it. Once it stops, it settles softly into the condensation.
 - **Drops meeting a wipe.** A drop that runs into a wiped patch slips just inside, then spreads out slowly and thins away into the wet glass.
-- **The clip.** Drops run first, then a hand scrubs a porthole clear, smearing away the drop resting in its path. A soft fingertip marks each touch, like a phone's "show taps". One more drop runs into the porthole and spreads away, then the room mists it all back over, so the clip loops. Replay in **Your reflection** plays the same showcase over your live face, ending with a breath that fogs the mirror back up from the bottom.
+- **The clip.** Drops run first, then a hand scrubs a porthole clear, smearing away the drop resting in its path. A soft fingertip marks each touch, like a phone's "show taps". One more drop runs into the porthole and spreads away, then the room mists it all back over, so the clip loops. Replay in **Your reflection** plays the same showcase over your live face, ending with the same mist.
 
 ```kotlin
 val fog = remember { FogState() }                   // starts fully fogged
@@ -114,10 +114,10 @@ Compose made every part of this simple to build, and the same Kotlin runs on And
   - `withFrameNanos` drives the drops and the mist.
   - `snapshotFlow` wakes the drip loop the moment you wipe, and otherwise lets the glass sleep.
   - `pointerInput` with `awaitEachGesture` tells a wipe from a hold.
-  - `repeatOnLifecycle` keeps the camera and microphone on only while the screen is showing.
+  - `repeatOnLifecycle` keeps the camera on only while the screen is showing.
 - **Everything is testable.** `runComposeUiTest` plus `captureToImage` read real pixels: a drop is darker in the middle, a spread one is thinner and wider, and a wipe clears the fog. The drips and the mist run on the test's own frame clock, so a test steps through many seconds of drops frame by frame, exactly the same every run.
 - **The mirror hangs on a real wall with ordinary layout.** `BoxWithConstraints` measures the screen. An `Image` with `ContentScale.Crop` and a custom `Alignment` crops the wall photo around the mirror. The glass is a `Box` placed with `Modifier.offset` and `size`, and clipped with `RoundedCornerShape`. So the fog lands exactly on the photo's glass on any screen, and a finger on the tiles wipes nothing.
-- **`expect`/`actual`** keeps the platform code small: CameraX and the microphone on Android, stubs on iOS. Everything you see is common code.
+- **`expect`/`actual`** keeps the platform code small: CameraX on Android, a stub on iOS. Everything you see is common code.
 
 What makes Compose so good for this is that nothing here needed a custom view, an OpenGL shader or a platform escape hatch. The fog, the water and the wall are ordinary composables, modifiers and draw calls, laid out, animated and tested like any other screen, and one codebase draws them on both platforms. Compose makes a surface that feels physical and alive just another piece of UI.
 
