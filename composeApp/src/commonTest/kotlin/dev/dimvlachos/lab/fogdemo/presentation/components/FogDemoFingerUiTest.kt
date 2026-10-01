@@ -25,6 +25,7 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 // The clip shows where its finger touches, as a phone's "show taps" does: a soft disc that follows
@@ -84,10 +85,29 @@ class FogDemoFingerUiTest {
     }
 
     @Test
-    fun theReplaysFingerShowsToo() = runComposeUiTest {
+    fun theReplaysFingerShowsTooAndLifts() = runComposeUiTest {
         val state = DemoState(replay = true)
         showScripted(state)
         wipeDownTheMiddle(state)
         assertTrue(!middleOfTheGlass().isMagenta(), "the finger")
+        mainClock.advanceTimeBy(1_500)
+        assertTrue(middleOfTheGlass().isMagenta(), "gone once it lifts")
+    }
+
+    @Test
+    fun aWipeStoppedHalfwayLeavesNoFingerBehind() = runComposeUiTest {
+        val state = DemoState(replay = true)
+        showScripted(state)
+        var wiping: Job? = null
+        runOnUiThread {
+            wiping =
+                scope!!.launch {
+                    state.wipe(listOf(Offset(0.5f, 0.1f), Offset(0.5f, 0.9f)), 1_000.milliseconds)
+                }
+        }
+        mainClock.advanceTimeBy(500)
+        runOnUiThread { wiping!!.cancel() }
+        mainClock.advanceTimeBy(100)
+        assertTrue(middleOfTheGlass().isMagenta(), "no finger left on the glass")
     }
 }

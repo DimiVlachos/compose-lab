@@ -116,6 +116,22 @@ class BathroomMirrorUiTest {
     }
 
     @Test
+    fun onceAReplayIsStoppedTheRoomMistsItsGlassBackOver() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
+        val state = DemoState(replay = true)
+        showBathroom(state, fog)
+        mainClock.advanceTimeByFrame()
+        runOnUiThread { state.endReplay() }
+        mainClock.advanceTimeBy(32_000)
+        assertTrue(
+            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+            "fogged over again: ${fog.marks}",
+        )
+    }
+
+    @Test
     fun theReplayDoesNotMistTheClipOverByItself() = runComposeUiTest {
         mainClock.autoAdvance = false
         val fog = FogState()
