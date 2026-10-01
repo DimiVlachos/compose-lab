@@ -155,12 +155,12 @@ internal fun stripGlareAlpha(frame: TurnFrame, index: Int): Float {
 }
 
 /**
- * Whether the staples of a saddle-stitched book show: they go through the fold of its innermost
- * sheet, between the two pages of spread [centre], so they are seen only while the leaf on each
- * side of that fold (leaf centre - 1 on the left, leaf centre on the right) lies on top of its
+ * Whether the binding thread of a sewn pamphlet shows: it runs through holes in the fold of the
+ * innermost sheet, between the two pages of spread [centre], so it is seen only while the leaf on
+ * each side of that fold (leaf centre - 1 on the left, leaf centre on the right) lies on top of its
  * stack, [leftTop] or [rightTop], or is in the air ([flying]) with the fold showing under it.
  */
-internal fun staplesShow(centre: Int, leftTop: Int, rightTop: Int, flying: Set<Int>): Boolean =
+internal fun stitchesShow(centre: Int, leftTop: Int, rightTop: Int, flying: Set<Int>): Boolean =
     (leftTop == centre - 1 || centre - 1 in flying) && (rightTop == centre || centre in flying)
 
 /** A horizontal drag of [dragPx] as turn progress, on a book [bookWidthPx] wide. */
