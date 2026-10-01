@@ -133,6 +133,20 @@ class FogDemoHintUiTest {
     }
 
     @Test
+    fun aCameraTurnedOffInSettingsAlsoLeavesAPillBackToTheCard() = runComposeUiTest {
+        showDemo(CameraAccess.Blocked {})
+        onNodeWithText(notNow).performTouchInput { click() }
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
+        waitForIdle()
+        onNodeWithText(cardTitle).assertDoesNotExist()
+
+        onNodeWithText(cameraHint).performTouchInput { click() }
+        onNodeWithText(cardTitle).assertExists()
+    }
+
+    @Test
     fun aReplayedClipShowsNoHints() = runComposeUiTest {
         setContent {
             CompositionLocalProvider(LocalLifecycleOwner provides PausedOwner()) {

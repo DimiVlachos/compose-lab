@@ -29,7 +29,7 @@ class MirrorOnWallUiTest {
         val pixels = onNodeWithTag("wall").captureToImage().toPixelMap()
         val glass = wallGlassOn(Size(pixels.width.toFloat(), pixels.height.toFloat()))
         // About 20 of the photo's pixels out: past the glass's light bevel, into the black frame.
-        val scale = maxOf(pixels.width / 1220f, pixels.height / 2639f)
+        val scale = maxOf(pixels.width / WallPhotoSize.width, pixels.height / WallPhotoSize.height)
         val gap = (20 * scale).toInt().coerceAtLeast(3)
         val mid = glass.center
         val outside =

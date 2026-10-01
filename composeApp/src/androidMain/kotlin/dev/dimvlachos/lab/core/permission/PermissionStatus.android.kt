@@ -43,7 +43,7 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
     var refusals by rememberSaveable { mutableIntStateOf(0) }
     var rationaleBefore by rememberSaveable { mutableStateOf(false) }
     // The trips to settings this permission has seen, where "don't allow" may have become "ask
-    // every time". Counted across permissions: one trip from the card may change them all.
+    // every time". Counted for the whole app, so any trip there counts.
     var tripsSeen by rememberSaveable { mutableIntStateOf(SettingsTrips.count) }
     fun rationale() =
         context.findActivity()?.shouldShowRequestPermissionRationale(permission) == true
@@ -99,8 +99,8 @@ private tailrec fun Context.findActivity(): Activity? =
         else -> null
     }
 
-// Every trip to the app's settings, from any permission: back from one, each permission refused for
-// good offers to ask again. Lost with the process, which errs towards asking, never towards a card
+// Every trip to the app's settings: back from one, a permission refused for good offers to ask
+// again. Lost with the process, which errs towards asking, never towards a card
 // stuck on settings.
 private object SettingsTrips {
     var count by mutableIntStateOf(0)

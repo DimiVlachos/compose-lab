@@ -42,10 +42,12 @@ class CatalogTest {
     }
 
     @Test
-    fun everyScriptFitsInALinkedInClip() {
+    fun everyScriptFitsInALinkedInClipAndTheRecorder() {
+        // The recorder plays a script twice after a 1.5 s pre-roll, and waits 60 s in all for the
+        // app to start and finish.
         for (demo in Catalog.demos) {
             assertTrue(
-                demo.script.nominalDuration <= 40.seconds,
+                demo.script.nominalDuration <= 26.seconds,
                 "${demo.id} runs ${demo.script.nominalDuration}",
             )
         }
