@@ -2,13 +2,16 @@ package dev.dimvlachos.lab.core.presentation.components.pageturn
 
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -17,7 +20,6 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
@@ -37,122 +39,142 @@ internal class BookInk(
 )
 
 /**
- * The book's size against its pages: a page is square (a spread is 2:1), the sheets fan out past
- * the outer edges and a little room is left all round for the pages' arch. Everything is a share of
- * a page's width, so the whole book is this wide for its height.
+ * The book's size against its pages: a page is square (a spread is 2:1), the leaves under each side
+ * fan out past the outer edges and a little room is left all round for the pages' arch. Everything
+ * is a share of a page's width, so the whole book is this wide for its height.
  */
 internal val BookAspect: Float =
     (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)) /
         (1f + 2f * PageTurnDimens.EdgeRoomFraction)
 
 /**
- * Draws the open book: the sheets of paper under each side and the open spread on top, each of
- * [spreads] one image across both pages. Every page is a chain of strips: at rest the two lie in
- * the open book's curve, and mid-turn the pages either side of the leaf lie under it while the leaf
- * crosses between them, the right half of one spread on its front and the left half of the next on
- * its back.
+ * Draws the open book from its leaves. Each of [spreads] is one image across both pages, or blank
+ * paper (null); leaf i carries the right half of spread i on its front and the left half of spread
+ * i + 1 on its back. The leaves already turned lie on the left, the rest on the right, each one a
+ * chain of strips in the open book's curve, flatter the deeper it lies, so their edges fan out.
+ * Mid-turn the leaf in the air crosses between the stacks: the one it leaves rises to take its
+ * place, and the one it lands on settles under it.
  */
 internal class BookPainter(private val ink: BookInk) {
     private val matrix = Matrix()
     private val edgeClip = Path()
     private val sheetPath = Path()
-    private var restSize = Size.Unspecified
-    private lateinit var restRight: TurnFrame
-    private lateinit var restLeft: TurnFrame
-    private lateinit var rightOutline: PageOutline
-    private lateinit var leftOutline: PageOutline
+    private val paper = paperPage(ink.pageEdge)
 
-    fun DrawScope.drawBook(spreads: List<ImageBitmap>, state: PageTurnState) {
+    fun DrawScope.drawBook(spreads: List<ImageBitmap?>, state: PageTurnState) {
         val page =
             size.width /
                 (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction))
         val side = page * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)
         val top = page * PageTurnDimens.EdgeRoomFraction
-        val pair = state.pair
-        val t = state.leafProgress.coerceIn(0f, 1f)
-        val (leftSheets, rightSheets) = stackSheets(state.spread, pair?.leaf, spreads.size)
         inset(left = side, top = top, right = side, bottom = top) {
-            restPages(page)
-            drawSheets(leftOutline, leftSheets, outwards = -1f, page)
-            drawSheets(rightOutline, rightSheets, outwards = 1f, page)
-            drawPages(spreads, state, pair, t, page)
+            drawOpenBook(spreads, state, page)
         }
     }
 
-    private fun DrawScope.drawPages(
-        spreads: List<ImageBitmap>,
+    private fun DrawScope.drawOpenBook(
+        spreads: List<ImageBitmap?>,
         state: PageTurnState,
-        pair: TurnPair?,
-        t: Float,
         page: Float,
     ) {
         val spineX = size.width / 2f
-        val corner = CornerRadius(PageTurnDimens.CornerFraction * size.height)
-        val perspectivePx = PageTurnDimens.Perspective.toPx()
-        val originY = size.height * PageTurnDimens.OriginYFraction
-        fun leaf(frame: TurnFrame, front: ImageBitmap, back: ImageBitmap) {
-            for (i in 0 until PageTurnDimens.Strips) {
-                drawStrip(frame, i, front, back, spineX, originY, perspectivePx, corner)
-            }
+        val geometry =
+            PageGeometry(
+                spineX = spineX,
+                originY = size.height * PageTurnDimens.OriginYFraction,
+                perspectivePx = PageTurnDimens.Perspective.toPx(),
+                corner = CornerRadius(PageTurnDimens.CornerFraction * size.height),
+                page = page,
+            )
+        fun image(spread: Int): ImageBitmap = spreads.getOrNull(spread) ?: paper
+        val leaves = spreads.size - 1
+        val pair = state.pair
+        val t = if (pair == null) 0f else state.leafProgress.coerceIn(0f, 1f)
+        // The leaf on top of each stack (-1 or [leaves]: none, the page is the book's endpaper),
+        // and how far each stack has sunk under a leaf that is up: the right one rises as it
+        // leaves, the left one settles as it lands.
+        val leftTop = (pair?.leaf ?: state.spread) - 1
+        val rightTop = pair?.let { it.leaf + 1 } ?: state.spread
+        val leftSink = if (pair == null) 0f else stackLand(t)
+        val rightSink = if (pair == null) 0f else 1f - stackRise(t)
+
+        // The sheets under the top pages, deepest first, each showing past the one above it.
+        for (d in leftTop downTo 1) {
+            drawSheet(geometry, right = false, depth = d + leftSink, image(leftTop - d + 1))
         }
+        for (d in (leaves - 1 - rightTop) downTo 1) {
+            drawSheet(geometry, right = true, depth = d + rightSink, image(rightTop + d))
+        }
+        // The top pages: the back of the left top leaf, the front of the right one.
+        drawLeaf(geometry, restFrame(geometry, right = false, depth = leftSink), image(leftTop + 1))
+        drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
         if (pair == null) {
-            val open = spreads[state.spread]
-            leaf(restLeft, open, open)
-            leaf(restRight, open, open)
             drawStitches(spineX, alpha = 1f)
             drawCrease(spineX)
             return
         }
-        val here = spreads[pair.leaf]
-        val next = spreads[pair.leaf + 1]
         val frame = turnFrame(t, leafWidth = page, bendDirection = state.bendDirection)
-        leaf(restLeft, here, here)
-        leaf(restRight, next, next)
         drawGutterShades(spineX, page, frame.lift * frame.lift)
         val over = stitchesOverLeaf(t)
         if (over < 1f) drawStitches(spineX, alpha = 1f - over)
-        leaf(frame, here, next)
+        drawLeaf(geometry, frame, front = image(pair.leaf), back = image(pair.leaf + 1))
         if (over > 0f) drawStitches(spineX, alpha = over)
         drawCrease(spineX)
     }
 
-    // The two resting pages, and where their edges land on screen: fixed for a size, so worked out
-    // once.
-    private fun DrawScope.restPages(page: Float) {
-        if (size == restSize) return
-        val spineX = size.width / 2f
-        val originY = size.height * PageTurnDimens.OriginYFraction
-        val perspectivePx = PageTurnDimens.Perspective.toPx()
-        restRight = turnFrame(0f, leafWidth = page)
-        restLeft = turnFrame(1f, leafWidth = page)
-        rightOutline = pageOutline(restRight, spineX, originY, perspectivePx, size.height)
-        leftOutline = pageOutline(restLeft, spineX, originY, perspectivePx, size.height)
-        restSize = size
+    // A resting leaf [depth] down the right or left stack.
+    private fun restFrame(geometry: PageGeometry, right: Boolean, depth: Float): TurnFrame =
+        turnFrame(if (right) 0f else 1f, leafWidth = geometry.page, restLift = sheetLift(depth))
+
+    private fun DrawScope.drawLeaf(
+        geometry: PageGeometry,
+        frame: TurnFrame,
+        front: ImageBitmap,
+        back: ImageBitmap = front,
+        strips: IntRange = 0 until PageTurnDimens.Strips,
+    ) {
+        for (i in strips) drawStrip(frame, i, front, back, geometry)
     }
 
     /**
-     * The [sheets] under a resting page: copies of its outline, each fanned a little further out
-     * from the spine than the one above it, as the paper of an open book spreads; the deeper ones
-     * are darker, and each has its edge drawn so they read as layers.
+     * A leaf [depth] down a stack: only its outer strips, all that shows past the sheet above it,
+     * shaded by how deep it lies and with its edge drawn, so each sheet reads as its own.
      */
-    private fun DrawScope.drawSheets(
-        outline: PageOutline,
-        sheets: Int,
-        outwards: Float,
-        page: Float,
+    private fun DrawScope.drawSheet(
+        geometry: PageGeometry,
+        right: Boolean,
+        depth: Float,
+        image: ImageBitmap,
     ) {
-        val step = page * PageTurnDimens.SheetStepFraction
-        val corner = PageTurnDimens.CornerFraction * size.height
-        for (k in sheets downTo 1) {
-            outline.fannedPath(sheetPath, fan = k * step * outwards, corner = corner, outwards)
-            val depth = k.toFloat() / PageTurnDimens.MaxSheets
-            drawPath(sheetPath, lerp(ink.pageEdge, ink.pageEdgeLine, depth * 0.5f))
-            drawPath(
+        val frame = restFrame(geometry, right, depth)
+        drawLeaf(
+            geometry,
+            frame,
+            image,
+            strips = PageTurnDimens.Strips - PageTurnDimens.EdgeStrips until PageTurnDimens.Strips,
+        )
+        pageOutline(frame, geometry.spineX, geometry.originY, geometry.perspectivePx, size.height)
+            .fannedPath(
                 sheetPath,
-                ink.pageEdgeLine.copy(alpha = 0.55f + 0.35f * depth),
-                style = Stroke(PageTurnDimens.SheetEdgeWidth.toPx()),
+                fan = 0f,
+                corner = geometry.corner.x,
+                outwards = if (right) 1f else -1f,
             )
-        }
+        // Each sheet lies a little more in the shadow of the ones above it.
+        drawPath(
+            sheetPath,
+            ink.shade.copy(
+                alpha =
+                    (PageTurnDimens.SheetShadePerDepth * depth).coerceAtMost(
+                        PageTurnDimens.SheetShadeMax
+                    )
+            ),
+        )
+        drawPath(
+            sheetPath,
+            ink.shade.copy(alpha = PageTurnDimens.SheetEdgeAlpha),
+            style = Stroke(PageTurnDimens.SheetEdgeWidth.toPx()),
+        )
     }
 
     /**
@@ -167,11 +189,12 @@ internal class BookPainter(private val ink: BookInk) {
         index: Int,
         front: ImageBitmap,
         back: ImageBitmap,
-        spineX: Float,
-        originY: Float,
-        perspectivePx: Float,
-        corner: CornerRadius,
+        geometry: PageGeometry,
     ) {
+        val spineX = geometry.spineX
+        val originY = geometry.originY
+        val perspectivePx = geometry.perspectivePx
+        val corner = geometry.corner
         val pose = frame.poses[index]
         val facing = stripFacesReader(pose)
         val image = if (facing) front else back
@@ -331,6 +354,28 @@ internal class BookPainter(private val ink: BookInk) {
         }
     }
 }
+
+/** Where the pages are drawn from: the spine, the eye, and a page's width and corners. */
+internal class PageGeometry(
+    val spineX: Float,
+    val originY: Float,
+    val perspectivePx: Float,
+    val corner: CornerRadius,
+    val page: Float,
+)
+
+// A blank leaf's paper, as a small image: a page cuts it into strips like any other, and it scales.
+private fun paperPage(color: Color): ImageBitmap {
+    val image = ImageBitmap(PaperPageWidth, PaperPageWidth / 2)
+    Canvas(image)
+        .drawRect(
+            Rect(0f, 0f, PaperPageWidth.toFloat(), PaperPageWidth / 2f),
+            Paint().apply { this.color = color },
+        )
+    return image
+}
+
+private const val PaperPageWidth = 144
 
 /**
  * A resting page's edges as drawn: its top and bottom edge, one point per strip boundary from the

@@ -188,18 +188,31 @@ private fun edgeLight(frame: TurnFrame, boundary: Int): Float =
     abs(cos(frame.boundaryAngle(boundary)))
 
 /**
- * How many sheets lie under the left and right pages: the open spread, or with [leaf] up, the pages
- * either side of it. The book is opened part way, BaseSheets under each side besides the
- * illustrated leaves. The stacks hold still while a page turns: the right side is a sheet thinner
- * from the moment its top leaf lifts, and the left a sheet thicker once it lands.
+ * How high a sheet [depth] down its stack arches: the top page by RestLift, and every sheet under
+ * it a little flatter. Flatter paper reaches further from the spine, so the sheets' edges fan out
+ * past the page above, as an open book's do. [depth] is fractional while a stack settles.
  */
-internal fun stackSheets(spread: Int, leaf: Int?, spreadCount: Int): Pair<Int, Int> {
-    val base = PageTurnDimens.BaseSheets
-    val left = base + (leaf ?: spread)
-    val right = base + (spreadCount - 1) - (if (leaf != null) leaf + 1 else spread)
-    return left.coerceAtMost(PageTurnDimens.MaxSheets) to
-        right.coerceAtMost(PageTurnDimens.MaxSheets)
-}
+internal fun sheetLift(depth: Float): Float =
+    PageTurnDimens.RestLift *
+        (1f - PageTurnDimens.SheetFlatten * depth).coerceAtLeast(PageTurnDimens.FlattestShare)
+
+/**
+ * How far a leaf turning at [t] has let the sheets under it rise: they take its place in the first
+ * half of the turn, as it leaves them. 0 to 1.
+ */
+internal fun stackRise(t: Float): Float =
+    smoothstep((t / PageTurnDimens.SettleSpan).coerceIn(0f, 1f))
+
+/**
+ * How far a leaf turning at [t] has pressed the stack it lands on: in the last part of the turn, as
+ * it comes down onto it. 0 to 1.
+ */
+internal fun stackLand(t: Float): Float =
+    smoothstep(
+        ((t - (1f - PageTurnDimens.SettleSpan)) / PageTurnDimens.SettleSpan).coerceIn(0f, 1f)
+    )
+
+private fun smoothstep(x: Float): Float = x * x * (3f - 2f * x)
 
 /**
  * The extra shade on a resting page at [u] across it: the paper falling into the spine is darker,

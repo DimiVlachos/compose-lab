@@ -18,13 +18,13 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * An open book of [spreads], each one image across both pages, turned by [state]. Tap the right
- * page for the next spread and the left for the previous one, or drag a page over: it follows the
- * finger, bowing the way it moves, and finishes or falls back when let go.
+ * An open book of [spreads], each one image across both pages or blank paper (null), turned by
+ * [state]. Tap the right page for the next spread and the left for the previous one, or drag a page
+ * over: it follows the finger, bowing the way it moves, and finishes or falls back when let go.
  */
 @Composable
 fun PageTurnBook(
-    spreads: List<ImageBitmap>,
+    spreads: List<ImageBitmap?>,
     state: PageTurnState,
     modifier: Modifier = Modifier,
 ) {

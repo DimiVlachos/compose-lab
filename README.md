@@ -78,7 +78,7 @@ An open book whose pages turn in 3D under your finger, drawn in plain Compose `D
 - **A leaf of strips.** The turning page is 18 strips hinged end to end. Each one is drawn under its own perspective `Matrix` (the 3×3 projection written into Compose's 4×4 layout), so the page curls instead of flipping as a flat card.
 - **A bow that follows the hand.** The curl is spread along the strips and bulges the way the page is moving. Reverse a drag halfway and the bow flips across over a short stretch of the turn, so the paper looks pulled, not snapped.
 - **Let go anywhere.** Past 0.42 of a turn, or on a flick, the page finishes; otherwise it sinks back. Both are critically damped springs, so a page lands without bouncing off the spine, and a page still landing can be caught mid-air.
-- **An open book at rest.** The pages lie in the curve of an open book: they rise out of the gutter, crest and settle onto the sheets under them, which fan out past each outer edge, a little further with every sheet down. The stacks hold still while a page is up: the right side loses a sheet as it lifts, the left gains one as it lands. A turn starts and ends in that same curve, so no page ever snaps flat.
+- **A book of real leaves.** Every sheet is a leaf you can turn, the photo spreads among blank paper ones. The leaves lie in the curve of an open book, rising out of the gutter and cresting, each one under the top page a little flatter, so their edges fan out past it the way an open book's paper does, each showing its own page. As a leaf lifts, the sheets under it rise to take its place; as it lands, the stack it lands on settles under it. A turn starts and ends in that same curve, so no page ever snaps flat.
 - **Light and binding.** Each strip shades by how far it faces away, with a sheen while it is up. The gutter darkens under a standing leaf, stitches cross from under the leaf to over it at the ends of the turn, and three stacked drop shadows sit the book on the table.
 
 Taps and drags go through one `PageTurnState`, so the demo's scripted drags take the same path as a finger.
@@ -86,7 +86,7 @@ Taps and drags go through one `PageTurnState`, so the demo's scripted drags take
 ```kotlin
 val book = rememberPageTurnState(spreadCount = spreads.size)
 PageTurnBook(
-    spreads = spreads, // List<ImageBitmap>, one 2:1 image across both pages
+    spreads = spreads, // List<ImageBitmap?>, one 2:1 image across both pages, or null for blank paper
     state = book,
 )
 ```
