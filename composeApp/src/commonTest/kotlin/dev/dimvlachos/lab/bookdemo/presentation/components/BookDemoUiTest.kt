@@ -34,9 +34,10 @@ class BookDemoUiTest {
             }
         }
         mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds + 2_000)
-        // The slow lift falls back and the reversed drag too: neither is a turn. The flick is; the
-        // riffles turn a page per tap, three on and five back.
-        assertEquals(listOf(0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0), spreads)
+        // The slow peel falls back and the reversed pull too: neither is a turn. The flick is, the
+        // slide down the edge and the pull back from the left are; the riffles turn a page per
+        // tap, four on and five back, and the page caught in the air goes back where it was.
+        assertEquals(listOf(0, 1, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0), spreads)
         assertEquals(true, finished)
     }
 }
