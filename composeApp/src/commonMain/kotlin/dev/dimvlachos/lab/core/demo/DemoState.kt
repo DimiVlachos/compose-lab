@@ -26,6 +26,7 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
     }
 
     private var scrollHandler: (suspend (Float) -> Unit)? = null
+    private var pageDragHandler: (suspend (PageDrag) -> Unit)? = null
     private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
     private var dripHandler: (suspend (Offset, Float) -> Unit)? = null
     private var mistHandler: (suspend (Duration) -> Unit)? = null
@@ -36,6 +37,10 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
 
     override suspend fun scrollBy(px: Float) {
         scrollHandler?.invoke(px)
+    }
+
+    override suspend fun dragPage(drag: PageDrag) {
+        pageDragHandler?.invoke(drag)
     }
 
     override suspend fun wipe(path: List<Offset>, duration: Duration) {
@@ -52,6 +57,10 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
 
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
+    }
+
+    fun setPageDragHandler(handler: (suspend (PageDrag) -> Unit)?) {
+        pageDragHandler = handler
     }
 
     fun setWipeHandler(handler: (suspend (List<Offset>, Duration) -> Unit)?) {

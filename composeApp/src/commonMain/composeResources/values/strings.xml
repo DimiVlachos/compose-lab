@@ -9,6 +9,7 @@
     <string name="nav_profile">Profile</string>
     <string name="demo_navbar">Nav bar</string>
     <string name="demo_morph_app">Profile gallery</string>
+    <string name="demo_book_turn">Page-turn book</string>
     <string name="demo_fog">Fogged mirror</string>
     <string name="demo_fog_bathroom">Bathroom</string>
     <string name="demo_fog_reflection">Your reflection</string>

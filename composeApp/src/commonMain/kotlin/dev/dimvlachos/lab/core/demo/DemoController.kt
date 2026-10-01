@@ -10,6 +10,8 @@ interface DemoController {
 
     suspend fun scrollBy(px: Float)
 
+    suspend fun dragPage(drag: PageDrag)
+
     /**
      * Drags a finger through [path] over [duration]: points as fractions of the stage, sampled at
      * even time steps, so their spacing sets the finger's speed.
