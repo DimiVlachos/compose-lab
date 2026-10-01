@@ -24,7 +24,7 @@ class BeadUiTest {
     @Test
     fun aDropIsDarkerInsideWithABrightHighlight() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -47,7 +47,7 @@ class BeadUiTest {
     @Test
     fun withoutDropsTheGlassIsUnchanged() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -61,7 +61,7 @@ class BeadUiTest {
     @Test
     fun aRunningDropIsPulledIntoATeardrop() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -84,7 +84,7 @@ class BeadUiTest {
     @Test
     fun aDropFadedRightOutLeavesTheGlassUntouched() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -102,7 +102,7 @@ class BeadUiTest {
         var red = 0f
         runComposeUiTest {
             setContent {
-                FoggedWindow(
+                FoggedMirror(
                     photo = ColorPainter(Color.Red),
                     state = FogState(startClear = true),
                     modifier = Modifier.size(200.dp).testTag("window"),
@@ -131,7 +131,7 @@ class BeadUiTest {
     fun aDropSpreadingIntoTheFilmWidensAndThinsWithNoDarkPatch() = runComposeUiTest {
         var spread by mutableStateOf(0f)
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),

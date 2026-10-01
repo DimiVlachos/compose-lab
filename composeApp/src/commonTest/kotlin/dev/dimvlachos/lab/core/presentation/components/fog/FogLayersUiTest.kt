@@ -35,7 +35,7 @@ class FogLayersUiTest {
         fog.setBreathLevel(fog.beginBreath(), 0.62f)
         fog.wipeAcross(0.7f)
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -54,7 +54,7 @@ class FogLayersUiTest {
         val fog = FogState(startClear = true)
         fog.setBreathLevel(fog.beginBreath(), 0.5f)
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -71,7 +71,7 @@ class FogLayersUiTest {
     @Test
     fun fogOverAStrongColourIsMilkyGrey() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -98,7 +98,7 @@ class FogLayersUiTest {
     @Test
     fun clearGlassKeepsFogRoundItsEdges() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -118,7 +118,7 @@ class FogLayersUiTest {
         fog.extendStroke(fog.beginStroke(Offset(0.1f, 0.3f)), Offset(0.9f, 0.3f))
         fog.extendStroke(fog.beginStroke(Offset(0.1f, 0.7f), radius = 8.dp), Offset(0.9f, 0.7f))
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -145,7 +145,7 @@ class FogLayersUiTest {
         val plain = FogState()
         val breathed = FogState().apply { setBreathLevel(beginBreath(), 0.6f) }
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = if (withBreath) breathed else plain,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -179,7 +179,7 @@ class FogLayersUiTest {
             fog.extendStroke(it, Offset(0.9f, 0.7f))
         }
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -206,7 +206,7 @@ class FogLayersUiTest {
                 }
             }
             setContent {
-                FoggedWindow(
+                FoggedMirror(
                     photo = ColorPainter(Color.Red),
                     state = fog,
                     modifier = Modifier.size(200.dp).testTag("window"),
@@ -232,7 +232,7 @@ class FogLayersUiTest {
         val mist = fog.beginMist()
         fog.setMistAmount(mist, 0.5f)
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
