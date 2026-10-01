@@ -3,15 +3,33 @@ package dev.dimvlachos.lab.core.demo
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import kotlin.time.Duration
 
+/**
+ * A demo's scripted state; [recording] when the recorder is capturing it as a clip, [replay] while
+ * the user watches the script again, until they stop it.
+ */
 @Stable
-class DemoState : DemoController {
+class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoController {
     override var selectedIndex: Int by mutableIntStateOf(0)
         private set
 
+    var replay: Boolean by mutableStateOf(replay)
+        private set
+
+    /** Stopped: the demo is the user's to play with again. */
+    fun endReplay() {
+        replay = false
+    }
+
     private var scrollHandler: (suspend (Float) -> Unit)? = null
     private var pageDragHandler: (suspend (PageDrag) -> Unit)? = null
+    private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
+    private var dripHandler: (suspend (Offset, Float) -> Unit)? = null
+    private var mistHandler: (suspend (Duration) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -25,11 +43,35 @@ class DemoState : DemoController {
         pageDragHandler?.invoke(drag)
     }
 
+    override suspend fun wipe(path: List<Offset>, duration: Duration) {
+        wipeHandler?.invoke(path, duration)
+    }
+
+    override suspend fun drip(at: Offset, length: Float) {
+        dripHandler?.invoke(at, length)
+    }
+
+    override suspend fun mist(duration: Duration) {
+        mistHandler?.invoke(duration)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
 
     fun setPageDragHandler(handler: (suspend (PageDrag) -> Unit)?) {
         pageDragHandler = handler
+    }
+
+    fun setWipeHandler(handler: (suspend (List<Offset>, Duration) -> Unit)?) {
+        wipeHandler = handler
+    }
+
+    fun setDripHandler(handler: (suspend (Offset, Float) -> Unit)?) {
+        dripHandler = handler
+    }
+
+    fun setMistHandler(handler: (suspend (Duration) -> Unit)?) {
+        mistHandler = handler
     }
 }

@@ -6,8 +6,13 @@ import kotlin.time.Duration.Companion.milliseconds
 class DemoScriptBuilder internal constructor() {
     private val steps = mutableListOf<DemoStep>()
 
-    fun at(time: Duration, action: suspend DemoController.() -> Unit) {
-        steps += DemoStep(time, action)
+    /** Plays [action] at [time]; one that goes on, such as a mist, [lasts] that long. */
+    fun at(
+        time: Duration,
+        lasts: Duration = Duration.ZERO,
+        action: suspend DemoController.() -> Unit,
+    ) {
+        steps += DemoStep(time, action, lasts)
     }
 
     internal fun build(holdStart: Duration, holdEnd: Duration) =
