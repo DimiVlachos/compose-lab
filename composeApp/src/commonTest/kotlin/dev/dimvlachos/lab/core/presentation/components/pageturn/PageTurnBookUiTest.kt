@@ -26,6 +26,8 @@ import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -113,6 +115,36 @@ class PageTurnBookUiTest {
     }
 
     @Test
+    fun aCornerPulledAwayOnASlantTurnsThePage() = runComposeUiTest {
+        val state = showBook()
+        // From near the top corner, down and across at 45 degrees.
+        onNodeWithTag(BookTag).performTouchInput {
+            swipe(
+                start = Offset(width * 0.9f, height * 0.12f),
+                end = Offset(width * 0.3f, height * 0.12f + width * 0.6f),
+                durationMillis = 300,
+            )
+        }
+        mainClock.advanceTimeBy(3_000)
+        assertEquals(1, state.spread)
+    }
+
+    @Test
+    fun aNearlyUprightDragLeavesThePage() = runComposeUiTest {
+        val state = showBook()
+        onNodeWithTag(BookTag).performTouchInput {
+            swipe(
+                start = Offset(width * 0.8f, height * 0.1f),
+                end = Offset(width * 0.75f, height * 0.9f),
+                durationMillis = 300,
+            )
+        }
+        mainClock.advanceTimeBy(3_000)
+        assertEquals(0, state.spread)
+        assertEquals(false, state.isTurning)
+    }
+
+    @Test
     fun earlyInATurnTheLeafStillCoversTheSpineAndUncoversTheNextPage() = runComposeUiTest {
         val state = showBook()
         dragTo(state, progress = 0.25f)
@@ -164,10 +196,17 @@ class PageTurnBookUiTest {
         assertEquals(3, state.spread)
     }
 
+    // Takes the right page by the middle of its outer edge and moves the finger to where that
+    // edge lies, seen from above, a [progress] of the way through a turn.
     private fun ComposeUiTest.dragTo(state: PageTurnState, progress: Float) {
         runOnUiThread {
-            state.dragStart(dx = -10f)
-            state.dragBy(-progress * PageTurnDimens.DragSpan * state.bookWidthPx)
+            val layout = state.layout!!
+            val spine = layout.left + layout.geometry.spineX
+            val y = layout.size.height / 2f
+            val reach = 0.95f * layout.geometry.page
+            val down = Offset(spine + reach, y)
+            state.dragStart(down, down - Offset(10f, 0f))
+            state.dragTo(Offset(spine + reach * cos(PI.toFloat() * progress), y))
         }
         mainClock.advanceTimeBy(50)
     }

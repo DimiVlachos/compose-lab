@@ -12,24 +12,64 @@ internal object PageTurnDimens {
     // deepest half way and lets the leaf land flat at both ends.
     const val BendMax = 0.6f
 
-    // A drag across this fraction of the open book is a full turn; a finger rarely travels the
-    // whole spread, and 1:1 feels heavy.
-    const val DragSpan = 0.62f
+    // The paper's bow is a spring. Flying free, a leaf keeps BowRest of BendMax with its edge
+    // trailing; in a hand, HoldBow with the hand leading. Moving, the air pushes it back FlexGain
+    // more for every turn a second, up to FlexMax more, never past BowMax. It rings at
+    // FlexFrequency, damped by FlexDamping: let go, it whips over from one to the other, and a
+    // stop lets it settle with a sway.
+    const val BowRest = 0.8f
+    const val HoldBow = 0.7f
+    const val FlexGain = 0.3f
+    const val FlexMax = 0.6f
+    const val BowMax = 1.6f
+    const val FlexFrequency = 2.4f
+    const val FlexDamping = 0.4f
+    // In hand, the bow follows the finger calmly, without overshoot, at this rate.
+    const val HeldFlexFrequency = 1.6f
+
+    // Where the hand holds a leaf bends it: SpineLever of the bow held next to the spine, where
+    // there is little lever, EdgeLever at the outer edge. Held, the bow gathers GripPeak times
+    // thicker around the fingers, over GripSpread of the leaf either side.
+    const val SpineLever = 0.3f
+    const val EdgeLever = 1.15f
+    const val GripPeak = 2.2f
+    const val GripSpread = 0.22f
+
+    // A leaf held nearer a corner than TiltDeadZone (of its height from the middle) leans its
+    // rulings, up to TiltMax at the corner, so that corner peels first; the lean grows in over
+    // TiltRamp of the turn, and the leaf leans after it as a spring at TiltFrequency. Never past
+    // TiltLimit, where the rulings would meet on the page.
+    const val TiltDeadZone = 0.12f
+    const val TiltMax = 0.55f
+    const val TiltRamp = 0.12f
+    const val TiltFrequency = 3f
+    // A pull at a slant leans the rulings square to it once it has gone this share of a page.
+    const val PullSettle = 0.06f
+    // The finger's recent way, which a pull's slant is read from, is its last PullWindow of a page.
+    const val PullWindow = 0.1f
+    // A held leaf's bow swings round only once the finger has come back this share of a page.
+    const val TurnBack = 0.02f
+    const val TiltLimit = 0.65f
+    // Leaning this far, a peeled leaf has lost the rest curve the binding gave it.
+    const val TiltRestFade = 0.35f
+    const val PinSteps = 8
+
+    // A held point is placed this share of the way from where it lies, seen from straight above,
+    // to where the eye sees it, so it stays under the fingertip without snapping up (see pinLeaf).
+    const val PinPerspective = 0.6f
+
+    // Let go, the lean and the hand's shape ease out as the leaf flies, so it lands square.
+    const val StraightenFrequency = 1.6f
 
     // Let go past this much of a turn and it finishes, or flick faster than this many turns per
     // second; anything else falls back.
     const val CommitProgress = 0.42f
-    const val CommitVelocity = 1.1f
+    const val CommitVelocity = 0.7f
 
     // Critically damped, so a released page lands without bouncing off the spine; a cancel is a
     // touch softer, the page sinking back rather than being thrown.
     const val CommitStiffness = 170f
     const val CancelStiffness = 150f
-
-    // A drag that changes direction flips the bow over this much progress, not at once: the paper
-    // looks pulled, not snapped.
-    const val BendFlipSpan = 0.15f
-    const val BendReleaseMs = 300
 
     // The camera distance of the 3D turn, and the height it looks from: a little above centre, so
     // the lifted leaf grows more at the bottom, the way a book on a table looks.
@@ -80,6 +120,10 @@ internal object PageTurnDimens {
     const val EdgeRoomFraction = 0.015f
 
     val TapSlop = 6.dp
+
+    // A drag takes the page if it sets off no steeper than this, rise over run: tan 65 degrees, so
+    // a corner pulled away on a slant turns it, and only a nearly upright drag is left alone.
+    const val SteepestDrag = 2.14f
 
     // Strips overlap by this much so no hairline of the page under them shows between two of
     // them; the last strip has nothing to overlap.
