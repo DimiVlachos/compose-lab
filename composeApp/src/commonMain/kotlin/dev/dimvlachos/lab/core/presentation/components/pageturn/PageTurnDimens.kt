@@ -57,6 +57,13 @@ internal object PageTurnDimens {
     const val TiltRestFade = 0.35f
     const val PinSteps = 8
 
+    // A leaf taken off its stack lifts in step with the finger over this share of a page, the paper
+    // trailing the fingertip a little, before it lies under it again (see liftLag).
+    const val LiftOff = 0.12f
+    // Within this much of either end of the turn, a held leaf is placed as a flat leaf swinging
+    // about the spine would be, handing over to its real shape as it rises (see heldSeenX).
+    const val LiftSwing = 0.3f
+
     // A held point is placed this share of the way from where it lies, seen from straight above,
     // to where the eye sees it, so it stays under the fingertip without snapping up (see pinLeaf).
     const val PinPerspective = 0.6f

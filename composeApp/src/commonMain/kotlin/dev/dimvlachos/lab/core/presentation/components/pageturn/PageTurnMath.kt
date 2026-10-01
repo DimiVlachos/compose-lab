@@ -591,23 +591,19 @@ internal fun pinTurn(
     grip: Grip,
     geometry: PageGeometry,
     restLift: Float = PageTurnDimens.RestLift,
+    liftedFrom: Float = Float.NaN,
 ): Float {
     // Near either end of the turn, where the paper first creeps the wrong way, the turn is found
     // by search; anywhere else it follows on smoothly from the last one.
     val nearAnEnd = from < PinSearchEnds || from > 1f - PinSearchEnds
     var t =
-        if (nearAnEnd) turnUnder(grab, targetX, from, tilt, bow, grip, geometry, restLift)
-        else from.coerceIn(0f, 1f)
+        if (nearAnEnd) {
+            turnUnder(grab, targetX, from, tilt, bow, grip, geometry, restLift, liftedFrom)
+        } else from.coerceIn(0f, 1f)
     val point = FloatArray(3)
-    fun miss(t: Float): Float {
-        heldPoint(grab, t, geometry.page, bow, geometry.height, tilt, grip, point, restLift)
-        val (x, _, z) = point
-        // From straight above, then that share of the way to the eye's view.
-        val scale =
-            PageTurnDimens.PinPerspective *
-                (geometry.perspectivePx / (geometry.perspectivePx + z) - 1f)
-        return (geometry.spineX + x * (1f + scale) - targetX) / geometry.page
-    }
+    fun miss(t: Float): Float =
+        (heldSeenX(grab, t, bow, tilt, grip, geometry, restLift, point, liftedFrom) - targetX) /
+            geometry.page
     repeat(PageTurnDimens.PinSteps) {
         val here = miss(t)
         val probe = if (t > 1f - PinProbe) -PinProbe else PinProbe
@@ -619,6 +615,60 @@ internal fun pinTurn(
     }
     return t
 }
+
+/**
+ * Where across a hand's held paper at [grab] is taken to be, at turn [t], for placing it under the
+ * finger: as seen from straight above, then [PageTurnDimens.PinPerspective] of the way to the eye's
+ * view (see [pinTurn]).
+ *
+ * Paper lifting off its page first creeps outwards, as its rest curve flattens and it rises towards
+ * the eye, before it comes back over: a finger's first move in would find no turn to match, and
+ * then a sudden one. Near the page it was taken from ([liftedFrom], 0 or 1, or NaN for a leaf
+ * caught in the air), so, the paper is taken to swing about the spine as a flat leaf would, always
+ * inwards, handing over to where it really is as it rises.
+ */
+internal fun heldSeenX(
+    grab: Offset,
+    t: Float,
+    bow: Float,
+    tilt: Float,
+    grip: Grip?,
+    geometry: PageGeometry,
+    restLift: Float = PageTurnDimens.RestLift,
+    point: FloatArray = FloatArray(3),
+    liftedFrom: Float = Float.NaN,
+): Float {
+    fun seen(t: Float): Float {
+        heldPoint(grab, t, geometry.page, bow, geometry.height, tilt, grip, point, restLift)
+        val (x, _, z) = point
+        val scale =
+            PageTurnDimens.PinPerspective *
+                (geometry.perspectivePx / (geometry.perspectivePx + z) - 1f)
+        return x * (1f + scale)
+    }
+    val real = seen(t)
+    if (liftedFrom.isNaN()) return geometry.spineX + real
+    val risen = smoothstep((abs(t - liftedFrom) / PageTurnDimens.LiftSwing).coerceIn(0f, 1f))
+    if (risen >= 1f) return geometry.spineX + real
+    // The flat leaf's swing, from where the paper lay on its page.
+    val resting = if (liftedFrom < 0.5f) seen(0f) else -seen(1f)
+    val swing = resting * cos(PI.toFloat() * t)
+    return geometry.spineX + lerp(swing, real, risen)
+}
+
+/**
+ * How far the paper trails a finger that has gone [travel] in from where it took the page off its
+ * stack, over a lift-off of [span]. Pinned exactly, paper lying flat leaps up at the first touch of
+ * a pull: its edge barely moves across while it lifts. So at first it trails, sliding a little
+ * under the fingertip, and lifts in step with the finger; past [span] it catches up again over
+ * twice as far, smoothly, and from there on lies under the finger.
+ */
+internal fun liftLag(travel: Float, span: Float): Float =
+    when {
+        travel <= 0f -> 0f
+        travel < span -> travel - travel * travel / (2f * span)
+        else -> span / 2f * (1f - smoothstep(((travel - span) / (2f * span)).coerceIn(0f, 1f)))
+    }
 
 /**
  * Where a held leaf's rulings lean at turn [t]: towards the corner the hand holds ([gripTilt]), and
@@ -654,22 +704,6 @@ internal fun pullTilt(pull: Offset, geometry: PageGeometry): Float {
     return lean.coerceIn(-PageTurnDimens.TiltMax, PageTurnDimens.TiltMax) * going
 }
 
-// How the held paper lies seen from straight above, x from the spine of the drawing: its turn
-// alone, the lean as it was.
-private fun seenFromAbove(
-    grab: Offset,
-    t: Float,
-    tilt: Float,
-    bow: Float,
-    grip: Grip,
-    geometry: PageGeometry,
-    restLift: Float,
-    point: FloatArray,
-): Float {
-    heldPoint(grab, t, geometry.page, bow, geometry.height, tilt, grip, point, restLift)
-    return geometry.spineX + point[0]
-}
-
 /**
  * The turn nearest [from] that puts the held paper, seen from straight above, across at [targetX]:
  * searched outwards both ways at once and narrowed down, not followed down a slope. Paper leaving a
@@ -685,10 +719,11 @@ private fun turnUnder(
     grip: Grip,
     geometry: PageGeometry,
     restLift: Float,
+    liftedFrom: Float,
 ): Float {
     val point = FloatArray(3)
     fun miss(t: Float) =
-        seenFromAbove(grab, t, tilt, bow, grip, geometry, restLift, point) - targetX
+        heldSeenX(grab, t, bow, tilt, grip, geometry, restLift, point, liftedFrom) - targetX
     val start = from.coerceIn(0f, 1f)
     val here = miss(start)
     if (here == 0f) return start
