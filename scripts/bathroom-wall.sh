@@ -17,8 +17,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 src="${TMPDIR:-/tmp}/bathroom-wall-source.jpg"
-[ -f "$src" ] || curl -sL -o "$src" \
-  "https://images.pexels.com/photos/7046159/pexels-photo-7046159.jpeg?auto=compress&w=2400"
+# Downloaded once; a failed download (an error page, a cut-off file) is not kept.
+if [ ! -f "$src" ]; then
+  curl -fsSL -o "$src.part" \
+    "https://images.pexels.com/photos/7046159/pexels-photo-7046159.jpeg?auto=compress&w=2400"
+  mv "$src.part" "$src"
+fi
 
 # The counter's front face: a lit lip, a shadow under it, then darkening grey with a little grain.
 face="if(lt(Y,5),218,if(lt(Y,14),205-(Y-5)*6,150-40*Y/H))+2*(random(1)-0.5)"

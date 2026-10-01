@@ -89,7 +89,8 @@ What's on the glass:
 
 ```kotlin
 val fog = remember { FogState() }                   // starts fully fogged
-val drips = remember(fog) { DripDriver(fog) }       // advance(seconds) on each frame
+val drips = remember(fog) { DripDriver(fog) }       // set drips.glass to the glass's size in dp,
+                                                    // then drips.advance(seconds) on each frame
 
 FoggedWindow(
     photo = painterResource(Res.drawable.mirror_view), // or the camera's live Painter
@@ -107,14 +108,14 @@ Compose made every part of this simple to build, and the same Kotlin runs on And
   - Breath and mist *fill back in* rather than pile up: `DstOut`, then `Plus` through a `SrcIn` mask, in `saveLayer` from `drawIntoCanvas`.
   - That's plain Porter–Duff maths, the same on both platforms.
 - **`Modifier.blur` and `ColorFilter.colorMatrix`** turn one `Painter` into the frosted copy of the scene. The camera is just another `Painter`, so the live mirror needed no special path.
-- **Drops are drawn with ordinary draw calls.** Each teardrop is a `Path` of two cubics and an arc. Its shading, rim and glint are `Brush.radialGradient`s, circles and arcs. `withTransform` stretches and spreads it.
+- **Drops are drawn with ordinary draw calls.** Each teardrop is a `Path` of two cubics and an arc, drawn longer the faster it runs. Its shade, rim, edge light and glint are a filled path, strokes, an arc and a circle, and a settled drop gets a soft `Brush.radialGradient` halo. `withTransform` spreads it as it melts into a wipe.
 - **Drawing never triggers recomposition.** Beads are handed over as a lambda and read in `drawBehind`. The fog's marks are a `mutableStateListOf` read in the draw phase, and camera frames sit in snapshot state that only `onDraw` reads. So a running drop or a new frame costs a redraw, not a recomposition.
 - **Clocks and gestures are coroutines.**
   - `withFrameNanos` drives the drops and the mist.
   - `snapshotFlow` wakes the drip loop the moment you wipe, and otherwise lets the glass sleep.
   - `pointerInput` with `awaitEachGesture` tells a wipe from a hold.
   - `repeatOnLifecycle` keeps the camera and microphone on only while the screen is showing.
-- **Everything is testable.** `runComposeUiTest` plus `captureToImage` read real pixels: a drop is darker in the middle, a spread one is thinner and wider, and a wipe clears the fog. The drip clock runs on the test's own frame clock, so tests that play 15 seconds of drops finish in milliseconds.
+- **Everything is testable.** `runComposeUiTest` plus `captureToImage` read real pixels: a drop is darker in the middle, a spread one is thinner and wider, and a wipe clears the fog. The drips and the mist run on the test's own frame clock, so a test steps through many seconds of drops frame by frame, exactly the same every run.
 - **The mirror hangs on a real wall with ordinary layout.** `BoxWithConstraints` measures the screen. An `Image` with `ContentScale.Crop` and a custom `Alignment` crops the wall photo around the mirror. The glass is a `Box` placed with `Modifier.offset` and `size`, and clipped with `RoundedCornerShape`. So the fog lands exactly on the photo's glass on any screen, and a finger on the tiles wipes nothing.
 - **`expect`/`actual`** keeps the platform code small: CameraX and the microphone on Android, stubs on iOS. Everything you see is common code.
 
