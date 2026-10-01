@@ -271,8 +271,8 @@ internal fun FogDemo(
     }
 
     // Without breath, the still-steamy room mists wiped glass back over by itself, slowly, while
-    // the demo is in front of the user; never in the recording, whose clip breathes over it.
-    if (!breathing && !state.recording) {
+    // the demo is in front of the user; never while the script plays, which mists it itself.
+    if (!breathing && !state.recording && !state.replay) {
         val mist = remember(fog) { MistDriver(fog) }
         val mistLifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(mist, mistLifecycle) {
