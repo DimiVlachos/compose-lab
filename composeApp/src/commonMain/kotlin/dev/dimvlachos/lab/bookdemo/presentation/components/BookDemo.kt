@@ -19,46 +19,50 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnBook
 import dev.dimvlachos.lab.core.presentation.components.pageturn.rememberPageTurnState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-private const val PhotoSpreads = 4
+private const val SpreadCount = 8
 
-// Blank leaves before and after the photos: the book is opened at its first photo spread with this
-// many leaves already turned, and as many left to turn after the last.
-private const val BlankLeaves = 8
-private const val SpreadCount = PhotoSpreads + 2 * BlankLeaves
+// The book opens a few leaves in, so both sides lie on a stack; the script counts from here.
+private const val OpenAt = 2
+
+// Between taps when the script turns several pages: a quick hand, each page let go while the last
+// is still in the air.
+private const val RiffleMs = 170L
 
 // Room around the book for its shadow on the table; the book takes the largest 2:1 that fits.
 private val TableMarginX = 40.dp
 private val TableMarginY = 28.dp
 
 /**
- * The page-turn book on a table: a book of blank paper leaves with four photo spreads in the
- * middle, opened at the first. The script's select(i) taps its way to photo spread i a page at a
- * time, and [onSpreadChange] reports which photo spread is open; its drags are played by a drawn
- * fingertip through the book's own drag calls.
+ * The page-turn book on a table: Little Nemo's first sixteen pages, opened a couple of leaves in.
+ * The script's select(i) taps its way to spread i (counted from where it opens), a page per tap and
+ * taps in quick succession when there are several, and [onSpreadChange] reports the spread the same
+ * way; its drags are played by a drawn fingertip through the book's own drag calls.
  */
 @Composable
 internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
-    val photos = rememberBookSpreads()
-    val blank = remember { List(BlankLeaves) { null } }
-    val book = rememberPageTurnState(SpreadCount, initialSpread = BlankLeaves)
+    val spreads = rememberBookSpreads()
+    val book = rememberPageTurnState(SpreadCount, initialSpread = OpenAt)
     val touch = remember { TouchDot() }
     val currentOnSpreadChange by rememberUpdatedState(onSpreadChange)
     LaunchedEffect(book) {
-        snapshotFlow { book.spread }.collect { currentOnSpreadChange(it - BlankLeaves) }
+        snapshotFlow { book.spread }.collect { currentOnSpreadChange(it - OpenAt) }
     }
     LaunchedEffect(book, state.selectedIndex) {
-        val target = BlankLeaves + state.selectedIndex.coerceIn(0, PhotoSpreads - 1)
+        val target = OpenAt + state.selectedIndex.coerceIn(0, SpreadCount - 1 - OpenAt)
         while (true) {
-            // One tap per landed page: a page still up (a flick settling, a drag) finishes first,
-            // so the book's spread is where the next tap really starts from.
-            snapshotFlow { book.isTurning }.first { !it }
-            if (book.spread == target) break
-            val forward = target > book.spread
+            // A page under a finger is let go first; one already landing counts as landed, so
+            // the next tap turns from where the book is headed and taps can come quickly.
+            snapshotFlow { book.isDragging }.first { !it }
+            val at = book.destination
+            if (at == target) break
+            val forward = target > at
             launch { touch.tap(forward) }
             if (forward) book.next() else book.previous()
+            delay(RiffleMs)
         }
     }
     DisposableEffect(state, book) {
@@ -72,9 +76,9 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
             .padding(horizontal = TableMarginX, vertical = TableMarginY),
         contentAlignment = Alignment.Center,
     ) {
-        if (photos == null) return@Box
+        if (spreads == null) return@Box
         PageTurnBook(
-            spreads = blank + photos + blank,
+            spreads = spreads,
             book,
             with(touch) { Modifier.drawTouch(colors.touch) },
         )
