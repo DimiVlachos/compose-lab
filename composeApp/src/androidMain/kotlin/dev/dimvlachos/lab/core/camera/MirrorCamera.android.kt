@@ -113,7 +113,9 @@ private class AndroidMirrorCamera(
         }
         val analysis = builder.build()
         val executor = Executors.newSingleThreadExecutor()
-        val ring = FrameRing(gain)
+        // You, found in each frame, so the room behind you can be the bathroom's.
+        val cutter = PersonCutter()
+        val ring = FrameRing(gain, cutter)
         // Off once the mirror stops, so a frame still on its way cannot show after it.
         val live = AtomicBoolean(true)
         var first = true
@@ -167,6 +169,7 @@ private class AndroidMirrorCamera(
                 )
             } catch (e: Exception) {
                 displays.unregisterDisplayListener(rotation)
+                executor.execute { cutter.close() }
                 executor.shutdown()
                 throw e
             }
@@ -180,6 +183,8 @@ private class AndroidMirrorCamera(
             analysis.clearAnalyzer()
             displays.unregisterDisplayListener(rotation)
             // The last frame stays: back from a pause, the face waits for the camera, not a still.
+            // On the camera's thread, after any frame still being cut.
+            executor.execute { cutter.close() }
             executor.shutdown()
         }
     }
@@ -193,16 +198,17 @@ private fun slowestFrameRates(provider: ProcessCameraProvider): Range<Int>? =
         ?.filter { it.upper >= 24 }
         ?.minByOrNull { it.lower }
 
-/**
- * Three bitmaps the camera's frames are copied into in turn, so no frame allocates one: one on
- * screen, one being drawn, one being filled. Never recycled, as the last may still be on screen.
- */
 /** The brightening a dim room needs, eased from frame to frame. */
 private class CameraGain {
     @Volatile var value = 1f
 }
 
-private class FrameRing(private val gain: CameraGain) {
+/**
+ * Three bitmaps the camera's frames are copied into in turn, so no frame allocates one: one on
+ * screen, one being drawn, one being filled. Never recycled, as the last may still be on screen.
+ * Each comes with the mask of the person in it.
+ */
+private class FrameRing(private val gain: CameraGain, private val cutter: PersonCutter) {
     private val bitmaps = arrayOfNulls<Bitmap>(3)
     private var index = 0
     private var scratch: ByteBuffer? = null
@@ -232,12 +238,14 @@ private class FrameRing(private val gain: CameraGain) {
             full.rewind()
             bitmap.copyPixelsFromBuffer(full)
         }
+        val rotation = image.imageInfo.rotationDegrees
         return CameraFrame(
             bitmap.asImageBitmap(),
             width = image.width,
             height = image.height,
-            rotationDegrees = image.imageInfo.rotationDegrees,
+            rotationDegrees = rotation,
             gain = gain.value,
+            mask = cutter.cut(bitmap, image.width, image.height, rotation),
         )
     }
 
