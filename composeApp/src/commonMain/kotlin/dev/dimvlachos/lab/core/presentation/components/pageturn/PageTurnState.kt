@@ -124,6 +124,17 @@ internal constructor(
     val isTurning: Boolean
         get() = phase != TurnPhase.Idle || landings.isNotEmpty()
 
+    /** Whether a finger holds a page; taps wait until it lets go. */
+    val isDragging: Boolean
+        get() = phase is TurnPhase.Dragging
+
+    /**
+     * The spread the book comes to rest at once every page in the air lands: where the next tap
+     * turns from, so taps can follow each other before the last page is down.
+     */
+    val destination: Int
+        get() = (phase as? TurnPhase.Settling)?.landing ?: spread
+
     fun next() = request(forward = true)
 
     fun previous() = request(forward = false)

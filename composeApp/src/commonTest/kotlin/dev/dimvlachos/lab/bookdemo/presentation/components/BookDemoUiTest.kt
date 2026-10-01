@@ -16,7 +16,7 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class BookDemoUiTest {
     @Test
-    fun theScriptTurnsThroughEverySpreadAndBackWithTheDragsLandingAsPlanned() = runComposeUiTest {
+    fun theScriptTurnsThroughTheBookAndBackWithTheDragsLandingAsPlanned() = runComposeUiTest {
         mainClock.autoAdvance = false
         val demo = BookDemos.all.single()
         val state = DemoState()
@@ -34,8 +34,9 @@ class BookDemoUiTest {
             }
         }
         mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds + 2_000)
-        // The slow lift falls back and the reversed drag too: neither is a turn. The flick is.
-        assertEquals(listOf(0, 1, 2, 3, 2, 1, 0), spreads)
+        // The slow lift falls back and the reversed drag too: neither is a turn. The flick is; the
+        // riffles turn a page per tap, three on and five back.
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0), spreads)
         assertEquals(true, finished)
     }
 }
