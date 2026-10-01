@@ -58,7 +58,8 @@ internal class TurnFrame(
     val width: Float,
     val height: Float,
     val tilt: Float,
-    private val strips: Int,
+    // How far apart the rulings stand, as a share of the leaf across its middle.
+    private val spacing: Float,
     val stripWidth: Float,
     val poses: List<StripPose>,
     // sin(pi t): 0 with the leaf down, 1 standing up; it drives every shade that comes and goes
@@ -79,12 +80,15 @@ internal class TurnFrame(
 
     /** Where ruling [k] crosses the paper at height [y], across from the spine. */
     fun rulingX(k: Int, y: Float): Float =
-        k.toFloat() / strips * width * (1f + tilt * (y - height / 2f) / (height / 2f))
+        k * spacing * width * (1f + tilt * (y - height / 2f) / (height / 2f))
+
+    /** Where ruling [k] crosses the leaf's middle, as a share of the leaf from the spine. */
+    fun rulingU(k: Int): Float = k * spacing
 
     /** The wedge that holds the paper at ([x], [y]). */
     fun wedgeAt(x: Float, y: Float): Int {
         val across = x / (width * (1f + tilt * (y - height / 2f) / (height / 2f)))
-        return floor(across * strips).toInt().coerceIn(0, wedges - 1)
+        return floor(across / spacing).toInt().coerceIn(0, wedges - 1)
     }
 
     /** Whether wedge [k] shows the reader its front: its face turned towards the reader. */
@@ -158,7 +162,7 @@ internal class TurnFrame(
             val y = (a3 * point.x + a4 * point.y + a5) / w
             if (x < 0f || x > width || y < 0f || y > height) continue
             // On this wedge's plane, but only its own piece of paper counts.
-            val across = x / (width * (1f + tilt * (y - height / 2f) / (height / 2f))) * strips
+            val across = x / (width * (1f + tilt * (y - height / 2f) / (height / 2f))) / spacing
             if (across >= k && (across < k + 1 || k == wedges - 1)) return Offset(x, y)
         }
         return null
@@ -250,8 +254,8 @@ internal fun turnFrame(
     for (k in 0 until wedges) {
         val angle = chain.angle(k)
         poses += StripPose(angle, hingeX, hingeZ)
-        hingeX += stripWidth * cos(angle)
-        hingeZ += stripWidth * sin(angle)
+        hingeX += chain.spacing * leafWidth * cos(angle)
+        hingeZ += chain.spacing * leafWidth * sin(angle)
         chain.fold(k, angle - previous, r, move)
         previous = angle
         r.copyInto(placements, k * Placement)
@@ -262,7 +266,7 @@ internal fun turnFrame(
         leafWidth,
         height,
         chain.lean,
-        strips,
+        chain.spacing,
         stripWidth,
         poses,
         chain.lift,
@@ -294,8 +298,12 @@ private class LeafChain(
     private val bow = bendDirection.coerceIn(-PageTurnDimens.BowMax, PageTurnDimens.BowMax)
     val lean = tilt.coerceIn(-PageTurnDimens.TiltLimit, PageTurnDimens.TiltLimit)
 
-    // A tilted leaf's far corner lies past the last upright ruling: more wedges reach it.
-    val wedges = max(strips, ceil(strips / (1f - abs(lean)) - 0.001f).toInt())
+    // A tilted leaf's far corner lies past the last upright ruling: more wedges reach it, as many
+    // as
+    // [PageTurnDimens.MaxWedges]; past that they stand further apart.
+    private val reach = 1f / (1f - abs(lean))
+    val spacing = max(1f / strips, reach / PageTurnDimens.MaxWedges)
+    val wedges = max(strips, ceil(reach / spacing - 0.001f).toInt())
     private val half = height / 2f
 
     // The rest curve's angles on the right page, mirrored on the left: 1 - 2t takes one to the
@@ -310,15 +318,15 @@ private class LeafChain(
 
     /** Wedge [k]'s angle about the rulings. */
     fun angle(k: Int): Float {
-        val u0 = k.toFloat() / strips
-        val u1 = (k + 1).toFloat() / strips
-        val rise = restLift * (restHeightBeyond(u1) - restHeightBeyond(u0)) * strips
+        val u0 = k * spacing
+        val u1 = (k + 1) * spacing
+        val rise = restLift * (restHeightBeyond(u1) - restHeightBeyond(u0)) / spacing
         return -theta + bow * bend * (2f * share(u0) - 1f) - atan(rise) * restSide
     }
 
     /** The angle along the leaf at ruling [b], as smooth as the rest curve is. */
     fun boundaryAngle(b: Int): Float {
-        val u = b.toFloat() / strips
+        val u = b * spacing
         val rest = -atan(restLift * restSlope(min(u, 1f)))
         return -theta + bow * bend * (2f * share(u) - 1f) + rest * restSide
     }
@@ -329,7 +337,7 @@ private class LeafChain(
      * the tilt, pointing up the page.
      */
     fun fold(k: Int, turn: Float, r: FloatArray, move: FloatArray) {
-        val u0 = k.toFloat() / strips
+        val u0 = k * spacing
         val leanX = -u0 * leafWidth * lean / half
         val length = sqrt(leanX * leanX + 1f)
         foldAbout(r, move, u0 * leafWidth, half, leanX / length, -1f / length, turn)
@@ -338,7 +346,7 @@ private class LeafChain(
     /** The wedge holding the paper at ([x], [y]). */
     fun wedgeAt(x: Float, y: Float): Int {
         val across = x / (leafWidth * (1f + lean * (y - half) / half))
-        return floor(across * strips).toInt().coerceIn(0, wedges - 1)
+        return floor(across / spacing).toInt().coerceIn(0, wedges - 1)
     }
 }
 
