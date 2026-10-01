@@ -22,7 +22,7 @@ import kotlinx.coroutines.test.runTest
 
 class FogDemosTest {
     @Test
-    fun theClipsBreathFogsOverTheDrawingSoTheLoopNeedsNoReset() = runTest {
+    fun theCameraClipsBreathFogsOverThePortholeSoTheLoopNeedsNoReset() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.reflection.script.play(controller)
         val (duration, peak) = controller.breaths.single()
@@ -48,7 +48,7 @@ class FogDemosTest {
 
         assertTrue(
             fog.marks.none { it is WipeStroke || it is Evaporation },
-            "the drawing is still on the glass: ${fog.marks}",
+            "the porthole is still on the glass: ${fog.marks}",
         )
         assertTrue(
             dripper.beads.none { it.alpha > 0.01f },
@@ -57,7 +57,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBreathComesAfterTheDrawing() = runTest {
+    fun theCameraClipsBreathComesAfterTheWipe() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.reflection.script.play(controller)
 
@@ -78,7 +78,7 @@ class FogDemosTest {
     }
 
     @Test
-    fun theClipDripsTwiceBetweenTheDrawingAndTheBreath() = runTest {
+    fun theCameraClipDripsTwiceBetweenTheWipeAndTheBreath() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         FogDemos.reflection.script.play(controller)
 

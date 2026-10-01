@@ -12,7 +12,7 @@
     <string name="demo_fog">Fogged mirror</string>
     <string name="demo_fog_bathroom">Bathroom</string>
     <string name="demo_fog_reflection">Your reflection</string>
-    <string name="fog_hint_blow">Blow on the screen</string>
+    <string name="fog_hint_blow">Blow at the bottom of your phone</string>
     <string name="fog_hint_hold">Hold to breathe</string>
     <string name="fog_hint_wipe">Wipe away the steam</string>
     <string name="mirror_card_title">A steamed-up mirror</string>
