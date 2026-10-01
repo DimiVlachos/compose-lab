@@ -11,8 +11,8 @@ import dev.dimvlachos.lab.fogdemo.presentation.components.FogDemo
 
 /**
  * The fogged mirror of a steamy bathroom: a still reflection to wipe and watch the drops run on,
- * the one the clip is recorded from. It asks for nothing: no camera, no microphone, and no breath
- * on the phone; only the clip breathes over it.
+ * the one the clip is recorded from. It asks for nothing: no camera, no microphone, and no breath;
+ * the steamy room mists it back over by itself.
  */
 @Composable
 internal fun BathroomMirror(state: DemoState, fog: FogState = remember { newFogDemoState() }) {

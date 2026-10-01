@@ -223,8 +223,7 @@ fun FoggedWindow(
                         drawRect(Color.White.copy(alpha = FogDimens.FilmAlpha))
                         // Real condensation from a photograph: its droplets, drops and trails as
                         // light and shade over the fog, then its thickness, thinner along the
-                        // drips,
-                        // where the sharp scene shows through as it does through real glass.
+                        // drips, where the sharp scene shows through as through real glass.
                         drawCovering(detail, BlendMode.Overlay)
                         drawCovering(density, BlendMode.DstIn)
                     }

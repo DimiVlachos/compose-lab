@@ -80,8 +80,6 @@ private const val HoldStrength = 0.7f
 
 private val HintIconSize = 18.dp
 
-// How long the fog takes to evaporate at the loop's end.
-
 // About 2 s of nothing but zeros: the microphone is taken by something else, a call perhaps.
 private const val SilentMicFrames = 60
 
@@ -153,10 +151,9 @@ internal fun FogDemo(
             }
     }
 
-    // The script's wipe plays its finger back sample by sample: the path already holds the
-    // hand's
-    // speed, so the playback itself is linear. The path is drawn in the clip's frame, placed on
-    // whatever window this is.
+    // The script's wipe plays its finger back sample by sample: the path already holds the hand's
+    // speed, so the playback itself is linear. The path is drawn on the clip's glass, placed on
+    // whatever glass this is.
     DisposableEffect(state, fog, driver) {
         state.setWipeHandler { path, duration ->
             if (window.isEmpty()) return@setWipeHandler

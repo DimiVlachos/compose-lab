@@ -103,7 +103,7 @@ class FogDemoUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(500)
 
-        // The breath is the clip's reset now: going back to 0 leaves the drawing on the glass.
+        // The breath is the clip's reset now: going back to 0 leaves the wipe on the glass.
         mainClock.advanceTimeBy(1_200)
         assertEquals(1, fog.strokes.size)
         assertTrue(fog.marks.none { it is Evaporation }, "${fog.marks}")

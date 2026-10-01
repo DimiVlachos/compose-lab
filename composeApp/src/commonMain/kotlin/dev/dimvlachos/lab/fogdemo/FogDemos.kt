@@ -52,9 +52,8 @@ internal object FogDemos {
         )
 
     // Fogged glass: a beat, a hand scrubs a porthole clear with the flat of a finger, two drops of
-    // condensation run down in the corners beside it while it is looked through, then a breath fogs
-    // it
-    // all over, back to the fogged glass the loop starts from.
+    // condensation run down in the corners beside it while it is looked through, then a breath
+    // fogs it all over, back to the fogged glass the loop starts from.
     private val wipeTour = demoScript {
         val start = 0.3.seconds
         at(start) { wipe(porthole.path(), porthole.duration) }
