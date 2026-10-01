@@ -32,7 +32,8 @@ internal class BookInk(
     val shade: Color,
     val glare: Color,
     val gutter: Color,
-    val thread: Color,
+    val staple: Color,
+    val stapleLit: Color,
     val crease: Color,
     val pageEdge: Color,
     val pageEdgeLine: Color,
@@ -111,8 +112,9 @@ internal class BookPainter(private val ink: BookInk) {
         // The top pages: the back of the left top leaf, the front of the right one.
         drawLeaf(geometry, restFrame(geometry, right = false, depth = leftSink), image(leftTop + 1))
         drawLeaf(geometry, restFrame(geometry, right = true, depth = rightSink), image(rightTop))
+        // The fold at the book's middle, with its staples, lies under any leaf in the air.
+        if (staplesShow(spreads.size / 2, leftTop, rightTop, flying)) drawStaples(spineX)
         if (flights.isEmpty()) {
-            drawStitches(spineX, alpha = 1f)
             drawCrease(spineX)
             return
         }
@@ -120,8 +122,6 @@ internal class BookPainter(private val ink: BookInk) {
             it to turnFrame(it.t, leafWidth = page, bendDirection = it.bend)
         }
         drawGutterShades(spineX, page, frames.maxOf { (_, frame) -> frame.lift * frame.lift })
-        val over = flights.minOf { stitchesOverLeaf(it.t) }
-        if (over < 1f) drawStitches(spineX, alpha = 1f - over)
         // Leaves in the air keep the order they have in the book: nearer the left, a later leaf
         // lies over an earlier one; nearer the right, an earlier one over a later.
         frames
@@ -129,7 +129,6 @@ internal class BookPainter(private val ink: BookInk) {
             .forEach { (flight, frame) ->
                 drawLeaf(geometry, frame, front = image(flight.leaf), back = image(flight.leaf + 1))
             }
-        if (over > 0f) drawStitches(spineX, alpha = over)
         drawCrease(spineX)
     }
 
@@ -342,24 +341,30 @@ internal class BookPainter(private val ink: BookInk) {
         )
     }
 
-    // Short threads down the spine, each on a softer, wider shadow of itself.
-    private fun DrawScope.drawStitches(spineX: Float, alpha: Float) {
-        val length = size.height * PageTurnDimens.StitchLengthFraction
-        val underLength = length + PageTurnDimens.StitchUnderExtra.toPx()
-        for (fraction in PageTurnDimens.StitchFractions) {
-            val y = size.height * fraction
+    // Two wire staples down the fold: a hairline of shadow where each presses into the paper, then
+    // the wire, lit along its middle like round steel.
+    private fun DrawScope.drawStaples(spineX: Float) {
+        val length = size.height * PageTurnDimens.StapleLengthFraction
+        val width = PageTurnDimens.StapleWidth.toPx()
+        val shadow = PageTurnDimens.StapleShadowOffset.toPx()
+        for (fraction in PageTurnDimens.StapleFractions) {
+            val top = size.height * fraction - length / 2f
             drawLine(
-                ink.shade.copy(alpha = PageTurnDimens.StitchShadowAlpha * alpha),
-                start = Offset(spineX, y - underLength / 2f),
-                end = Offset(spineX, y + underLength / 2f),
-                strokeWidth = PageTurnDimens.StitchUnderWidth.toPx(),
+                ink.shade.copy(alpha = PageTurnDimens.StapleShadowAlpha),
+                start = Offset(spineX + shadow, top + shadow),
+                end = Offset(spineX + shadow, top + length + shadow),
+                strokeWidth = width,
                 cap = StrokeCap.Round,
             )
             drawLine(
-                ink.thread.copy(alpha = alpha),
-                start = Offset(spineX, y - length / 2f),
-                end = Offset(spineX, y + length / 2f),
-                strokeWidth = PageTurnDimens.StitchWidth.toPx(),
+                Brush.horizontalGradient(
+                    listOf(ink.staple, ink.stapleLit, ink.staple),
+                    startX = spineX - width / 2f,
+                    endX = spineX + width / 2f,
+                ),
+                start = Offset(spineX, top),
+                end = Offset(spineX, top + length),
+                strokeWidth = width,
                 cap = StrokeCap.Round,
             )
         }

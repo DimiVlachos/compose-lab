@@ -154,9 +154,14 @@ internal fun stripGlareAlpha(frame: TurnFrame, index: Int): Float {
     return frame.lift * frame.lift * light * light * PageTurnDimens.GlareMax
 }
 
-/** How much the stitches sit over the leaf rather than under it: 0 mid-turn, 1 at either end. */
-internal fun stitchesOverLeaf(t: Float): Float =
-    1f - (min(t, 1f - t) / PageTurnDimens.StitchFadeSpan).coerceIn(0f, 1f)
+/**
+ * Whether the staples of a saddle-stitched book show: they go through the fold of its innermost
+ * sheet, between the two pages of spread [centre], so they are seen only while the leaf on each
+ * side of that fold (leaf centre - 1 on the left, leaf centre on the right) lies on top of its
+ * stack, [leftTop] or [rightTop], or is in the air ([flying]) with the fold showing under it.
+ */
+internal fun staplesShow(centre: Int, leftTop: Int, rightTop: Int, flying: Set<Int>): Boolean =
+    (leftTop == centre - 1 || centre - 1 in flying) && (rightTop == centre || centre in flying)
 
 /** A horizontal drag of [dragPx] as turn progress, on a book [bookWidthPx] wide. */
 internal fun dragToProgress(dragPx: Float, bookWidthPx: Float): Float =
