@@ -140,28 +140,29 @@ class PageTurnMathTest {
     @Test
     fun theStitchesShowOnlyWhereTheCentreFoldIsOpen() {
         val centre = 4
-        fun shown(leftTop: Int, rightTop: Int, vararg flights: Pair<Int, Float>) =
-            stitchesShown(
-                centre,
-                leftTop,
-                rightTop,
-                flights.map { Flight(it.first, it.second, 1f) },
-            )
+        // A fold leaf in the air, by the angle of its strip at the spine.
+        fun shown(leftTop: Int, rightTop: Int, vararg spines: Pair<Int, Float>) =
+            stitchesShown(centre, leftTop, rightTop, spines.toMap())
+        val flatRight = 0f
+        val upright = -PI.toFloat() / 2f
+        val flatLeft = -PI.toFloat()
         // The centre spread open: the thread shows.
         assertNear(1f, shown(leftTop = 3, rightTop = 4))
         // A spread either side: a leaf covers the fold.
         assertNear(0f, shown(leftTop = 2, rightTop = 3))
         assertNear(0f, shown(leftTop = 4, rightTop = 5))
-        // Turning away from the centre: open while the page still leans right, closed once it
-        // leans over the fold, and certainly while it settles on the next spread.
-        assertNear(1f, shown(leftTop = 3, rightTop = 5, 4 to 0.2f))
-        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to 0.7f))
-        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to 0.97f))
-        // Turning onto the centre: hidden until the arriving page passes upright.
-        assertNear(0f, shown(leftTop = 2, rightTop = 4, 3 to 0.3f))
-        assertNear(1f, shown(leftTop = 2, rightTop = 4, 3 to 0.8f))
+        // The right leaf of the fold lifted, its spine strip still leaning back: open.
+        assertNear(1f, shown(leftTop = 3, rightTop = 5, 4 to -0.6f))
+        // Its spine strip past upright, over the fold, however far the leaf as a whole has gone.
+        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to upright - 0.4f))
+        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to flatLeft + 0.05f))
+        // The left leaf of the fold arriving: hidden until its spine strip passes upright, then
+        // open all the way down onto the left, so nothing changes as it lands.
+        assertNear(0f, shown(leftTop = 2, rightTop = 4, 3 to flatRight - 0.3f))
+        assertNear(1f, shown(leftTop = 2, rightTop = 4, 3 to upright - 0.6f))
+        assertNear(1f, shown(leftTop = 2, rightTop = 4, 3 to flatLeft + 0.01f))
         // Turning elsewhere: hidden.
-        assertNear(0f, shown(leftTop = 1, rightTop = 3, 2 to 0.5f))
+        assertNear(0f, shown(leftTop = 1, rightTop = 3, 2 to upright))
     }
 
     @Test

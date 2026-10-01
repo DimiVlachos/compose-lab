@@ -103,8 +103,9 @@ internal object PageTurnDimens {
     // apart, and it enters the paper through holes this wide.
     val StitchHoles = floatArrayOf(0.12f, 0.38f, 0.62f, 0.88f)
 
-    // A leaf of the centre fold, passing upright, closes or opens it over this much of a turn.
-    const val FoldCloseSpan = 0.12f
+    // A leaf of the centre fold closes or opens it as its spine strip passes upright: the thread
+    // fades while that strip is within this much (as the cosine of its angle) of upright.
+    const val FoldFadeCos = 0.2f
 
     val ThreadWidth = 1.1.dp
     val ThreadBedWidth = 2.4.dp

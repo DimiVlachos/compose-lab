@@ -157,32 +157,25 @@ internal fun stripGlareAlpha(frame: TurnFrame, index: Int): Float {
 /**
  * How much of the binding thread of a sewn pamphlet shows, 0 to 1. It runs through the fold of the
  * innermost sheet, between the two pages of spread [centre]: leaf centre - 1 on the left of the
- * fold and leaf centre on the right. Each side leaves the fold open while it lies on top of its
- * stack ([leftTop], [rightTop]); a leaf of the fold in the air ([flights]) leaves it open only
- * while it leans away from it, and closes it as it passes upright, its edge sweeping over the
- * thread.
+ * fold and leaf centre on the right, the thread lying on their inner faces. Each side leaves the
+ * fold open while it lies on top of its stack ([leftTop], [rightTop]); a leaf of the fold in the
+ * air leaves it open only while the strip at its spine, at the angle given in [spineAngles], still
+ * shows its inner face, and closes it as that strip passes upright over the thread.
  */
-internal fun stitchesShown(centre: Int, leftTop: Int, rightTop: Int, flights: List<Flight>): Float {
-    fun side(leaf: Int, onTop: Boolean, openWhileLeft: Boolean): Float {
-        val flight = flights.firstOrNull { it.leaf == leaf }
-        return when {
-            flight != null -> {
-                val past =
-                    smoothstep(
-                        ((flight.t - (0.5f - PageTurnDimens.FoldCloseSpan / 2f)) /
-                                PageTurnDimens.FoldCloseSpan)
-                            .coerceIn(0f, 1f)
-                    )
-                if (openWhileLeft) past else 1f - past
-            }
-            onTop -> 1f
-            else -> 0f
-        }
+internal fun stitchesShown(
+    centre: Int,
+    leftTop: Int,
+    rightTop: Int,
+    spineAngles: Map<Int, Float>,
+): Float {
+    fun side(leaf: Int, onTop: Boolean, innerFaceIsBack: Boolean): Float {
+        val angle = spineAngles[leaf] ?: return if (onTop) 1f else 0f
+        // cos > 0: the strip faces the reader with its front; < 0, with its back.
+        val facing = if (innerFaceIsBack) -cos(angle) else cos(angle)
+        return smoothstep((facing / PageTurnDimens.FoldFadeCos).coerceIn(0f, 1f))
     }
-    // The left leaf opens the fold once it has gone over to the left; the right one while it is
-    // still on the right.
-    return side(centre - 1, leftTop == centre - 1, openWhileLeft = true) *
-        side(centre, rightTop == centre, openWhileLeft = false)
+    return side(centre - 1, leftTop == centre - 1, innerFaceIsBack = true) *
+        side(centre, rightTop == centre, innerFaceIsBack = false)
 }
 
 /** A horizontal drag of [dragPx] as turn progress, on a book [bookWidthPx] wide. */
