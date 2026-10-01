@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Record one compose-lab demo and encode a LinkedIn-ready 4:5 clip.
+"""Record one compose-lab demo and encode a LinkedIn-ready clip: 4:5, or 16:9 for a landscape demo.
 
-Usage: scripts/record.py <android|ios> <demoId> [--label]
+Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape]
 
 The app logs LAB_DEMO_START / LAB_DEMO_DONE (via Kermit, tag LabRecorder) when
 the demo starts and ends, and the clip is cut between those two moments (timed
@@ -26,6 +26,9 @@ ACTIVITY = f"{APP_ID}/.MainActivity"
 DEVICE_FILE = "/sdcard/compose-lab-demo.mp4"
 MAX_BYTES = 5 * 1024 * 1024
 MARKER_TIMEOUT_S = 60
+# How long to wait for a landscape demo to turn the screen, and for the turn's animation to end.
+LANDSCAPE_TIMEOUT_S = 10
+LANDSCAPE_ANIMATION_S = 0.8
 # screenrecord captures its first frame about this long before the file has any bytes (measured on a Galaxy S23 Ultra).
 ANDROID_CAPTURE_LEAD_S = 0.08
 
@@ -80,6 +83,20 @@ def android_record_size():
     return 1080, round(height * 1080 / width / 2) * 2
 
 
+def wait_for_landscape():
+    """Wait until the display has turned to landscape, or exit: a portrait capture would crop wrong."""
+    deadline = time.monotonic() + LANDSCAPE_TIMEOUT_S
+    while time.monotonic() < deadline:
+        out = subprocess.run(
+            ["adb", "shell", "dumpsys", "window", "displays"], capture_output=True, text=True
+        ).stdout
+        if "mCurrentRotation=ROTATION_90" in out or "mCurrentRotation=ROTATION_270" in out:
+            time.sleep(LANDSCAPE_ANIMATION_S)
+            return
+        time.sleep(0.2)
+    sys.exit(f"The screen did not turn to landscape within {LANDSCAPE_TIMEOUT_S}s (is auto-rotate blocking it?)")
+
+
 def wait_for_recording_file(deadline_s=5.0, poll_s=0.05):
     """Poll until the device recording file is non-empty and return when that poll was sent.
 
@@ -102,21 +119,11 @@ def wait_for_recording_file(deadline_s=5.0, poll_s=0.05):
     sys.exit(f"screenrecord did not start writing {DEVICE_FILE} within {deadline_s}s")
 
 
-def record_android(demo_id, label, raw):
+def record_android(demo_id, label, raw, landscape):
     width, height = android_record_size()
+    if landscape:
+        width, height = height, width
     run(["adb", "logcat", "-c"])
-    recorder = subprocess.Popen(
-        ["adb", "shell", "screenrecord", "--bit-rate", "20000000", "--size", f"{width}x{height}", DEVICE_FILE]
-    )
-    failed = True
-    try:
-        t0 = wait_for_recording_file() - ANDROID_CAPTURE_LEAD_S
-        failed = False
-    finally:
-        if failed:
-            subprocess.run(["adb", "shell", "pkill", "-INT", "screenrecord"])
-            recorder.wait()
-            subprocess.run(["adb", "shell", "rm", "-f", DEVICE_FILE])
     log = subprocess.Popen(
         ["adb", "logcat", "-v", "raw", "-s", "LabRecorder:V"], stdout=subprocess.PIPE, text=True
     )
@@ -124,15 +131,27 @@ def record_android(demo_id, label, raw):
     launch = ["adb", "shell", "am", "start", "-S", "-n", ACTIVITY, "--es", "demo", demo_id, "--ez", "record", "true"]
     if label:
         launch += ["--ez", "label", "true"]
+    recorder = None
     failed = True
     try:
-        run(launch)
+        if landscape:
+            # A landscape demo turns the screen as it opens, and screenrecord keeps the orientation it
+            # started in: start it once the app has turned, well inside the warm-up run.
+            run(launch)
+            wait_for_landscape()
+        recorder = subprocess.Popen(
+            ["adb", "shell", "screenrecord", "--bit-rate", "20000000", "--size", f"{width}x{height}", DEVICE_FILE]
+        )
+        t0 = wait_for_recording_file() - ANDROID_CAPTURE_LEAD_S
+        if not landscape:
+            run(launch)
         start, done = wait_for_markers(lines, demo_id, t0)
         failed = False
     finally:
         time.sleep(0.5)
-        subprocess.run(["adb", "shell", "pkill", "-INT", "screenrecord"])
-        recorder.wait()
+        if recorder is not None:
+            subprocess.run(["adb", "shell", "pkill", "-INT", "screenrecord"])
+            recorder.wait()
         log.terminate()
         if failed:
             subprocess.run(["adb", "shell", "rm", "-f", DEVICE_FILE])
@@ -170,13 +189,18 @@ def record_ios(demo_id, label, raw):
     return start, done
 
 
-def encode(raw, start, done, dest):
-    """Cut [start, done], crop the centred 4:5 stage and raise the CRF until the clip fits in MAX_BYTES.
+def encode(raw, start, done, dest, landscape):
+    """Cut [start, done], crop the centred stage (4:5, or 16:9 in landscape) and raise the CRF until the clip fits in MAX_BYTES.
 
     Recorders only write a frame when the screen changes, so still holds are gaps in the raw file.
     fps=60 runs over the whole stream first to fill those gaps with the frame on screen, then the
     window is trimmed; tpad covers a still tail after the last written frame.
     """
+    frame = (
+        "crop=ih*16/9:ih:(iw-ih*16/9)/2:0,scale=1920:1080"
+        if landscape
+        else "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350"
+    )
     crf = 18
     while True:
         run([
@@ -185,7 +209,7 @@ def encode(raw, start, done, dest):
             "-map", "0:v:0",
             "-vf", f"fps=60,trim=start={start:.3f},setpts=PTS-STARTPTS,"
                    "tpad=stop_mode=clone:stop_duration=3,"
-                   "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350:flags=lanczos,format=yuv420p",
+                   f"{frame}:flags=lanczos,format=yuv420p",
             "-t", f"{done - start:.3f}",
             "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-movflags", "+faststart", "-an", str(dest),
         ])
@@ -202,20 +226,24 @@ def main():
     parser.add_argument("platform", choices=["android", "ios"])
     parser.add_argument("demo_id")
     parser.add_argument("--label", action="store_true", help="draw the platform name on the stage (for side-by-side clips)")
+    parser.add_argument("--landscape", action="store_true", help="the demo runs in landscape: a 16:9 clip (Android only)")
     args = parser.parse_args()
+    if args.landscape and args.platform == "ios":
+        sys.exit("--landscape records on Android only; the simulator can't be turned from here")
 
     OUT.mkdir(exist_ok=True)
     suffix = "-labeled" if args.label else ""
     raw = OUT / f"{args.demo_id}-{args.platform}-raw.{'mp4' if args.platform == 'android' else 'mov'}"
     dest = OUT / f"{args.demo_id}-{args.platform}{suffix}.mp4"
-    record = record_android if args.platform == "android" else record_ios
-
     try:
-        start, done = record(args.demo_id, args.label, raw)
+        if args.platform == "android":
+            start, done = record_android(args.demo_id, args.label, raw, args.landscape)
+        else:
+            start, done = record_ios(args.demo_id, args.label, raw)
     except SystemExit:
         raw.unlink(missing_ok=True)
         raise
-    size = encode(raw, start, done, dest)
+    size = encode(raw, start, done, dest, args.landscape)
     raw.unlink()
     print(f"{dest.relative_to(ROOT)}  {done - start:.1f}s  {size / 1e6:.1f} MB")
 

@@ -28,6 +28,10 @@ class FakeController(private val now: () -> Long) : DemoController {
         calls += now() to "scrollBy($px)"
     }
 
+    override suspend fun dragPage(drag: PageDrag) {
+        calls += now() to "dragPage(${drag.moves.joinToString { "${it.toFraction}" }})"
+    }
+
     override suspend fun wipe(path: List<Offset>, duration: Duration) {
         wipes += path
         calls += now() to "wipe(${path.size} points, $duration)"

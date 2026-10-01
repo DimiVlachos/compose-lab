@@ -4,6 +4,7 @@ package dev.dimvlachos.lab.catalog
 
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
@@ -21,7 +22,13 @@ class CatalogTest {
     @Test
     fun keepsTheFinishedDemoOfEachComponent() {
         assertEquals(
-            listOf("navbar.all", "morph.app", "fog.mirror.bathroom", "fog.mirror.camera"),
+            listOf(
+                "navbar.all",
+                "morph.app",
+                "fog.mirror.bathroom",
+                "fog.mirror.camera",
+                "book.turn",
+            ),
             Catalog.demos.map { it.id },
         )
         assertEquals(
@@ -30,6 +37,7 @@ class CatalogTest {
                 Res.string.demo_morph_app,
                 Res.string.demo_fog_bathroom,
                 Res.string.demo_fog_reflection,
+                Res.string.demo_book_turn,
             ),
             Catalog.demos.map { it.title },
         )
@@ -81,7 +89,7 @@ class CatalogTest {
         assertEquals(Res.string.demo_fog, group.title)
         assertEquals(listOf("fog.mirror.bathroom", "fog.mirror.camera"), group.demos.map { it.id })
         assertEquals(
-            listOf("navbar.all", "morph.app"),
+            listOf("navbar.all", "morph.app", "book.turn"),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
     }
