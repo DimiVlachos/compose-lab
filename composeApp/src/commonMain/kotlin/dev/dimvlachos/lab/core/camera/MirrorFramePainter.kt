@@ -48,6 +48,10 @@ class MirrorFramePainter : Painter() {
     private var brighteningGain = 1f
     private var brightening: ColorFilter? = null
 
+    /** Whether the frame showing has the person cut out of it. Read while drawing. */
+    val cutOut: Boolean
+        get() = frame?.mask != null
+
     /** Whether there is a frame to show. Changes only when frames start or stop coming. */
     var hasFrame by mutableStateOf(false)
         private set

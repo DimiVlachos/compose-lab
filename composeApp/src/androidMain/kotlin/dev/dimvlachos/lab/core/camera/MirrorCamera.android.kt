@@ -23,7 +23,6 @@ import androidx.camera.lifecycle.awaitInstance
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.Observer
@@ -79,7 +78,7 @@ private class AndroidMirrorCamera(
     // bright as it was rather than starting dark again.
     private val gain = CameraGain()
 
-    override val mirror: Painter = painter
+    override val mirror: MirrorFramePainter = painter
 
     override val showing: Boolean
         get() = painter.hasFrame
@@ -245,7 +244,7 @@ private class FrameRing(private val gain: CameraGain, private val cutter: Person
             height = image.height,
             rotationDegrees = rotation,
             gain = gain.value,
-            mask = cutter.cut(bitmap, image.width, image.height, rotation),
+            mask = cutter.cut(bitmap, image.width, image.height, rotation, gain.value),
         )
     }
 

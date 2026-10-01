@@ -1,7 +1,6 @@
 package dev.dimvlachos.lab.core.camera
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.painter.Painter
 
 /** The front camera, shown as a mirror. */
 interface MirrorCamera {
@@ -13,7 +12,7 @@ interface MirrorCamera {
     suspend fun run()
 
     /** The camera's latest frame, upright and mirrored. Paints nothing while not [showing]. */
-    val mirror: Painter
+    val mirror: MirrorFramePainter
 
     /** Whether [mirror] has a frame to show. */
     val showing: Boolean
