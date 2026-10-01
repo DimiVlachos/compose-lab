@@ -131,7 +131,7 @@ class DripDriver(
         val ours = ownStreaks()
         for (drip in running.filter { !it.stillShows(ours) }) {
             running -= drip
-            fadeOut(drip, WipedFadeSeconds)
+            smearOut(drip)
         }
         if (stepSeconds > 0f) {
             for (drip in running.toList()) {
@@ -155,6 +155,7 @@ class DripDriver(
             // As clear as it shows now: a drop a breath has fogged over stays out of sight.
             val shown = oldest.visibility()
             oldest.streaks.forEach { fog.remove(it) }
+            oldest.pushedOut = true
             if (resting.remove(oldest)) fadeOut(oldest, PushedOutFadeSeconds, from = shown)
         }
         // Forget streaks a breath has already fogged over.
@@ -165,11 +166,15 @@ class DripDriver(
         for (drip in resting.filter { !it.stillShows(ours) }) {
             resting -= drip
             // Fogged over by a full breath, it is already out of sight; wiped, it smears away.
-            fadeOut(drip, if (drip.fogged) 0f else WipedFadeSeconds)
+            if (drip.fogged) fadeOut(drip, 0f) else smearOut(drip)
+        }
+        // Blending into a wipe, it can still be wiped again, or fogged over for good.
+        for (drip in fading.filter { it.blending && !it.smearing }) {
+            if (!drip.stillShows(ours)) drip.smearAway(WipedFadeSeconds)
         }
         for (drip in fading.toList()) {
             drip.fade(stepSeconds)
-            if (drip.gone) fading -= drip
+            if (drip.gone || (drip.blending && drip.fogged && !drip.pushedOut)) fading -= drip
         }
         changed()
     }
@@ -177,6 +182,11 @@ class DripDriver(
     private fun fadeOut(drip: Drip, seconds: Float, from: Float = 1f) {
         drip.startFading(seconds, from)
         if (!drip.gone) fading += drip
+    }
+
+    private fun smearOut(drip: Drip) {
+        drip.smearAway(WipedFadeSeconds)
+        fading += drip
     }
 
     private fun changed() {
@@ -288,6 +298,7 @@ class DripDriver(
                 sliding = true
                 slideSpeed = maxOf(speed, MinSlideSpeedDp)
                 noteWipesSoFar()
+                noteFogSoFar()
                 return
             }
             if (y >= stops[burst]) {
@@ -297,10 +308,7 @@ class DripDriver(
                 if (burst == stops.size) {
                     stopped = true
                     noteWipesSoFar()
-                    fogAtStop =
-                        fog.marks
-                            .filter { it is Breath || it is Mist }
-                            .associateWith { it.fogAt(head.y) }
+                    noteFogSoFar()
                 } else stuck = random.between(MinStickSeconds, MaxStickSeconds)
             }
         }
@@ -318,6 +326,12 @@ class DripDriver(
                 sliding = false
                 blending = true
             }
+        }
+
+        // How far each breath or mist had fogged it: from here on, only more fog covers it.
+        private fun noteFogSoFar() {
+            fogAtStop =
+                fog.marks.filter { it is Breath || it is Mist }.associateWith { it.fogAt(head.y) }
         }
 
         // How far each wipe had got: from here on, only newer points can clear it.
@@ -369,9 +383,24 @@ class DripDriver(
         private val merged: Float
             get() = if (blending) 1f - fadeLeft else 0f
 
-        /** Faded right out. */
+        /** Faded right out, or smeared away. */
         val gone: Boolean
-            get() = fadeLeft <= 0f
+            get() = fadeLeft <= 0f || smearLeft <= 0f
+
+        /** Pushed out by the limit: its streaks went first, and it fades after them. */
+        var pushedOut = false
+
+        // Wiped: it smears away over a moment, whatever else it was doing.
+        private var smearLeft = 1f
+        private var smearRate = 0f
+
+        /** Being wiped away. */
+        val smearing: Boolean
+            get() = smearRate > 0f
+
+        fun smearAway(seconds: Float) {
+            smearRate = 1f / seconds
+        }
 
         /** Fogged over for good: a full breath has taken its streak off the glass. */
         val fogged: Boolean
@@ -385,6 +414,7 @@ class DripDriver(
 
         fun fade(seconds: Float) {
             fadeLeft = (fadeLeft - fadeRate * seconds).coerceAtLeast(0f)
+            smearLeft = (smearLeft - smearRate * seconds).coerceAtLeast(0f)
             // Merging into the clear glass, it lets go of its teardrop.
             if (blending) ease(0f, seconds)
         }
@@ -393,16 +423,23 @@ class DripDriver(
          * How much of the drop shows: fading away, and, once it rests, fogged over by any breath
          * since its streak as the breath's front passes it. A running drop clears its own way.
          */
-        fun visibility(): Float {
-            // Onto a wipe, it thins as it slides, then dissolves with no snap at either end.
-            if (sliding) return 1f - SlideThinning * slideProgress()
-            if (blending) return (1f - SlideThinning) * (1f - smoothstep(merged))
+        fun visibility(): Float = smearLeft * shown()
+
+        private fun shown(): Float {
+            // Onto a wipe, it thins as it slides, then dissolves with no snap at either end, and
+            // fog coming back over the wipe covers it too.
+            if (sliding) return (1f - SlideThinning * slideProgress()) * (1f - cover())
+            if (blending) return (1f - SlideThinning) * (1f - smoothstep(merged)) * (1f - cover())
             if (!stopped || fadeLeft <= 0f) return fadeLeft
-            val last = lastStreak ?: return fadeLeft
+            return fadeLeft * (1f - cover())
+        }
+
+        // How much fog has come back over it since it settled: all of it once a full breath or
+        // mist has taken its streak, unless the limit pushed its streak out.
+        private fun cover(): Float {
+            val last = lastStreak ?: return 0f
             val index = fog.marks.indexOfFirst { it === last }
-            // Its streak gone: fogged over by a full breath, unless it is being pushed out, when
-            // its streak went first and the drop fades after it.
-            if (index < 0) return if (fadeRate > 0f) fadeLeft else 0f
+            if (index < 0) return if (pushedOut) 0f else 1f
             var cover = 0f
             for (i in index + 1 until fog.marks.size) {
                 cover = maxOf(cover, fog.marks[i].fogAt(head.y))
@@ -413,7 +450,7 @@ class DripDriver(
                 val now = breath.fogAt(head.y)
                 cover = maxOf(cover, ((now - before) / (1f - before)).coerceIn(0f, 1f))
             }
-            return fadeLeft * (1f - cover)
+            return cover
         }
 
         // How long it has rested: over [SoftenSeconds] it settles into the fog around it.
@@ -475,7 +512,10 @@ class DripDriver(
                 if (mark !is WipeStroke || mark in ours) continue
                 // Stopped, or on a wiped patch by design: only a wipe's newer points clear it.
                 val settledOn = stopped || sliding || blending
-                val from = if (settledOn) ((wipedBefore[mark] ?: 0) - 1).coerceAtLeast(0) else 0
+                val before = wipedBefore[mark] ?: 0
+                // Not wiped any further since it settled: the wipe it came to rest on or in.
+                if (settledOn && mark.points.size <= before) continue
+                val from = if (settledOn) (before - 1).coerceAtLeast(0) else 0
                 if (
                     mark.covers(head, glass, wipeRadius, from = from) &&
                         !fog.foggedOverSince(i, head)
