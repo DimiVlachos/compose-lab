@@ -68,13 +68,6 @@ class BreathDriverTest {
     }
 
     @Test
-    fun aScriptedBreathSwellsAndFades() {
-        assertEquals(0f, scriptedBreathStrength(0f, peak = 1f))
-        assertNear(0.8f, scriptedBreathStrength(0.5f, peak = 0.8f))
-        assertTrue(scriptedBreathStrength(1f, peak = 1f) < 0.001f)
-    }
-
-    @Test
     fun aDropsStreakMidBreathDoesNotRestartTheFog() {
         val fog = FogState(startClear = true)
         val driver = BreathDriver(fog)

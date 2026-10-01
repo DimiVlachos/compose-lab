@@ -28,22 +28,6 @@ class DemoStateTest {
     }
 
     @Test
-    fun aBreathGoesToTheDemosHandler() = runTest {
-        val state = DemoState()
-        val breaths = mutableListOf<Pair<Duration, Float>>()
-        state.setBreatheHandler { duration, strength -> breaths += duration to strength }
-
-        state.breathe(2.seconds, 0.8f)
-
-        assertEquals(listOf(2.seconds to 0.8f), breaths)
-    }
-
-    @Test
-    fun aBreathWithNoHandlerIsIgnored() = runTest {
-        DemoState().breathe(1.seconds, 1f)
-    }
-
-    @Test
     fun theStateKnowsWhetherItIsBeingRecorded() {
         assertEquals(false, DemoState().recording)
         assertEquals(true, DemoState(recording = true).recording)

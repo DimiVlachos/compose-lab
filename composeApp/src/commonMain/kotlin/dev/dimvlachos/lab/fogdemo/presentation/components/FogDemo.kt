@@ -64,7 +64,6 @@ import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.fogdemo.clipFrameToWindow
 import dev.dimvlachos.lab.fogdemo.newFogDemoState
 import dev.dimvlachos.lab.fogdemo.pointAt
-import dev.dimvlachos.lab.fogdemo.scriptedBreathStrength
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_blow
 import dev.dimvlachos.lab.resources.fog_hint_hold
@@ -184,19 +183,6 @@ internal fun FogDemo(
                 finger.shown = shown
             }
         }
-        // The script's breath swells and fades through the same driver as a real one.
-        state.setBreatheHandler { duration, strength ->
-            val seconds = duration.inWholeMilliseconds / 1000f
-            var previous = 0f
-            animate(
-                0f,
-                1f,
-                animationSpec = tween(duration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-            ) { t, _ ->
-                driver.advance(scriptedBreathStrength(t, strength), (t - previous) * seconds)
-                previous = t
-            }
-        }
         // The script's drop starts in the clip's frame, placed on whatever window this is.
         state.setDripHandler { at, length ->
             if (!window.isEmpty()) drips.drip(clipFrameToWindow(at, window), length)
@@ -215,7 +201,6 @@ internal fun FogDemo(
         }
         onDispose {
             state.setWipeHandler(null)
-            state.setBreatheHandler(null)
             state.setDripHandler(null)
             state.setMistHandler(null)
         }

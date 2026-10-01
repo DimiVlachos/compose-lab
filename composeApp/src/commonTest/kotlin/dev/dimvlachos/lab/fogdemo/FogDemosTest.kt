@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
-import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.fogdemo.presentation.components.wallGlassOn
@@ -16,58 +15,13 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
 class FogDemosTest {
-    @Test
-    fun theCameraClipsBreathFogsOverThePortholeSoTheLoopNeedsNoReset() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-        val (duration, peak) = controller.breaths.single()
-
-        val fog = newFogDemoState()
-        for (path in controller.wipes) {
-            val stroke = fog.beginStroke(path.first())
-            path.drop(1).forEach { fog.extendStroke(stroke, it) }
-        }
-        val dripper =
-            DripDriver(fog, Random(1)).apply {
-                glass = ClipGlass
-                randomStarts = false
-            }
-        for ((at, length) in controller.drips) dripper.drip(at, length)
-        repeat(600) { dripper.advance(1 / 60f) }
-        val driver = BreathDriver(fog)
-        val steps = (duration.inWholeMilliseconds / 16).toInt()
-        for (i in 1..steps) driver.advance(
-            scriptedBreathStrength(i / steps.toFloat(), peak),
-            0.016f,
-        )
-
-        assertTrue(
-            fog.marks.none { it is WipeStroke || it is Evaporation },
-            "the porthole is still on the glass: ${fog.marks}",
-        )
-        assertTrue(
-            dripper.beads.none { it.alpha > 0.01f },
-            "a drop still showing on the fresh fog: ${dripper.beads}",
-        )
-    }
-
-    @Test
-    fun theCameraClipsBreathComesAfterTheWipe() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-
-        val calls = controller.calls.map { it.second }
-        assertTrue(calls.last().startsWith("breathe"), "calls: $calls")
-        assertEquals(1, calls.count { it.startsWith("wipe") })
-        assertTrue(calls.none { it.startsWith("select") }, "calls: $calls")
-    }
-
     @Test
     fun theDemoOpensFullyFogged() {
         assertTrue(newFogDemoState().marks.isEmpty())
@@ -79,22 +33,12 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipsLengthCountsItsMistToTheEnd() = runTest {
+    fun theClipsLengthCountsItsMistToTheEnd() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         val script = FogDemos.bathroom.script
         script.play(controller)
         val mistAt = controller.calls.first { it.second.startsWith("mist") }.first.milliseconds
         assertEquals(mistAt + controller.mists.single() + script.holdEnd, script.nominalDuration)
-    }
-
-    @Test
-    fun theCameraClipsLengthCountsItsBreathToTheEnd() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        val script = FogDemos.reflection.script
-        script.play(controller)
-        val breathAt = controller.calls.first { it.second.startsWith("breathe") }.first.milliseconds
-        val (breath, _) = controller.breaths.single()
-        assertEquals(breathAt + breath + script.holdEnd, script.nominalDuration)
     }
 
     // Plays each version's clip, then runs [check] on what it did.
@@ -107,19 +51,11 @@ class FogDemosTest {
     }
 
     @Test
-    fun theCameraClipEndsWithABreathNotAMist() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.reflection.script.play(controller)
-        assertTrue(controller.mists.isEmpty(), "${controller.calls}")
-        assertEquals(1, controller.breaths.size)
-    }
-
-    @Test
-    fun eachVersionHasItsOwnClip() {
+    fun bothVersionsPlayTheSameClip() {
         val (bathroom, camera) = FogDemos.all
         assertEquals("fog.mirror.bathroom", bathroom.id)
         assertEquals("fog.mirror.camera", camera.id)
-        assertTrue(bathroom.script !== camera.script)
+        assertSame(bathroom.script, camera.script)
         assertFalse(camera.autoplay)
     }
 
@@ -181,11 +117,7 @@ class FogDemosTest {
     @Test
     fun bothClipsRunADropIntoTheWipeWhereItSpreadsAwayBeforeTheEnd() = forEachClip { controller ->
         val wipeAt = controller.calls.first { it.second.startsWith("wipe") }.first
-        // The clip's ending: the bathroom's mist, or the camera's breath.
-        val mistAt =
-            controller.calls
-                .first { it.second.startsWith("mist") || it.second.startsWith("breathe") }
-                .first
+        val mistAt = controller.calls.first { it.second.startsWith("mist") }.first
         val calls = controller.calls.filter { it.second.startsWith("drip") }
         val intoWipe = controller.drips.zip(calls).filter { (_, call) -> call.first > wipeAt }
         assertEquals(1, intoWipe.size, "one drop after the wipe: ${controller.calls}")
@@ -209,13 +141,11 @@ class FogDemosTest {
     }
 
     @Test
-    fun theBathroomClipMistsBackOverByItselfSoTheLoopNeedsNoReset() = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
+    fun bothClipsMistBackOverByThemselvesSoTheLoopNeedsNoReset() = forEachClip { controller ->
         val calls = controller.calls.map { it.second }
         assertTrue(calls.last().startsWith("mist"), "calls: $calls")
-        assertTrue(calls.none { it.startsWith("breathe") }, "no breath in the bathroom: $calls")
         assertEquals(1, calls.count { it.startsWith("wipe") })
+        assertTrue(calls.none { it.startsWith("select") }, "calls: $calls")
 
         val fog = newFogDemoState()
         wipeOnto(fog, controller)

@@ -12,8 +12,6 @@ class FakeController(private val now: () -> Long) : DemoController {
 
     val wipes = mutableListOf<List<Offset>>()
 
-    val breaths = mutableListOf<Pair<Duration, Float>>()
-
     val drips = mutableListOf<Pair<Offset, Float>>()
 
     val mists = mutableListOf<Duration>()
@@ -33,11 +31,6 @@ class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun wipe(path: List<Offset>, duration: Duration) {
         wipes += path
         calls += now() to "wipe(${path.size} points, $duration)"
-    }
-
-    override suspend fun breathe(duration: Duration, strength: Float) {
-        breaths += duration to strength
-        calls += now() to "breathe($duration, $strength)"
     }
 
     override suspend fun drip(at: Offset, length: Float) {
