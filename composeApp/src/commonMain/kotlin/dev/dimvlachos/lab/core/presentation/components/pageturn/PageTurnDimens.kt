@@ -33,7 +33,7 @@ internal object PageTurnDimens {
 
     // The camera distance of the 3D turn, and the height it looks from: a little above centre, so
     // the lifted leaf grows more at the bottom, the way a book on a table looks.
-    val Perspective = 1750.dp
+    val Perspective = 1500.dp
     const val OriginYFraction = 0.46f
 
     // Light: a strip facing away from the reader darkens up to ShadowMax; the glare is the sheen
@@ -43,7 +43,7 @@ internal object PageTurnDimens {
 
     // The open book at rest: each page stands this high at its crest, as a fraction of its width,
     // and ends this much lower at its outer edge (as a fraction of RestLift). A gentle bow.
-    const val RestLift = 0.06f
+    const val RestLift = 0.2f
     const val RestFall = 0.6f
 
     // The paper falling into the spine darkens by up to this much, over this share of the page.
@@ -54,19 +54,17 @@ internal object PageTurnDimens {
     const val EdgeRestAlpha = 0.12f
     const val EdgeRestSpan = 0.16f
 
-    // The page stacks at the outer edges: the thickest is this share of a page's width, the
-    // thinnest this share of the thickest; the paper edges show as lines this far apart.
-    const val StackFraction = 0.045f
-    const val StackMinShare = 0.35f
-    val StackLineSpacing = 1.4.dp
+    // The sheets under each page fan out past its outer edge, up to MaxSheets of them across this
+    // share of a page's width; the side with least paper still shows this share of them. Each
+    // sheet's edge is drawn this wide.
+    const val StackFraction = 0.04f
+    const val StackMinShare = 0.3f
+    const val MaxSheets = 9
+    val SheetEdgeWidth = 1.dp
 
-    // The hardcover boards: how far they reach past the pages and their stacks, as fractions of a
-    // page's width, and their rounding; the gold line inset on them.
-    const val CoverMarginXFraction = 0.024f
-    const val CoverMarginYFraction = 0.034f
-    const val CoverCornerFraction = 0.014f
-    const val CoverRuleInsetFraction = 0.4f
-    val CoverRuleWidth = 1.dp
+    // Room left round the pages, as a share of a page's width: the arch lifts their edges a little
+    // past the flat page.
+    const val EdgeRoomFraction = 0.015f
 
     val TapSlop = 6.dp
 

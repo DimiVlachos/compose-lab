@@ -17,15 +17,13 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
 
 // Colour stops per strip for the rest shade.
 private const val RestShadeStops = 5
-
-// How strongly each paper edge in a stack shows, in a repeating pattern.
-private val StackLineAlphas = floatArrayOf(0.55f, 0.3f, 0.75f, 0.4f, 0.65f)
 
 /** The colours the book is drawn in. */
 internal class BookInk(
@@ -34,51 +32,50 @@ internal class BookInk(
     val gutter: Color,
     val thread: Color,
     val crease: Color,
-    val cover: Color,
-    val coverLit: Color,
-    val coverRule: Color,
-    val coverSpine: Color,
     val pageEdge: Color,
     val pageEdgeLine: Color,
 )
 
 /**
- * The book's size against its pages: a page is square (a spread is 2:1), the stacks sit beside the
- * outer edges and the boards reach past them all round. Everything is a share of a page's width, so
- * the whole book is this wide for its height.
+ * The book's size against its pages: a page is square (a spread is 2:1), the sheets fan out past
+ * the outer edges and a little room is left all round for the pages' arch. Everything is a share of
+ * a page's width, so the whole book is this wide for its height.
  */
 internal val BookAspect: Float =
-    (2f + 2f * (PageTurnDimens.CoverMarginXFraction + PageTurnDimens.StackFraction)) /
-        (1f + 2f * PageTurnDimens.CoverMarginYFraction)
+    (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)) /
+        (1f + 2f * PageTurnDimens.EdgeRoomFraction)
 
 /**
- * Draws the open book: hardcover boards, a stack of paper under each side and the open spread on
- * top, each of [spreads] one image across both pages. Every page is a chain of strips: at rest the
- * two lie in the open book's curve, and mid-turn the pages either side of the leaf lie under it
- * while the leaf crosses between them, the right half of one spread on its front and the left half
- * of the next on its back.
+ * Draws the open book: the sheets of paper under each side and the open spread on top, each of
+ * [spreads] one image across both pages. Every page is a chain of strips: at rest the two lie in
+ * the open book's curve, and mid-turn the pages either side of the leaf lie under it while the leaf
+ * crosses between them, the right half of one spread on its front and the left half of the next on
+ * its back.
  */
 internal class BookPainter(private val ink: BookInk) {
     private val matrix = Matrix()
     private val edgeClip = Path()
-    private val stackClip = Path()
-    private var restWidth = -1f
+    private val sheetPath = Path()
+    private var restSize = Size.Unspecified
     private lateinit var restRight: TurnFrame
     private lateinit var restLeft: TurnFrame
+    private lateinit var rightOutline: PageOutline
+    private lateinit var leftOutline: PageOutline
 
     fun DrawScope.drawBook(spreads: List<ImageBitmap>, state: PageTurnState) {
         val page =
             size.width /
-                (2f + 2f * (PageTurnDimens.CoverMarginXFraction + PageTurnDimens.StackFraction))
-        val side = page * (PageTurnDimens.CoverMarginXFraction + PageTurnDimens.StackFraction)
-        val top = page * PageTurnDimens.CoverMarginYFraction
-        drawCovers(page)
+                (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction))
+        val side = page * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)
+        val top = page * PageTurnDimens.EdgeRoomFraction
         val pair = state.pair
         val t = state.leafProgress.coerceIn(0f, 1f)
         val position = if (pair != null) pair.leaf + t else state.spread.toFloat()
         val (leftShare, rightShare) = stackShares(position, spreads.size)
         inset(left = side, top = top, right = side, bottom = top) {
-            drawStacks(page * PageTurnDimens.StackFraction, leftShare, rightShare)
+            restPages(page)
+            drawSheets(leftOutline, leftShare, outwards = -1f, page)
+            drawSheets(rightOutline, rightShare, outwards = 1f, page)
             drawPages(spreads, state, pair, t, page)
         }
     }
@@ -94,11 +91,6 @@ internal class BookPainter(private val ink: BookInk) {
         val corner = CornerRadius(PageTurnDimens.CornerFraction * size.height)
         val perspectivePx = PageTurnDimens.Perspective.toPx()
         val originY = size.height * PageTurnDimens.OriginYFraction
-        if (page != restWidth) {
-            restRight = turnFrame(0f, leafWidth = page)
-            restLeft = turnFrame(1f, leafWidth = page)
-            restWidth = page
-        }
         fun leaf(frame: TurnFrame, front: ImageBitmap, back: ImageBitmap) {
             for (i in 0 until PageTurnDimens.Strips) {
                 drawStrip(frame, i, front, back, spineX, originY, perspectivePx, corner)
@@ -125,94 +117,43 @@ internal class BookPainter(private val ink: BookInk) {
         drawCrease(spineX)
     }
 
-    // Two boards meeting at a darker spine, lit a little from above, with a gold line tooled in
-    // around each; the pages cover most of it.
-    private fun DrawScope.drawCovers(page: Float) {
-        val radius = CornerRadius(page * PageTurnDimens.CoverCornerFraction)
-        val leather = Brush.verticalGradient(listOf(ink.coverLit, ink.cover))
-        drawRoundRect(leather, cornerRadius = radius)
-        val spine = page * PageTurnDimens.CoverMarginXFraction
-        drawRect(
-            Brush.horizontalGradient(
-                listOf(ink.cover, ink.coverSpine, ink.cover),
-                startX = size.width / 2f - spine,
-                endX = size.width / 2f + spine,
-            ),
-            topLeft = Offset(size.width / 2f - spine, 0f),
-            size = Size(spine * 2f, size.height),
-        )
-        val ruleInset =
-            page * PageTurnDimens.CoverMarginXFraction * PageTurnDimens.CoverRuleInsetFraction
-        drawRoundRect(
-            ink.coverRule.copy(alpha = 0.7f),
-            topLeft = Offset(ruleInset, ruleInset),
-            size = Size(size.width - ruleInset * 2f, size.height - ruleInset * 2f),
-            cornerRadius = radius,
-            style = Stroke(PageTurnDimens.CoverRuleWidth.toPx()),
-        )
+    // The two resting pages, and where their edges land on screen: fixed for a size, so worked out
+    // once.
+    private fun DrawScope.restPages(page: Float) {
+        if (size == restSize) return
+        val spineX = size.width / 2f
+        val originY = size.height * PageTurnDimens.OriginYFraction
+        val perspectivePx = PageTurnDimens.Perspective.toPx()
+        restRight = turnFrame(0f, leafWidth = page)
+        restLeft = turnFrame(1f, leafWidth = page)
+        rightOutline = pageOutline(restRight, spineX, originY, perspectivePx, size.height)
+        leftOutline = pageOutline(restLeft, spineX, originY, perspectivePx, size.height)
+        restSize = size
     }
 
     /**
-     * The paper under each page, showing past its outer edge as fine lines of page edges, darker
-     * towards the boards; [left] and [right] say how thick each side is, as shares of [thickest].
+     * The sheets under a resting page: copies of its outline, each fanned a little further out from
+     * the spine than the one above it, as the paper of an open book spreads. [share] of the most
+     * sheets show; the deeper ones are darker, and each has its edge drawn so they read as layers.
      */
-    private fun DrawScope.drawStacks(thickest: Float, left: Float, right: Float) {
-        drawStack(x = 0f, width = thickest * left, outwards = -1f)
-        drawStack(x = size.width, width = thickest * right, outwards = 1f)
-    }
-
-    private fun DrawScope.drawStack(x: Float, width: Float, outwards: Float) {
-        if (width <= 0f) return
-        // Reaches a little under the page, so no gap shows where the page's curve lifts its edge.
-        val under = width * 0.5f
-        val near = x - outwards * under
-        val far = x + outwards * width
-        val left = minOf(near, far)
-        val right = maxOf(near, far)
-        val corner = CornerRadius(width * 0.6f)
-        stackClip.rewind()
-        stackClip.addRoundRect(
-            RoundRect(
-                left = left,
-                top = 0f,
-                right = right,
-                bottom = size.height,
-                topLeftCornerRadius = if (outwards < 0f) corner else CornerRadius.Zero,
-                topRightCornerRadius = if (outwards > 0f) corner else CornerRadius.Zero,
-                bottomRightCornerRadius = if (outwards > 0f) corner else CornerRadius.Zero,
-                bottomLeftCornerRadius = if (outwards < 0f) corner else CornerRadius.Zero,
-            )
-        )
-        clipPath(stackClip) {
-            drawRect(
-                ink.pageEdge,
-                topLeft = Offset(left, 0f),
-                size = Size(right - left, size.height),
-            )
-            val spacing = PageTurnDimens.StackLineSpacing.toPx()
-            var line = 0
-            var at = x + outwards * spacing * 0.5f
-            while ((at - x) * outwards < width) {
-                // Edges catch the light unevenly; a fixed pattern keeps it still from frame to
-                // frame.
-                val alpha = StackLineAlphas[line % StackLineAlphas.size]
-                drawLine(
-                    ink.pageEdgeLine.copy(alpha = alpha),
-                    start = Offset(at, 0f),
-                    end = Offset(at, size.height),
-                    strokeWidth = 1f,
-                )
-                at += outwards * spacing
-                line++
-            }
-            drawRect(
-                Brush.horizontalGradient(
-                    listOf(ink.shade.copy(alpha = 0f), ink.shade.copy(alpha = 0.35f)),
-                    startX = x,
-                    endX = far,
-                ),
-                topLeft = Offset(left, 0f),
-                size = Size(right - left, size.height),
+    private fun DrawScope.drawSheets(
+        outline: PageOutline,
+        share: Float,
+        outwards: Float,
+        page: Float,
+    ) {
+        val sheets = (PageTurnDimens.MaxSheets * share).roundToInt().coerceAtLeast(1)
+        val step = page * PageTurnDimens.StackFraction / PageTurnDimens.MaxSheets
+        val corner = PageTurnDimens.CornerFraction * size.height
+        val edge = PageTurnDimens.SheetEdgeWidth.toPx()
+        for (k in sheets downTo 1) {
+            outline.fannedPath(sheetPath, fan = k * step * outwards, corner = corner, outwards)
+            val depth = k.toFloat() / PageTurnDimens.MaxSheets
+            drawPath(sheetPath, lerp(ink.pageEdge, ink.pageEdgeLine, depth * 0.45f))
+            drawPath(
+                sheetPath,
+                ink.pageEdgeLine.copy(alpha = 0.55f + 0.3f * depth),
+                style = Stroke(edge),
             )
         }
     }
@@ -392,4 +333,59 @@ internal class BookPainter(private val ink: BookInk) {
             )
         }
     }
+}
+
+/**
+ * A resting page's edges as drawn: its top and bottom edge, one point per strip boundary from the
+ * spine out, through the strips' own projections, so they carry the page's curve and perspective.
+ */
+internal class PageOutline(private val top: Array<Offset>, private val bottom: Array<Offset>) {
+    /**
+     * Writes into [path] this outline fanned out by [fan] at the outer edge, nothing at the spine,
+     * with its outer corners rounded by [corner]; [outwards] is the side the outer edge is on.
+     */
+    fun fannedPath(path: Path, fan: Float, corner: Float, outwards: Float) {
+        val last = top.lastIndex
+        fun fanned(point: Offset, index: Int) = Offset(point.x + fan * index / last, point.y)
+        path.rewind()
+        val start = fanned(top[0], 0)
+        path.moveTo(start.x, start.y)
+        for (i in 1 until last) fanned(top[i], i).let { path.lineTo(it.x, it.y) }
+        val topCorner = fanned(top[last], last)
+        val bottomCorner = fanned(bottom[last], last)
+        path.lineTo(topCorner.x - outwards * corner, topCorner.y)
+        path.quadraticTo(topCorner.x, topCorner.y, topCorner.x, topCorner.y + corner)
+        path.lineTo(bottomCorner.x, bottomCorner.y - corner)
+        path.quadraticTo(
+            bottomCorner.x,
+            bottomCorner.y,
+            bottomCorner.x - outwards * corner,
+            bottomCorner.y,
+        )
+        for (i in last - 1 downTo 0) fanned(bottom[i], i).let { path.lineTo(it.x, it.y) }
+        path.close()
+    }
+}
+
+internal fun pageOutline(
+    frame: TurnFrame,
+    spineX: Float,
+    originY: Float,
+    perspectivePx: Float,
+    height: Float,
+): PageOutline {
+    val matrix = Matrix()
+    val strips = frame.poses.size
+    val top = Array(strips + 1) { Offset.Zero }
+    val bottom = Array(strips + 1) { Offset.Zero }
+    for (i in 0 until strips) {
+        stripMatrix(frame.poses[i], spineX, originY, perspectivePx, matrix)
+        top[i] = matrix.map(Offset(0f, 0f))
+        bottom[i] = matrix.map(Offset(0f, height))
+        if (i == strips - 1) {
+            top[strips] = matrix.map(Offset(frame.stripWidth, 0f))
+            bottom[strips] = matrix.map(Offset(frame.stripWidth, height))
+        }
+    }
+    return PageOutline(top, bottom)
 }
