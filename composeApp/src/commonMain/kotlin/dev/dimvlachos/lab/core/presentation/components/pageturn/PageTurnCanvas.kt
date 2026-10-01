@@ -20,9 +20,11 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 // Colour stops per strip for the rest shade.
 private const val RestShadeStops = 5
@@ -60,33 +62,24 @@ internal class BookPainter(private val ink: BookInk) {
     private val matrix = Matrix()
     private val edgeClip = Path()
     private val sheetPath = Path()
+    private val wedgePath = Path()
+    private val pagePath = Path()
     private val paper = paperPage(ink.pageEdge)
 
     fun DrawScope.drawBook(spreads: List<ImageBitmap?>, state: PageTurnState) {
-        val page =
-            size.width /
-                (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction))
-        val side = page * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)
-        val top = page * PageTurnDimens.EdgeRoomFraction
-        inset(left = side, top = top, right = side, bottom = top) {
-            drawOpenBook(spreads, state, page)
+        val layout = bookLayout(size, this)
+        inset(left = layout.left, top = layout.top, right = layout.left, bottom = layout.top) {
+            drawOpenBook(spreads, state, layout.geometry)
         }
     }
 
     private fun DrawScope.drawOpenBook(
         spreads: List<ImageBitmap?>,
         state: PageTurnState,
-        page: Float,
+        geometry: PageGeometry,
     ) {
-        val spineX = size.width / 2f
-        val geometry =
-            PageGeometry(
-                spineX = spineX,
-                originY = size.height * PageTurnDimens.OriginYFraction,
-                perspectivePx = PageTurnDimens.Perspective.toPx(),
-                corner = CornerRadius(PageTurnDimens.CornerFraction * size.height),
-                page = page,
-            )
+        val spineX = geometry.spineX
+        val page = geometry.page
         fun image(spread: Int): ImageBitmap = spreads.getOrNull(spread) ?: paper
         val leaves = spreads.size - 1
         val flights = state.flights
@@ -120,7 +113,15 @@ internal class BookPainter(private val ink: BookInk) {
         val centre = spreads.size / 2
         val foldLeaves = setOf(centre - 1, centre)
         val frames = flights.map {
-            it to turnFrame(it.t, leafWidth = page, bendDirection = it.bend)
+            it to
+                turnFrame(
+                    it.t,
+                    leafWidth = page,
+                    bendDirection = it.bend,
+                    height = geometry.height,
+                    tilt = it.tilt,
+                    grip = it.grip,
+                )
         }
         val spineAngles =
             frames
@@ -164,16 +165,24 @@ internal class BookPainter(private val ink: BookInk) {
 
     // A resting leaf [depth] down the right or left stack.
     private fun restFrame(geometry: PageGeometry, right: Boolean, depth: Float): TurnFrame =
-        turnFrame(if (right) 0f else 1f, leafWidth = geometry.page, restLift = sheetLift(depth))
+        turnFrame(
+            if (right) 0f else 1f,
+            leafWidth = geometry.page,
+            restLift = sheetLift(depth),
+            height = geometry.height,
+        )
 
     private fun DrawScope.drawLeaf(
         geometry: PageGeometry,
         frame: TurnFrame,
         front: ImageBitmap,
         back: ImageBitmap = front,
-        strips: IntRange = 0 until PageTurnDimens.Strips,
+        strips: IntRange = 0 until frame.wedges,
     ) {
-        for (i in strips) drawStrip(frame, i, front, back, geometry)
+        for (i in strips) {
+            if (frame.tilt == 0f) drawStrip(frame, i, front, back, geometry)
+            else drawWedge(frame, i, front, back, geometry)
+        }
     }
 
     /**
@@ -193,7 +202,7 @@ internal class BookPainter(private val ink: BookInk) {
             image,
             strips = PageTurnDimens.Strips - PageTurnDimens.EdgeStrips until PageTurnDimens.Strips,
         )
-        pageOutline(frame, geometry.spineX, geometry.originY, geometry.perspectivePx, size.height)
+        pageOutline(frame, geometry)
             .fannedPath(
                 sheetPath,
                 fan = 0f,
@@ -218,11 +227,12 @@ internal class BookPainter(private val ink: BookInk) {
     }
 
     /**
-     * One strip of the leaf, in its own space: (0, 0) at its hinge, [TurnFrame.stripWidth] wide and
-     * the book's height tall, its outer edge always on the right. Facing the reader it shows the
-     * front's slice as is; facing away the slice is mirrored, since the back is seen from behind.
-     * Its image runs [PageTurnDimens.SeamPx] past its spine edge (back) or outer edge (front),
-     * under the next strip or over the last one, so no gap opens between them.
+     * One strip of a leaf with upright rulings, in its own space: (0, 0) at its hinge,
+     * [TurnFrame.stripWidth] wide and the book's height tall, its outer edge always on the right.
+     * Facing the reader it shows the front's slice as is; facing away the slice is mirrored, since
+     * the back is seen from behind. Its image runs [PageTurnDimens.SeamPx] past its spine edge
+     * (back) or outer edge (front), under the next strip or over the last one, so no gap opens
+     * between them.
      */
     private fun DrawScope.drawStrip(
         frame: TurnFrame,
@@ -231,12 +241,8 @@ internal class BookPainter(private val ink: BookInk) {
         back: ImageBitmap,
         geometry: PageGeometry,
     ) {
-        val spineX = geometry.spineX
-        val originY = geometry.originY
-        val perspectivePx = geometry.perspectivePx
         val corner = geometry.corner
-        val pose = frame.poses[index]
-        val facing = stripFacesReader(pose)
+        val facing = frame.facesReader(index)
         val image = if (facing) front else back
         val stripWidth = frame.stripWidth
         val outer = stripIsOuterEdge(index)
@@ -258,8 +264,11 @@ internal class BookPainter(private val ink: BookInk) {
         // front and off the spine edge on the back.
         val left = if (facing) 0f else -seam
         val right = stripWidth + if (facing) seam else 0f
-        stripMatrix(pose, spineX, originY, perspectivePx, matrix)
-        withTransform({ transform(matrix) }) {
+        frame.matrix(index, geometry, matrix)
+        withTransform({
+            transform(matrix)
+            translate(left = index * stripWidth)
+        }) {
             if (outer) {
                 edgeClip.rewind()
                 edgeClip.addRoundRect(
@@ -288,45 +297,155 @@ internal class BookPainter(private val ink: BookInk) {
                         filterQuality = FilterQuality.Medium,
                     )
                 }
-                val (shadeFrom, shadeTo) = stripShadeAlphas(frame, index)
-                drawRect(
-                    Brush.horizontalGradient(
-                        listOf(ink.shade.copy(alpha = shadeFrom), ink.shade.copy(alpha = shadeTo)),
-                        startX = 0f,
-                        endX = stripWidth,
-                    ),
-                    topLeft = Offset(left, 0f),
-                    size = Size(right - left, size.height),
+                drawLight(
+                    frame,
+                    index,
+                    from = Offset.Zero,
+                    to = Offset(stripWidth, 0f),
+                    area = Rect(left, 0f, right, size.height),
                 )
-                // The rest shade follows its curve across the strip in several stops: one straight
-                // ramp per strip kinks at every edge, and the eye finds the kinks on a clear sky.
-                val u0 = index.toFloat() / PageTurnDimens.Strips
-                val du = 1f / PageTurnDimens.Strips
-                if (
-                    gutterRestShade(u0, frame.lift) > 0f ||
-                        gutterRestShade(u0 + du, frame.lift) > 0f
-                ) {
-                    val stops =
-                        Array(RestShadeStops) { k ->
-                            val f = k.toFloat() / (RestShadeStops - 1)
-                            f to ink.gutter.copy(alpha = gutterRestShade(u0 + f * du, frame.lift))
-                        }
-                    drawRect(
-                        Brush.horizontalGradient(*stops, startX = 0f, endX = stripWidth),
-                        topLeft = Offset(left, 0f),
-                        size = Size(right - left, size.height),
-                    )
-                }
-                val glare = stripGlareAlpha(frame, index)
-                if (glare > 0f) {
-                    drawRect(
-                        ink.glare.copy(alpha = glare),
-                        topLeft = Offset(left, 0f),
-                        size = Size(right - left, size.height),
-                    )
-                }
             }
             if (outer) clipPath(edgeClip, block = draw) else draw()
+        }
+    }
+
+    /**
+     * Wedge [index] of a leaf with leaning rulings, drawn in the page's own space (x from the
+     * spine, y down) and cut to its piece of the page, the page's outer corners rounded. Like a
+     * strip it runs [PageTurnDimens.SeamPx] under the next wedge out on the front, and over the
+     * last one on the back.
+     */
+    private fun DrawScope.drawWedge(
+        frame: TurnFrame,
+        index: Int,
+        front: ImageBitmap,
+        back: ImageBitmap,
+        geometry: PageGeometry,
+    ) {
+        val facing = frame.facesReader(index)
+        val image = if (facing) front else back
+        val width = frame.width
+        val height = frame.height
+        val last = index == frame.wedges - 1
+        val before = if (!facing && index > 0) PageTurnDimens.SeamPx else 0f
+        val after = if (facing && !last) PageTurnDimens.SeamPx else 0f
+        // Past the last ruling there is only the page's edge.
+        val beyond = width + PageTurnDimens.SeamPx
+        val corners =
+            clippedToPage(
+                floatArrayOf(
+                    frame.rulingX(index, 0f) - before,
+                    0f,
+                    if (last) beyond else frame.rulingX(index + 1, 0f) + after,
+                    0f,
+                    if (last) beyond else frame.rulingX(index + 1, height) + after,
+                    height,
+                    frame.rulingX(index, height) - before,
+                    height,
+                ),
+                width,
+            ) ?: return
+        wedgePath.rewind()
+        var reachesEdge = false
+        for (i in corners.indices step 2) {
+            if (i == 0) wedgePath.moveTo(corners[0], corners[1])
+            else wedgePath.lineTo(corners[i], corners[i + 1])
+            if (corners[i] >= width - geometry.corner.x) reachesEdge = true
+        }
+        wedgePath.close()
+        // Shade runs across the wedge, square to its first ruling, from it to the next.
+        val middle = height / 2f
+        val start = Offset(frame.rulingX(index, middle), middle)
+        val leanX = frame.rulingX(index, height) - frame.rulingX(index, 0f)
+        val length = sqrt(leanX * leanX + height * height)
+        val across = Offset(height / length, -leanX / length)
+        val span = (frame.rulingX(index + 1, middle) - start.x) * across.x
+        frame.matrix(index, geometry, matrix)
+        withTransform({ transform(matrix) }) {
+            val draw: DrawScope.() -> Unit = {
+                val half = image.width / 2
+                withTransform({
+                    if (!facing) scale(-1f, 1f, pivot = Offset(width / 2f, 0f))
+                    scale(width / half, height / image.height, pivot = Offset.Zero)
+                }) {
+                    drawImage(
+                        image,
+                        srcOffset = IntOffset(if (facing) half else 0, 0),
+                        srcSize = IntSize(half, image.height),
+                        dstSize = IntSize(half, image.height),
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
+                drawLight(
+                    frame,
+                    index,
+                    from = start,
+                    to = start + across * span,
+                    area = Rect(0f, 0f, width, height),
+                )
+            }
+            clipPath(wedgePath) {
+                if (reachesEdge) {
+                    pagePath.rewind()
+                    pagePath.addRoundRect(
+                        RoundRect(
+                            left = 0f,
+                            top = 0f,
+                            right = width,
+                            bottom = height,
+                            topLeftCornerRadius = CornerRadius.Zero,
+                            topRightCornerRadius = geometry.corner,
+                            bottomRightCornerRadius = geometry.corner,
+                            bottomLeftCornerRadius = CornerRadius.Zero,
+                        )
+                    )
+                    clipPath(pagePath, block = draw)
+                } else draw()
+            }
+        }
+    }
+
+    /**
+     * The light on a strip or wedge [index] over [area], varying from [from] to [to] across it: the
+     * shade of paper facing away from the reader, the rest curve's gutter shade, and the sheen of
+     * paper facing it.
+     */
+    private fun DrawScope.drawLight(
+        frame: TurnFrame,
+        index: Int,
+        from: Offset,
+        to: Offset,
+        area: Rect,
+    ) {
+        val (shadeFrom, shadeTo) = stripShadeAlphas(frame, index)
+        drawRect(
+            Brush.linearGradient(
+                listOf(ink.shade.copy(alpha = shadeFrom), ink.shade.copy(alpha = shadeTo)),
+                start = from,
+                end = to,
+            ),
+            topLeft = area.topLeft,
+            size = area.size,
+        )
+        // The rest shade follows its curve across the strip in several stops: one straight
+        // ramp per strip kinks at every edge, and the eye finds the kinks on a clear sky.
+        val u0 = index.toFloat() / PageTurnDimens.Strips
+        val du = 1f / PageTurnDimens.Strips
+        if (gutterRestShade(u0, frame.lift) > 0f || gutterRestShade(u0 + du, frame.lift) > 0f) {
+            val stops =
+                Array(RestShadeStops) { k ->
+                    val f = k.toFloat() / (RestShadeStops - 1)
+                    f to ink.gutter.copy(alpha = gutterRestShade(u0 + f * du, frame.lift))
+                }
+            drawRect(
+                Brush.linearGradient(*stops, start = from, end = to),
+                topLeft = area.topLeft,
+                size = area.size,
+            )
+        }
+        val glare = stripGlareAlpha(frame, index)
+        if (glare > 0f) {
+            drawRect(ink.glare.copy(alpha = glare), topLeft = area.topLeft, size = area.size)
         }
     }
 
@@ -415,14 +534,58 @@ internal class BookPainter(private val ink: BookInk) {
     }
 }
 
-/** Where the pages are drawn from: the spine, the eye, and a page's width and corners. */
-internal class PageGeometry(
-    val spineX: Float,
-    val originY: Float,
-    val perspectivePx: Float,
-    val corner: CornerRadius,
-    val page: Float,
+/** The book laid out in its box of [size]: how far in its pages start, and how they are seen. */
+internal class BookLayout(
+    val size: Size,
+    val left: Float,
+    val top: Float,
+    val geometry: PageGeometry,
 )
+
+/** Lays the book out in a box of [size]: the pages, the stacks beside them and room round them. */
+internal fun bookLayout(size: Size, density: Density): BookLayout {
+    val page =
+        size.width / (2f + 2f * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction))
+    val left = page * (PageTurnDimens.EdgeRoomFraction + PageTurnDimens.StackFraction)
+    val top = page * PageTurnDimens.EdgeRoomFraction
+    val height = size.height - 2f * top
+    return BookLayout(
+        size,
+        left,
+        top,
+        PageGeometry(
+            spineX = size.width / 2f - left,
+            originY = height * PageTurnDimens.OriginYFraction,
+            perspectivePx = with(density) { PageTurnDimens.Perspective.toPx() },
+            corner = CornerRadius(PageTurnDimens.CornerFraction * height),
+            page = page,
+            height = height,
+        ),
+    )
+}
+
+// The polygon [points] (x, y pairs) cut back to the page, x no more than [width]: null if nothing
+// of it is left.
+private fun clippedToPage(points: FloatArray, width: Float): FloatArray? {
+    val out = ArrayList<Float>(12)
+    val n = points.size / 2
+    for (i in 0 until n) {
+        val x0 = points[i * 2]
+        val y0 = points[i * 2 + 1]
+        val x1 = points[(i + 1) % n * 2]
+        val y1 = points[(i + 1) % n * 2 + 1]
+        if (x0 <= width) {
+            out += x0
+            out += y0
+        }
+        if ((x0 <= width) != (x1 <= width)) {
+            val f = (width - x0) / (x1 - x0)
+            out += width
+            out += y0 + (y1 - y0) * f
+        }
+    }
+    return if (out.size < 6) null else out.toFloatArray()
+}
 
 // A blank leaf's paper, as a small image: a page cuts it into strips like any other, and it scales.
 private fun paperPage(color: Color): ImageBitmap {
@@ -469,24 +632,19 @@ internal class PageOutline(private val top: Array<Offset>, private val bottom: A
     }
 }
 
-internal fun pageOutline(
-    frame: TurnFrame,
-    spineX: Float,
-    originY: Float,
-    perspectivePx: Float,
-    height: Float,
-): PageOutline {
+internal fun pageOutline(frame: TurnFrame, geometry: PageGeometry): PageOutline {
     val matrix = Matrix()
-    val strips = frame.poses.size
+    val strips = frame.wedges
     val top = Array(strips + 1) { Offset.Zero }
     val bottom = Array(strips + 1) { Offset.Zero }
     for (i in 0 until strips) {
-        stripMatrix(frame.poses[i], spineX, originY, perspectivePx, matrix)
-        top[i] = matrix.map(Offset(0f, 0f))
-        bottom[i] = matrix.map(Offset(0f, height))
+        frame.matrix(i, geometry, matrix)
+        val x = i * frame.stripWidth
+        top[i] = matrix.map(Offset(x, 0f))
+        bottom[i] = matrix.map(Offset(x, frame.height))
         if (i == strips - 1) {
-            top[strips] = matrix.map(Offset(frame.stripWidth, 0f))
-            bottom[strips] = matrix.map(Offset(frame.stripWidth, height))
+            top[strips] = matrix.map(Offset(x + frame.stripWidth, 0f))
+            bottom[strips] = matrix.map(Offset(x + frame.stripWidth, frame.height))
         }
     }
     return PageOutline(top, bottom)

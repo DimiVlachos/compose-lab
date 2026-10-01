@@ -4,13 +4,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.DragMove
 import dev.dimvlachos.lab.core.demo.PageDrag
+import dev.dimvlachos.lab.core.presentation.components.pageturn.BookAspect
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnState
+import dev.dimvlachos.lab.core.presentation.components.pageturn.bookLayout
 import dev.dimvlachos.lab.core.presentation.components.pageturn.rememberPageTurnState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
@@ -34,7 +38,7 @@ class BookDemoInterruptionUiTest {
             book = rememberPageTurnState(spreadCount = 2)
             scope = rememberCoroutineScope()
         }
-        runOnUiThread { book.bookWidthPx = 1000f }
+        runOnUiThread { book.layout = bookLayout(Size(1000f, 1000f / BookAspect), Density(1f)) }
         val slowDrag = PageDrag(listOf(DragMove(-0.2f, 2.seconds)))
         var job: kotlinx.coroutines.Job? = null
         runOnUiThread { job = scope.launch { touch.drag(book, slowDrag) } }

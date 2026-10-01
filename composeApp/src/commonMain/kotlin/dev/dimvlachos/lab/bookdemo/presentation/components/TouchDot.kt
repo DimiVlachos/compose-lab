@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.demo.PageDrag
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnState
-import kotlin.math.sign
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -43,10 +42,12 @@ private val RingWidth = 1.5.dp
 @Stable
 internal class TouchDot {
     private var x by mutableFloatStateOf(RightPageX)
+    private var y by mutableFloatStateOf(TouchY)
     private val alpha = Animatable(0f)
 
     suspend fun tap(forward: Boolean) {
         x = if (forward) RightPageX else LeftPageX
+        y = TouchY
         try {
             alpha.animateTo(1f, tween(DownMs))
             delay(TapHoldMs)
@@ -62,19 +63,25 @@ internal class TouchDot {
      */
     suspend fun drag(book: PageTurnState, drag: PageDrag) {
         val moves = drag.moves
-        if (moves.isEmpty() || book.bookWidthPx <= 0f) return
+        val box = book.layout?.size ?: return
+        if (moves.isEmpty()) return
         val leftwards = moves.first().toFraction < 0f
-        val startX = if (leftwards) RightPageX else LeftPageX
+        val startX = drag.x ?: if (leftwards) RightPageX else LeftPageX
+        val startY = drag.y ?: TouchY
         x = startX
+        y = startY
+        val down = Offset(startX * box.width, startY * box.height)
         var dragging = false
         // A script stopped mid-drag still lets go of the page, or the book stays held.
         try {
             alpha.animateTo(1f, tween(DownMs))
-            dragging = book.dragStart(dx = sign(moves.first().toFraction))
+            dragging = book.dragStart(down, down + Offset(if (leftwards) -1f else 1f, 0f))
             if (!dragging) return
-            var at = 0f
+            var atX = 0f
+            var atY = 0f
             moves.forEachIndexed { index, move ->
-                val from = at
+                val fromX = atX
+                val fromY = atY
                 // A move that ends in a flick keeps its speed to the end; any other one eases.
                 val flicked = index == moves.lastIndex && drag.releaseSpeed != 0f
                 animate(
@@ -86,17 +93,18 @@ internal class TouchDot {
                             easing = if (flicked) LinearEasing else FastOutSlowInEasing,
                         ),
                 ) { fraction, _ ->
-                    val next = lerp(from, move.toFraction, fraction)
-                    book.dragBy((next - at) * book.bookWidthPx)
-                    at = next
-                    x = startX + at
+                    atX = lerp(fromX, move.toFraction, fraction)
+                    atY = lerp(fromY, move.toFractionY, fraction)
+                    x = startX + atX
+                    y = startY + atY
+                    book.dragTo(Offset(x * box.width, y * box.height))
                 }
             }
-            book.dragEnd(drag.releaseSpeed * book.bookWidthPx)
+            book.dragEnd(Offset(drag.releaseSpeed * box.width, 0f))
             dragging = false
             alpha.animateTo(0f, tween(UpMs))
         } finally {
-            if (dragging) book.dragEnd(velocityPxPerSecond = 0f)
+            if (dragging) book.dragEnd(Offset.Zero)
             lift()
         }
     }
@@ -110,7 +118,7 @@ internal class TouchDot {
         drawContent()
         val a = alpha.value
         if (a <= 0f) return@drawWithContent
-        val center = Offset(size.width * x, size.height * TouchY)
+        val center = Offset(size.width * x, size.height * y)
         drawCircle(color.copy(alpha = FillAlpha * a), TouchRadius.toPx(), center)
         drawCircle(
             color.copy(alpha = RingAlpha * a),
