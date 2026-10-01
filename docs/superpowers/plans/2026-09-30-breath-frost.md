@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Blowing on the phone fogs the frosted window back over, with a soft cloud rising from the bottom edge; the recorded clip shows the same moment with a scripted breath that also closes its loop.
+**Goal:** Blowing on the phone fogs the fogged mirror back over, with a soft cloud rising from the bottom edge; the recorded clip shows the same moment with a scripted breath that also closes its loop.
 
 **Architecture:** `FrostState` becomes an ordered list of marks (wipes and breaths) replayed inside the existing offscreen frost layer: wipes erase with `DstOut`, breaths redraw the frost through a billowing fog mask. A shared `BlowDetector` turns microphone frames into a blow strength; a `BreathDriver` turns strength over time into a fog level. The microphone (Android `AudioRecord`, iOS stub), the hold-to-breathe gesture and the demo script all feed the same driver.
 
@@ -45,7 +45,7 @@
 |---|---|
 | `core/presentation/components/frost/FrostState.kt` (modify) | Ordered marks: `WipeStroke`, `Breath`; breath levels; dropping covered marks |
 | `core/presentation/components/frost/FogMask.kt` (create) | `DrawScope.drawFogMask(level)`: the fog's shape, in alpha |
-| `core/presentation/components/frost/FrostedWindow.kt` (modify) | Replays marks; hold vs drag gesture |
+| `core/presentation/components/frost/FoggedMirror.kt` (modify) | Replays marks; hold vs drag gesture |
 | `core/presentation/components/frost/FrostDimens.kt` (modify) | `FogEdge`, `HoldDelayMillis` |
 | `core/audio/AudioFormat.kt` (create) | `MicSampleRate`, `MicFrameSize`, `MicFrameSeconds` |
 | `core/audio/Fft.kt` (create) | `powerSpectrum`, `spectralFlatness` |
@@ -145,7 +145,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.geometry.Offset
 
 /**
- * The marks on a [FrostedWindow], in the order they were made: wipes that clear the frost and
+ * The marks on a [FoggedMirror], in the order they were made: wipes that clear the frost and
  * breaths that fog it back over. The order is the point: a wipe after a breath clears its fog, a
  * breath after a wipe covers it. Wipe points are fractions of the window, so the marks stay put when
  * the window changes size.
@@ -217,7 +217,7 @@ class Breath internal constructor() : FrostMark {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `./gradlew :composeApp:iosSimulatorArm64Test`
-Expected: BUILD SUCCESSFUL (the whole suite: `FrostedWindow` still compiles because `strokes` is unchanged).
+Expected: BUILD SUCCESSFUL (the whole suite: `FoggedMirror` still compiles because `strokes` is unchanged).
 
 - [ ] **Step 5: Commit**
 
@@ -230,12 +230,12 @@ Claude-Session: https://claude.ai/code/session_01TkrycYKRAwVDjLBuvHiu6E"
 
 ---
 
-### Task 2: Fog mask and replaying marks in `FrostedWindow`
+### Task 2: Fog mask and replaying marks in `FoggedMirror`
 
 **Files:**
 - Create: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FogMask.kt`
 - Modify: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostDimens.kt`
-- Modify: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostedWindow.kt`
+- Modify: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FoggedMirror.kt`
 - Test: `composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FogMaskUiTest.kt`
 - Test: `composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostFogUiTest.kt`
 
@@ -347,7 +347,7 @@ class FrostFogUiTest {
         frost.setBreathLevel(frost.beginBreath(), 0.62f)
         frost.wipeAcross(0.7f)
         setContent {
-            FrostedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = frost,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -444,9 +444,9 @@ internal fun DrawScope.drawFogMask(level: Float, edge: Float = FrostDimens.FogEd
 }
 ```
 
-- [ ] **Step 6: Replay the marks in `FrostedWindow`**
+- [ ] **Step 6: Replay the marks in `FoggedMirror`**
 
-In `FrostedWindow.kt`, replace the whole `.drawWithContent { ... }` block on the offscreen `Box` (the one after `.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }`) with:
+In `FoggedMirror.kt`, replace the whole `.drawWithContent { ... }` block on the offscreen `Box` (the one after `.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }`) with:
 
 ```kotlin
                 .drawWithContent {
@@ -502,7 +502,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 ```
 
-Update the KDoc of `FrostedWindow` by appending this paragraph:
+Update the KDoc of `FoggedMirror` by appending this paragraph:
 
 ```kotlin
  *
@@ -529,16 +529,16 @@ Claude-Session: https://claude.ai/code/session_01TkrycYKRAwVDjLBuvHiu6E"
 ### Task 3: Hold to breathe, drag to wipe
 
 **Files:**
-- Modify: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostedWindow.kt`
-- Test: `composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostedWindowUiTest.kt`
+- Modify: `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FoggedMirror.kt`
+- Test: `composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FoggedMirrorUiTest.kt`
 
 **Interfaces:**
 - Consumes: `FrostDimens.HoldDelayMillis` (Task 2).
-- Produces: `FrostedWindow(photo, state, modifier, brushRadius, onHoldChange: ((Boolean) -> Unit)? = null)`.
+- Produces: `FoggedMirror(photo, state, modifier, brushRadius, onHoldChange: ((Boolean) -> Unit)? = null)`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `FrostedWindowUiTest` (keep the existing test). Add imports `androidx.compose.runtime.getValue`, `androidx.compose.runtime.mutableStateOf`, `androidx.compose.runtime.setValue`, `androidx.compose.ui.test.ComposeUiTest`.
+Add to `FoggedMirrorUiTest` (keep the existing test). Add imports `androidx.compose.runtime.getValue`, `androidx.compose.runtime.mutableStateOf`, `androidx.compose.runtime.setValue`, `androidx.compose.ui.test.ComposeUiTest`.
 
 ```kotlin
     private fun ComposeUiTest.showWindow(
@@ -549,7 +549,7 @@ Add to `FrostedWindowUiTest` (keep the existing test). Add imports `androidx.com
         setContent {
             LabTheme {
                 if (shown()) {
-                    FrostedWindow(
+                    FoggedMirror(
                         photo = painterResource(Res.drawable.photo_santorini),
                         state = frost,
                         modifier = Modifier.size(200.dp).testTag("window"),
@@ -620,12 +620,12 @@ Add to `FrostedWindowUiTest` (keep the existing test). Add imports `androidx.com
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `./gradlew :composeApp:iosSimulatorArm64Test --tests '*FrostedWindowUiTest*'`
+Run: `./gradlew :composeApp:iosSimulatorArm64Test --tests '*FoggedMirrorUiTest*'`
 Expected: compilation fails with `No parameter with name 'onHoldChange' found`.
 
 - [ ] **Step 3: Implement the gesture**
 
-In `FrostedWindow.kt`:
+In `FoggedMirror.kt`:
 
 1. Add the parameter after `brushRadius`, and document it in the KDoc:
 
@@ -716,14 +716,14 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `./gradlew :composeApp:iosSimulatorArm64Test`
-Expected: BUILD SUCCESSFUL; `FrostedWindowUiTest` has 5 passing tests, and the older `aDragWipesAStrokeInFractionsOfTheWindow` still passes (a stroke now begins at the finger's first touch, which is still within 0..1).
+Expected: BUILD SUCCESSFUL; `FoggedMirrorUiTest` has 5 passing tests, and the older `aDragWipesAStrokeInFractionsOfTheWindow` still passes (a stroke now begins at the finger's first touch, which is still within 0..1).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 ./gradlew spotlessApply
-git add composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostedWindow.kt composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FrostedWindowUiTest.kt
-git commit -m "feat: a still press on the frosted window can breathe instead of wiping" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+git add composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FoggedMirror.kt composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/presentation/components/frost/FoggedMirrorUiTest.kt
+git commit -m "feat: a still press on the fogged mirror can breathe instead of wiping" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01TkrycYKRAwVDjLBuvHiu6E"
 ```
 
@@ -1796,7 +1796,7 @@ Claude-Session: https://claude.ai/code/session_01TkrycYKRAwVDjLBuvHiu6E"
 - Create: `composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/audio/FakeMicrophone.kt`
 
 **Interfaces:**
-- Consumes: `BlowDetector`, `MicFrameSeconds` (Task 4); `BreathDriver` (Task 5); `DemoState.recording` (Task 6); `Microphone`, `MicAccess`, `rememberMicAccess` (Task 8); `FrostedWindow(onHoldChange)` (Task 3); test signals (Task 4).
+- Consumes: `BlowDetector`, `MicFrameSeconds` (Task 4); `BreathDriver` (Task 5); `DemoState.recording` (Task 6); `Microphone`, `MicAccess`, `rememberMicAccess` (Task 8); `FoggedMirror(onHoldChange)` (Task 3); test signals (Task 4).
 - Produces: `FrostDemo(state: DemoState, frost: FrostState = …, micAccess: MicAccess = rememberMicAccess(enabled = !state.recording))`; strings `frost_hint_blow`, `frost_hint_hold`.
 
 - [ ] **Step 1: Add the lifecycle dependency and the strings**
@@ -1977,7 +1977,7 @@ import dev.dimvlachos.lab.core.audio.MicFrameSeconds
 import dev.dimvlachos.lab.core.audio.rememberMicAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.frost.FrostState
-import dev.dimvlachos.lab.core.presentation.components.frost.FrostedWindow
+import dev.dimvlachos.lab.core.presentation.components.frost.FoggedMirror
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.frostdemo.BreathDriver
 import dev.dimvlachos.lab.frostdemo.FrostDemos
@@ -2096,7 +2096,7 @@ internal fun FrostDemo(
     }
 
     Box(Modifier.fillMaxSize()) {
-        FrostedWindow(
+        FoggedMirror(
             photo = painterResource(Res.drawable.photo_santorini),
             state = frost,
             modifier = Modifier.fillMaxSize().onSizeChanged { window = it.toSize() },
@@ -2149,7 +2149,7 @@ Expected: BUILD SUCCESSFUL.
 
 ```bash
 git add composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/frostdemo/presentation/components/FrostDemo.kt composeApp/src/commonMain/composeResources/values/strings.xml gradle/libs.versions.toml composeApp/build.gradle.kts composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/frostdemo/presentation/components/FrostDemoUiTest.kt composeApp/src/commonTest/kotlin/dev/dimvlachos/lab/core/audio/FakeMicrophone.kt
-git commit -m "feat: blow on the phone, or hold the glass, to fog the frosted window over" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+git commit -m "feat: blow on the phone, or hold the glass, to fog the fogged mirror over" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01TkrycYKRAwVDjLBuvHiu6E"
 ```
 

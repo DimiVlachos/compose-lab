@@ -9,7 +9,7 @@ leave a thin wet streak, with scripted drips in the clip.
 - A drip's streak is a thin `WipeStroke` with a new `clarity` (85% clear), so the existing fog
   pipeline, breaths included, handles it unchanged.
 - A pure `DripDriver` in the core fog package owns timing, placement and motion. It exposes the beads,
-  which `FoggedWindow` draws on top of the glass, read in the draw phase.
+  which `FoggedMirror` draws on top of the glass, read in the draw phase.
 - `FogDemo` drives it: it waits with `delay` while nothing moves and uses frames only while a drop moves.
 - The clip gets a new `drip(at, length)` script call.
 
@@ -68,7 +68,7 @@ leave a thin wet streak, with scripted drips in the clip.
 
 - **Modify** `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/fog/FogState.kt`:
   `WipeStroke.clarity`, and `beginStroke(at, radius, clarity)`.
-- **Modify** `.../core/presentation/components/fog/FoggedWindow.kt`:
+- **Modify** `.../core/presentation/components/fog/FoggedMirror.kt`:
   - `drawWipe` honours clarity
   - a new `beads: () -> List<Bead>` parameter, with `drawBead`
 - **Modify** `.../core/presentation/components/fog/FogDimens.kt`: bead shade, rim and highlight alphas.
@@ -94,7 +94,7 @@ Paths below abbreviate `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab` as 
 
 **Files:**
 - Modify: `main/core/presentation/components/fog/FogState.kt`, for `beginStroke` and `WipeStroke`
-- Modify: `main/core/presentation/components/fog/FoggedWindow.kt`, for the mark loop's `WipeStroke`
+- Modify: `main/core/presentation/components/fog/FoggedMirror.kt`, for the mark loop's `WipeStroke`
   branch and `drawWipe`
 - Test: `test/core/presentation/components/fog/FogStateTest.kt` and `test/core/presentation/components/fog/FogLayersUiTest.kt`
 
@@ -127,7 +127,7 @@ Append to `FogLayersUiTest`:
             fog.extendStroke(it, Offset(0.9f, 0.7f))
         }
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = fog,
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -179,7 +179,7 @@ internal constructor(
 ) : FogMark
 ```
 
-In `FoggedWindow.kt`, change the `WipeStroke` branch of the mark loop to pass clarity:
+In `FoggedMirror.kt`, change the `WipeStroke` branch of the mark loop to pass clarity:
 
 ```kotlin
                             is WipeStroke ->
@@ -219,7 +219,7 @@ private fun DrawScope.drawWipe(stroke: List<Offset>, radius: Float, brush: Brush
 }
 ```
 
-`Rect`, `Paint` and `drawIntoCanvas` are already imported in `FoggedWindow.kt`, because `drawFog` uses
+`Rect`, `Paint` and `drawIntoCanvas` are already imported in `FoggedMirror.kt`, because `drawFog` uses
 them.
 
 - [ ] **Step 4: Run the tests to verify they pass**
@@ -760,14 +760,14 @@ git commit -m "feat: drops of condensation gather, run down in fits and starts a
 ### Task 3: The glass draws its drops
 
 **Files:**
-- Modify: `main/core/presentation/components/fog/FoggedWindow.kt`, for the signature, a layer after
+- Modify: `main/core/presentation/components/fog/FoggedMirror.kt`, for the signature, a layer after
   the fog `Box`, and a new `drawBead`
 - Modify: `main/core/presentation/components/fog/FogDimens.kt`
 - Test: `test/core/presentation/components/fog/BeadUiTest.kt`
 
 **Interfaces:**
 - Consumes: `Bead` (Task 2).
-- Produces: a `FoggedWindow(..., onHoldChange = ..., beads: () -> List<Bead> = { emptyList() })` last
+- Produces: a `FoggedMirror(..., onHoldChange = ..., beads: () -> List<Bead> = { emptyList() })` last
   parameter, read in the draw phase only.
 
 - [ ] **Step 1: Write the failing test**
@@ -798,7 +798,7 @@ class BeadUiTest {
     @Test
     fun aDropIsDarkerInsideWithABrightHighlight() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -820,7 +820,7 @@ class BeadUiTest {
     @Test
     fun withoutDropsTheGlassIsUnchanged() = runComposeUiTest {
         setContent {
-            FoggedWindow(
+            FoggedMirror(
                 photo = ColorPainter(Color.Red),
                 state = FogState(startClear = true),
                 modifier = Modifier.size(200.dp).testTag("window"),
@@ -853,7 +853,7 @@ Append to `FogDimens` (inside the object, beside the other alphas):
     const val BeadHighlight = 0.75f
 ```
 
-In `FoggedWindow.kt`, add the parameter after `onHoldChange` and document it in the KDoc:
+In `FoggedMirror.kt`, add the parameter after `onHoldChange` and document it in the KDoc:
 
 ```kotlin
     onHoldChange: ((Boolean) -> Unit)? = null,
@@ -897,7 +897,7 @@ private fun DrawScope.drawBead(bead: Bead) {
 }
 ```
 
-Imports to add to `FoggedWindow.kt`, where they are missing:
+Imports to add to `FoggedMirror.kt`, where they are missing:
 - `androidx.compose.ui.draw.drawBehind`
 - `androidx.compose.ui.geometry.Size`
 - `androidx.compose.ui.graphics.drawscope.Stroke`
@@ -1022,7 +1022,7 @@ git commit -m "feat: a demo script can start a drip"
 **Interfaces:**
 - Consumes:
   - `DripDriver` (Task 2)
-  - `FoggedWindow(beads = ...)` (Task 3)
+  - `FoggedMirror(beads = ...)` (Task 3)
   - `DemoState.setDripHandler` (Task 4)
   - `clipFrameToWindow`, and `FogDemos.FingerBrush`, which is 36 dp
 - Produces: FogDemo runs drips on its glass. Random starts are off when `state.recording` or
@@ -1207,7 +1207,7 @@ After the camera block, add the drip loop:
     }
 ```
 
-Give the driver the glass's size, and pass the beads, in the `FoggedWindow` call:
+Give the driver the glass's size, and pass the beads, in the `FoggedMirror` call:
 
 ```kotlin
             modifier =
