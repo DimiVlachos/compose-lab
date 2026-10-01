@@ -61,7 +61,7 @@ motion is the biggest step towards the mirror looking real.
     - no wipe stroke passes within its radius of the point
     - partial breaths are not counted, which errs towards skipping a drip, never towards starting one
       on clear glass
-- **`FoggedWindow`:** a new optional `beads: List<Bead>` parameter, drawn on top of the glass. Without
+- **`FoggedMirror`:** a new optional `beads: List<Bead>` parameter, drawn on top of the glass. Without
   it, nothing changes.
 - **`FogDemo`:**
   - owns the driver

@@ -52,7 +52,7 @@ import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
-import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
+import dev.dimvlachos.lab.core.presentation.components.fog.FoggedMirror
 import dev.dimvlachos.lab.core.presentation.components.fog.MistDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -278,7 +278,7 @@ internal fun FogDemo(
         // The fog is the glass of a mirror on the bathroom wall.
         MirrorOnWall { glassModifier ->
             Box(glassModifier) {
-                FoggedWindow(
+                FoggedMirror(
                     // A camera still starting shows plain glass: the still is for when there is
                     // none.
                     photo =

@@ -2,11 +2,11 @@
 
 Date: 2026-09-30
 Status: design approved in conversation, awaiting spec review
-Builds on: the frosted window demo (`frost.window`), branch `feat/frosted-window`
+Builds on: the fogged mirror demo (`frost.window`), branch `feat/fogged-mirror`
 
 ## Goal
 
-In the frosted window demo, blowing on the phone fogs the glass back over: a soft cloud rises from the
+In the fogged mirror demo, blowing on the phone fogs the glass back over: a soft cloud rises from the
 bottom edge, where the mouth and microphone are, for as long as the user blows. The recorded clip shows the
 same moment with a scripted breath, which also closes the clip's loop without a visible reset.
 
@@ -58,7 +58,7 @@ Inside the existing offscreen layer, after drawing the frost:
 
 ### Hold gesture
 
-`FrostedWindow` gains an optional `onHoldChange: ((Boolean) -> Unit)?`. When it is set, a press that stays
+`FoggedMirror` gains an optional `onHoldChange: ((Boolean) -> Unit)?`. When it is set, a press that stays
 within touch slop for 400 ms reports `true`, and releasing reports `false`; that press does not wipe. A press
 that moves beyond slop before 400 ms wipes as today. When the callback is null, behaviour is unchanged.
 
@@ -147,7 +147,7 @@ Common unit tests:
 
 UI tests:
 
-- `FrostedWindow`: a still hold reports `onHoldChange(true)` then `false` and adds no wipe; a moving drag still
+- `FoggedMirror`: a still hold reports `onHoldChange(true)` then `false` and adds no wipe; a moving drag still
   wipes.
 - `FrostDemo`: a scripted breath adds a fog mark and, on reaching the top, leaves no marks.
 

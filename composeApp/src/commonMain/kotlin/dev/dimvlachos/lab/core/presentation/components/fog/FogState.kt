@@ -11,7 +11,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Dp
 
 /**
- * The marks on a [FoggedWindow], in the order they were made: wipes that clear the fog and breaths
+ * The marks on a [FoggedMirror], in the order they were made: wipes that clear the fog and breaths
  * that fog it back over. The order is the point: a wipe after a breath clears its fog, a breath
  * after a wipe covers it. A window can start clear, as if already cleared. Wipe points are
  * fractions of the window, so the marks stay put when the window changes size.

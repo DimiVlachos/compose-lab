@@ -94,7 +94,7 @@ val fog = remember { FogState() }                   // starts fully fogged
 val drips = remember(fog) { DripDriver(fog) }       // set drips.glass to the glass's size in dp,
                                                     // then drips.advance(seconds) on each frame
 
-FoggedWindow(
+FoggedMirror(
     photo = painterResource(Res.drawable.mirror_view), // or the camera's live Painter
     state = fog,
     beads = { drips.beads },                         // read while drawing: a running drop only redraws
@@ -109,7 +109,7 @@ Compose made every part of this simple to build, and the same Kotlin runs on And
   - Inside an offscreen `graphicsLayer` (`CompositingStrategy.Offscreen`), `BlendMode.DstOut` wipes holes in the fog, `Overlay` lays the condensation texture on top, and `DstIn` thins it.
   - Breath and mist *fill back in* rather than pile up: `DstOut`, then `Plus` through a `SrcIn` mask, in `saveLayer` from `drawIntoCanvas`.
   - That's plain Porter–Duff maths, the same on both platforms.
-- **`Modifier.blur` and `ColorFilter.colorMatrix`** turn one `Painter` into the frosted copy of the scene. The camera is just another `Painter`, so the live mirror needed no special path.
+- **`Modifier.blur` and `ColorFilter.colorMatrix`** turn one `Painter` into the misty copy of the scene. The camera is just another `Painter`, so the live mirror needed no special path.
 - **Drops are drawn with ordinary draw calls.** Each teardrop is a `Path` of two cubics and an arc, drawn longer the faster it runs. Its shade, rim, edge light and glint are a filled path, strokes, an arc and a circle, and a settled drop gets a soft `Brush.radialGradient` halo. `withTransform` spreads it as it melts into a wipe.
 - **Drawing never triggers recomposition.** Beads are handed over as a lambda and read in `drawBehind`. The fog's marks are a `mutableStateListOf` read in the draw phase, and camera frames sit in snapshot state that only `onDraw` reads. So a running drop or a new frame costs a redraw, not a recomposition.
 - **Clocks and gestures are coroutines.**

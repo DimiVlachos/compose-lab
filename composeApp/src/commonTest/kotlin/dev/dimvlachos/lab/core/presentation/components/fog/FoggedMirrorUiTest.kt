@@ -23,13 +23,13 @@ import kotlin.test.assertTrue
 import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalTestApi::class)
-class FoggedWindowUiTest {
+class FoggedMirrorUiTest {
     @Test
     fun aDragWipesAStrokeInFractionsOfTheWindow() = runComposeUiTest {
         val fog = FogState()
         setContent {
             LabTheme {
-                FoggedWindow(
+                FoggedMirror(
                     photo = painterResource(Res.drawable.photo_santorini),
                     state = fog,
                     modifier = Modifier.size(200.dp).testTag("window"),
@@ -53,7 +53,7 @@ class FoggedWindowUiTest {
         setContent {
             LabTheme {
                 if (shown()) {
-                    FoggedWindow(
+                    FoggedMirror(
                         photo = painterResource(Res.drawable.photo_santorini),
                         state = fog,
                         modifier = Modifier.size(200.dp).testTag("window"),
@@ -128,7 +128,7 @@ class FoggedWindowUiTest {
         var enabled by mutableStateOf(true)
         setContent {
             LabTheme {
-                FoggedWindow(
+                FoggedMirror(
                     photo = painterResource(Res.drawable.photo_santorini),
                     state = fog,
                     modifier = Modifier.size(200.dp).testTag("window"),
