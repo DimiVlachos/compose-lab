@@ -3,8 +3,8 @@ package dev.dimvlachos.lab.fogdemo.presentation.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -50,7 +50,9 @@ internal fun MirrorOnWall(
             modifier = Modifier.fillMaxSize(),
         )
         Box(
-            Modifier.offset { IntOffset(onScreen.left.roundToInt(), onScreen.top.roundToInt()) }
+            Modifier.absoluteOffset {
+                    IntOffset(onScreen.left.roundToInt(), onScreen.top.roundToInt())
+                }
                 .size(
                     with(density) { onScreen.width.toDp() },
                     with(density) { onScreen.height.toDp() },
@@ -133,7 +135,7 @@ private fun scaleFor(screen: Size) =
 // bathroom_wall.jpg (scripts/bathroom-wall.sh): its size; where its mirror's glass is, and the
 // whole mirror with its frame and outer rail, as fractions of it; and the radius of the glass's
 // corners, as a fraction of the photo's width.
-private val WallPhotoSize = Size(1220f, 2639f)
+internal val WallPhotoSize = Size(1220f, 2639f)
 private val WallGlass = Rect(144f / 1220f, 462f / 2639f, 1077f / 1220f, 1719f / 2639f)
 private val WallMirror = Rect(20f / 1220f, 348f / 2639f, 1190f / 1220f, 1833f / 2639f)
 private const val WallGlassCorner = 0.064f

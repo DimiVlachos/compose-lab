@@ -113,7 +113,7 @@ Compose made every part of this simple to build, and the same Kotlin runs on And
 - **Clocks and gestures are coroutines.**
   - `withFrameNanos` drives the drops and the mist.
   - `snapshotFlow` wakes the drip loop the moment you wipe, and otherwise lets the glass sleep.
-  - `pointerInput` with `awaitEachGesture` tells a wipe from a hold.
+  - `pointerInput` with `awaitEachGesture` follows each finger across the glass.
   - `repeatOnLifecycle` keeps the camera on only while the screen is showing.
 - **Everything is testable.** `runComposeUiTest` plus `captureToImage` read real pixels: a drop is darker in the middle, a spread one is thinner and wider, and a wipe clears the fog. The drips and the mist run on the test's own frame clock, so a test steps through many seconds of drops frame by frame, exactly the same every run.
 - **The mirror hangs on a real wall with ordinary layout.** `BoxWithConstraints` measures the screen. An `Image` with `ContentScale.Crop` and a custom `Alignment` crops the wall photo around the mirror. The glass is a `Box` placed with `Modifier.offset` and `size`, and clipped with `RoundedCornerShape`. So the fog lands exactly on the photo's glass on any screen, and a finger on the tiles wipes nothing.
@@ -154,7 +154,7 @@ The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo st
 
 ## Licence
 
-MIT. Icon path data comes from Material Icons (Apache 2.0).
+MIT. Icon path data comes from Material Icons (Apache 2.0). On Android, the fogged mirror finds you in the camera with Google's [ML Kit selfie segmentation](https://developers.google.com/ml-kit/vision/selfie-segmentation), on the phone; the app has no internet permission, so nothing it sees leaves the phone.
 
 Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](https://unsplash.com/license):
 
@@ -178,6 +178,6 @@ Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](ht
 
 | Photo | Photographer |
 |---|---|
-| [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the fogged mirror's reflection without a camera) | nana |
+| [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the bathroom in the fogged mirror: on its own, or behind you, cut out of the camera) | nana |
 | [Contemporary bathroom interior with mirror above washbasin at home](https://www.pexels.com/photo/7046159/) (the wall the fogged mirror hangs on, extended with more tiles above and a counter front below) | Max Vakhtbovych |
 | [Water droplets on foggy glass](https://www.pexels.com/photo/water-droplets-on-foggy-glass-8628343/) (the fog's condensation, via `scripts/fog-texture.py`) | Chris F |

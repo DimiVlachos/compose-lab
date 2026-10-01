@@ -39,8 +39,8 @@ data class Bead(
 /**
  * Condensation running down a [FogState]: every few seconds a drop gathers somewhere on the fogged
  * glass, grows heavy, and runs down in fits and starts, leaving a thin wet streak. Stopped, it
- * rests at the streak's end until a breath fogs it over or a wipe clears it. [advance] moves it all
- * on; [drip] starts a drop at a given spot, for a script.
+ * rests at the streak's end until a breath or a mist fogs it over or a wipe clears it. [advance]
+ * moves it all on; [drip] starts a drop at a given spot, for a script.
  */
 @Stable
 class DripDriver(
@@ -491,7 +491,8 @@ class DripDriver(
                 spread = spreadNow(),
             )
 
-        // Shows until a breath drops its streak or a real wipe after it passes over the drop.
+        // Shows until a breath or a mist drops its streak or a real wipe after it passes over the
+        // drop.
         fun stillShows(): Boolean {
             // Stopped, its streak fogged over by a full breath takes it too; running, it carries
             // on.

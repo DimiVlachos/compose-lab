@@ -33,7 +33,6 @@ import dev.dimvlachos.lab.resources.mirror_card_not_now
 import dev.dimvlachos.lab.resources.mirror_card_open_settings
 import dev.dimvlachos.lab.resources.mirror_card_promise
 import dev.dimvlachos.lab.resources.mirror_card_title
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -77,7 +76,7 @@ internal fun MirrorPermissionCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
     ) {
-        if (camera != Need.Nothing) CardIcon(Res.drawable.ic_photo_camera)
+        CardIcon()
         CardText(Res.string.mirror_card_title, LabTheme.colors.textPrimary, title = true)
         CardText(Res.string.mirror_card_body_what, LabTheme.colors.textPrimary)
         if (camera == Need.Ask)
@@ -117,9 +116,9 @@ internal fun MirrorPermissionCard(
 }
 
 @Composable
-private fun CardIcon(icon: DrawableResource) {
+private fun CardIcon() {
     Icon(
-        painterResource(icon),
+        painterResource(Res.drawable.ic_photo_camera),
         contentDescription = null,
         tint = LabTheme.colors.accent,
         modifier = Modifier.size(CardIconSize),
