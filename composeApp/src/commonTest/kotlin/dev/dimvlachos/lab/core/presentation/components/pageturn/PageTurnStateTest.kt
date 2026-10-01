@@ -170,6 +170,45 @@ class PageTurnStateTest {
     }
 
     @Test
+    fun aHardFlickStopsAtTheSpineInsteadOfSailingPastIt() = runComposeUiTest {
+        val state = book()
+        act {
+            state.dragStart(dx = -10f)
+            state.dragBy(-100f)
+        }
+        act { state.dragEnd(velocityPxPerSecond = -20_000f) }
+        var furthest = 0f
+        repeat(40) {
+            mainClock.advanceTimeBy(16)
+            furthest = maxOf(furthest, state.leafProgress)
+        }
+        assertTrue(furthest <= 1f, "reached $furthest")
+        assertEquals(1, state.spread)
+        assertFalse(state.isTurning)
+    }
+
+    @Test
+    fun aSwipeTheSameWayWhileAPageLandsTurnsTheNextLeaf() = runComposeUiTest {
+        val state = book()
+        act {
+            state.dragStart(dx = -10f)
+            state.dragBy(-100f)
+        }
+        act(ms = 32) { state.dragEnd(velocityPxPerSecond = -1_500f) }
+        assertIs<TurnPhase.Settling>(state.phase)
+        act {
+            assertTrue(state.dragStart(dx = -10f))
+            state.dragBy(-100f)
+        }
+        val next = assertIs<TurnPhase.Dragging>(state.phase)
+        assertEquals(TurnPair(forward = true, from = 1, to = 2), next.pair)
+        assertEquals(1, state.spread, "the first page landed as the second was taken")
+        act { state.dragEnd(velocityPxPerSecond = -1_500f) }
+        settle()
+        assertEquals(2, state.spread)
+    }
+
+    @Test
     fun aTapWhileAPageLandsTurnsTheNextOne() = runComposeUiTest {
         val state = book()
         act(ms = 80) { state.next() }
