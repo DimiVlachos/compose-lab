@@ -85,7 +85,7 @@ What's on the glass:
 - **Breath.** Fills back in from the bottom up, the way a real breath does.
 - **Running drops.** Now and then a drop gathers, in a range of small sizes, and runs down. The bigger it is, the faster it goes. As it runs it stretches from a sphere into a teardrop, and it cuts a clear trail through the fog behind it. Once it stops, it settles softly into the condensation.
 - **Drops meeting a wipe.** A drop that runs into a wiped patch slips just inside, then spreads out slowly and thins away into the wet glass.
-- **The clip.** Drops run first, then a hand scrubs a porthole clear. One more drop runs into it and spreads away, then the room mists it all back over, so the clip loops.
+- **The clip.** Drops run first, then a hand scrubs a porthole clear, smearing away the drop resting in its path. A soft fingertip marks each touch, like a phone's "show taps". One more drop runs into the porthole and spreads away, then the room mists it all back over, so the clip loops. Replay in **Your reflection** plays the same showcase over your live face, ending with a breath that fogs the mirror back up from the bottom.
 
 ```kotlin
 val fog = remember { FogState() }                   // starts fully fogged
