@@ -103,33 +103,10 @@ class FogDemoUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(500)
 
-        // The breath is the clip's reset now: going back to 0 leaves the wipe on the glass.
+        // The mist is the clip's reset now: going back to 0 leaves the wipe on the glass.
         mainClock.advanceTimeBy(1_200)
         assertEquals(1, fog.strokes.size)
         assertTrue(fog.marks.none { it is Evaporation }, "${fog.marks}")
-    }
-
-    @Test
-    fun aScriptedBreathFogsTheGlassOver() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val state = DemoState()
-        val fog = FogState()
-        var scope: CoroutineScope? = null
-        setContent {
-            scope = rememberCoroutineScope()
-            LabTheme {
-                Box(Modifier.size(400.dp, 500.dp)) {
-                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
-                }
-            }
-        }
-        mainClock.advanceTimeByFrame()
-        // Wiped once the demo is up: on its first composition the demo starts from fresh fog.
-        runOnUiThread { fog.beginStroke(Offset(0.5f, 0.5f)) }
-        runOnUiThread { scope!!.launch { state.breathe(2_400.milliseconds, 1f) } }
-        mainClock.advanceTimeBy(2_600)
-
-        assertTrue(fog.strokes.isEmpty(), "the wipe is fogged over: ${fog.marks}")
     }
 
     // Test hosts are not guaranteed to be resumed; the microphone only listens when they are.
