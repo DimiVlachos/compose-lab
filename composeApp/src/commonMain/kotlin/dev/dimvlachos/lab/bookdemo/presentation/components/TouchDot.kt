@@ -45,7 +45,11 @@ internal class TouchDot {
     private var y by mutableFloatStateOf(TouchY)
     private val alpha = Animatable(0f)
 
+    // Counts the touches: a finger lifting after the next one has come down leaves the dot alone.
+    private var touches = 0
+
     suspend fun tap(forward: Boolean) {
+        val touch = ++touches
         x = if (forward) RightPageX else LeftPageX
         y = TouchY
         try {
@@ -53,7 +57,7 @@ internal class TouchDot {
             delay(TapHoldMs)
             alpha.animateTo(0f, tween(UpMs))
         } finally {
-            lift()
+            lift(touch)
         }
     }
 
@@ -62,6 +66,7 @@ internal class TouchDot {
      * off at the drag's release speed. The book sees the same calls a real finger makes.
      */
     suspend fun drag(book: PageTurnState, drag: PageDrag) {
+        val touch = ++touches
         val moves = drag.moves
         val box = book.layout?.size ?: return
         if (moves.isEmpty()) return
@@ -105,12 +110,14 @@ internal class TouchDot {
             alpha.animateTo(0f, tween(UpMs))
         } finally {
             if (dragging) book.dragEnd(Offset.Zero)
-            lift()
+            lift(touch)
         }
     }
 
-    // Gone at once when a script is stopped; a no-op after a finished fade.
-    private suspend fun lift() {
+    // Gone at once when a script is stopped; a no-op after a finished fade. Only the latest touch
+    // takes the dot away: an earlier one's fade, cut short by the next touch, leaves it be.
+    private suspend fun lift(touch: Int) {
+        if (touch != touches) return
         withContext(NonCancellable) { alpha.snapTo(0f) }
     }
 
