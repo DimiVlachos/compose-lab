@@ -20,6 +20,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -127,6 +128,40 @@ class PageTurnBookUiTest {
         assertShows(red, colorAt(0.08f), "this left page, not yet covered")
         assertShows(green, colorAt(0.45f), "the leaf's back by the spine")
         assertShows(yellow, colorAt(0.75f), "the next right page")
+    }
+
+    @Test
+    fun quickSwipesEachTurnAPage() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        lateinit var state: PageTurnState
+        val spreads = List(4) { spread(red, blue) }
+        setContent {
+            LabTheme {
+                state = rememberPageTurnState(spreadCount = 4)
+                Box(Modifier.size(440.dp, 260.dp), contentAlignment = Alignment.Center) {
+                    PageTurnBook(
+                        spreads,
+                        state,
+                        Modifier.fillMaxWidth().padding(20.dp).testTag(BookTag),
+                    )
+                }
+            }
+        }
+        mainClock.advanceTimeBy(100)
+        repeat(3) {
+            // A short flick: a quarter of the book, let go fast, so the page is still landing.
+            onNodeWithTag(BookTag).performTouchInput {
+                swipe(
+                    start = Offset(width * 0.8f, height / 2f),
+                    end = Offset(width * 0.55f, height / 2f),
+                    durationMillis = 60,
+                )
+            }
+            // The next swipe comes while this page is still landing.
+            mainClock.advanceTimeBy(40)
+        }
+        mainClock.advanceTimeBy(3_000)
+        assertEquals(3, state.spread)
     }
 
     private fun ComposeUiTest.dragTo(state: PageTurnState, progress: Float) {

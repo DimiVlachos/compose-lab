@@ -54,7 +54,9 @@ internal constructor(
         private set
 
     // Progress of the current pair, 0 at its start and 1 at its end, whichever way it runs.
-    private val turn = Animatable(0f)
+    // Bounded to a turn: a flicked page keeps its speed until it meets the spine, and stops there
+    // rather than sailing past it and coming back.
+    private val turn = Animatable(0f).apply { updateBounds(0f, 1f) }
     private val bend = Animatable(1f)
 
     // The book's width in pixels, which a drag's distance is measured against; set on layout.
@@ -106,11 +108,23 @@ internal constructor(
      */
     fun dragStart(dx: Float): Boolean {
         if (bookWidthPx <= 0f || phase is TurnPhase.Dragging) return false
-        val inFlight = phase as? TurnPhase.Settling
+        val forward = dx < 0f
+        var inFlight = phase as? TurnPhase.Settling
+        // A page already landing the way this drag goes is done with: it lands at once and the drag
+        // takes the next leaf, as a quick hand leafing through does. Any other page in flight (one
+        // falling back, or a drag the other way) is caught where it is.
+        if (
+            inFlight != null &&
+                inFlight.landing == inFlight.pair.to &&
+                inFlight.pair.forward == forward
+        ) {
+            spread = inFlight.landing
+            phase = TurnPhase.Idle
+            inFlight = null
+        }
         val pair =
             inFlight?.pair
                 ?: run {
-                    val forward = dx < 0f
                     val target = spread + if (forward) 1 else -1
                     if (target !in 0..lastSpread) return false
                     TurnPair(forward, spread, target)
@@ -125,8 +139,11 @@ internal constructor(
         } else {
             dragBase = 0f
             dragBend = bendTowards(pair.forward, progressIncreasing = true)
+            // The last page may still be animating: draw this one from 0 until it lets go.
+            restarting = true
             scope.launch {
                 turn.snapTo(0f)
+                restarting = false
                 bend.snapTo(dragBend)
             }
         }
