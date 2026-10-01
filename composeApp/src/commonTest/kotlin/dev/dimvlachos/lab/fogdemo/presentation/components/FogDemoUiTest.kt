@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -25,41 +24,32 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import dev.dimvlachos.lab.core.audio.FakeMicrophone
-import dev.dimvlachos.lab.core.audio.MicAccess
-import dev.dimvlachos.lab.core.audio.noise
-import dev.dimvlachos.lab.core.audio.silence
 import dev.dimvlachos.lab.core.camera.CameraAccess
+import dev.dimvlachos.lab.core.camera.FakeMirrorCamera
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.Breath
 import dev.dimvlachos.lab.core.presentation.components.fog.Evaporation
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
+import dev.dimvlachos.lab.core.presentation.components.fog.Mist
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.fog_hint_blow
-import dev.dimvlachos.lab.resources.fog_hint_hold
+import dev.dimvlachos.lab.resources.fog_hint_camera
+import dev.dimvlachos.lab.resources.fog_hint_wipe
 import dev.dimvlachos.lab.resources.mirror_card_allow
 import dev.dimvlachos.lab.resources.mirror_card_body_what
 import dev.dimvlachos.lab.resources.mirror_card_camera_blocked
 import dev.dimvlachos.lab.resources.mirror_card_camera_why
-import dev.dimvlachos.lab.resources.mirror_card_mic_blocked
-import dev.dimvlachos.lab.resources.mirror_card_mic_why
 import dev.dimvlachos.lab.resources.mirror_card_not_now
 import dev.dimvlachos.lab.resources.mirror_card_open_settings
 import dev.dimvlachos.lab.resources.mirror_card_promise
 import dev.dimvlachos.lab.resources.mirror_card_title
-import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
@@ -77,7 +67,7 @@ class FogDemoUiTest {
             // The clip's own 4:5 frame, so the script's points land where they say.
             LabTheme {
                 Box(Modifier.size(400.dp, 500.dp)) {
-                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
+                    FogDemo(state, fog, CameraAccess.Unavailable)
                 }
             }
         }
@@ -109,158 +99,58 @@ class FogDemoUiTest {
         assertTrue(fog.marks.none { it is Evaporation }, "${fog.marks}")
     }
 
-    // Test hosts are not guaranteed to be resumed; the microphone only listens when they are.
-    private class ResumedOwner : LifecycleOwner {
-        override val lifecycle =
-            LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+    // Test hosts are not guaranteed to be resumed; the room's mist only runs when they are.
+    private class Owner(state: Lifecycle.State) : LifecycleOwner {
+        override val lifecycle = LifecycleRegistry.createUnsafe(this).apply { currentState = state }
     }
+
+    // The card and the pill do not wait on the room: paused, its mist stays off rather than running
+    // on through every wait for idle.
+    private fun pausedOwner() = Owner(Lifecycle.State.STARTED)
 
     // Glass already wiped once, past the first hint ("wipe away the steam").
     private fun wipedFog() = FogState().apply { beginStroke(Offset(0.5f, 0.5f)) }
 
-    private val blowHint = runBlocking { getString(Res.string.fog_hint_blow) }
-    private val holdHint = runBlocking { getString(Res.string.fog_hint_hold) }
-
-    private fun ComposeUiTest.showDemo(state: DemoState, fog: FogState, micAccess: MicAccess) {
-        setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
-                LabTheme {
-                    Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
-                        FogDemo(state, fog, micAccess, CameraAccess.Unavailable)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun micHearing(frames: Flow<FloatArray>) = MicAccess.Granted(FakeMicrophone(frames))
-
-    @Test
-    fun aBlowIntoTheMicrophoneFogsTheGlass() = runComposeUiTest {
-        val random = Random(3)
-        val fog = FogState()
-        showDemo(
-            DemoState(),
-            fog,
-            micHearing(
-                flow {
-                    repeat(20) { emit(noise(0.003f, random)) }
-                    repeat(12) { emit(noise(0.3f, random)) }
-                    awaitCancellation()
-                }
-            ),
-        )
-        waitForIdle()
-
-        val breath = fog.marks.last() as Breath
-        assertTrue(breath.level > 0f, "the fog rose: ${breath.level}")
-        onNodeWithText(blowHint).assertDoesNotExist()
-    }
-
-    @Test
-    fun aListeningMicrophoneInvitesABlow() = runComposeUiTest {
-        showDemo(DemoState(), wipedFog(), micHearing(flow { awaitCancellation() }))
-        onNodeWithText(blowHint).assertExists()
-    }
-
-    @Test
-    fun aMicrophoneThatFailsFallsBackToHolding() = runComposeUiTest {
-        showDemo(
-            DemoState(),
-            wipedFog(),
-            micHearing(flow { throw IllegalStateException("busy") }),
-        )
-        onNodeWithText(holdHint).assertExists()
-    }
-
-    @Test
-    fun aMicrophoneThatHearsOnlySilenceFallsBackToHolding() = runComposeUiTest {
-        showDemo(
-            DemoState(),
-            wipedFog(),
-            micHearing(
-                flow {
-                    repeat(80) { emit(silence()) }
-                    awaitCancellation()
-                }
-            ),
-        )
-        onNodeWithText(holdHint).assertExists()
-    }
-
-    @Test
-    fun withoutAMicrophoneHoldingTheGlassFogsIt() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val fog = wipedFog()
-        showDemo(DemoState(), fog, MicAccess.Unavailable)
-        mainClock.advanceTimeByFrame()
-        onNodeWithText(holdHint).assertExists()
-
-        onNodeWithTag("demo").performTouchInput { down(center) }
-        mainClock.advanceTimeBy(1_000)
-        onNodeWithTag("demo").performTouchInput { up() }
-        mainClock.advanceTimeByFrame()
-
-        val breath = fog.marks.last() as Breath
-        assertTrue(breath.level > 0.2f, "about 0.6 s of breath at 0.7: ${breath.level}")
-    }
-
-    @Test
-    fun theRecordingShowsNoHints() = runComposeUiTest {
-        showDemo(DemoState(recording = true), FogState(), MicAccess.Unavailable)
-        onNodeWithText(holdHint).assertDoesNotExist()
-        onNodeWithText(blowHint).assertDoesNotExist()
-    }
-
-    @Test
-    fun recomposingWhileListeningKeepsTheSameMicrophoneRunning() = runComposeUiTest {
-        // On Android the access is a fresh wrapper around the same microphone at every
-        // recomposition; listening must not restart for it, or a new detector learns the blow as
-        // the room's level the moment the first breath recomposes the demo.
-        var listens = 0
-        val microphone =
-            FakeMicrophone(flow<FloatArray> { awaitCancellation() }.onStart { listens++ })
-        var recomposition by mutableIntStateOf(0)
-        setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
-                LabTheme {
-                    recomposition.let {
-                        FogDemo(
-                            DemoState(),
-                            FogState(),
-                            MicAccess.Granted(microphone),
-                            CameraAccess.Unavailable,
-                        )
-                    }
-                }
-            }
-        }
-        waitForIdle()
-        recomposition++
-        waitForIdle()
-
-        assertEquals(1, listens)
-    }
-
+    private val wipeHint = runBlocking { getString(Res.string.fog_hint_wipe) }
+    private val cameraHint = runBlocking { getString(Res.string.fog_hint_camera) }
     private val cardTitle = runBlocking { getString(Res.string.mirror_card_title) }
     private val allow = runBlocking { getString(Res.string.mirror_card_allow) }
     private val notNow = runBlocking { getString(Res.string.mirror_card_not_now) }
     private val openSettings = runBlocking { getString(Res.string.mirror_card_open_settings) }
-    private val blockedLine = runBlocking { getString(Res.string.mirror_card_mic_blocked) }
+    private val blockedLine = runBlocking { getString(Res.string.mirror_card_camera_blocked) }
+
+    private fun ComposeUiTest.showDemo(state: DemoState, fog: FogState, camera: CameraAccess) {
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides pausedOwner()) {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
+                        FogDemo(state, fog, camera)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theRecordingShowsNoHints() = runComposeUiTest {
+        showDemo(DemoState(recording = true), FogState(), CameraAccess.Unavailable)
+        onNodeWithText(wipeHint).assertDoesNotExist()
+        onNodeWithText(cameraHint).assertDoesNotExist()
+    }
 
     // Taps on the card go through real touch handling, not the click action: a layer over the glass
     // once swallowed every tap before the buttons saw it, and performClick() never noticed.
 
     // The access the demo is shown with, changeable mid-test as Android would change it.
     private fun ComposeUiTest.showDemoWith(
-        access: () -> MicAccess,
+        access: () -> CameraAccess,
         fog: FogState = wipedFog(),
     ) {
         setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+            CompositionLocalProvider(LocalLifecycleOwner provides pausedOwner()) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
-                        FogDemo(DemoState(), fog, access(), CameraAccess.Unavailable)
+                        FogDemo(DemoState(), fog, access())
                     }
                 }
             }
@@ -269,17 +159,16 @@ class FogDemoUiTest {
 
     @Test
     fun theCardExplainsBeforeAndroidAsks() = runComposeUiTest {
-        showDemoWith({ MicAccess.Askable {} })
+        showDemoWith({ CameraAccess.Askable {} })
 
         onNodeWithText(cardTitle).assertExists()
-        onNodeWithText(holdHint).assertDoesNotExist()
-        onNodeWithText(blowHint).assertDoesNotExist()
+        onNodeWithText(cameraHint).assertDoesNotExist()
     }
 
     @Test
     fun allowingHandsOverToAndroid() = runComposeUiTest {
         var asks = 0
-        showDemoWith({ MicAccess.Askable { asks++ } })
+        showDemoWith({ CameraAccess.Askable { asks++ } })
 
         onNodeWithText(allow).performTouchInput { click() }
 
@@ -287,27 +176,27 @@ class FogDemoUiTest {
     }
 
     @Test
-    fun aRefusalInAndroidsDialogClosesTheCardAndOffersHolding() = runComposeUiTest {
+    fun aRefusalInAndroidsDialogClosesTheCardOnTheStillReflection() = runComposeUiTest {
         // Android hands over a new Askable after each refusal it asked about.
-        var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
+        var access by mutableStateOf<CameraAccess>(CameraAccess.Askable {})
         showDemoWith({ access })
 
         onNodeWithText(allow).performTouchInput { click() }
-        access = MicAccess.Askable {}
+        access = CameraAccess.Askable {}
         waitForIdle()
 
         onNodeWithText(cardTitle).assertDoesNotExist()
-        onNodeWithText(holdHint).assertExists()
+        onNodeWithText(cameraHint).assertExists()
     }
 
     @Test
     fun whenAndroidWillNotAskAnyMoreTheCardOffersSettings() = runComposeUiTest {
         var settings = 0
-        var access by mutableStateOf<MicAccess>(MicAccess.Askable {})
+        var access by mutableStateOf<CameraAccess>(CameraAccess.Askable {})
         showDemoWith({ access })
 
         onNodeWithText(allow).performTouchInput { click() }
-        access = MicAccess.Blocked { settings++ }
+        access = CameraAccess.Blocked { settings++ }
         waitForIdle()
 
         onNodeWithText(blockedLine).assertExists()
@@ -317,27 +206,27 @@ class FogDemoUiTest {
 
     @Test
     fun alreadyBlockedTheCardOpensOnSettings() = runComposeUiTest {
-        showDemoWith({ MicAccess.Blocked {} })
+        showDemoWith({ CameraAccess.Blocked {} })
 
         onNodeWithText(openSettings).assertExists()
         onNodeWithText(allow).assertDoesNotExist()
     }
 
     @Test
-    fun notNowLeadsToHoldingAndTheHintBringsTheCardBack() = runComposeUiTest {
-        showDemoWith({ MicAccess.Askable {} })
+    fun notNowLeadsToTheStillReflectionAndThePillBringsTheCardBack() = runComposeUiTest {
+        showDemoWith({ CameraAccess.Askable {} })
 
         onNodeWithText(notNow).performTouchInput { click() }
         onNodeWithText(cardTitle).assertDoesNotExist()
 
-        onNodeWithText(holdHint).performTouchInput { click() }
+        onNodeWithText(cameraHint).performTouchInput { click() }
         onNodeWithText(cardTitle).assertExists()
     }
 
     @Test
     fun theGlassIgnoresTouchesWhileTheCardIsOpen() = runComposeUiTest {
         val fog = FogState()
-        showDemoWith({ MicAccess.Askable {} }, fog)
+        showDemoWith({ CameraAccess.Askable {} }, fog)
 
         onNodeWithTag("demo").performTouchInput { swipe(topLeft, topRight) }
 
@@ -345,24 +234,24 @@ class FogDemoUiTest {
     }
 
     @Test
-    fun noCardWithoutAMicrophoneToAskFor() = runComposeUiTest {
-        showDemoWith({ MicAccess.Unavailable })
+    fun noCardOrPillWithoutACameraToAskFor() = runComposeUiTest {
+        showDemoWith({ CameraAccess.Unavailable })
 
         onNodeWithText(cardTitle).assertDoesNotExist()
-        onNodeWithText(holdHint).assertExists()
+        onNodeWithText(cameraHint).assertDoesNotExist()
     }
 
     @Test
-    fun noCardOnceTheMicrophoneIsGranted() = runComposeUiTest {
-        showDemoWith({ micHearing(flow { awaitCancellation() }) })
+    fun noCardOrPillOnceTheCameraIsGranted() = runComposeUiTest {
+        showDemoWith({ CameraAccess.Granted(FakeMirrorCamera()) })
 
         onNodeWithText(cardTitle).assertDoesNotExist()
-        onNodeWithText(blowHint).assertExists()
+        onNodeWithText(cameraHint).assertDoesNotExist()
     }
 
     @Test
     fun noCardInTheRecording() = runComposeUiTest {
-        showDemo(DemoState(recording = true), FogState(), MicAccess.Askable {})
+        showDemo(DemoState(recording = true), FogState(), CameraAccess.Askable {})
 
         onNodeWithText(cardTitle).assertDoesNotExist()
     }
@@ -375,18 +264,18 @@ class FogDemoUiTest {
                     Res.string.mirror_card_title,
                     Res.string.mirror_card_body_what,
                     Res.string.mirror_card_camera_why,
-                    Res.string.mirror_card_mic_why,
                     Res.string.mirror_card_promise,
                     Res.string.mirror_card_camera_blocked,
+                    Res.string.fog_hint_camera,
                 )
-                .map { runBlocking { getString(it) } } + blockedLine
+                .map { runBlocking { getString(it) } }
         assertTrue(words.none { '\\' in it }, "$words")
     }
 
     @Test
     fun aRealFingerThatShiftsAPixelStillPressesTheCardsButtons() = runComposeUiTest {
         // A finger always moves a little while down; the card's buttons must not lose it.
-        showDemoWith({ MicAccess.Askable {} })
+        showDemoWith({ CameraAccess.Askable {} })
 
         onNodeWithText(notNow).performTouchInput {
             down(center)
@@ -399,29 +288,80 @@ class FogDemoUiTest {
     }
 
     @Test
-    fun afterHoldingThePillStillBringsTheCardBack() = runComposeUiTest {
+    fun replayingTheClipShowsNoCardOverIt() = runComposeUiTest {
+        showDemo(DemoState(replay = true), wipedFog(), CameraAccess.Askable {})
+
+        onNodeWithText(cardTitle).assertDoesNotExist()
+        onNodeWithText(cameraHint).assertDoesNotExist()
+    }
+
+    // The live mirror, like the bathroom's, is in a steamy room: left alone, it mists back over.
+    @Test
+    fun theWipedLiveMirrorMistsBackOverByItself() = runComposeUiTest {
         mainClock.autoAdvance = false
-        showDemoWith({ MicAccess.Askable {} })
+        val fog = FogState()
+        showLiveMirror(DemoState(), fog)
         mainClock.advanceTimeByFrame()
-        onNodeWithText(notNow).performTouchInput { click() }
-        mainClock.advanceTimeBy(500)
+        onNodeWithTag("demo").performTouchInput {
+            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+        }
+        mainClock.advanceTimeByFrame()
+        assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
 
-        onNodeWithTag("demo").performTouchInput { down(center) }
-        mainClock.advanceTimeBy(1_000)
-        onNodeWithTag("demo").performTouchInput { up() }
-        mainClock.advanceTimeBy(500)
-
-        onNodeWithText(holdHint).performTouchInput { click() }
-        mainClock.advanceTimeBy(500)
-        onNodeWithText(cardTitle).assertExists()
+        mainClock.advanceTimeBy(32_000)
+        assertTrue(
+            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+            "fogged over again: ${fog.marks}",
+        )
     }
 
     @Test
-    fun replayingTheClipShowsNoCardOverIt() = runComposeUiTest {
-        showDemo(DemoState(replay = true), wipedFog(), MicAccess.Askable {})
+    fun holdingTheLiveMirrorDoesNotBreatheOnIt() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        showLiveMirror(DemoState(), fog)
+        mainClock.advanceTimeByFrame()
 
-        onNodeWithText(cardTitle).assertDoesNotExist()
-        onNodeWithText(holdHint).assertDoesNotExist()
+        onNodeWithTag("demo").performTouchInput { down(center) }
+        mainClock.advanceTimeBy(1_500)
+        onNodeWithTag("demo").performTouchInput { up() }
+        mainClock.advanceTimeByFrame()
+
+        assertTrue(fog.marks.none { it is Breath }, "${fog.marks}")
+    }
+
+    @Test
+    fun theLiveMirrorsReplayAndRecordingDoNotMistItOverByThemselves() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
+        var state by mutableStateOf(DemoState(replay = true))
+        showLiveMirror({ state }, fog)
+        mainClock.advanceTimeBy(10_000)
+        assertTrue(fog.marks.none { it is Mist }, "only the script mists it: ${fog.marks}")
+
+        state = DemoState(recording = true)
+        mainClock.advanceTimeBy(10_000)
+        assertTrue(fog.marks.none { it is Mist }, "${fog.marks}")
+    }
+
+    private fun ComposeUiTest.showLiveMirror(state: DemoState, fog: FogState) =
+        showLiveMirror({ state }, fog)
+
+    private fun ComposeUiTest.showLiveMirror(state: () -> DemoState, fog: FogState) {
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides Owner(Lifecycle.State.RESUMED)) {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 500.dp).testTag("demo")) {
+                        FogDemo(
+                            state(),
+                            fog,
+                            CameraAccess.Granted(FakeMirrorCamera()),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -434,7 +374,7 @@ class FogDemoUiTest {
             scope = rememberCoroutineScope()
             LabTheme {
                 Box(Modifier.size(400.dp, 500.dp)) {
-                    FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
+                    FogDemo(state, fog, CameraAccess.Unavailable)
                 }
             }
         }

@@ -27,8 +27,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.fog_hint_blow
-import dev.dimvlachos.lab.resources.fog_hint_hold
+import dev.dimvlachos.lab.resources.fog_hint_camera
 import dev.dimvlachos.lab.resources.fog_hint_wipe
 import dev.dimvlachos.lab.resources.mirror_card_title
 import kotlin.test.Test
@@ -39,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
-// The bathroom is for wiping and watching the drops: no breath, and the room mists it back over.
+// The bathroom is for wiping and watching the drops: no camera, and the room mists it back over.
 @OptIn(ExperimentalTestApi::class)
 class BathroomMirrorUiTest {
     private class ResumedOwner : LifecycleOwner {
@@ -74,7 +73,7 @@ class BathroomMirrorUiTest {
     }
 
     @Test
-    fun afterAWipeTheBathroomInvitesNoBreath() = runComposeUiTest {
+    fun afterAWipeTheBathroomShowsNoHint() = runComposeUiTest {
         showBathroom(DemoState(), FogState())
         onNodeWithTag("demo").performTouchInput {
             swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
@@ -82,8 +81,7 @@ class BathroomMirrorUiTest {
         waitForIdle()
 
         onNodeWithText(text(Res.string.fog_hint_wipe)).assertDoesNotExist()
-        onNodeWithText(text(Res.string.fog_hint_blow)).assertDoesNotExist()
-        onNodeWithText(text(Res.string.fog_hint_hold)).assertDoesNotExist()
+        onNodeWithText(text(Res.string.fog_hint_camera)).assertDoesNotExist()
     }
 
     @Test

@@ -14,7 +14,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
@@ -40,7 +39,7 @@ class FogDemoDripUiTest {
             CompositionLocalProvider(LocalLifecycleOwner provides owner) {
                 LabTheme {
                     Box(Modifier.size(400.dp, 500.dp)) {
-                        FogDemo(state, fog, MicAccess.Unavailable, CameraAccess.Unavailable)
+                        FogDemo(state, fog, CameraAccess.Unavailable)
                     }
                 }
             }

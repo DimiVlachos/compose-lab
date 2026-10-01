@@ -15,7 +15,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
-import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.camera.FakeMirrorCamera
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -44,7 +43,6 @@ class FogDemoFingerUiTest {
                     FogDemo(
                         state,
                         FogState(startClear = true),
-                        MicAccess.Unavailable,
                         CameraAccess.Granted(FakeMirrorCamera()),
                     )
                 }
