@@ -47,8 +47,8 @@ internal object PageTurnDimens {
     const val RestFall = 0.6f
 
     // The paper falling into the spine darkens by up to this much, over this share of the page.
-    const val GutterRestAlpha = 0.3f
-    const val GutterRestSpan = 0.3f
+    const val GutterRestAlpha = 0.16f
+    const val GutterRestSpan = 0.42f
 
     // And past the crest, where the page curls down onto its stack, a lighter shade over this much.
     const val EdgeRestAlpha = 0.12f
@@ -94,8 +94,8 @@ internal object PageTurnDimens {
     const val GutterRightAlpha = 0.24f
 
     // The crease down the spine, as a fraction of the book's width either side of it.
-    const val CreaseWidthFraction = 0.04f
-    const val CreaseAlpha = 0.14f
+    const val CreaseWidthFraction = 0.05f
+    const val CreaseAlpha = 0.07f
 
     // The binding stitches, at these heights down the spine.
     val StitchFractions = floatArrayOf(0.12f, 0.5f, 0.88f)
