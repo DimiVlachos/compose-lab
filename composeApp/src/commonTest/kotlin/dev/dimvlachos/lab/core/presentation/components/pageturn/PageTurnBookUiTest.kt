@@ -117,14 +117,14 @@ class PageTurnBookUiTest {
         dragTo(state, progress = 0.25f)
         assertShows(red, colorAt(0.25f), "left page")
         assertShows(blue, colorAt(0.55f), "the leaf's front by the spine")
-        assertShows(yellow, colorAt(0.97f), "the next right page, uncovered")
+        assertShows(yellow, colorAt(0.92f), "the next right page, uncovered")
     }
 
     @Test
     fun lateInATurnTheLeafsBackLiesOverTheLeftPage() = runComposeUiTest {
         val state = showBook()
         dragTo(state, progress = 0.75f)
-        assertShows(red, colorAt(0.03f), "this left page, not yet covered")
+        assertShows(red, colorAt(0.08f), "this left page, not yet covered")
         assertShows(green, colorAt(0.45f), "the leaf's back by the spine")
         assertShows(yellow, colorAt(0.75f), "the next right page")
     }

@@ -48,10 +48,6 @@ fun PageTurnBook(
                     gutter = colors.bookGutter,
                     thread = colors.bookThread,
                     crease = colors.bookCrease,
-                    cover = colors.cover,
-                    coverLit = colors.coverLit,
-                    coverRule = colors.coverRule,
-                    coverSpine = colors.coverSpine,
                     pageEdge = colors.pageEdge,
                     pageEdgeLine = colors.pageEdgeLine,
                 )
@@ -67,13 +63,12 @@ fun PageTurnBook(
     )
 }
 
-// The boards' corners, as a percentage of the book's height (a page plus the boards above and
-// below it), so the shadow follows the covers.
+// The pages' corners, as a percentage of the book's height (a page plus the room above and
+// below it), so the shadow follows the pages.
 private val BookShape =
     RoundedCornerShape(
         CornerSize(
-            PageTurnDimens.CoverCornerFraction * 100f /
-                (1f + 2f * PageTurnDimens.CoverMarginYFraction)
+            PageTurnDimens.CornerFraction * 100f / (1f + 2f * PageTurnDimens.EdgeRoomFraction)
         )
     )
 
