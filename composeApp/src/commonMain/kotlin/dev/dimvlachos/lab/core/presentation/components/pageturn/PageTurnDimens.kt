@@ -54,15 +54,26 @@ internal object PageTurnDimens {
     const val EdgeRestAlpha = 0.12f
     const val EdgeRestSpan = 0.16f
 
-    // The sheets under each page: the book is opened part way, with BaseSheets under each side
-    // besides the illustrated leaves, and each sheet down reaches SheetStepFraction of a page
-    // further out than the one above it, far enough to tell apart, its edge drawn. No more than
-    // MaxSheets show.
-    const val BaseSheets = 8
-    const val MaxSheets = 12
-    const val SheetStepFraction = 0.0042f
-    const val StackFraction = SheetStepFraction * MaxSheets
+    // The leaves under each page: every sheet down a stack arches SheetFlatten of RestLift less
+    // than
+    // the one above it, down to FlattestShare of it, so their edges fan out past each other; the
+    // fan needs StackFraction of a page's width beside the pages. A sheet's edge is drawn this
+    // wide,
+    // and only its outer EdgeStrips strips are drawn, all that shows past the sheet above it.
+    const val SheetFlatten = 0.09f
+    const val FlattestShare = 0.1f
+    const val StackFraction = 0.035f
+    const val EdgeStrips = 3
     val SheetEdgeWidth = 1.dp
+
+    // A sheet in the stack darkens this much more for each sheet above it, up to SheetShadeMax.
+    const val SheetShadePerDepth = 0.025f
+    const val SheetShadeMax = 0.22f
+    const val SheetEdgeAlpha = 0.55f
+
+    // While a leaf turns, the stack it leaves rises over the first SettleSpan of the turn, and the
+    // one it lands on settles under it over the last.
+    const val SettleSpan = 0.5f
 
     // Room left round the pages, as a share of a page's width: the arch lifts their edges a little
     // past the flat page.

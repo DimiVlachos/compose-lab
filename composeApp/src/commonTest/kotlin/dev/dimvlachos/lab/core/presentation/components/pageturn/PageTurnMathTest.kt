@@ -212,14 +212,32 @@ class PageTurnMathTest {
     }
 
     @Test
-    fun aTurnMovesOneSheetAcrossAndTheStacksHoldStillWhileItIsUp() {
-        val base = PageTurnDimens.BaseSheets
-        assertEquals(base to base + 3, stackSheets(spread = 0, leaf = null, spreadCount = 4))
-        // Leaf 0 up: the right side is already a sheet thinner, the left not yet thicker.
-        assertEquals(base to base + 2, stackSheets(spread = 0, leaf = 0, spreadCount = 4))
-        assertEquals(base to base + 2, stackSheets(spread = 1, leaf = 0, spreadCount = 4))
-        assertEquals(base + 1 to base + 2, stackSheets(spread = 1, leaf = null, spreadCount = 4))
-        assertEquals(base + 3 to base, stackSheets(spread = 3, leaf = null, spreadCount = 4))
+    fun deeperSheetsArchLessSoTheirEdgesReachFurtherOut() {
+        val reaches =
+            (0..6).map { depth ->
+                val frame =
+                    turnFrame(t = 0f, leafWidth = leafWidth, restLift = sheetLift(depth.toFloat()))
+                val last = frame.poses.last()
+                last.hingeX + frame.stripWidth * cos(last.angle)
+            }
+        reaches.zipWithNext().forEach { (upper, lower) -> assertTrue(lower > upper, "$reaches") }
+        assertNear(PageTurnDimens.RestLift, sheetLift(0f))
+        assertTrue(sheetLift(100f) > 0f, "the deepest sheet still bows")
+    }
+
+    @Test
+    fun theStacksSettleSmoothlyAsALeafLeavesOneAndLandsOnTheOther() {
+        assertNear(0f, stackRise(0f))
+        assertNear(1f, stackRise(PageTurnDimens.SettleSpan))
+        assertNear(1f, stackRise(1f))
+        assertNear(0f, stackLand(1f - PageTurnDimens.SettleSpan))
+        assertNear(1f, stackLand(1f))
+        // Smooth: no step anywhere along the turn.
+        val samples = (0..200).map { it / 200f }
+        samples.zipWithNext().forEach { (a, b) ->
+            assertTrue(abs(stackRise(b) - stackRise(a)) < 0.02f)
+            assertTrue(abs(stackLand(b) - stackLand(a)) < 0.02f)
+        }
     }
 
     @Test
