@@ -48,9 +48,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import co.touchlab.kermit.Logger
-import dev.dimvlachos.lab.core.audio.BlowDetector
-import dev.dimvlachos.lab.core.audio.MicAccess
-import dev.dimvlachos.lab.core.audio.MicFrameSeconds
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
@@ -59,16 +56,13 @@ import dev.dimvlachos.lab.core.presentation.components.fog.FoggedWindow
 import dev.dimvlachos.lab.core.presentation.components.fog.MistDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
-import dev.dimvlachos.lab.fogdemo.BreathDriver
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.fogdemo.clipFrameToWindow
 import dev.dimvlachos.lab.fogdemo.newFogDemoState
 import dev.dimvlachos.lab.fogdemo.pointAt
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.fog_hint_blow
-import dev.dimvlachos.lab.resources.fog_hint_hold
+import dev.dimvlachos.lab.resources.fog_hint_camera
 import dev.dimvlachos.lab.resources.fog_hint_wipe
-import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.ic_photo_camera
 import dev.dimvlachos.lab.resources.mirror_view
 import kotlin.coroutines.cancellation.CancellationException
@@ -81,13 +75,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-// A held finger breathes steadily, a little softer than a firm blow.
-private const val HoldStrength = 0.7f
-
 private val HintIconSize = 18.dp
-
-// About 2 s of nothing but zeros: the microphone is taken by something else, a call perhaps.
-private const val SilentMicFrames = 60
 
 private val log = Logger.withTag("FogDemo")
 
@@ -95,74 +83,47 @@ private val log = Logger.withTag("FogDemo")
 internal fun FogDemo(
     state: DemoState,
     fog: FogState = remember { newFogDemoState() },
-    // No defaults: each version says which microphone and camera it uses, so the bathroom can
-    // never ask for either.
-    micAccess: MicAccess,
+    // No default: each version says which camera it uses, so the bathroom can never ask for one.
     cameraAccess: CameraAccess,
-    // Whether the user can breathe on the glass: by blowing, or holding a finger still. Off, only
-    // the clip's own breath fogs it over.
-    breathing: Boolean = true,
 ) {
     var window by remember { mutableStateOf(Size.Zero) }
-    val driver = remember(fog) { BreathDriver(fog) }
     // Condensation running down the glass; in the clip, only the script's drops.
     val drips = remember(fog) { DripDriver(fog, wipeRadius = FogDemos.FingerBrush) }
     // Where the script's finger touches, shown in the clip: read only while drawing.
     val finger = remember { ScriptFinger() }
     drips.randomStarts = !state.recording && !state.replay
     val density = LocalDensity.current
-    var micFailed by remember { mutableStateOf(false) }
     var cameraFailed by remember { mutableStateOf(false) }
-    var breathed by remember { mutableStateOf(false) }
-    var holding by remember { mutableStateOf(false) }
     var wiped by remember { mutableStateOf(false) }
-    val listening = micAccess is MicAccess.Granted && !micFailed
     val cameraNeed = cameraAccess.need()
-    val micNeed = micAccess.need()
-    val canAsk = cameraNeed != Need.Nothing || micNeed != Need.Nothing
+    val canAsk = cameraNeed != Need.Nothing
     // Not over a clip the user asked to replay: they came to watch it.
     var cardOpen by remember { mutableStateOf(!state.replay) }
     val cardShown = cardOpen && canAsk && !state.recording
 
-    // Allow asks for the camera, waits for the system's answer, then the microphone: Android shows
-    // one permission dialog at a time. A refusal in its dialog closes the card for holding and the
-    // still reflection; refused for good, the card stays, now offering settings.
+    // Allow asks for the camera and waits for the system's answer. A refusal in its dialog closes
+    // the card for the still reflection; refused for good, the card stays, now offering settings.
     val currentCamera by rememberUpdatedState(cameraAccess)
-    val currentMic by rememberUpdatedState(micAccess)
     val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf<Job?>(null) }
-    var askingInTurn by remember { mutableStateOf(false) }
-    fun askInTurn() {
+    fun ask() {
         // A second tap while the system asks must not ask again.
         if (asking?.isActive == true) return
-        // Undispatched: the first dialog is asked for within the tap itself.
-        askingInTurn = true
+        // Undispatched: the dialog is asked for within the tap itself.
         asking =
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                try {
-                    (currentCamera as? CameraAccess.Askable)?.let { asked ->
-                        asked.ask()
-                        snapshotFlow { currentCamera }.first { it !== asked }
-                    }
-                    (currentMic as? MicAccess.Askable)?.let { asked ->
-                        asked.ask()
-                        snapshotFlow { currentMic }.first { it !== asked }
-                    }
-                    if (
-                        currentCamera !is CameraAccess.Blocked && currentMic !is MicAccess.Blocked
-                    ) {
-                        cardOpen = false
-                    }
-                } finally {
-                    askingInTurn = false
+                (currentCamera as? CameraAccess.Askable)?.let { asked ->
+                    asked.ask()
+                    snapshotFlow { currentCamera }.first { it !== asked }
                 }
+                if (currentCamera !is CameraAccess.Blocked) cardOpen = false
             }
     }
 
     // The script's wipe plays its finger back sample by sample: the path already holds the hand's
     // speed, so the playback itself is linear. The path is drawn on the clip's glass, placed on
     // whatever glass this is.
-    DisposableEffect(state, fog, driver) {
+    DisposableEffect(state, fog) {
         state.setWipeHandler { path, duration ->
             if (window.isEmpty()) return@setWipeHandler
             val start = clipFrameToWindow(path.first(), window)
@@ -206,44 +167,12 @@ internal fun FogDemo(
         }
     }
 
-    // A blow on the microphone fogs the glass, only while the demo is in front of the user.
-    if (micAccess is MicAccess.Granted && !micFailed) {
-        // Keyed on the microphone, not the access around it: a new wrapper at a recomposition must
-        // not restart listening, or a fresh detector would take a blow for the room's own level.
-        val microphone = micAccess.microphone
-        val lifecycle = LocalLifecycleOwner.current.lifecycle
-        LaunchedEffect(microphone, lifecycle) {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                val detector = BlowDetector()
-                var silentFrames = 0
-                try {
-                    microphone.frames.collect { frame ->
-                        silentFrames = if (frame.all { it == 0f }) silentFrames + 1 else 0
-                        check(silentFrames < SilentMicFrames) {
-                            "the microphone hears only silence"
-                        }
-                        val strength = detector.process(frame)
-                        if (strength > 0f) {
-                            driver.advance(strength, MicFrameSeconds)
-                            breathed = true
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    log.w(e) { "no microphone, so holding the glass breathes on it" }
-                    micFailed = true
-                }
-            }
-        }
-    }
-
     // The front camera is the mirror, only while the demo is in front of the user: leaving turns
     // it off, and its light with it.
     val camera = (cameraAccess as? CameraAccess.Granted)?.camera?.takeUnless { cameraFailed }
-    // Not while Allow is still asking: the microphone's dialog would pause a camera just started.
-    if (camera != null && !askingInTurn) {
-        // Keyed on the camera, not the access around it, like the microphone.
+    if (camera != null) {
+        // Keyed on the camera, not the access around it: a new wrapper at a recomposition must not
+        // restart it.
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(camera, lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -259,16 +188,16 @@ internal fun FogDemo(
         }
     }
 
-    // The first wipe, remembered: a breath may fog it over, but the mirror has been found. A
+    // The first wipe, remembered: the mist may fog it over, but the mirror has been found. A
     // drop's part-clear streak is not a wipe.
     LaunchedEffect(fog) {
         snapshotFlow { fog.marks.any { it is WipeStroke && it.clarity >= 1f } }.first { it }
         wiped = true
     }
 
-    // Without breath, the still-steamy room mists wiped glass back over by itself, slowly, while
-    // the demo is in front of the user; never while the script plays, which mists it itself.
-    if (!breathing && !state.recording && !state.replay) {
+    // The still-steamy room mists wiped glass back over by itself, slowly, while the demo is in
+    // front of the user; never while the script plays, which mists it itself.
+    if (!state.recording && !state.replay) {
         val mist = remember(fog) { MistDriver(fog) }
         val mistLifecycle = LocalLifecycleOwner.current.lifecycle
         LaunchedEffect(mist, mistLifecycle) {
@@ -304,7 +233,7 @@ internal fun FogDemo(
                     // The frame clock's time, to count the sleep towards the next drop however
                     // it ends.
                     val asleepSince = withFrameNanos { it }
-                    // Asleep until the next drop is due, or until a wipe or a breath takes one
+                    // Asleep until the next drop is due, or until a wipe or the mist takes one
                     // off the glass, or the script starts one: whichever comes first.
                     // A plain delay: it follows the frame clock, as a timeout's timer would not.
                     var due by mutableStateOf(false)
@@ -332,19 +261,6 @@ internal fun FogDemo(
         }
     }
 
-    // Without a microphone, a held finger breathes on the glass for as long as it stays.
-    LaunchedEffect(holding) {
-        if (!holding) return@LaunchedEffect
-        var previous = withFrameNanos { it }
-        while (true) {
-            withFrameNanos { now ->
-                driver.advance(HoldStrength, (now - previous) / 1_000_000_000f)
-                previous = now
-            }
-            breathed = true
-        }
-    }
-
     val surface = LabTheme.colors.surface
     val startingGlass = remember(surface) { ColorPainter(surface) }
     Box(Modifier.fillMaxSize()) {
@@ -369,25 +285,20 @@ internal fun FogDemo(
                         },
                     brushRadius = FogDemos.FingerBrush,
                     beads = { drips.beads },
-                    onHoldChange =
-                        if (!breathing || listening || state.recording || cardShown) null
-                        else { held -> holding = held },
                 )
                 // The script's touches, over the glass, as a phone shows taps.
                 Box(Modifier.fillMaxSize().drawBehind { drawFinger(finger) })
             }
         }
-        // First the wipe hint, until the mirror is found. The blow hint goes after the first
-        // breath; the hold pill stays while it is the way back to the card.
+        // First the wipe hint, until the mirror is found; then, while the camera can still be
+        // asked for, a pill back to the card.
         val hint =
             when {
                 // Not over a clip being recorded or replayed: it is there to be watched.
                 state.recording || state.replay || cardShown -> null
                 !wiped -> Res.string.fog_hint_wipe
-                !breathing -> null
-                listening -> if (breathed) null else Res.string.fog_hint_blow
-                breathed && !canAsk -> null
-                else -> Res.string.fog_hint_hold
+                canAsk -> Res.string.fog_hint_camera
+                else -> null
             }
         Crossfade(
             targetState = hint,
@@ -410,10 +321,7 @@ internal fun FogDemo(
                     // A way back to the card, where there is something to ask for.
                     if (canAsk) {
                         Icon(
-                            painterResource(
-                                if (cameraNeed != Need.Nothing) Res.drawable.ic_photo_camera
-                                else Res.drawable.ic_mic
-                            ),
+                            painterResource(Res.drawable.ic_photo_camera),
                             contentDescription = null,
                             tint = LabTheme.colors.accent,
                             modifier = Modifier.size(HintIconSize),
@@ -440,14 +348,11 @@ internal fun FogDemo(
             ) {
                 MirrorPermissionCard(
                     camera = cameraNeed,
-                    mic = micNeed,
-                    onAllow = ::askInTurn,
+                    onAllow = ::ask,
                     onOpenSettings = {
                         (cameraAccess as? CameraAccess.Blocked)?.openSettings?.invoke()
-                            ?: (micAccess as? MicAccess.Blocked)?.openSettings?.invoke()
                     },
                     onNotNow = { cardOpen = false },
-                    blowing = micAccess != MicAccess.Unavailable && !micFailed,
                 )
             }
         }
@@ -458,13 +363,6 @@ private fun CameraAccess.need() =
     when (this) {
         is CameraAccess.Askable -> Need.Ask
         is CameraAccess.Blocked -> Need.Settings
-        else -> Need.Nothing
-    }
-
-private fun MicAccess.need() =
-    when (this) {
-        is MicAccess.Askable -> Need.Ask
-        is MicAccess.Blocked -> Need.Settings
         else -> Need.Nothing
     }
 

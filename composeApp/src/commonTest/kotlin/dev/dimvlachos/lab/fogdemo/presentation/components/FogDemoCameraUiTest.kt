@@ -20,7 +20,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import dev.dimvlachos.lab.core.audio.MicAccess
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.camera.FakeMirrorCamera
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -51,7 +50,6 @@ class FogDemoCameraUiTest {
                         FogDemo(
                             DemoState(),
                             FogState(startClear = true),
-                            MicAccess.Unavailable,
                             access(),
                         )
                     }

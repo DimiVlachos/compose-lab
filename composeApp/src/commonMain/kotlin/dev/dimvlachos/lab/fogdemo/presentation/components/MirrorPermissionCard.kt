@@ -24,15 +24,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.ic_mic
 import dev.dimvlachos.lab.resources.ic_photo_camera
 import dev.dimvlachos.lab.resources.mirror_card_allow
 import dev.dimvlachos.lab.resources.mirror_card_body_what
-import dev.dimvlachos.lab.resources.mirror_card_body_what_hold
 import dev.dimvlachos.lab.resources.mirror_card_camera_blocked
 import dev.dimvlachos.lab.resources.mirror_card_camera_why
-import dev.dimvlachos.lab.resources.mirror_card_mic_blocked
-import dev.dimvlachos.lab.resources.mirror_card_mic_why
 import dev.dimvlachos.lab.resources.mirror_card_not_now
 import dev.dimvlachos.lab.resources.mirror_card_open_settings
 import dev.dimvlachos.lab.resources.mirror_card_promise
@@ -45,7 +41,7 @@ import org.jetbrains.compose.resources.stringResource
 private val CardIconSize = 32.dp
 private val CardMaxWidth = 360.dp
 
-/** What the card still needs for one permission. */
+/** What the card still needs for the camera. */
 internal enum class Need {
     Nothing,
 
@@ -57,22 +53,18 @@ internal enum class Need {
 }
 
 /**
- * Explains, before the system asks, what to do on the mirror and why each permission it still
- * [Need]s helps: the camera is the mirror, and the microphone hears a breath a phone cannot feel.
- * Allow while anything can be asked; otherwise it offers settings.
+ * Explains, before the system asks, what to do on the mirror and why the camera it still [Need]s
+ * helps: the camera is the mirror. Allow while it can be asked for; otherwise it offers settings.
  */
 @Composable
 internal fun MirrorPermissionCard(
     camera: Need,
-    mic: Need,
     onAllow: () -> Unit,
     onOpenSettings: () -> Unit,
     onNotNow: () -> Unit,
     modifier: Modifier = Modifier,
-    // Whether there is a microphone to blow into; without one, the glass fogs under a held finger.
-    blowing: Boolean = true,
 ) {
-    val canAsk = camera == Need.Ask || mic == Need.Ask
+    val canAsk = camera == Need.Ask
     Column(
         modifier
             .widthIn(max = CardMaxWidth)
@@ -85,25 +77,14 @@ internal fun MirrorPermissionCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium)) {
-            if (camera != Need.Nothing) CardIcon(Res.drawable.ic_photo_camera)
-            if (mic != Need.Nothing) CardIcon(Res.drawable.ic_mic)
-        }
+        if (camera != Need.Nothing) CardIcon(Res.drawable.ic_photo_camera)
         CardText(Res.string.mirror_card_title, LabTheme.colors.textPrimary, title = true)
-        CardText(
-            if (blowing) Res.string.mirror_card_body_what
-            else Res.string.mirror_card_body_what_hold,
-            LabTheme.colors.textPrimary,
-        )
+        CardText(Res.string.mirror_card_body_what, LabTheme.colors.textPrimary)
         if (camera == Need.Ask)
             CardText(Res.string.mirror_card_camera_why, LabTheme.colors.textMuted)
-        if (mic == Need.Ask) CardText(Res.string.mirror_card_mic_why, LabTheme.colors.textMuted)
         CardText(Res.string.mirror_card_promise, LabTheme.colors.textMuted)
         if (camera == Need.Settings) {
             CardText(Res.string.mirror_card_camera_blocked, LabTheme.colors.textPrimary)
-        }
-        if (mic == Need.Settings) {
-            CardText(Res.string.mirror_card_mic_blocked, LabTheme.colors.textPrimary)
         }
         Row(
             Modifier.fillMaxWidth(),
@@ -161,7 +142,6 @@ private fun MirrorPermissionCardPreview() {
     LabTheme {
         MirrorPermissionCard(
             camera = Need.Ask,
-            mic = Need.Ask,
             onAllow = {},
             onOpenSettings = {},
             onNotNow = {},
