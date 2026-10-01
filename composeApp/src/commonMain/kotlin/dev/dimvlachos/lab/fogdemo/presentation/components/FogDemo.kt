@@ -131,18 +131,24 @@ internal fun FogDemo(
             val stroke = fog.beginStroke(start, radius = FogDemos.FingerBrush)
             finger.at = start
             finger.shown = 1f
-            animate(
-                0f,
-                1f,
-                animationSpec = tween(duration.inWholeMilliseconds.toInt(), easing = LinearEasing),
-            ) { t, _ ->
-                val point = clipFrameToWindow(pointAt(path, t), window)
-                fog.extendStroke(stroke, point)
-                finger.at = point
-            }
-            // Lifted, the touch fades as a phone's "show taps" does.
-            animate(1f, 0f, animationSpec = tween(FingerLiftMillis)) { shown, _ ->
-                finger.shown = shown
+            // Stopped halfway, the finger lifts at once rather than staying on the glass.
+            try {
+                animate(
+                    0f,
+                    1f,
+                    animationSpec =
+                        tween(duration.inWholeMilliseconds.toInt(), easing = LinearEasing),
+                ) { t, _ ->
+                    val point = clipFrameToWindow(pointAt(path, t), window)
+                    fog.extendStroke(stroke, point)
+                    finger.at = point
+                }
+                // Lifted, the touch fades as a phone's "show taps" does.
+                animate(1f, 0f, animationSpec = tween(FingerLiftMillis)) { shown, _ ->
+                    finger.shown = shown
+                }
+            } finally {
+                finger.shown = 0f
             }
         }
         // The script's drop starts in the clip's frame, placed on whatever window this is.

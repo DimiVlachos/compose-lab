@@ -91,4 +91,25 @@ class DemoScreenUiTest {
 
         assertTrue(selections.any { it == 1 }, "$selections")
     }
+
+    @Test
+    fun stoppingAReplayHandsTheDemoBackToTheUser() = runComposeUiTest {
+        val replaying = mutableListOf<Boolean>()
+        val demo =
+            Demo(
+                id = "test.replay",
+                title = Res.string.demo_navbar,
+                script = demoScript { at(100.milliseconds) { select(1) } },
+                autoplay = false,
+                content = { state -> replaying += state.replay },
+            )
+        setContent { LabTheme { DemoScreen(demo, record = false, label = null, onBack = {}) } }
+        onNodeWithText("Replay").performClick()
+        mainClock.advanceTimeBy(500)
+        assertEquals(true, replaying.last(), "replaying: $replaying")
+
+        onNodeWithText("Stop").performClick()
+        mainClock.advanceTimeBy(500)
+        assertEquals(false, replaying.last(), "the user's again: $replaying")
+    }
 }

@@ -125,6 +125,7 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
                         onClick = {
                             if (playing) {
                                 playing = false
+                                state.endReplay()
                             } else {
                                 runId++
                                 playing = true
