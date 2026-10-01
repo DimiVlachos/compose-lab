@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
-// The bathroom is for wiping and watching the drops: no breath on the phone, only in the clip.
+// The bathroom is for wiping and watching the drops: no breath, and the room mists it back over.
 @OptIn(ExperimentalTestApi::class)
 class BathroomMirrorUiTest {
     private class ResumedOwner : LifecycleOwner {
@@ -102,16 +102,29 @@ class BathroomMirrorUiTest {
     }
 
     @Test
-    fun theClipStillBreathesOverTheBathroom() = runComposeUiTest {
+    fun theClipsMistFogsTheWholeGlassBackOver() = runComposeUiTest {
         mainClock.autoAdvance = false
         val fog = FogState()
+        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
         val state = DemoState(recording = true)
         showBathroom(state, fog)
         mainClock.advanceTimeByFrame()
-        runOnUiThread { scope!!.launch { state.breathe(1.seconds, 1f) } }
+        runOnUiThread { scope!!.launch { state.mist(1.seconds) } }
         mainClock.advanceTimeBy(600)
+        assertTrue(fog.marks.any { it is WipeStroke }, "still misting: ${fog.marks}")
 
-        assertTrue(fog.marks.any { it is Breath }, "the clip's breath: ${fog.marks}")
+        mainClock.advanceTimeBy(800)
+        assertTrue(fog.marks.none { it is WipeStroke }, "fogged right over: ${fog.marks}")
+    }
+
+    @Test
+    fun theReplayDoesNotMistTheClipOverByItself() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val fog = FogState()
+        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
+        showBathroom(DemoState(replay = true), fog)
+        mainClock.advanceTimeBy(10_000)
+        assertTrue(fog.marks.none { it is Mist }, "only the script mists it: ${fog.marks}")
     }
 
     @Test
