@@ -140,16 +140,28 @@ class PageTurnMathTest {
     @Test
     fun theStitchesShowOnlyWhereTheCentreFoldIsOpen() {
         val centre = 4
-        // The centre spread open: leaf 3 on top of the left, leaf 4 on top of the right.
-        assertTrue(stitchesShow(centre, leftTop = 3, rightTop = 4, flying = emptySet()))
+        fun shown(leftTop: Int, rightTop: Int, vararg flights: Pair<Int, Float>) =
+            stitchesShown(
+                centre,
+                leftTop,
+                rightTop,
+                flights.map { Flight(it.first, it.second, 1f) },
+            )
+        // The centre spread open: the thread shows.
+        assertNear(1f, shown(leftTop = 3, rightTop = 4))
         // A spread either side: a leaf covers the fold.
-        assertFalse(stitchesShow(centre, leftTop = 2, rightTop = 3, flying = emptySet()))
-        assertFalse(stitchesShow(centre, leftTop = 4, rightTop = 5, flying = emptySet()))
-        // Turning onto the centre spread, or away from it: the fold shows under the leaf.
-        assertTrue(stitchesShow(centre, leftTop = 2, rightTop = 4, flying = setOf(3)))
-        assertTrue(stitchesShow(centre, leftTop = 3, rightTop = 5, flying = setOf(4)))
+        assertNear(0f, shown(leftTop = 2, rightTop = 3))
+        assertNear(0f, shown(leftTop = 4, rightTop = 5))
+        // Turning away from the centre: open while the page still leans right, closed once it
+        // leans over the fold, and certainly while it settles on the next spread.
+        assertNear(1f, shown(leftTop = 3, rightTop = 5, 4 to 0.2f))
+        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to 0.7f))
+        assertNear(0f, shown(leftTop = 3, rightTop = 5, 4 to 0.97f))
+        // Turning onto the centre: hidden until the arriving page passes upright.
+        assertNear(0f, shown(leftTop = 2, rightTop = 4, 3 to 0.3f))
+        assertNear(1f, shown(leftTop = 2, rightTop = 4, 3 to 0.8f))
         // Turning elsewhere: hidden.
-        assertFalse(stitchesShow(centre, leftTop = 1, rightTop = 3, flying = setOf(2)))
+        assertNear(0f, shown(leftTop = 1, rightTop = 3, 2 to 0.5f))
     }
 
     @Test
