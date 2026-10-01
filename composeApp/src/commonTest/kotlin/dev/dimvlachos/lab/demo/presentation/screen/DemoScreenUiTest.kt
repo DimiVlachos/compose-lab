@@ -7,7 +7,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.demoScript
@@ -17,6 +19,7 @@ import dev.dimvlachos.lab.resources.demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalTestApi::class)
 class DemoScreenUiTest {
@@ -48,5 +51,65 @@ class DemoScreenUiTest {
         val stage = onNodeWithTag("stage").getBoundsInRoot()
         val ratio = (stage.right - stage.left) / (stage.bottom - stage.top)
         assertEquals(0.8f, ratio, 0.01f)
+    }
+
+    // A demo to be played with, not watched: its script waits for Replay on the phone.
+    private fun handsOnDemo(selections: MutableList<Int>) =
+        Demo(
+            id = "test.handsOn",
+            title = Res.string.demo_navbar,
+            script = demoScript { at(100.milliseconds) { select(1) } },
+            autoplay = false,
+            content = { state -> selections += state.selectedIndex },
+        )
+
+    @Test
+    fun aHandsOnDemoWaitsForReplayOnThePhone() = runComposeUiTest {
+        val selections = mutableListOf<Int>()
+        setContent {
+            LabTheme {
+                DemoScreen(handsOnDemo(selections), record = false, label = null, onBack = {})
+            }
+        }
+        mainClock.advanceTimeBy(2_000)
+
+        assertTrue(selections.none { it == 1 }, "the script has not run: $selections")
+        onNodeWithText("Replay").performClick()
+        mainClock.advanceTimeBy(2_000)
+        assertTrue(selections.any { it == 1 }, "Replay runs it: $selections")
+    }
+
+    @Test
+    fun aHandsOnDemoStillPlaysWhenRecorded() = runComposeUiTest {
+        val selections = mutableListOf<Int>()
+        setContent {
+            LabTheme {
+                DemoScreen(handsOnDemo(selections), record = true, label = null, onBack = null)
+            }
+        }
+        mainClock.advanceTimeBy(4_000)
+
+        assertTrue(selections.any { it == 1 }, "$selections")
+    }
+
+    @Test
+    fun stoppingAReplayHandsTheDemoBackToTheUser() = runComposeUiTest {
+        val replaying = mutableListOf<Boolean>()
+        val demo =
+            Demo(
+                id = "test.replay",
+                title = Res.string.demo_navbar,
+                script = demoScript { at(100.milliseconds) { select(1) } },
+                autoplay = false,
+                content = { state -> replaying += state.replay },
+            )
+        setContent { LabTheme { DemoScreen(demo, record = false, label = null, onBack = {}) } }
+        onNodeWithText("Replay").performClick()
+        mainClock.advanceTimeBy(500)
+        assertEquals(true, replaying.last(), "replaying: $replaying")
+
+        onNodeWithText("Stop").performClick()
+        mainClock.advanceTimeBy(500)
+        assertEquals(false, replaying.last(), "the user's again: $replaying")
     }
 }

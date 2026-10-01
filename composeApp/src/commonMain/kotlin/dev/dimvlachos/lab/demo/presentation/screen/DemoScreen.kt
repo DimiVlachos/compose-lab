@@ -50,8 +50,8 @@ private val RecordPreRoll = 1_500.milliseconds
 @Composable
 fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)?) {
     var runId by remember { mutableIntStateOf(0) }
-    var playing by remember { mutableStateOf(true) }
-    val state = remember(runId) { DemoState() }
+    var playing by remember { mutableStateOf(record || demo.autoplay) }
+    val state = remember(runId) { DemoState(recording = record, replay = runId > 0) }
     if (demo.landscape) LockLandscape()
     LaunchedEffect(runId, playing) {
         if (!playing) return@LaunchedEffect
@@ -135,6 +135,7 @@ fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)
                         onClick = {
                             if (playing) {
                                 playing = false
+                                state.endReplay()
                             } else {
                                 runId++
                                 playing = true
