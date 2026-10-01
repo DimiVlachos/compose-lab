@@ -6,8 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -21,7 +23,8 @@ import kotlin.math.roundToInt
 /**
  * One frame from a camera, as its sensor saw it: the top-left [width] by [height] pixels of [image]
  * (rows may be padded wider), to be turned [rotationDegrees] clockwise to stand upright, and
- * brightened [gain] times, for a dim room.
+ * brightened [gain] times, for a dim room. With a [mask], only the person shows: the mask stands
+ * upright, unmirrored, as large as it likes, opaque where the person is.
  */
 class CameraFrame(
     val image: ImageBitmap,
@@ -29,6 +32,7 @@ class CameraFrame(
     val height: Int,
     val rotationDegrees: Int,
     val gain: Float = 1f,
+    val mask: ImageBitmap? = null,
 )
 
 /**
@@ -77,6 +81,26 @@ class MirrorFramePainter : Painter() {
                 IntSize(size.height.roundToInt(), size.width.roundToInt())
             else IntSize(size.width.roundToInt(), size.height.roundToInt())
         val filter = colorFilter
+        val mask = frame.mask
+        if (mask != null) {
+            // Only the person: the frame, then the mask keeping what it covers, in a layer of their
+            // own, which the caller's filter tints as it lands.
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { colorFilter = filter })
+                drawTurned(frame, sensorSize, brighten)
+                // Upright already: only the mirror's flip.
+                withTransform({ scale(-1f, 1f) }) {
+                    drawImage(
+                        mask,
+                        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                        blendMode = BlendMode.DstIn,
+                        filterQuality = FilterQuality.Low,
+                    )
+                }
+                canvas.restore()
+            }
+            return
+        }
         withTransform({
             translate(size.width / 2, size.height / 2)
             // The mirror's flip, left to right as the frame will be seen, after it is turned.
@@ -112,6 +136,17 @@ class MirrorFramePainter : Painter() {
                 ColorFilter.colorMatrix(ColorMatrix().apply { setToScale(gain, gain, gain, 1f) })
         }
         return brightening
+    }
+}
+
+// The frame turned upright and mirrored, filling the box.
+private fun DrawScope.drawTurned(frame: CameraFrame, sensorSize: IntSize, filter: ColorFilter?) {
+    withTransform({
+        translate(size.width / 2, size.height / 2)
+        scale(-1f, 1f, pivot = Offset.Zero)
+        rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
+    }) {
+        drawFrame(frame, sensorSize, filter)
     }
 }
 
