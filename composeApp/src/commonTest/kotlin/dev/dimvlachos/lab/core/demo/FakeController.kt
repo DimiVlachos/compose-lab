@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.demo
 
 import androidx.compose.ui.geometry.Offset
 import kotlin.time.Duration
+import org.jetbrains.compose.resources.StringResource
 
 class FakeController(private val now: () -> Long) : DemoController {
     override var selectedIndex: Int = 0
@@ -15,6 +16,8 @@ class FakeController(private val now: () -> Long) : DemoController {
     val drips = mutableListOf<Pair<Offset, Float>>()
 
     val mists = mutableListOf<Duration>()
+
+    val sends = mutableListOf<StringResource>()
 
     val calls = mutableListOf<Pair<Long, String>>()
 
@@ -45,5 +48,14 @@ class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun mist(duration: Duration) {
         mists += duration
         calls += now() to "mist($duration)"
+    }
+
+    override suspend fun sendMessage(text: StringResource, typing: Duration) {
+        sends += text
+        calls += now() to "sendMessage(${text.key}, $typing)"
+    }
+
+    override suspend fun clearMessages() {
+        calls += now() to "clearMessages()"
     }
 }

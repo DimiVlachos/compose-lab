@@ -29,4 +29,6 @@ data class AppColors(
     val table: Color = Color(0xFF2B1F17),
     val tableLit: Color = Color(0xFF4A3727),
     val touch: Color = Color(0xFFFFFFFF),
+    // The chat: the bubbles of the messages that come in.
+    val bubbleTheirs: Color = Color(0xFF262A36),
 )
