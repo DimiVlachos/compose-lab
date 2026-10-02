@@ -10,15 +10,16 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -28,27 +29,19 @@ import kotlin.math.sin
  */
 @Composable
 fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier = Modifier) {
-    val painters = remember { HashMap<Flight, DartPainter>() }
     val inside = remember(paper) { lerp(paper, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
         modifier
             .onGloballyPositioned { state.stage = Rect(it.positionInRoot(), it.size.toSize()) }
             .drawBehind {
-                state.density = density
                 val flights = state.flights
-                painters.keys.retainAll(flights.toSet())
                 val origin = state.stage.topLeft
                 // The letters fall under the planes that let them go.
                 for (flight in flights) drawDrops(flight, origin)
                 for (flight in flights) {
                     if (!flight.flying) continue
-                    val painter = painters.getOrPut(flight) { DartPainter() }
                     val placed = flight.placement().shiftedBy(-origin)
-                    val folded = flight.plan.folds.size.toFloat()
-                    with(painter) {
-                        drawShadow(flight.plan, folded, placed)
-                        drawPaper(flight.plan, folded, placed, paper, inside)
-                    }
+                    with(flight.painter) { drawDart(flight.plan, placed, paper, inside) }
                 }
             }
     )
@@ -64,7 +57,7 @@ private fun DrawScope.drawDrops(flight: Flight, origin: Offset) {
     for (drop in flight.drops) {
         if (clock < drop.letGo) continue
         val p = ((clock - drop.letGo) / PaperPlaneDimens.FallMs).coerceAtMost(1f)
-        val from = flight.placement(drop.letGo).at - origin
+        val from = drop.from - origin
         val home = at + drop.box.center
         val drift = 1f - (1f - p) * (1f - p)
         val fall = if (p < land) (p / land).let { it * it } else 1f
@@ -81,17 +74,23 @@ private fun DrawScope.drawDrops(flight: Flight, origin: Offset) {
             scale(scale, scale, now)
             translate(now.x - home.x, now.y - home.y)
         }) {
-            clipRect(
-                at.x + drop.box.left,
-                at.y + drop.box.top,
-                at.x + drop.box.right,
-                at.y + drop.box.bottom,
-            ) {
-                drawText(flight.text, topLeft = at, alpha = alpha)
-            }
+            translate(at.x, at.y) { with(flight.letters) { drawLetter(drop.box, alpha) } }
         }
     }
 }
+
+/**
+ * The place [key]'s message lands in, in a list: shut while its letters go into the button and its
+ * plane flies round, and opening as the plane comes down to it. Its content is laid out at its full
+ * height at the foot of the place the whole while, so the message lies where it will stay as the
+ * rest of the list moves up to make room, and the plane flies to where it will be.
+ */
+fun Modifier.planeLanding(state: PaperPlaneState, key: Any): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val height = (placeable.height * state.opening(key)).roundToInt()
+        layout(placeable.width, height) { placeable.place(0, height - placeable.height) }
+    }
 
 /**
  * A send button's paper plane: the send glyph, a dart seen from above with its nose to the right,

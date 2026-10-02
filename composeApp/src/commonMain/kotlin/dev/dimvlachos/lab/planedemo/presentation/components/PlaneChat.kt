@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.TextLayoutResult
@@ -21,14 +22,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Immutable internal class ChatMessage(val id: Long, val text: String, val mine: Boolean)
 
 /** A kept place's text, as laid out there, and where its top left lies in the root. */
-@Immutable internal class Slot(val text: TextLayoutResult, val at: Offset)
+@Immutable internal data class Slot(val text: TextLayoutResult, val at: Offset)
 
 // After a plane leaves, the button's next one is folded in this long.
 private const val IconBackMs = 260L
+
+// How long a send waits for its place to be laid out before it scrolls straight to it, and how
+// long after that before it gives up on the flight and lets the message simply appear.
+private const val SlotWaitMs = 600L
 
 /**
  * The conversation, newest last, and the messages on their way into it: each has its place kept
@@ -44,12 +50,25 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
     /** Each kept place's text and where it lies, once laid out. */
     val slots = mutableStateMapOf<Long, Slot>()
 
-    /** The text being typed, as last laid out, and where its top left lies in the root. */
+    /**
+     * The text being typed, as last laid out; where its top left lies in the root, scrolled as the
+     * field has scrolled it; and the part of the field it shows, in the root.
+     */
     var draftLayout: () -> TextLayoutResult? = { null }
-    var draftAt: Offset by mutableStateOf(Offset.Zero)
+    var draftAt: () -> Offset = { Offset.Zero }
+    var draftShown: Rect = Rect.Zero
 
-    /** Where the button's paper plane lies, in the root. */
-    var icon: Rect by mutableStateOf(Rect.Zero)
+    /**
+     * How tall the field is, and how tall it is held while a sent message's letters are still going
+     * into the button: cleared, it would shrink under them and the conversation drop into where
+     * they fly from.
+     */
+    var fieldHeight = 0
+    var heldHeight by mutableIntStateOf(0)
+        private set
+
+    /** Where the send button lies in the root, as laid out, before it gulps or grows. */
+    var button: Rect by mutableStateOf(Rect.Zero)
 
     /** Sends whose letters are still going into the button: it stays while there are any. */
     var pouring by mutableIntStateOf(0)
@@ -60,24 +79,32 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
         private set
 
     private var nextId = 0L
-    private val seeded = seed.size
 
-    /** Takes back every message sent since the conversation began. */
-    fun clear() {
-        messages.removeAll { it.id >= seeded && it.id !in flying }
-    }
+    /** How many messages the conversation began with: the ones after them were sent. */
+    val seeded = seed.size
 
     init {
         seed.forEach { (text, mine) -> messages += ChatMessage(nextId++, text, mine) }
     }
 
     /**
-     * Sends what is typed: its place is kept at the foot of the conversation, its letters go into
-     * the button, [arrived] for each, and the button's plane flies them there and drops them into
-     * it. Nothing for a blank message. Returns once the last letter lies in its place.
+     * Takes back every message sent since the conversation began, once those still on their way
+     * have arrived: taken back in the air, a message would land in a conversation without it.
+     */
+    suspend fun clear() {
+        snapshotFlow { flying.isEmpty() }.first { it }
+        messages.removeAll { it.id >= seeded }
+    }
+
+    /**
+     * Sends what is typed: its letters go into the button's glyph, at [icon] within the button,
+     * [arrived] for each; its place is kept at the foot of the conversation, and the glyph's plane
+     * flies them there and drops them into it. Nothing for a blank message. Returns once the last
+     * letter lies in its place; a send stopped on its way takes its message back with it.
      */
     suspend fun send(
         text: String,
+        icon: (Rect) -> Rect,
         letters: LetterStream,
         plane: PaperPlaneState,
         list: LazyListState,
@@ -88,34 +115,66 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
         val layout = draftLayout()
         if (line.isEmpty() || layout == null) return
         val message = ChatMessage(nextId++, line, mine = true)
-        messages += message
-        flying += message.id
-        val from = draftAt
+        val from = draftAt()
+        val shown = draftShown
         pouring++
+        heldHeight = fieldHeight
         cleared()
+        var arrivedThere = false
         try {
             coroutineScope {
+                // Into the button wherever it is as each letter flies: the field shrinks as it is
+                // cleared, and the button with it.
+                val pour = launch {
+                    try {
+                        letters.pour(layout, from, { icon(button).center }, arrived, shown)
+                    } finally {
+                        pouring--
+                        if (pouring == 0) heldHeight = 0
+                    }
+                }
+                // Its place is kept a frame after the tap, not in it: that frame has the field to
+                // clear and the letters to lift, and the place opens no sooner than the plane
+                // comes round to it.
+                withFrameNanos {}
+                messages += message
+                flying += message.id
                 // Scrolled up the conversation, it comes back down to see the plane land.
                 launch { list.animateScrollToItem(0) }
-                try {
-                    letters.pour(layout, from, icon.center, arrived)
-                } finally {
-                    pouring--
-                }
-                val takeoff = planeTakeoff(icon)
+                pour.join()
+                val takeoff = planeTakeoff(icon(button))
                 iconAway++
                 launch {
-                    delay(IconBackMs)
-                    iconAway--
+                    try {
+                        delay(IconBackMs)
+                    } finally {
+                        iconAway--
+                    }
                 }
-                val slot = snapshotFlow { slots[message.id] }.filterNotNull().first()
-                plane.launch(message.id, takeoff, slot.text) {
-                    slots[message.id]?.at ?: slot.at
+                val slot = placeOf(message.id, list)
+                if (slot != null) {
+                    plane.launch(message.id, takeoff, slot.text) {
+                        slots[message.id]?.at ?: slot.at
+                    }
                 }
+                arrivedThere = true
             }
         } finally {
+            if (!arrivedThere) messages -= message
             flying -= message.id
             slots -= message.id
         }
+    }
+
+    // The message's place once it is laid out. The way down to it can be cut short, by a hand on
+    // the list: then straight there. Never laid out, the message goes without a plane.
+    private suspend fun placeOf(id: Long, list: LazyListState): Slot? {
+        suspend fun laidOut() =
+            withTimeoutOrNull(SlotWaitMs) { snapshotFlow { slots[id] }.filterNotNull().first() }
+        return laidOut()
+            ?: run {
+                list.requestScrollToItem(0)
+                laidOut()
+            }
     }
 }

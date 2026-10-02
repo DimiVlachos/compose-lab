@@ -8,26 +8,25 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// How a bubble is folded into a dart, worked out on the flat sheet before anything moves.
-//
-// A bubble is about six times as long as it is tall, and a dart folded from paper that long is a
-// needle. So it is first folded in on itself along its length, the tail end over the rest, once
-// or twice, until the stack is about as long for its height as a sheet of writing paper; that
-// stack is folded into a classic dart, its nose at the right-hand end by the send button:
+// How a sheet of writing paper is folded into a dart, worked out on the flat sheet before anything
+// moves. A classic dart, its nose at the right-hand end:
 //  1. the two right-hand corners over onto the long centre line, on 45° creases from the nose;
 //  2. the slanting edges that leaves over onto the centre line again, which sharpens the nose;
 //  3. the bottom half up over the top, along the centre line;
 //  4. the wings down from the nose to the tail, their creases running back from the nose to a
 //     keel's depth above the spine at the tail, and opened out from it.
 //
-// Each fold turns the paper away from the eye, as if the sheet were folded from its back: the
-// print ends up outside, the plain back inside, so from above the dart shows white wings, and the
-// sheet lands print side up when it comes undone.
+// Each fold turns the paper away from the eye, as if the sheet were folded from its back: its
+// front ends up inside, so from above the dart shows the paper's outside on its wings, and the
+// inside on the flaps folded over them.
 //
 // The paper is cut along every crease it ever gets into facets, flat pieces that each stay
 // rigid. Before each fold all the paper lies flat, so a facet's place is a flat move of the sheet
 // (a turn, a shift, maybe a mirror) and a layer in the stack; a fold turns the facets on one side
 // of its crease about it.
+
+/** The sheet every plane is folded from: writing paper's proportions, in sheet units. */
+internal val DartSheet = Size(150f, 100f)
 
 /** A flat move: p' = (a x + b y + tx, c x + d y + ty), a rotation or a mirror plus a shift. */
 internal class Flat(
@@ -108,52 +107,31 @@ internal class Facet(
     val poses: List<Flat>,
     val layers: List<Int>,
     val moves: List<Crease?>,
-)
+) {
+    /** Its middle on the sheet. */
+    val middle: Offset = polygon.fold(Offset.Zero) { sum, p -> sum + p } / polygon.size.toFloat()
+}
 
 /**
  * A sheet's folds and the facets they cut it into. [top] and [bottom] are the highest and lowest
  * layers before each fold, the faces of the stack a fold turns about.
  */
 internal class FoldPlan(
-    val sheet: Size,
     val folds: List<Fold>,
     val facets: List<Facet>,
     val top: List<Int>,
     val bottom: List<Int>,
     /** Where the folded dart balances, on its wing crease midway along: what it turns about. */
     val balance: Offset,
-    /** How long the folded dart is, from the tucked tail to the nose. */
+    /** How long the folded dart is, from the tail to the nose. */
     val length: Float,
 )
-
-/** How many times a [sheet] is folded in on itself to come out the proportions of writing paper. */
-internal fun tucksFor(sheet: Size): Int {
-    var best = 0
-    var bestMiss = Float.MAX_VALUE
-    for (n in 0..3) {
-        val length = sheet.width / (1 shl n)
-        // Shorter than this, the corner creases run off the tail before they reach the edge.
-        if (n > 0 && length < PaperPlaneDimens.ShortestDart * sheet.height) break
-        val miss = abs(length / sheet.height - PaperPlaneDimens.DartAspect)
-        if (miss < bestMiss) {
-            best = n
-            bestMiss = miss
-        }
-    }
-    return best
-}
 
 internal fun planFolds(sheet: Size): FoldPlan {
     val w = sheet.width
     val h = sheet.height / 2f
     val folds = mutableListOf<Fold>()
-    // Tucks: the tail half behind the rest, along a crease across the stack's middle.
-    var tail = 0f
-    repeat(tucksFor(sheet)) {
-        val middle = (tail + w) / 2f
-        folds += Fold(listOf(Crease(Offset(middle, 0f), Offset(0f, 1f), Offset(-1f, 0f), true)))
-        tail = middle
-    }
+    val tail = 0f
     val nose = Offset(w, h)
     val r = 1f / sqrt(2f)
     folds +=
@@ -287,7 +265,6 @@ private fun cut(sheet: Size, folds: List<Fold>, balance: Offset, length: Float):
         facets = facets.map { it.copy(layer = rank.getValue(it.layer)) }
     }
     return FoldPlan(
-        sheet,
         folds,
         facets.map { Facet(it.polygon, it.poses, it.layers, it.moves) },
         tops,
@@ -315,11 +292,17 @@ private fun List<Offset>.clipTo(side: Offset, at: Offset): List<Offset> {
         if (bp >= 0f) out += p
         if ((bp > 0f && bq < 0f) || (bp < 0f && bq > 0f)) out += p + (q - p) * (bp / (bp - bq))
     }
-    return out
+    // A crease through a corner leaves it twice: once is enough, and a zero-length edge has no
+    // outward side to grow along.
+    return out.filterIndexed { i, p -> (p - out[(i + 1) % out.size]).getDistance() > SameCorner }
 }
+
+private const val SameCorner = 1e-3f
 
 /**
  * The polygon pushed out by [by] along every edge: a convex facet, grown to overlap its neighbours.
+ * A sharp corner is cut off square rather than drawn out to a point: grown to a point, the 8°
+ * corners at the nose would reach a dozen units past it.
  */
 internal fun List<Offset>.grown(by: Float): List<Offset> {
     if (size < 3) return this
@@ -333,18 +316,29 @@ internal fun List<Offset>.grown(by: Float): List<Offset> {
         val out = Offset(e.y, -e.x) * (sign / len)
         Pair(p + out * by, e)
     }
-    return indices.map { i ->
+    val out = mutableListOf<Offset>()
+    for (i in indices) {
         val (p1, e1) = lines[(i + size - 1) % size]
         val (p2, e2) = lines[i]
         val cross = e1.x * e2.y - e1.y * e2.x
         if (abs(cross) < 1e-6f) {
-            p2
+            out += p2
+            continue
+        }
+        val t = ((p2.x - p1.x) * e2.y - (p2.y - p1.y) * e2.x) / cross
+        val corner = p1 + e1 * t
+        if ((corner - this[i]).getDistance() <= MitreLimit * by) {
+            out += corner
         } else {
-            val t = ((p2.x - p1.x) * e2.y - (p2.y - p1.y) * e2.x) / cross
-            p1 + e1 * t
+            // Bevelled: the end of the one edge, moved out, and the start of the next.
+            out += p1 + e1
+            out += p2
         }
     }
+    return out
 }
+
+private const val MitreLimit = 2f
 
 internal fun signedArea(polygon: List<Offset>): Float {
     var twice = 0f

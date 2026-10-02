@@ -58,8 +58,10 @@ class PaperPlaneStateTest {
         }
         mainClock.advanceTimeBy(32)
         val flight = planes.plane.flights.single()
-        // Thrown the size of the glyph it left as, nothing let go yet.
-        assertTrue(flight.placement(0f).scale * flight.plan.length < 41f)
+        // Thrown the size of the glyph it left as, and grown to a plane's once it is away.
+        assertEquals(40f, flight.placement(0f).scale * flight.plan.length, 0.01f)
+        val grown = flight.placement(PaperPlaneDimens.GrowMs).scale * flight.plan.length
+        assertEquals(PaperPlaneDimens.PlaneLength * 2.75f, grown, 0.01f)
         assertEquals(0f, planes.plane.delivered("hello"))
         // Let go left to right, as it passes over each letter.
         val lets = flight.drops.sortedBy { it.box.left }.map { it.letGo }
@@ -78,6 +80,36 @@ class PaperPlaneStateTest {
         assertTrue(planes.plane.flights.isEmpty())
         // Gone off the right of the stage by the end.
         assertTrue(flight.placement(flight.pace.totalMs).at.x > 1080f)
+    }
+
+    @Test
+    fun itsPlaceOpensAsThePlaneComesDownAndItsBubbleGrowsAsTheLettersLand() = runComposeUiTest {
+        val planes = planes()
+        runOnUiThread {
+            planes.scope.launch { planes.plane.launch("hello", takeoff, planes.text) { at } }
+        }
+        mainClock.advanceTimeBy(32)
+        val flight = planes.plane.flights.single()
+        val sweep = flight.pace.approachMs
+        // Shut while the plane flies round.
+        assertEquals(0f, flight.openingAt(sweep - PaperPlaneDimens.OpenMs - 50f))
+        assertEquals(0f, planes.plane.opening("hello"))
+        // Open by the time it comes in over it.
+        assertEquals(1f, flight.openingAt(sweep))
+        // The bubble grows from the first letter landing to the last.
+        val lets = flight.drops.map { it.letGo }
+        val first = lets.min() + PaperPlaneDimens.FallMs * PaperPlaneDimens.LandAt
+        val last = lets.max() + PaperPlaneDimens.FallMs
+        assertEquals(0f, flight.deliveredAt(first - 1f))
+        assertTrue(flight.deliveredAt((first + last) / 2f) in 0.3f..0.7f)
+        assertEquals(1f, flight.deliveredAt(last))
+        // And once it has landed, its place stays open and its bubble whole.
+        mainClock.advanceTimeBy(flight.endMs.toLong() + 64L)
+        assertTrue(planes.plane.flights.isEmpty())
+        assertEquals(1f, planes.plane.opening("hello"))
+        assertEquals(1f, planes.plane.delivered("hello"))
+        // A message never sent has no place yet.
+        assertEquals(0f, planes.plane.opening("another"))
     }
 
     @Test

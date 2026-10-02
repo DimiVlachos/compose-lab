@@ -15,9 +15,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import dev.dimvlachos.lab.core.presentation.components.paperplane.ease
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 
 // A bubble's tail is a sharp corner: a sent one's by the send button, a received one's at the top
@@ -78,11 +81,16 @@ internal fun ChatBubble(
                             layout[0]?.let { laidOut(it, at.positionInRoot()) }
                         }
                 )
-                .then(if (delivered == null) Modifier else Modifier.drawWithContent {}),
+                .then(
+                    if (delivered == null) {
+                        Modifier
+                    } else {
+                        // Neither seen nor read out yet: it is read out as it lands.
+                        Modifier.drawWithContent {}.clearAndSetSemantics { testTag = InFlightTag }
+                    }
+                ),
     )
 }
 
-private fun ease(p: Float): Float {
-    val t = p.coerceIn(0f, 1f)
-    return t * t * (3f - 2f * t)
-}
+/** What a message on its way is known by, until it lands. */
+internal const val InFlightTag = "message-in-flight"

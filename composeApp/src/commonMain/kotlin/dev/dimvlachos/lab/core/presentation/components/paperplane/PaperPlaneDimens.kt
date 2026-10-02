@@ -1,11 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.paperplane
 
 internal object PaperPlaneDimens {
-    // Writing paper is about 1.4 times as long as it is wide. Folded from paper shorter than
-    // about 1.2 times its height, the second pair of corner creases runs off the tail.
-    const val DartAspect = 1.5f
-    const val ShortestDart = 1.2f
-
     // How deep the keel hangs under the wings at the tail, as a share of the folded half's
     // height, and how far each wing opens out from it: a little short of square, so they rise in
     // a shallow V.
@@ -17,9 +12,11 @@ internal object PaperPlaneDimens {
     const val Thickness = 0.1f
 
     // In the air the dart shows its back to the eye, wings spread, a little short of straight
-    // overhead so the keel shows under it. On the button it lies flatter, seen from right above,
+    // overhead so the keel shows under it: near enough overhead that leaning into a turn, which
+    // turns it towards side on, still shows its wings. On the button it lies flatter, seen from
+    // right above,
     // the outline of the send glyph it lifts off as.
-    const val RestRoll = -62f
+    const val RestRoll = -72f
     const val TakeoffRoll = -84f
 
     // The eye's distance in front of the plane, in multiples of the density.
@@ -35,7 +32,7 @@ internal object PaperPlaneDimens {
 
     // The inside of the paper, where the folds show it: the colour a little deeper, as the
     // inside of a folded sheet is in its own shade.
-    const val InsideShade = 0.22f
+    const val InsideShade = 0.12f
 
     // Paper is not a flat colour: its grain mottles it by up to this share, and its fibres darken
     // it by up to this; a crease or an edge is pressed in this many sheet units wide, this much
@@ -99,6 +96,7 @@ internal object PaperPlaneDimens {
     const val LoopAcross = 0.4f
     const val LoopSweep = 0.35f
     const val ApproachReach = 0.3f
+    const val ShortestApproach = 0.04f
     const val ApproachMs = 1_150f
 
     // Over the message it flies level, this high over the first line of the text, at this many
@@ -127,7 +125,7 @@ internal object PaperPlaneDimens {
     // Leaning into its turns: degrees of bank for each degree of heading the flight swings
     // through over its length, up to a glider's steepest.
     const val BankPerTurn = 0.16f
-    const val MaxBank = 40f
+    const val MaxBank = 28f
 
     // Cut a pixel past each crease, the facets either side overlap: cut exactly, their smoothed
     // edges would let the background show through in a hairline along every crease.
