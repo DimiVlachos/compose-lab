@@ -13,11 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.demo.PageDrag
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnState
+import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
+import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -27,13 +27,6 @@ import kotlinx.coroutines.withContext
 private const val TouchY = 0.62f
 private const val RightPageX = 0.86f
 private const val LeftPageX = 0.14f
-private const val FillAlpha = 0.28f
-private const val RingAlpha = 0.7f
-private const val DownMs = 90
-private const val UpMs = 260
-private const val TapHoldMs = 110L
-private val TouchRadius = 18.dp
-private val RingWidth = 1.5.dp
 
 /**
  * A fingertip drawn over the book while the script touches it, so a clip shows what a hand did: a
@@ -53,9 +46,9 @@ internal class TouchDot {
         x = if (forward) RightPageX else LeftPageX
         y = TouchY
         try {
-            alpha.animateTo(1f, tween(DownMs))
-            delay(TapHoldMs)
-            alpha.animateTo(0f, tween(UpMs))
+            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            delay(ScriptedTouch.TapHoldMs)
+            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
         } finally {
             lift(touch)
         }
@@ -79,7 +72,7 @@ internal class TouchDot {
         var dragging = false
         // A script stopped mid-drag still lets go of the page, or the book stays held.
         try {
-            alpha.animateTo(1f, tween(DownMs))
+            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
             dragging = book.dragStart(down, down + Offset(if (leftwards) -1f else 1f, 0f))
             if (!dragging) return
             var atX = 0f
@@ -107,7 +100,7 @@ internal class TouchDot {
             }
             book.dragEnd(Offset(drag.releaseSpeed * box.width, 0f))
             dragging = false
-            alpha.animateTo(0f, tween(UpMs))
+            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
         } finally {
             if (dragging) book.dragEnd(Offset.Zero)
             lift(touch)
@@ -123,15 +116,6 @@ internal class TouchDot {
 
     fun Modifier.drawTouch(color: Color): Modifier = drawWithContent {
         drawContent()
-        val a = alpha.value
-        if (a <= 0f) return@drawWithContent
-        val center = Offset(size.width * x, size.height * y)
-        drawCircle(color.copy(alpha = FillAlpha * a), TouchRadius.toPx(), center)
-        drawCircle(
-            color.copy(alpha = RingAlpha * a),
-            TouchRadius.toPx(),
-            center,
-            style = Stroke(RingWidth.toPx()),
-        )
+        drawTouch(color, Offset(size.width * x, size.height * y), alpha.value)
     }
 }

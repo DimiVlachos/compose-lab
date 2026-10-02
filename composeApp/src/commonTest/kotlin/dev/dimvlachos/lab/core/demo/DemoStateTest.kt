@@ -3,6 +3,8 @@
 package dev.dimvlachos.lab.core.demo
 
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.chat_script_2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration
@@ -47,5 +49,24 @@ class DemoStateTest {
     @Test
     fun aDripWithNoHandlerIsIgnored() = runTest {
         DemoState().drip(Offset(0.5f, 0.5f), 0.2f)
+    }
+
+    @Test
+    fun aMessageAndItsTakingBackGoToTheDemosHandlers() = runTest {
+        val state = DemoState()
+        val calls = mutableListOf<String>()
+        state.setSendHandler { text, typing -> calls += "send ${text.key} $typing" }
+        state.setClearHandler { calls += "clear" }
+
+        state.sendMessage(Res.string.chat_script_2, 1.seconds)
+        state.clearMessages()
+
+        assertEquals(listOf("send chat_script_2 1s", "clear"), calls)
+    }
+
+    @Test
+    fun aMessageWithNoHandlerIsIgnored() = runTest {
+        DemoState().sendMessage(Res.string.chat_script_2, 1.seconds)
+        DemoState().clearMessages()
     }
 }

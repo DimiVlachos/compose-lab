@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import kotlin.time.Duration
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * A demo's scripted state; [recording] when the recorder is capturing it as a clip, [replay] while
@@ -30,6 +31,8 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
     private var wipeHandler: (suspend (List<Offset>, Duration) -> Unit)? = null
     private var dripHandler: (suspend (Offset, Float) -> Unit)? = null
     private var mistHandler: (suspend (Duration) -> Unit)? = null
+    private var sendHandler: (suspend (StringResource, Duration) -> Unit)? = null
+    private var clearHandler: (suspend () -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -55,6 +58,14 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
         mistHandler?.invoke(duration)
     }
 
+    override suspend fun sendMessage(text: StringResource, typing: Duration) {
+        sendHandler?.invoke(text, typing)
+    }
+
+    override suspend fun clearMessages() {
+        clearHandler?.invoke()
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -73,5 +84,13 @@ class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoC
 
     fun setMistHandler(handler: (suspend (Duration) -> Unit)?) {
         mistHandler = handler
+    }
+
+    fun setSendHandler(handler: (suspend (StringResource, Duration) -> Unit)?) {
+        sendHandler = handler
+    }
+
+    fun setClearHandler(handler: (suspend () -> Unit)?) {
+        clearHandler = handler
     }
 }
