@@ -27,56 +27,83 @@ internal class Cubic(val p0: Offset, val p1: Offset, val p2: Offset, val p3: Off
         return (p1 - p0) * (3f * u * u) + (p2 - p1) * (6f * u * t) + (p3 - p2) * (3f * t * t)
     }
 
-    // How long, measured along it in short straight steps.
-    val length: Float by lazy {
-        var sum = 0f
-        var last = p0
-        for (i in 1..LengthSteps) {
-            val next = at(i / LengthSteps.toFloat())
-            sum += (next - last).getDistance()
-            last = next
+    // How far along it each of a run of short straight steps ends: what its length is, and how
+    // its parameter is found for a distance along it.
+    private val reached =
+        FloatArray(LengthSteps + 1).also { reached ->
+            var last = p0
+            for (i in 1..LengthSteps) {
+                val next = at(i / LengthSteps.toFloat())
+                reached[i] = reached[i - 1] + (next - last).getDistance()
+                last = next
+            }
         }
-        sum
+
+    val length: Float = reached[LengthSteps]
+
+    /**
+     * The parameter [share] of the way along it by distance: a cubic's own parameter runs faster
+     * where its control points are further apart, so it is not that.
+     */
+    fun parameterAt(share: Float): Float {
+        if (length <= 0f) return share.coerceIn(0f, 1f)
+        val goal = share.coerceIn(0f, 1f) * length
+        var lo = 0
+        var hi = LengthSteps
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (reached[mid] < goal) lo = mid else hi = mid
+        }
+        val span = reached[hi] - reached[lo]
+        val within = if (span > 0f) (goal - reached[lo]) / span else 0f
+        return (lo + within) / LengthSteps
     }
 }
 
-private const val LengthSteps = 32
+private const val LengthSteps = 128
 
 /**
  * The throw: cubic pieces end to end, each smooth into the next, gone along by [at] its share of
- * the whole length, shared out among the pieces by theirs.
+ * the whole length by distance, so a pace along it is a pace on the screen.
  */
 internal class FlightPath(val pieces: List<Cubic>) {
     val length: Float = pieces.sumOf { it.length.toDouble() }.toFloat()
-    private val shares: List<Float> = pieces.map { it.length / length }
+    private val shares: List<Float> = pieces.map { if (length > 0f) it.length / length else 0f }
 
-    private fun locate(t: Float): Pair<Cubic, Float> {
+    // The piece [t] falls in, left in [found] with the parameter along it; a piece with no
+    // length is passed over, there being no time on it.
+    private var found: Cubic = pieces.first()
+
+    private fun locate(t: Float): Float {
         var start = 0f
         for ((i, piece) in pieces.withIndex()) {
             val share = shares[i]
-            if (t <= start + share || i == pieces.lastIndex) {
-                return piece to ((t - start) / share).coerceIn(0f, 1f)
+            if ((share > 0f && t <= start + share) || i == pieces.lastIndex) {
+                found = piece
+                val along = if (share > 0f) (t - start) / share else 1f
+                return piece.parameterAt(along)
             }
             start += share
         }
-        return pieces.last() to 1f
+        found = pieces.last()
+        return 1f
     }
 
-    val end: Offset
-        get() = pieces.last().p3
-
-    fun at(t: Float): Offset = locate(t).let { (piece, u) -> piece.at(u) }
+    fun at(t: Float): Offset {
+        val u = locate(t)
+        return found.at(u)
+    }
 
     /** Which way the nose points, in degrees clockwise from the right: along the throw. */
     fun heading(t: Float): Float {
-        val (piece, u) = locate(t)
-        val d = piece.tangent(u)
+        val u = locate(t)
+        val d = found.tangent(u)
         return atan2(d.y, d.x).toDegrees()
     }
 
     /**
-     * How far the plane leans into its turn, in degrees: with how fast the heading swings, held to
-     * a glider's bank, and level at both ends where it leaves the button and lands.
+     * How far the plane leans into its turn, in degrees, the same way round as the heading swings:
+     * with how fast it swings, held to a glider's bank, and level as it leaves the button.
      */
     fun bank(t: Float): Float {
         val step = 0.01f
@@ -131,7 +158,16 @@ internal fun flightPath(
         Cubic(
             top,
             top - Offset(sweep, 0f),
-            sweepFrom - Offset(stage.width * PaperPlaneDimens.ApproachReach, 0f),
+            // Level into the sweep, from no further left than keeps the plane on the stage: for a
+            // message that starts near the edge it comes in the steeper, never from behind it.
+            sweepFrom -
+                Offset(
+                    (sweepFrom.x - stage.left - beyond / 2f).coerceIn(
+                        stage.width * PaperPlaneDimens.ShortestApproach,
+                        stage.width * PaperPlaneDimens.ApproachReach,
+                    ),
+                    0f,
+                ),
             sweepFrom,
         )
     // Straight and level, its control points a third of the way apart, so it goes along it at an
@@ -159,21 +195,26 @@ internal class Pace(
     val approach: Float,
     val sweep: Float,
     val exit: Float,
-    val approachMs: Float,
+    approachMs: Float,
     val sweepSpeed: Float,
     launchSpeed: Float,
     exitSpeed: Float,
 ) {
+    /**
+     * How long it takes to come round to the sweep: [approachMs] at most, less for a loop too short
+     * to arrive at the sweep's speed in that time without turning back.
+     */
+    val approachMs: Float = min(approachMs, 3f * approach / sweepSpeed)
     val sweepMs: Float = sweep / sweepSpeed
     private val exitFrom = sweepSpeed
-    private val exitMs: Float = 2f * exit / (exitFrom + exitSpeed)
-    private val exitGain = (exitSpeed - exitFrom) / exitMs
-    val totalMs: Float = approachMs + sweepMs + exitMs
+    private val exitMs: Float = if (exit > 0f) 2f * exit / (exitFrom + exitSpeed) else 0f
+    private val exitGain = if (exitMs > 0f) (exitSpeed - exitFrom) / exitMs else 0f
+    val totalMs: Float = this.approachMs + sweepMs + exitMs
 
     // Thrown faster than it could go and still slow to its sweep in time, it would overshoot and
     // come back: held to three times its mean, the slowing never turns it round.
-    private val launch = min(launchSpeed * approachMs, 3f * approach)
-    private val arrive = min(sweepSpeed * approachMs, 3f * approach)
+    private val launch = min(launchSpeed * this.approachMs, 3f * approach)
+    private val arrive = sweepSpeed * this.approachMs
 
     fun distance(ms: Float): Float {
         if (ms <= 0f) return 0f

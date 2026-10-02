@@ -148,6 +148,35 @@ PageTurnBook(
 )
 ```
 
+## Paper plane (`core/presentation/components/paperplane/`)
+
+![](docs/media/chat.plane.gif)
+
+A chat that sends each message as a paper plane. Type, and the send glyph appears; send, and the letters are drawn into the button one by one, the glyph lifts off as a folded paper dart, loops up the conversation and comes in low over the message's place, letting each letter go as it passes over it, before it flies off the screen.
+
+- **A dart folded for real.** The plane is a sheet of writing paper folded into a classic dart: the corners in twice, in half, and the wings opened out. The sheet is cut along every crease into flat facets, each turned about its creases in 3D and drawn under its own perspective `Matrix`. Each part of the dart is a stack of paper, drawn layer by layer as the eye sees it, so the flaps folded over the wings lie on top of them.
+- **Paper, not plastic.** A faint grain and its fibres are mapped onto every facet, so they turn and foreshorten with the paper. Every crease and edge is pressed in. Each facet is lit by how it turns to a window's light, and the dart casts a shadow on the conversation, further off the higher it flies.
+- **A throw, not a tween.** It is thrown hard off the button and slows along the loop, so it comes in over the message at the pace it drops letters at. It leans into its turns and never quite flies steady: it rocks, yaws and drifts a little, at its own pace on each.
+- **Letters that fall.** Each letter is let go a little before its place and carried on by the plane, slowed by the air, falling faster as it goes, tumbling out of its spin and growing back to its size. It lands exactly on the text it stands in for, and the bubble grows in behind the letters as they land. However long the message, the last letter lands within 0.6 s of the first.
+- **No jump.** The message's place stays shut while its letters go into the button and its plane flies round. It opens as the plane comes down to it, laid out full height at its foot the whole while, so the conversation moves up just in time and the plane flies to where the message will stay.
+
+Planes fly side by side: send again while one is up and the next takes off with its own message.
+
+```kotlin
+val planes = rememberPaperPlaneState()
+val letters = rememberLetterStream()
+// In the send button: the glyph a plane lifts off as.
+PaperPlaneIcon(color = accent, modifier = Modifier.size(26.dp))
+// The message's place in the list: shut until its plane comes down to it.
+Modifier.planeLanding(planes, key)
+// On send: the typed letters into the button, then the plane with the landed text's layout.
+letters.pour(draftLayout, draftOrigin, into = { button.center }, arrived = {})
+planes.launch(key, planeTakeoff(glyphBounds), landedLayout, at = { landedOrigin })
+// Over everything: where the letters and the planes are drawn.
+LetterStage(letters, Modifier.fillMaxSize())
+PaperPlane(planes, paper = accent, Modifier.fillMaxSize())
+```
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
@@ -180,6 +209,8 @@ The nav bar supports 2–4 tabs, at a minimum slot width of about 64 dp.
 The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo straight from another is not a morph: close to the grid first.
 
 The page-turn book shows a two-page spread, 2:1, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
+
+The paper plane carries one message of any length; a bubble up to 264 dp wide comes down within its 0.6 s whatever its length, the plane crossing it faster for a long one. The message field grows to 4 lines, 2 on a short screen, and scrolls past that; only the letters it shows are poured into the button. Messages are dropped from the left, whatever the script's direction.
 
 ## Licence
 

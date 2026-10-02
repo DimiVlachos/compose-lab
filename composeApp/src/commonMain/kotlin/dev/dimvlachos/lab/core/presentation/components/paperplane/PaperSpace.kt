@@ -56,17 +56,20 @@ internal class FacetSpace(val origin: Vec3, val u: Vec3, val v: Vec3) {
      * from the centre.
      */
     fun projection(centre: Offset, eye: Float): FloatArray =
-        floatArrayOf(
-            eye * u.x - centre.x * u.z,
-            eye * v.x - centre.x * v.z,
-            eye * origin.x - centre.x * origin.z,
-            eye * u.y - centre.y * u.z,
-            eye * v.y - centre.y * v.z,
-            eye * origin.y - centre.y * origin.z,
-            -u.z,
-            -v.z,
-            eye - origin.z,
-        )
+        FloatArray(9).also { projectInto(it, centre, eye) }
+
+    /** [projection], written into [into] so a frame needs no new array. */
+    fun projectInto(into: FloatArray, centre: Offset, eye: Float) {
+        into[0] = eye * u.x - centre.x * u.z
+        into[1] = eye * v.x - centre.x * v.z
+        into[2] = eye * origin.x - centre.x * origin.z
+        into[3] = eye * u.y - centre.y * u.z
+        into[4] = eye * v.y - centre.y * v.z
+        into[5] = eye * origin.y - centre.y * origin.z
+        into[6] = -u.z
+        into[7] = -v.z
+        into[8] = eye - origin.z
+    }
 }
 
 internal fun FloatArray.project(p: Offset): Offset {
@@ -85,9 +88,6 @@ internal fun FoldPlan.stage(fold: Float): Pair<Int, Float> {
     val k = floor(fold).toInt().coerceIn(0, last)
     return k to ease(fold - k)
 }
-
-/** How far the wings have opened, 0 to 1: what turns the plane over from lying flat to flying. */
-internal fun FoldPlan.wingsOpen(fold: Float): Float = ease(fold - (folds.size - 1))
 
 /** Where [facet] is at [fold], placed on the stage by [placement]. */
 internal fun FoldPlan.space(facet: Facet, fold: Float, placement: Placement): FacetSpace {
@@ -114,20 +114,74 @@ internal fun FoldPlan.space(facet: Facet, fold: Float, placement: Placement): Fa
     val u = local(Offset(1f, 0f)) - o
     val v = local(Offset(0f, 1f)) - o
     val b = Vec3(balance.x, balance.y, 0f)
-    fun world(p: Vec3) = place(p, placement)
-    fun worldDir(d: Vec3) = place(d, placement, direction = true)
-    return FacetSpace(world(o - b), worldDir(u), worldDir(v))
+    return Pose(placement).place(FacetSpace(o - b, u, v))
 }
 
-// Turned about its length by the roll, then to its heading, sized, and set at its place.
-private fun place(p: Vec3, placement: Placement, direction: Boolean = false): Vec3 {
-    val r = placement.roll.toRadians()
-    val rolled = Vec3(p.x, p.y * cos(r) - p.z * sin(r), p.y * sin(r) + p.z * cos(r))
-    val h = placement.heading.toRadians()
-    val headed =
-        Vec3(rolled.x * cos(h) - rolled.y * sin(h), rolled.x * sin(h) + rolled.y * cos(h), rolled.z)
-    val sized = headed * placement.scale
-    return if (direction) sized else sized + Vec3(placement.at.x, placement.at.y, placement.lift)
+/**
+ * Every facet of the finished dart about its balance point, before it is placed: the dart's shape
+ * never changes in the air, so it is worked out once and only turned and set in place each frame.
+ */
+internal fun FoldPlan.folded(): List<FacetSpace> = facets.map {
+    space(it, folds.size.toFloat(), AtRest)
+}
+
+private val AtRest = Placement(Offset.Zero, 0f, 0f, 1f, 1f)
+
+/**
+ * A [Placement] as a move in space: turned about its length by the roll, then to its heading,
+ * sized, and set at its place, its turns worked out once for every point it moves.
+ */
+internal class Pose(placement: Placement) {
+    private val cr = cos(placement.roll.toRadians())
+    private val sr = sin(placement.roll.toRadians())
+    private val ch = cos(placement.heading.toRadians())
+    private val sh = sin(placement.heading.toRadians())
+    private val scale = placement.scale
+    private val shift = Vec3(placement.at.x, placement.at.y, placement.lift)
+
+    fun direction(p: Vec3): Vec3 {
+        val y = p.y * cr - p.z * sr
+        val z = p.y * sr + p.z * cr
+        return Vec3((p.x * ch - y * sh) * scale, (p.x * sh + y * ch) * scale, z * scale)
+    }
+
+    fun point(p: Vec3): Vec3 = direction(p) + shift
+
+    fun place(space: FacetSpace) =
+        FacetSpace(point(space.origin), direction(space.u), direction(space.v))
+}
+
+/**
+ * The order to draw the facets in, back to front, seen from [eye]: each rigid part of the dart (the
+ * keel and each wing) is a flat stack of paper, so within it the layers lie in order, the nearest
+ * the eye on top; the parts themselves go in by how far off they are. By the facets' own middles
+ * alone, the stacks' layers, a hair apart, would be ordered by their shapes instead, and a flap
+ * folded over a wing drawn under it.
+ */
+internal fun FoldPlan.drawOrder(spaces: List<FacetSpace>, eye: Vec3): List<Int> {
+    val last = folds.size - 1
+    val parts = facets.map { facet -> folds[last].creases.indexOf(facet.moves[last]) + 1 }
+    val middles = facets.mapIndexed { i, facet -> spaces[i].at(facet.middle) }
+    val depth =
+        parts.distinct().associateWith { part ->
+            parts.indices.filter { parts[it] == part }.map { middles[it].z }.average()
+        }
+    // Which way a stack's layers rise, in space: its paper's normal, the right way round for the
+    // mirror its pose may hold.
+    val rising =
+        parts.distinct().associateWith { part ->
+            val i = parts.indexOf(part)
+            val pose = facets[i].poses[last]
+            val up = spaces[i].normal * (if (pose.a * pose.d - pose.b * pose.c < 0f) -1f else 1f)
+            ((eye - middles[i]) dot up) > 0f
+        }
+    return facets.indices.sortedWith(
+        compareBy<Int> { depth.getValue(parts[it]) }
+            .thenBy { i ->
+                val layer = facets[i].layers[last]
+                if (rising.getValue(parts[i])) layer else -layer
+            }
+    )
 }
 
 // Rodrigues: [point] turned by [degrees] about the line through [through] along unit [axis].

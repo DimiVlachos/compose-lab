@@ -15,19 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.util.lerp
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * The letters of sent messages on their way into the send button: lifted out of the text where they
@@ -42,31 +38,44 @@ class LetterStream internal constructor() {
     internal var stage: Offset by mutableStateOf(Offset.Zero)
 
     /**
-     * Pours the text laid out as [layout], its top left at [origin] in the root, into [into],
-     * calling [arrived] as each letter goes in. Returns once the last one has.
+     * Pours the text laid out as [layout], its top left at [origin] in the root, into wherever
+     * [into] is as each letter flies, calling [arrived] as each goes in; only the letters [shown]
+     * (in the root), if given: a field scrolled through a long text shows only some of it. Returns
+     * once the last one has.
      */
-    suspend fun pour(layout: TextLayoutResult, origin: Offset, into: Offset, arrived: () -> Unit) {
-        val boxes = letterBoxes(layout)
+    suspend fun pour(
+        layout: TextLayoutResult,
+        origin: Offset,
+        into: () -> Offset,
+        arrived: () -> Unit,
+        shown: Rect = Rect.Zero,
+    ) {
+        val target = into()
+        val boxes =
+            letterBoxes(layout).filter { shown == Rect.Zero || shown.contains(origin + it.center) }
         if (boxes.isEmpty()) return
-        val nearestFirst = boxes.sortedBy { (origin + it.center - into).getDistance() }
+        val nearestFirst = boxes.sortedBy { (origin + it.center - target).getDistance() }
         val gap = letterGap(nearestFirst.size)
         val letters = nearestFirst.mapIndexed { i, box -> Letter(box, i * gap, spinFor(i)) }
         val total = letters.last().start + PaperPlaneDimens.LetterMs
         val pour = Pour(layout, origin, into, letters)
         pours += pour
-        try {
-            coroutineScope {
-                launch {
-                    var at = 0f
-                    for (letter in letters) {
-                        val inside = letter.start + PaperPlaneDimens.LetterMs
-                        delay((inside - at).toLong())
-                        at = inside
-                        arrived()
-                    }
-                }
-                pour.clock.animateTo(total, tween(total.toInt(), easing = LinearEasing))
+        // Each letter in on the stream's own clock, so with animations off they are all in at
+        // once, as the stream is.
+        var inside = 0
+        fun arrivals(clock: Float) {
+            while (
+                inside < letters.size && clock >= letters[inside].start + PaperPlaneDimens.LetterMs
+            ) {
+                inside++
+                arrived()
             }
+        }
+        try {
+            pour.clock.animateTo(total, tween(total.toInt(), easing = LinearEasing)) {
+                arrivals(value)
+            }
+            arrivals(total)
         } finally {
             pours -= pour
         }
@@ -85,7 +94,7 @@ fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
                 for (pour in stream.pours) {
                     val clock = pour.clock.value
                     val origin = pour.origin - stream.stage
-                    val into = pour.into - stream.stage
+                    val into = pour.into() - stream.stage
                     for (letter in pour.letters) {
                         val p =
                             ((clock - letter.start) / PaperPlaneDimens.LetterMs).coerceIn(0f, 1f)
@@ -109,13 +118,8 @@ fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
                             scale(scale, scale, at)
                             translate(at.x - from.x, at.y - from.y)
                         }) {
-                            clipRect(
-                                origin.x + letter.box.left,
-                                origin.y + letter.box.top,
-                                origin.x + letter.box.right,
-                                origin.y + letter.box.bottom,
-                            ) {
-                                drawText(pour.layout, topLeft = origin, alpha = fade)
+                            translate(origin.x, origin.y) {
+                                with(pour.atlas) { drawLetter(letter.box, fade) }
                             }
                         }
                     }
@@ -127,19 +131,24 @@ fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
 internal class Pour(
     val layout: TextLayoutResult,
     val origin: Offset,
-    val into: Offset,
+    val into: () -> Offset,
     val letters: List<Letter>,
 ) {
     /** Milliseconds since the first letter left. */
     val clock = Animatable(0f)
+
+    /** What its letters are drawn from. */
+    val atlas = LetterAtlas(layout)
 }
 
 /** One letter: its box in the text, when it leaves, ms after the first, and how far it tumbles. */
 internal class Letter(val box: Rect, val start: Float, val spin: Float)
 
 /**
- * The box of every letter in [layout] with ink to it, spaces left behind; a character made of two
- * code units is one letter.
+ * The box of every letter in [layout] with ink to it, spaces left behind. A letter is what the eye
+ * takes for one: a character made of two code units, and a cluster drawn as one (an emoji of
+ * several, a flag, a letter and its accent), which some platforms give each part of the full box
+ * of, others the first part only.
  */
 internal fun letterBoxes(layout: TextLayoutResult): List<Rect> {
     val text = layout.layoutInput.text.text
@@ -151,12 +160,39 @@ internal fun letterBoxes(layout: TextLayoutResult): List<Rect> {
         if (!c.isWhitespace()) {
             var box = layout.getBoundingBox(i)
             if (pair) box = box.union(layout.getBoundingBox(i + 1))
-            if (box.width > 0f) boxes += box
+            boxes += box
         }
         i += if (pair) 2 else 1
     }
-    return boxes
+    return oneEach(boxes)
 }
+
+/**
+ * The letters among the boxes of a text's characters, in order: one box for each part of a letter
+ * drawn as one is one letter, whether every part was given the whole box or the first part only
+ * (and the rest none).
+ */
+internal fun oneEach(boxes: List<Rect>): List<Rect> {
+    val letters = mutableListOf<Rect>()
+    for (box in boxes) {
+        val last = letters.lastOrNull()
+        when {
+            box.width <= 0f -> Unit
+            last != null && last.sharesInkWith(box) -> letters[letters.lastIndex] = last.union(box)
+            else -> letters += box
+        }
+    }
+    return letters
+}
+
+// Two boxes on the same line that overlap by more than a sliver are parts of one letter.
+private fun Rect.sharesInkWith(other: Rect): Boolean {
+    val across = min(right, other.right) - max(left, other.left)
+    val sameLine = min(bottom, other.bottom) - max(top, other.top) > 0f
+    return sameLine && across > SameLetter * min(width, other.width)
+}
+
+private const val SameLetter = 0.5f
 
 /**
  * The time between letters leaving, in ms: a steady stream, closed up for a long message so the

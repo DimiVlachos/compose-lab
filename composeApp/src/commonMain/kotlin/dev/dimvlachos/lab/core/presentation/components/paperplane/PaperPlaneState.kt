@@ -5,15 +5,19 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.util.lerp
 import kotlin.coroutines.CoroutineContext
@@ -23,6 +27,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
@@ -55,11 +60,27 @@ internal constructor(
 ) {
     internal val flights = mutableStateListOf<Flight>()
 
-    /** Where planes may fly, and the density they are sized by, set by the stage as laid out. */
+    /** Where planes may fly, set by the stage as it is laid out. */
     internal var stage: Rect by mutableStateOf(Rect.Zero)
+
+    /** The density planes are sized by, set where the state is remembered. */
     internal var density = 1f
 
     private var plan: FoldPlan? = null
+
+    // The keys whose letters all lie in their places: their places stay open, their bubbles grown.
+    private val landed = HashSet<Any>()
+
+    /**
+     * Folds the plane and makes its paper, off the main thread, so the first throw has nothing to
+     * make in the frame it leaves.
+     */
+    internal suspend fun prepare() {
+        withContext(planning) {
+            if (plan == null) plan = planFolds(DartSheet)
+            paperGrain
+        }
+    }
 
     /**
      * Throws the plane at [takeoff] carrying the text laid out as [text], to drop it letter by
@@ -70,11 +91,15 @@ internal constructor(
     suspend fun launch(key: Any, takeoff: Takeoff, text: TextLayoutResult, at: () -> Offset) {
         val boxes = letterBoxes(text)
         if (boxes.isEmpty()) return
-        val plan = plan ?: withContext(planning) { planFolds(DartSheet) }.also { plan = it }
+        prepare()
+        val plan = checkNotNull(plan)
+        // Not before the stage is laid out: a plane flies over it, and is sized by it.
+        val stage = snapshotFlow { stage }.first { it != Rect.Zero }
         val flight = Flight(key, plan, takeoff, text, at, at(), boxes, stage, density)
         flights += flight
         try {
             flight.clock.animateTo(flight.endMs, tween(flight.endMs.toInt(), easing = LinearEasing))
+            landed += key
         } finally {
             flights -= flight
         }
@@ -82,27 +107,18 @@ internal constructor(
 
     /**
      * How far the message for [key] has come down, 0 until its first letter lands to 1 once its
-     * last lies in its place: what its bubble grows in by.
+     * last lies in its place, and from then on: what its bubble grows in by.
      */
-    fun delivered(key: Any): Float {
-        val flight = flights.firstOrNull { it.key == key } ?: return 0f
-        return flight.delivered()
-    }
+    fun delivered(key: Any): Float =
+        flights.firstOrNull { it.key == key }?.delivered?.value ?: if (key in landed) 1f else 0f
 
     /**
      * How far the place for [key]'s message has opened, 0 shut to 1 its full height: shut while its
      * letters go into the button and the plane flies round, and opening as it comes down to it, so
-     * the conversation makes room just in time and never jumps.
+     * the conversation makes room just in time and never jumps; open from then on.
      */
-    fun opening(key: Any): Float {
-        val flight = flights.firstOrNull { it.key == key } ?: return 0f
-        return flight.opening()
-    }
-
-    private companion object {
-        // The plane is folded from a sheet of writing paper's proportions, whatever it carries.
-        val DartSheet = Size(150f, 100f)
-    }
+    fun opening(key: Any): Float =
+        flights.firstOrNull { it.key == key }?.opening?.value ?: if (key in landed) 1f else 0f
 }
 
 /** One plane in the air: its folds, its throw, and the letters it carries. */
@@ -125,6 +141,16 @@ internal class Flight(
 
     /** Milliseconds since the throw. */
     val clock = Animatable(0f)
+
+    /** What draws this plane: it keeps the dart's shape for as long as it flies. */
+    val painter = DartPainter()
+
+    /** What its letters are drawn from. */
+    val letters = LetterAtlas(text)
+
+    // The plane's size: tail to nose, the glyph's to begin with.
+    private val fullScale = PaperPlaneDimens.PlaneLength * density / plan.length
+    private val startScale = takeoff.length / plan.length
 
     /** When the last letter lies in its place, and the plane is long gone. */
     val endMs: Float
@@ -167,31 +193,36 @@ internal class Flight(
                 exitSpeed = sweepSpeed * PaperPlaneDimens.ExitBoost,
             )
         drops = boxes.mapIndexed { i, box ->
-            val across = (thrownTo.x + box.center.x - first) / sweep
-            Drop(box, pace.overAt(across), spinFor(i))
+            val letGo = pace.overAt((thrownTo.x + box.center.x - first) / sweep)
+            // Where the plane is as it lets it go, worked out the once.
+            Drop(box, letGo, spinFor(i), placement(letGo).at)
         }
         firstLands = drops.minOf { it.letGo } + PaperPlaneDimens.FallMs * PaperPlaneDimens.LandAt
         lastLands = drops.maxOf { it.letGo } + PaperPlaneDimens.FallMs
         endMs = max(pace.totalMs, lastLands)
     }
 
-    // The plane's size: tail to nose, the glyph's to begin with.
-    private val fullScale = PaperPlaneDimens.PlaneLength * density / plan.length
-    private val startScale = takeoff.length / plan.length
-
-    /** Whether the plane is still on the stage: it is gone before its last letter lands. */
+    /** Whether the plane is still on the stage: it may be gone before its last letter lands. */
     val flying: Boolean
         get() = clock.value < pace.totalMs
 
     /** Where the text lies now, its top left in the root. */
     fun textOrigin(): Offset = textAt()
 
-    /** How far the message's place has opened: shut till the plane comes down to it. */
-    fun opening(): Float =
-        ease((clock.value - pace.approachMs + PaperPlaneDimens.OpenMs) / PaperPlaneDimens.OpenMs)
+    /**
+     * How far the message's place has opened, shut till the plane comes down to it; read through
+     * this, a place is only laid out again while it is opening, not every frame of the flight.
+     */
+    val opening: State<Float> = derivedStateOf { openingAt(clock.value) }
 
-    fun delivered(): Float =
-        ((clock.value - firstLands) / (lastLands - firstLands)).coerceIn(0f, 1f)
+    /** How far its letters have come down, from the first landing to the last. */
+    val delivered: State<Float> = derivedStateOf { deliveredAt(clock.value) }
+
+    fun openingAt(ms: Float): Float =
+        ease((ms - pace.approachMs + PaperPlaneDimens.OpenMs) / PaperPlaneDimens.OpenMs)
+
+    fun deliveredAt(ms: Float): Float =
+        ((ms - firstLands) / (lastLands - firstLands)).coerceIn(0f, 1f)
 
     /**
      * Where the plane is [ms] after the throw: along the throw, growing from the glyph it left as
@@ -205,13 +236,12 @@ internal class Flight(
         val scale = lerp(startScale, fullScale, grown)
         // Never quite steady in the air: still on the button, it flutters once it is thrown.
         val seconds = ms / 1000f
-        val flutter = grown
-        val wobble = { amount: Float, hz: Float, phase: Float ->
-            flutter * amount * sin(2f * PI.toFloat() * hz * seconds + phase)
-        }
+        fun wobble(amount: Float, hz: Float, phase: Float) =
+            grown * amount * sin(2f * PI.toFloat() * hz * seconds + phase)
         val roll =
-            lerp(PaperPlaneDimens.TakeoffRoll, PaperPlaneDimens.RestRoll, grown) +
-                path.bank(t) +
+            // Its roll runs the other way to its heading: leaning into a turn takes the roll back
+            // towards level on the inside of it.
+            lerp(PaperPlaneDimens.TakeoffRoll, PaperPlaneDimens.RestRoll, grown) - path.bank(t) +
                 wobble(PaperPlaneDimens.WobbleRoll, 1.3f, 0.4f) +
                 wobble(PaperPlaneDimens.WobbleRoll * 0.4f, 2.9f, 1.7f)
         val heading = path.heading(t) + wobble(PaperPlaneDimens.WobbleYaw, 0.9f, 1.1f)
@@ -243,7 +273,20 @@ internal class Flight(
     }
 }
 
-/** One letter the plane carries: its box in the text, when it is let go, how it tumbles. */
-internal class Drop(val box: Rect, val letGo: Float, val spin: Float)
+/**
+ * One letter the plane carries: its box in the text, when it is let go, how it tumbles, and where
+ * the plane is, in the root, as it lets it go.
+ */
+internal class Drop(val box: Rect, val letGo: Float, val spin: Float, val from: Offset)
 
-@Composable fun rememberPaperPlaneState(): PaperPlaneState = remember { PaperPlaneState() }
+@Composable
+fun rememberPaperPlaneState(): PaperPlaneState = rememberPaperPlaneState(Dispatchers.Default)
+
+/** A [PaperPlaneState] whose planes are folded in [planning]: a test folds them in its own time. */
+@Composable
+internal fun rememberPaperPlaneState(planning: CoroutineContext): PaperPlaneState {
+    val state = remember(planning) { PaperPlaneState(planning) }
+    state.density = LocalDensity.current.density
+    LaunchedEffect(state) { state.prepare() }
+    return state
+}

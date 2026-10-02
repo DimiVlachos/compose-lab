@@ -19,6 +19,10 @@ class FakeController(private val now: () -> Long) : DemoController {
 
     val sends = mutableListOf<StringResource>()
 
+    /** Messages sent and not yet taken back out of the conversation. */
+    var messagesOut = 0
+        private set
+
     val calls = mutableListOf<Pair<Long, String>>()
 
     override fun select(index: Int) {
@@ -52,10 +56,12 @@ class FakeController(private val now: () -> Long) : DemoController {
 
     override suspend fun sendMessage(text: StringResource, typing: Duration) {
         sends += text
+        messagesOut++
         calls += now() to "sendMessage(${text.key}, $typing)"
     }
 
     override suspend fun clearMessages() {
+        messagesOut = 0
         calls += now() to "clearMessages()"
     }
 }

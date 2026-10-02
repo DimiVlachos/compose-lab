@@ -71,6 +71,7 @@ class CatalogTest {
             demo.script.play(controller)
             assertEquals(0, controller.selectedIndex, "${demo.id} must end on the first tab")
             assertEquals(0f, controller.netScroll, "${demo.id} must scroll back to the top")
+            assertEquals(0, controller.messagesOut, "${demo.id} must take back what it sent")
         }
     }
 
