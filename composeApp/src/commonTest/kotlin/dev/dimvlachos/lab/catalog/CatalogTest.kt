@@ -10,6 +10,7 @@ import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.demo_paper_plane
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -28,6 +29,7 @@ class CatalogTest {
                 "fog.mirror.bathroom",
                 "fog.mirror.camera",
                 "book.turn",
+                "chat.plane",
             ),
             Catalog.demos.map { it.id },
         )
@@ -38,6 +40,7 @@ class CatalogTest {
                 Res.string.demo_fog_bathroom,
                 Res.string.demo_fog_reflection,
                 Res.string.demo_book_turn,
+                Res.string.demo_paper_plane,
             ),
             Catalog.demos.map { it.title },
         )
@@ -68,6 +71,7 @@ class CatalogTest {
             demo.script.play(controller)
             assertEquals(0, controller.selectedIndex, "${demo.id} must end on the first tab")
             assertEquals(0f, controller.netScroll, "${demo.id} must scroll back to the top")
+            assertEquals(0, controller.messagesOut, "${demo.id} must take back what it sent")
         }
     }
 
@@ -89,7 +93,7 @@ class CatalogTest {
         assertEquals(Res.string.demo_fog, group.title)
         assertEquals(listOf("fog.mirror.bathroom", "fog.mirror.camera"), group.demos.map { it.id })
         assertEquals(
-            listOf("navbar.all", "morph.app", "book.turn"),
+            listOf("navbar.all", "morph.app", "book.turn", "chat.plane"),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
     }

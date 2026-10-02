@@ -62,4 +62,13 @@
     <string name="photo_folegandros_caption">Sunset over the west cliffs</string>
     <string name="search_recent">Recent searches</string>
     <string name="search_no_results">No photos match “%1$s”</string>
+    <string name="demo_paper_plane">Paper plane</string>
+    <string name="chat_placeholder">Message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_seed_1">Are we still on for Saturday?</string>
+    <string name="chat_seed_2">Yes! Where are we meeting?</string>
+    <string name="chat_seed_3">The field by the harbour</string>
+    <string name="chat_seed_4">Bring something that flies</string>
+    <string name="chat_script_1">Folding something right now</string>
+    <string name="chat_script_2">Incoming!</string>
 </resources>
