@@ -1,6 +1,5 @@
 package dev.dimvlachos.lab.architecture
 
-import com.lemonappdev.konsist.api.Konsist
 import com.lemonappdev.konsist.api.verify.assertFalse
 import com.lemonappdev.konsist.api.verify.assertTrue
 import org.junit.Test
@@ -15,14 +14,14 @@ class CodingConventionsKonsistTest {
 
     @Test
     fun `no wildcard imports`() {
-        Konsist.scopeFromProject().files.assertFalse { file ->
+        labScope().files.assertFalse { file ->
             file.imports.any { it.isWildcard }
         }
     }
 
     @Test
     fun `preview functions are private`() {
-        Konsist.scopeFromProject()
+        labScope()
             .functions()
             .filter { it.hasAnnotationWithName("Preview") }
             .assertTrue { it.hasPrivateModifier }
@@ -30,7 +29,7 @@ class CodingConventionsKonsistTest {
 
     @Test
     fun `no println calls`() {
-        Konsist.scopeFromProject()
+        labScope()
             .files
             .filter { !it.path.contains(ARCHITECTURE_TEST_PATH) }
             .assertFalse { file -> file.text.contains("println(") }
@@ -38,21 +37,21 @@ class CodingConventionsKonsistTest {
 
     @Test
     fun `no android util Log - use Kermit`() {
-        Konsist.scopeFromProject().files.assertFalse { file ->
+        labScope().files.assertFalse { file ->
             file.imports.any { it.name == "android.util.Log" }
         }
     }
 
     @Test
     fun `no GlobalScope`() {
-        Konsist.scopeFromProject().files.assertFalse { file ->
+        labScope().files.assertFalse { file ->
             file.imports.any { it.name == "kotlinx.coroutines.GlobalScope" }
         }
     }
 
     @Test
     fun `no hardcoded Color outside the theme package`() {
-        Konsist.scopeFromProject()
+        labScope()
             .files
             .filter { !it.path.contains(ARCHITECTURE_TEST_PATH) }
             .filter {
