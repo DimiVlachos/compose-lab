@@ -58,6 +58,8 @@ moodboard/androidApp/                     com.android.application, applicationId
     nav/Routes.kt (Gallery, Boards, Search, PhotoDetail(id), BoardDetail(id), BoardEditor(id) — @Serializable NavKey)
     gallery/GalleryScreen.kt, boards/BoardsScreen.kt, boards/BoardDetailScreen.kt, search/SearchScreen.kt,
     detail/PhotoDetailScreen.kt (Scaffold wrapping shared PhotoDetailContent), share/SharePhoto.kt
+    morph/       copy of composeApp/.../components/imagemorph/ (ImageMorph, MorphBounds, MorphCornerRadius, MorphGate, …),
+                 repackaged; Android-only, iOS uses the native zoom transition
   src/test/…/architecture/  Konsist tests mirroring androidApp/src/test/.../CodingConventionsKonsistTest.kt, scoped to dev.dimvlachos.moodboard
 moodboard/iosApp/
   project.yml              copy of iosApp/project.yml: name Moodboard, deploymentTarget "26.0", bundle dev.dimvlachos.moodboard,
@@ -83,7 +85,7 @@ README.md                 + short "Moodboard" section
 | New board | `.alert` with `TextField` | `AlertDialog` with `OutlinedTextField` |
 | Delete board (action sheet) | `.confirmationDialog`: "Delete board only" / "Delete board and its photos" (destructive) / Cancel | `ModalBottomSheet` with the same two actions |
 | Filter | `.sheet` + `.presentationDetents([.medium, .large])` hosting shared `FilterSheetContent` | `ModalBottomSheet` hosting shared `FilterSheetContent` |
-| Photo detail | push with `.navigationTransition(.zoom(sourceID:in:))`; hosted shared `PhotoDetailContent` under glass toolbar: favorite (`.sensoryFeedback(.selection)`), ShareLink, `Menu` (Add to board, Delete) | `Scaffold` + `TopAppBar` actions (favorite, share, overflow `DropdownMenu`) around shared content |
+| Photo detail | push with `.navigationTransition(.zoom(sourceID:in:))`; hosted shared `PhotoDetailContent` under glass toolbar: favorite (`.sensoryFeedback(.selection)`), ShareLink, `Menu` (Add to board, Delete) | **Container-transform morph** (ported lab `imagemorph/`): grid cell → detail via `sharedBounds` inside a `SharedTransitionLayout` wrapping `NavDisplay`, scope from `LocalNavAnimatedContentScope`; corner radius interpolates (`MorphCornerRadius`), mid-morph taps queued (`MorphGate`); predictive-back swipe seeks the morph back toward the cell. Then `Scaffold` + `TopAppBar` actions (favorite, share, overflow `DropdownMenu`) around shared content |
 | Board detail | SwiftUI grid of members; context menu "Remove from board"; toolbar Edit → board editor sheet | `LazyVerticalGrid` + `DropdownMenu`; Edit → BoardEditor route |
 | Board editor | `.sheet` hosting shared `BoardEditorContent` (name field + all-photos grid with checkmarks) + toolbar Done | same Compose content in a full-screen route |
 | Boards list | `List` with cover thumbnail + count, swipe-to-delete (→ confirmationDialog), `.contextMenu` Rename/Delete, toolbar "+" | `LazyColumn` of `ListItem`s, `ExtendedFloatingActionButton` "New board", long-press menu |
@@ -144,16 +146,17 @@ Actions on a missing id are no-ops.
 ## Decisions deferred to Claude
 - No DI library; `MoodboardGraph` singleton. Board editor edits apply live (no Save/Cancel). Swift language mode 5 (like the lab) to avoid Swift 6 strict-concurrency friction with SKIE types.
 - Photos copied (not shared) from composeApp resources so the modules stay independent.
+- Photo-open motion: same intent, native expression per platform. iOS keeps `.navigationTransition(.zoom)` (system, interactive drag-to-dismiss; the Compose morph can't span the SwiftUI grid and the hosted Compose detail anyway). Android ports the lab morph as a Material container transform; copied, not depended on, so `:moodboard` never pulls in `:composeApp`.
 
 ## Implementation order (fresh session, commit per task)
 1. **Spike, biggest risk first:** scaffolding of both modules, SKIE builds, iOS NavigationStack pushing a hosted Compose `PhotoDetailContent` under a glass toolbar. Verify (a) glass samples the Compose Metal layer, (b) `WindowInsets.safeDrawing` in the hosted view reflects bar heights. If (a) fails, stop and report.
 2. Domain + in-memory repository + seed + tests.
 3. ViewModels + tests.
-4. Android: theme, nav, all screens, share.
+4. Android: theme, nav, all screens, share; then port `imagemorph/` into `android/morph/` and wire it to Nav3 + predictive back.
 5. iOS: tab shell, gallery + context menu + alerts, detail, boards + confirmationDialog, editor sheet, filter sheet, search.
 6. CI steps, Konsist, README.
 
 ## Verification
 - `./gradlew spotlessCheck :moodboard:shared:iosSimulatorArm64Test :moodboard:androidApp:testDebugUnitTest :moodboard:androidApp:assembleDebug`
-- Android: install on S23 Ultra over adb Wi-Fi; check dynamic color follows the wallpaper, predictive back on detail, every menu/dialog/sheet in the table.
+- Android: install on S23 Ultra over adb Wi-Fi; check dynamic color follows the wallpaper, grid→detail morph is smooth both ways, a predictive-back swipe scrubs the morph back toward the cell, a tap mid-morph is queued rather than lost, every menu/dialog/sheet in the table.
 - iOS: `cd moodboard/iosApp && xcodegen && xcodebuild -scheme Moodboard -destination 'platform=iOS Simulator,name=iPhone 17'`; walk the same table on iOS 26: glass tab bar minimizes on scroll, large title collapses, context menu preview lifts, zoom transition, confirmationDialog, detents, bottom search field.
