@@ -4,18 +4,16 @@ Compose Multiplatform components, rebuilt from scratch and recorded as short cli
 
 ## Nav bar (`core/presentation/components/navbar/`)
 
-One bar, five layers that can each be switched on or off. Nothing recomposes while it animates: every animated value is read in the layout or draw phase. The app's demo, `navbar.all`, runs the finished bar; the GIFs below show each layer on its own.
+![](docs/media/navbar.all.gif)
 
-| Layer | What it shows |
-|---|---|
-| ![](docs/media/navbar.indicator.gif) | **Morphing indicator.** The leading and trailing edges run on different springs. |
-| ![](docs/media/navbar.icons.gif) | **Animated icons.** A circular reveal of the filled icon, with a squash and bounce. |
-| ![](docs/media/navbar.scroll.gif) | **Collapse on scroll.** A nested-scroll observer shrinks the bar into a floating pill, and settles it to fully open or fully collapsed on release. |
-| ![](docs/media/navbar.cutout.gif) | **Moving cutout.** A notch cut with `Path.combine`, following the bubble. The notch itself rides a calm, non-bouncing centre while the bubble leans into its travel and bulges on landing. |
-| ![](docs/media/navbar.cutoutmorph.gif) | **Cutout morph.** The notch hugs the bubble as it sinks into the bar, then hands off to an in-bar pill, riding that same calm centre while the bubble leans into its travel and bulges on landing. |
-| ![](docs/media/navbar.action.gif) | **Action button.** A jelly button squirts out of the bar on tabs that have one, and shrinks the bar to make room. |
-| ![](docs/media/navbar.all.gif) | **Everything together.** |
-| ![](docs/media/navbar.recompositions.gif) | **Frames vs recompositions.** Frames climb; the bar recomposes only on a tap. |
+One bar, built from layers that can each be switched on or off; the demo, `navbar.all`, runs them all together. Nothing recomposes while it animates: every animated value is read in the layout or draw phase, so frames climb while the bar recomposes only on a tap.
+
+- **Morphing indicator.** The leading and trailing edges run on different springs.
+- **Animated icons.** A circular reveal of the filled icon, with a squash and bounce.
+- **Collapse on scroll.** A nested-scroll observer shrinks the bar into a floating pill, and settles it to fully open or fully collapsed on release.
+- **Moving cutout.** A notch cut with `Path.combine`, following the bubble. The notch itself rides a calm, non-bouncing centre while the bubble leans into its travel and bulges on landing.
+- **Cutout morph.** The notch hugs the bubble as it sinks into the bar, then hands off to an in-bar pill, riding that same calm centre.
+- **Action button.** A jelly button squirts out of the bar on tabs that have one, and shrinks the bar to make room.
 
 ```kotlin
 val items = listOf(
