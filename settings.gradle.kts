@@ -30,3 +30,7 @@ dependencyResolutionManagement {
 include(":composeApp")
 
 include(":androidApp")
+
+include(":moodboard:shared")
+
+include(":moodboard:androidApp")

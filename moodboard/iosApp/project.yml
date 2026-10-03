@@ -1,0 +1,32 @@
+name: Moodboard
+targets:
+  Moodboard:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - Moodboard
+    info:
+      path: Moodboard/Info.plist
+      properties:
+        CFBundleDisplayName: Moodboard
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.dimvlachos.moodboard
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS: $(inherited) -framework MoodboardShared
+    preBuildScripts:
+      - name: Build Kotlin framework
+        basedOnDependencyAnalysis: false
+        script: |
+          export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home)}"
+          cd "$SRCROOT/../.."
+          ./gradlew :moodboard:shared:embedAndSignAppleFrameworkForXcode
