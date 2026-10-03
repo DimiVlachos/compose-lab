@@ -27,13 +27,18 @@ fun PhotoImage(
     contentScale: ContentScale = ContentScale.Crop,
     maxPixel: Int = GridMaxPixel,
 ) {
-    // Keyed on the photo: a new path shows its cached bitmap at once, never the previous photo.
+    // Keyed on the photo: a new path shows its cached bitmap at once, never the previous photo. A
+    // larger request starts from the grid's copy and sharpens when its own decode lands, so the
+    // morph into the detail never draws an empty placeholder.
+    val photoBytes = MoodboardGraph.photoBytes
     val bitmap =
         remember(path, maxPixel) {
-            mutableStateOf(MoodboardGraph.photoBytes.cached(path, maxPixel))
+            mutableStateOf(photoBytes.cachedOrSmaller(path, maxPixel, smaller = GridMaxPixel))
         }
     LaunchedEffect(path, maxPixel) {
-        if (bitmap.value == null) bitmap.value = MoodboardGraph.photoBytes.bitmap(path, maxPixel)
+        if (photoBytes.cached(path, maxPixel) == null) {
+            photoBytes.bitmap(path, maxPixel)?.let { bitmap.value = it }
+        }
     }
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         bitmap.value?.let {

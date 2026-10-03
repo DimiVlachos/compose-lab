@@ -63,7 +63,11 @@ private fun PhotoCell(
             photo.title,
             Modifier.fillMaxSize()
                 .photoMorphEnd(photo.id, morphScope, MorphEnd.Card)
+                // No ripple, as in the lab's MorphPhotoCard: the photo itself answers the tap by
+                // morphing, and a white wash over it would flash right before the morph starts.
                 .combinedClickable(
+                    interactionSource = null,
+                    indication = null,
                     onClick = { onOpen(photo) },
                     onLongClickLabel = "More options",
                     onLongClick = {

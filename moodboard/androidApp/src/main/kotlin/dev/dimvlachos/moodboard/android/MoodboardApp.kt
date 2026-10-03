@@ -1,5 +1,7 @@
 package dev.dimvlachos.moodboard.android
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
@@ -40,6 +42,8 @@ import dev.dimvlachos.moodboard.android.nav.TopLevelBackStack
 import dev.dimvlachos.moodboard.android.search.SearchScreen
 import dev.dimvlachos.moodboard.android.ui.LocalSharedTransitionScope
 import dev.dimvlachos.moodboard.android.ui.MoodboardNavigationBar
+import dev.dimvlachos.moodboard.morph.MorphBackdropIn
+import dev.dimvlachos.moodboard.morph.MorphBackdropOut
 import dev.dimvlachos.moodboard.morph.rememberMorphGate
 import dev.dimvlachos.moodboard.nav.LiveIdsViewModel
 import dev.dimvlachos.moodboard.ui.theme.MoodboardTheme
@@ -49,6 +53,17 @@ private const val FadeInMs = 220
 private const val FadeOutMs = 90
 
 private val Tabs: List<NavKey> = listOf(Gallery, Boards, Search)
+
+// The photo detail opens over a grid that stays put, its backdrop fading with the morph; on the way
+// back the grid is already underneath and the detail fades off it. Predictive back seeks the same.
+private val ContainerTransform =
+    NavDisplay.transitionSpec {
+        MorphBackdropIn togetherWith ExitTransition.KeepUntilTransitionsFinished
+    } +
+        NavDisplay.popTransitionSpec { EnterTransition.None togetherWith MorphBackdropOut } +
+        NavDisplay.predictivePopTransitionSpec {
+            EnterTransition.None togetherWith MorphBackdropOut
+        }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -89,7 +104,7 @@ fun MoodboardApp() {
                     entry<Gallery> { GalleryScreen(openPhoto, bottomBar) }
                     entry<Boards> { BoardsScreen({ push(BoardDetail(it)) }, bottomBar) }
                     entry<Search> { SearchScreen(openPhoto, bottomBar) }
-                    entry<PhotoDetail> {
+                    entry<PhotoDetail>(metadata = ContainerTransform) {
                         PhotoDetailScreen(it.photoId, it.tab, onBack = toolbarBack)
                     }
                     entry<BoardDetail> {
