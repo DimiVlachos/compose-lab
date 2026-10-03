@@ -5,6 +5,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -30,7 +31,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.android.ui.BoardNameDialog
 import dev.dimvlachos.moodboard.android.ui.DeleteBoardSheet
@@ -42,8 +42,12 @@ import dev.dimvlachos.moodboard.ui.components.PhotoImage
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Unit) {
-    val viewModel = viewModel { BoardsViewModel() }
+fun BoardsScreen(
+    viewModel: BoardsViewModel,
+    listState: LazyListState,
+    onOpenBoard: (String) -> Unit,
+    bottomBar: @Composable () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<BoardSummary?>(null) }
@@ -64,7 +68,7 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
         },
         bottomBar = bottomBar,
     ) { padding ->
-        LazyColumn(contentPadding = padding) {
+        LazyColumn(state = listState, contentPadding = padding) {
             items(state.boards, key = { it.id }) { board ->
                 BoardRow(
                     board = board,

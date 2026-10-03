@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,11 +37,13 @@ fun PhotoGrid(
     onOpen: (Photo) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    state: LazyGridState = rememberLazyGridState(),
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxSize(),
+        state = state,
         contentPadding = contentPadding,
     ) {
         items(photos, key = { it.id }) { photo -> PhotoCell(photo, onOpen, menu) }

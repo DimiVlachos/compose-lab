@@ -12,6 +12,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import dev.dimvlachos.moodboard.MoodboardGraph
 
+/** Big enough for a third of a phone's width at 3x density. */
+const val GridMaxPixel = 512
+
+/** A full-screen photo, with room to zoom. */
+const val DetailMaxPixel = 2048
+
 /** A bundled photo; a neutral tile while it loads or when it's missing. */
 @Composable
 fun PhotoImage(
@@ -19,9 +25,12 @@ fun PhotoImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    maxPixel: Int = GridMaxPixel,
 ) {
     val bitmap by
-        produceState<ImageBitmap?>(null, path) { value = MoodboardGraph.photoBytes.bitmap(path) }
+        produceState<ImageBitmap?>(null, path, maxPixel) {
+            value = MoodboardGraph.photoBytes.bitmap(path, maxPixel)
+        }
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         bitmap?.let {
             Image(it, contentDescription, Modifier.matchParentSize(), contentScale = contentScale)
