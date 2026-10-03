@@ -12,6 +12,7 @@ struct GalleryView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                LargeTitleHeader(title: "Gallery")
                 PhotoGrid(photos: model.state.photos, zoom: zoom) { photo in
                     PhotoMenu(
                         photo: photo,
@@ -31,10 +32,9 @@ struct GalleryView: View {
                     )
                 }
             }
-            // A filtered gallery can fit on screen: then it doesn't scroll, so the large title can't
-            // be left half-collapsed over too little content to settle it (a layout loop).
+            // A filtered gallery can fit on screen: then it simply doesn't scroll.
             .scrollBounceBehavior(.basedOnSize)
-            .navigationTitle("Gallery")
+            .scrollingTitle("Gallery")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Filter", systemImage: "line.3.horizontal.decrease") { filterShown = true }

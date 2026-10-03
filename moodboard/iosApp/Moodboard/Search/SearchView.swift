@@ -9,13 +9,14 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                LargeTitleHeader(title: "Search")
                 PhotoGrid(photos: model.state.results, zoom: zoom) { photo in
                     ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
                 }
             }
-            // Few results fit on screen: then they don't scroll, and the large title can't loop.
+            // Few results fit on screen: then they simply don't scroll.
             .scrollBounceBehavior(.basedOnSize)
-            .navigationTitle("Search")
+            .scrollingTitle("Search")
             .searchable(text: $query, prompt: "Photos and tags")
             .searchSuggestions {
                 ForEach(model.state.suggestions, id: \.self) { tag in
