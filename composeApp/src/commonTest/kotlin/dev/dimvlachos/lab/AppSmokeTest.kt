@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import dev.dimvlachos.lab.core.platform.platformLabel
@@ -66,8 +67,47 @@ class AppSmokeTest {
             }
         }
         runOnUiThread { input.backCompleted() }
-        mainClock.advanceTimeByFrame()
+        // Home slides back in under the demo as it slides off.
+        mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertExists()
+    }
+
+    @Test
+    fun aBackSwipeSlidesTheDemoOffUnderTheFingerAndCanBeCalledOff() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val input = DirectNavigationEventInput()
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(input)
+                onDispose { owner.navigationEventDispatcher.removeInput(input) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                App(initialDemoId = "morph.app", record = false, label = false)
+            }
+        }
+        // Halfway through a swipe, home is back behind the demo, and the demo is still there.
+        runOnUiThread {
+            input.backStarted(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0f))
+            input.backProgressed(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0.5f))
+        }
+        mainClock.advanceTimeBy(100)
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Stop").assertExists()
+        // Called off, it slides back over home, and home is gone again.
+        runOnUiThread { input.backCancelled() }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("compose-lab").assertDoesNotExist()
+        onNodeWithText("Stop").assertExists()
+        // Swiped all the way and let go, it is home.
+        runOnUiThread {
+            input.backStarted(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0f))
+            input.backProgressed(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0.8f))
+            input.backCompleted()
+        }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Stop").assertDoesNotExist()
     }
 
     @Test

@@ -6,6 +6,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 private val LocalAppColors = staticCompositionLocalOf { AppColors() }
 private val LocalSpacing = staticCompositionLocalOf { Spacing() }
+private val LocalMotion = staticCompositionLocalOf { Motion() }
 
 object LabTheme {
     val colors: AppColors
@@ -13,6 +14,9 @@ object LabTheme {
 
     val spacing: Spacing
         @Composable get() = LocalSpacing.current
+
+    val motion: Motion
+        @Composable get() = LocalMotion.current
 
     val shapes: AppShape
         get() = AppShape
@@ -26,6 +30,7 @@ fun LabTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalAppColors provides AppColors(),
         LocalSpacing provides Spacing(),
+        LocalMotion provides Motion(),
     ) {
         content()
     }
