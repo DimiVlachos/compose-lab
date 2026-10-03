@@ -34,13 +34,17 @@ class BoardEditorViewModel(
 
     fun onAction(action: BoardEditorAction) {
         when (action) {
-            is BoardEditorAction.Rename -> repository.renameBoard(boardId, action.name)
-            is BoardEditorAction.Toggle ->
+            // A board always keeps a name; an emptied field leaves the last one in place.
+            is BoardEditorAction.Rename ->
+                if (action.name.isNotBlank()) repository.renameBoard(boardId, action.name.trim())
+            is BoardEditorAction.Toggle -> {
+                val members = repository.boards.value.firstOrNull { it.id == boardId }?.photoIds
                 repository.setMembership(
                     boardId,
                     action.photoId,
-                    member = action.photoId !in state.value.selected,
+                    member = members != null && action.photoId !in members,
                 )
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.architecture
 
 import com.lemonappdev.konsist.api.verify.assertFalse
 import com.lemonappdev.konsist.api.verify.assertTrue
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 // This test class scans the whole project, including itself, so its own source text would
@@ -11,6 +12,13 @@ import org.junit.Test
 private val ARCHITECTURE_TEST_PATH = "src/test/kotlin/dev/dimvlachos/lab/architecture"
 
 class CodingConventionsKonsistTest {
+
+    @Test
+    fun `the scope holds the lab's sources and not Moodboard's`() {
+        val paths = labScope().files.map { it.projectPath }
+        assertTrue(paths.any { it.startsWith("/composeApp/") })
+        assertTrue(paths.none { it.startsWith("/moodboard/") })
+    }
 
     @Test
     fun `no wildcard imports`() {

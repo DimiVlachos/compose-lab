@@ -56,7 +56,8 @@ fun MoodboardApp() {
         val boardsList = rememberLazyListState()
 
         SharedTransitionLayout {
-            // Taps queue behind a morph in flight instead of reversing it. System back is not
+            // Taps and tab switches queue behind a morph in flight instead of cutting it off.
+            // System back is not
             // gated: a predictive-back gesture already owns its transition, so it pops at once.
             val gate = rememberMorphGate()
             val push: (NavKey) -> Unit = { key -> gate { stack.push(key) } }
@@ -65,7 +66,10 @@ fun MoodboardApp() {
                 push(PhotoDetail(id, tab = stack.currentTab.toString()))
             }
             val bottomBar: @Composable () -> Unit = {
-                MoodboardNavigationBar(current = stack.currentTab, onSelect = stack::selectTab)
+                MoodboardNavigationBar(
+                    current = stack.currentTab,
+                    onSelect = { tab -> gate { stack.selectTab(tab) } },
+                )
             }
             CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                 NavDisplay(

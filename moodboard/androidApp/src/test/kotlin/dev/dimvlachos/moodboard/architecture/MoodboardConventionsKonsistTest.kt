@@ -4,6 +4,7 @@ import com.lemonappdev.konsist.api.Konsist
 import com.lemonappdev.konsist.api.container.KoScope
 import com.lemonappdev.konsist.api.verify.assertFalse
 import com.lemonappdev.konsist.api.verify.assertTrue
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 // These rules search source text, and their own literals contain what they ban, so the rule
@@ -11,9 +12,17 @@ import org.junit.Test
 private const val ARCHITECTURE_TEST_PATH = "src/test/kotlin/dev/dimvlachos/moodboard/architecture"
 
 private fun moodboardScope(): KoScope =
-    Konsist.scopeFromProject().slice { it.path.contains("/moodboard/") }
+    Konsist.scopeFromProject().slice { it.projectPath.startsWith("/moodboard/") }
 
 class MoodboardConventionsKonsistTest {
+
+    @Test
+    fun `the scope holds Moodboard's sources and nothing else`() {
+        val paths = moodboardScope().files.map { it.projectPath }
+        assertTrue(paths.any { it.contains("/moodboard/shared/") })
+        assertTrue(paths.any { it.contains("/moodboard/androidApp/") })
+        assertTrue(paths.none { it.startsWith("/composeApp/") })
+    }
 
     @Test
     fun `no wildcard imports`() {

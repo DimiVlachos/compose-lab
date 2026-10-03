@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -29,7 +31,11 @@ fun FilterSheetContent(
     onFilterChange: (PhotoFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // Scrolls, so a long tag list stays reachable at the iOS sheet's medium detent.
+    Column(
+        modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Favorites only",
