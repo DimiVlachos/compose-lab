@@ -25,8 +25,11 @@ import kotlin.math.sqrt
 // (a turn, a shift, maybe a mirror) and a layer in the stack; a fold turns the facets on one side
 // of its crease about it.
 
-/** The sheet every plane is folded from: writing paper's proportions, in sheet units. */
-internal val DartSheet = Size(150f, 100f)
+/**
+ * The sheet every plane is folded from, in sheet units: a little squarer than writing paper, for
+ * broad wings.
+ */
+internal val DartSheet = Size(150f, 120f)
 
 /** A flat move: p' = (a x + b y + tx, c x + d y + ty), a rotation or a mirror plus a shift. */
 internal class Flat(
@@ -125,9 +128,23 @@ internal class FoldPlan(
     val balance: Offset,
     /** How long the folded dart is, from the tail to the nose. */
     val length: Float,
-)
+    /** How far apart its halves stand about the spine once folded, in degrees. */
+    val keelSpread: Float = 0f,
+) {
+    /** The fold down the middle, in the flat stack the last fold starts from: its spine. */
+    val spine: Crease? =
+        folds.indexOfFirst { it.halves }.takeIf { it >= 0 }?.let { folds[it].creases.single() }
 
-internal fun planFolds(sheet: Size): FoldPlan {
+    /** How much of the room each side of each facet sees, once folded: worked out the once. */
+    val lighting: List<Openness> by lazy { openness() }
+}
+
+internal fun planFolds(
+    sheet: Size,
+    keelShare: Float = PaperPlaneDimens.KeelShare,
+    wingOpen: Float = PaperPlaneDimens.WingOpen,
+    keelSpread: Float = PaperPlaneDimens.KeelSpread,
+): FoldPlan {
     val w = sheet.width
     val h = sheet.height / 2f
     val folds = mutableListOf<Fold>()
@@ -157,12 +174,12 @@ internal fun planFolds(sheet: Size): FoldPlan {
             halves = true,
         )
     // From the nose back to the tail, where the keel is deepest.
-    val keelTop = h * (1f - PaperPlaneDimens.KeelShare)
+    val keelTop = h * (1f - keelShare)
     val back = Offset(tail - w, keelTop - h)
     val along = back / back.getDistance()
     // The wing is the paper above the crease, towards the top edge.
     val up = Offset(along.y, -along.x).let { if (it.y > 0f) -it else it }
-    val open = PaperPlaneDimens.WingOpen
+    val open = wingOpen
     folds +=
         Fold(
             listOf(
@@ -172,7 +189,7 @@ internal fun planFolds(sheet: Size): FoldPlan {
         )
     val middle = (tail + w) / 2f
     val balance = Offset(middle, h + (keelTop - h) * (w - middle) / (w - tail))
-    return cut(sheet, folds, balance, w - tail)
+    return cut(sheet, folds, balance, w - tail, keelSpread)
 }
 
 // A facet while the plan is cut: where it lies now, and its history so far.
@@ -186,7 +203,13 @@ private data class Cutting(
     val moves: List<Crease?>,
 )
 
-private fun cut(sheet: Size, folds: List<Fold>, balance: Offset, length: Float): FoldPlan {
+private fun cut(
+    sheet: Size,
+    folds: List<Fold>,
+    balance: Offset,
+    length: Float,
+    keelSpread: Float,
+): FoldPlan {
     var facets =
         listOf(
             Cutting(
@@ -271,6 +294,7 @@ private fun cut(sheet: Size, folds: List<Fold>, balance: Offset, length: Float):
         bottoms,
         balance,
         length,
+        keelSpread,
     )
 }
 

@@ -1,11 +1,15 @@
 package dev.dimvlachos.lab.core.presentation.components.paperplane
 
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.tan
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -165,9 +169,8 @@ class PaperPlaneMathTest {
         assertEquals(0f, pieces[3].tangent(0f).y, 0.01f)
         // Out past the right of the stage at the end.
         assertTrue(path.at(1f).x >= stage.right + 199f)
-        // Level wings as it leaves the button; leaning somewhere on the loop.
-        assertEquals(0f, path.bank(0f), 0.01f)
-        assertTrue((0..100).maxOf { abs(path.bank(it / 100f)) } > 10f)
+        // Leaning somewhere on the loop.
+        assertTrue((0..100).maxOf { abs(path.bank(it / 100f, 2.4f, 0.03f)) } > 10f)
         // It climbs the conversation, and stays on the stage till it leaves on the right.
         val points = (0..100).map { path.at(it / 100f) }
         assertTrue(points.minOf { it.y } < stage.top + 0.6f * stage.height, "too low a loop")
@@ -242,7 +245,7 @@ class PaperPlaneMathTest {
         var leaned = 0
         for (i in 5..95) {
             val t = i / 100f
-            val bank = path.bank(t)
+            val bank = path.bank(t, 2.4f, 0.03f)
             if (abs(bank) < 5f) continue
             leaned++
             val h = path.heading(t).toRadians()
@@ -258,6 +261,99 @@ class PaperPlaneMathTest {
             assertTrue(towards(leaning) > towards(level), "leaning out at $t")
         }
         assertTrue(leaned > 10)
+    }
+
+    @Test
+    fun itBanksAsAGliderDoesLevelOnTheStraightAndSteeperTheFasterItTurns() {
+        val path = wide
+        val pieces = path.pieces
+        // Halfway over the message, flying straight: wings level.
+        val over = (pieces[0].length + pieces[1].length + pieces[2].length / 2f) / path.length
+        assertEquals(0f, path.bank(over, 3f, 0.03f), 0.5f)
+        // Round the loop, tan bank = speed² × curvature / gravity: twice as fast, four times it.
+        val loop = 0.8f * pieces[0].length / path.length
+        val slow = path.bank(loop, 0.1f, 0.001f).toRadians()
+        val fast = path.bank(loop, 0.2f, 0.001f).toRadians()
+        assertTrue(abs(tan(slow)) > 1e-3f, "no lean at all in the loop")
+        assertEquals(4f * tan(slow), tan(fast), 0.02f * abs(tan(fast)))
+        // Never past a glider's steepest.
+        assertEquals(PaperPlaneDimens.MaxBank, abs(path.bank(loop, 100f, 0.01f)), 0.01f)
+    }
+
+    @Test
+    fun pitchedUpItsNoseRisesTowardsTheEyeStillAlongItsHeading() {
+        fun nose(pitch: Float) =
+            Pose(Placement(Offset.Zero, 30f, PaperPlaneDimens.RestRoll, 1f, 1f, pitch = pitch))
+                .direction(Vec3(1f, 0f, 0f))
+        val up = nose(20f)
+        assertEquals(sin(20f.toRadians()), up.z, 1e-4f)
+        assertEquals(30f, atan2(up.y, up.x).toDegrees(), 0.01f)
+        assertTrue(nose(-20f).z < 0f)
+        assertEquals(0f, nose(0f).z, 1e-5f)
+    }
+
+    @Test
+    fun paperStaysWhiteWhicheverWayItTurnsAndShadesOnlyBetweenItsFolds() {
+        val light =
+            Vec3(PaperPlaneDimens.LightX, PaperPlaneDimens.LightY, PaperPlaneDimens.LightZ).unit()
+        // Out in the open, paper flat on the screen is its own colour; turned any way at all, it
+        // is never much darker: the room lights it from every side.
+        assertEquals(0f, brightness(Vec3(0f, 0f, 1f), light), 1e-5f)
+        assertEquals(0f, brightness(Vec3(0f, 0f, -1f), light), 1e-5f)
+        assertTrue(brightness(light, light) > 0f)
+        for (k in 0 until 64) {
+            val a = k * 0.7f
+            val n = Vec3(cos(a) * sin(a * 1.3f), sin(a) * sin(a * 1.3f), cos(a * 1.3f)).unit()
+            assertTrue(brightness(n, light) > -0.25f, "open paper grey at $n")
+        }
+        // Where its own folds stand over it, it falls into shade.
+        assertTrue(brightness(Vec3(0f, 0f, 1f), light, open = 0.5f) < -0.4f)
+        // The dart's open faces see most of the room; the faces inside the V between its folds,
+        // and the keel under its wings, see clearly less of it.
+        val open = plan.lighting.flatMap { listOf(it.front, it.back) }
+        assertTrue(open.max() > 0.9f, "nothing in the open: ${open.max()}")
+        assertTrue(open.min() < 0.7f, "nothing in the folds' shade: ${open.min()}")
+        assertTrue(open.all { it in 0f..1f })
+    }
+
+    @Test
+    fun theIconIsTheDartThatLeavesIt() {
+        val icon = Rect(100f, 100f, 126f, 126f)
+        val placement = iconPlacement(icon)
+        val outline = dartOutline(placement)
+        val left = outline.minOf { it.x }
+        val right = outline.maxOf { it.x }
+        val top = outline.minOf { it.y }
+        val bottom = outline.maxOf { it.y }
+        // In the middle of the icon, and within it.
+        assertEquals(icon.center.x, (left + right) / 2f, 1e-3f)
+        assertEquals(icon.center.y, (top + bottom) / 2f, 1e-3f)
+        assertTrue(right - left <= 26f && bottom - top <= 26f, "${right - left} × ${bottom - top}")
+        // A plane thrown from it starts from just where the dart lies, as long as it is.
+        val takeoff = planeTakeoff(icon)
+        assertEquals(placement.at, takeoff.center)
+        assertEquals(placement.scale * plan.length, takeoff.length, 1e-3f)
+    }
+
+    @Test
+    fun theIconGrowsOnlyAsFarAsTheFieldHasRoomForIt() {
+        // A one-line field, a pill 48 tall, the button's 26-wide icon in the middle of its end.
+        val field = RoundRect(Rect(0f, 0f, 400f, 48f), CornerRadius(24f))
+        val icon = Rect(Offset(376f, 24f), 13f)
+        val room = iconRoom(icon, field, inset = 3f, most = 3f)
+        assertTrue(room > 1f, "no room at all")
+        // At that size its corners touch the inset edge: no further, but nearly.
+        val corners = dartOutline(iconPlacement(icon))
+        fun fits(scale: Float) = corners.all { p ->
+            val q = icon.center + (p - icon.center) * scale
+            RoundRect(Rect(3f, 3f, 397f, 45f), CornerRadius(21f)).contains(q)
+        }
+        assertTrue(fits(room))
+        assertTrue(!fits(room + 0.02f))
+        // Held to the most it may grow, with room to spare; never shrunk, with none.
+        assertEquals(1.1f, iconRoom(icon, field, inset = 3f, most = 1.1f), 1e-4f)
+        val tight = RoundRect(Rect(370f, 18f, 382f, 30f), CornerRadius(6f))
+        assertEquals(1f, iconRoom(icon, tight, inset = 0f, most = 3f), 1e-4f)
     }
 
     @Test

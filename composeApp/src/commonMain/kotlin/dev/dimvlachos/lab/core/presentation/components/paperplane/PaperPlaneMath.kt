@@ -3,7 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.paperplane
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.util.lerp
-import kotlin.math.PI
+import kotlin.math.atan
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -102,24 +102,29 @@ internal class FlightPath(val pieces: List<Cubic>) {
     }
 
     /**
-     * How far the plane leans into its turn, in degrees, the same way round as the heading swings:
-     * with how fast it swings, held to a glider's bank, and level as it leaves the button.
+     * How sharply the throw turns at [t]: radians of heading for each unit along it, the same way
+     * round as the heading swings.
      */
-    fun bank(t: Float): Float {
-        val step = 0.01f
-        val a = heading((t - step).coerceAtLeast(0f))
-        val b = heading((t + step).coerceAtMost(1f))
-        var swing = b - a
+    fun curvature(t: Float): Float {
+        val step = 0.004f
+        val from = (t - step).coerceAtLeast(0f)
+        val to = (t + step).coerceAtMost(1f)
+        var swing = heading(to) - heading(from)
         if (swing > 180f) swing -= 360f
         if (swing < -180f) swing += 360f
-        val rate = swing / (2f * step)
-        val lean =
-            (rate * PaperPlaneDimens.BankPerTurn).coerceIn(
-                -PaperPlaneDimens.MaxBank,
-                PaperPlaneDimens.MaxBank,
-            )
-        return lean * sin(PI.toFloat() * t)
+        return swing.toRadians() / ((to - from) * length)
     }
+
+    /**
+     * How far the plane leans into its turn at [t], going [speed] along it, in degrees, the same
+     * way round as the heading swings: as a glider does, just far enough that its lift holds it in
+     * the turn against [gravity] (tan bank = speed² × curvature / gravity), so it lies level on a
+     * straight and leans the more the faster and tighter it turns, up to its steepest.
+     */
+    fun bank(t: Float, speed: Float, gravity: Float): Float =
+        atan(speed * speed * curvature(t) / gravity)
+            .toDegrees()
+            .coerceIn(-PaperPlaneDimens.MaxBank, PaperPlaneDimens.MaxBank)
 }
 
 /**

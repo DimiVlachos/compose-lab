@@ -83,6 +83,26 @@ class PaperPlaneStateTest {
     }
 
     @Test
+    fun itsNoseFollowsItUpOffTheScreenAndDownToTheMessage() = runComposeUiTest {
+        val planes = planes()
+        runOnUiThread {
+            planes.scope.launch { planes.plane.launch("hello", takeoff, planes.text) { at } }
+        }
+        mainClock.advanceTimeBy(32)
+        val flight = planes.plane.flights.single()
+        // Just as its icon showed it on the button.
+        val off = flight.placement(0f)
+        assertEquals(PaperPlaneDimens.TakeoffPitch, off.pitch, 1f)
+        assertEquals(PaperPlaneDimens.TakeoffRoll, off.roll, 0.01f)
+        // Nose up as it climbs off the screen, down as it comes down to the message, level over it.
+        val approach = (0..100).map { flight.placement(flight.pace.approachMs * it / 100f).pitch }
+        assertTrue(approach.max() > 5f, "never nose up: ${approach.max()}")
+        assertTrue(approach.min() < -5f, "never nose down: ${approach.min()}")
+        assertEquals(0f, flight.placement(flight.pace.overAt(0.5f)).pitch, 0.5f)
+        mainClock.advanceTimeBy(flight.endMs.toLong() + 64L)
+    }
+
+    @Test
     fun itsPlaceOpensAsThePlaneComesDownAndItsBubbleGrowsAsTheLettersLand() = runComposeUiTest {
         val planes = planes()
         runOnUiThread {

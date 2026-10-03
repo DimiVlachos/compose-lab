@@ -16,13 +16,15 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.lerp
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
 
 /** The same placement, its stage moved by [by]: for drawing in a stage that is not the root. */
-internal fun Placement.shiftedBy(by: Offset) = Placement(at + by, heading, roll, scale, eye, lift)
+internal fun Placement.shiftedBy(by: Offset) =
+    Placement(at + by, heading, roll, scale, eye, lift, pitch)
 
 /**
  * Draws a folded dart and its shadow, the dart from the back of the scene to the front, each facet
@@ -42,6 +44,7 @@ internal class DartPainter {
     private var cuts: List<Path> = emptyList()
     private var edges: List<Path> = emptyList()
     private var rest: List<FacetSpace> = emptyList()
+    private var open: List<Openness> = emptyList()
 
     // The paper's grain, lit in steps too fine to see, so a frame reuses the filters of the last;
     // made again if the paper's colours change.
@@ -73,8 +76,7 @@ internal class DartPainter {
             val turned = determinant(view)
             if (abs(turned) < 1e-6f * abs(view[8] * view[8] * view[8])) continue
             val front = turned > 0f
-            val n = space.normal.let { if (it.z < 0f) it * -1f else it }
-            val turn = (n dot light) - light.z
+            val turn = brightness(space.normal, light, open[i].of(front))
             val color = if (front) inside else paper
             matrix.setProjection(view)
             withTransform({ transform(matrix) }) {
@@ -90,40 +92,50 @@ internal class DartPainter {
     }
 
     // The dart's shadow on the stage below it: each corner cast along the light down onto the
-    // screen, the whole of it one outline, so where facets overlap it is no darker. Paper lying
-    // on the screen hides its own; held up off it, the shadow falls away.
+    // screen, the whole of it one outline, so where facets overlap it is no darker. The window is
+    // no point: cast from a ring of places across it as well as its middle, the shadows overlap
+    // into a dark core with a soft edge round it, the wider the higher the paper is off the
+    // screen. Paper lying on the screen hides its own; held up off it, the shadow falls away.
     private fun DrawScope.drawShadow(
         plan: FoldPlan,
         spaces: List<FacetSpace>,
         placement: Placement,
     ) {
         if (placement.lift < 0.5f) return
-        val alongX = -light.x / light.z
-        val alongY = -light.y / light.z
-        shadow.rewind()
-        plan.facets.forEachIndexed { i, facet ->
-            val cast =
-                facet.polygon.map { p ->
-                    val q = spaces[i].at(p)
-                    Offset(q.x + q.z * alongX, q.y + q.z * alongY)
+        // Each cast so faint that all of them over one another are the shadow's own darkness.
+        val alpha = 1f - (1f - PaperPlaneDimens.ShadowAlpha).pow(1f / ShadowCasts)
+        for (cast in 0 until ShadowCasts) {
+            val spread =
+                if (cast == 0) Offset.Zero
+                else {
+                    val a = 2f * PI.toFloat() * (cast - 1) / (ShadowCasts - 1)
+                    Offset(cos(a), sin(a)) * PaperPlaneDimens.WindowSpread
                 }
-            // All one way round, so the overlaps fill once.
-            val corners = if (signedArea(cast) < 0f) cast.asReversed() else cast
-            corners.forEachIndexed { k, c ->
-                if (k == 0) shadow.moveTo(c.x, c.y) else shadow.lineTo(c.x, c.y)
+            val alongX = -light.x / light.z + spread.x
+            val alongY = -light.y / light.z + spread.y
+            shadow.rewind()
+            plan.facets.forEachIndexed { i, facet ->
+                val corners =
+                    facet.polygon.map { p ->
+                        val q = spaces[i].at(p)
+                        Offset(q.x + q.z * alongX, q.y + q.z * alongY)
+                    }
+                // All one way round, so the overlaps fill once.
+                val round = if (signedArea(corners) < 0f) corners.asReversed() else corners
+                round.forEachIndexed { k, c ->
+                    if (k == 0) shadow.moveTo(c.x, c.y) else shadow.lineTo(c.x, c.y)
+                }
+                shadow.close()
             }
-            shadow.close()
+            drawPath(shadow, Color.Black, alpha = alpha)
         }
-        drawPath(shadow, Color.Black, alpha = PaperPlaneDimens.ShadowAlpha)
     }
 
-    // Lit as the paper turns to the light from the window, shaded as it turns away: no change for
-    // paper lying flat on the screen.
+    // Lit [turn] brighter than paper lying flat on the screen: darkened towards black as it turns
+    // from the light, and as it turns to it, its sheen lightening it towards white.
     private fun lit(color: Color, turn: Float): Color {
-        val shade =
-            if (turn < 0f) min(-turn * PaperPlaneDimens.MaxShade, PaperPlaneDimens.MaxShade) else 0f
-        val glow = if (turn > 0f) turn * PaperPlaneDimens.MaxLight else 0f
-        val keep = 1f - shade - glow
+        val keep = if (turn < 0f) 1f + turn else 1f - turn * PaperPlaneDimens.Sheen
+        val glow = if (turn > 0f) turn * PaperPlaneDimens.Sheen else 0f
         return Color(
             color.red * keep + glow,
             color.green * keep + glow,
@@ -149,6 +161,7 @@ internal class DartPainter {
         cuts = plan.facets.map { it.polygon.grown(PaperPlaneDimens.Seam).toPath() }
         edges = plan.facets.map { it.polygon.toPath() }
         rest = plan.folded()
+        open = plan.lighting
     }
 }
 
@@ -165,6 +178,9 @@ private fun determinant(h: FloatArray) =
         h[2] * (h[3] * h[7] - h[4] * h[6])
 
 private const val LightSteps = 64f
+
+// Casts of the dart's shadow, one from the window's middle and the rest from a ring round it.
+private const val ShadowCasts = 5
 
 // Light steps either side of none, for each side of the paper: a turn lies within ±1.5.
 private const val FilterSteps = 256
