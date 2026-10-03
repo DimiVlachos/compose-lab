@@ -37,4 +37,13 @@ class DecodeSampledTest {
         assertNotNull(photoBytes.cached("p", maxPixel = 100))
         assertNull(photoBytes.cached("p", maxPixel = 200))
     }
+
+    @Test
+    fun aLargerRequestFallsBackToTheSmallerCachedBitmap() = runTest {
+        val photoBytes = PhotoBytes(StandardTestDispatcher(testScheduler)) { png(400, 200) }
+        photoBytes.bitmap("p", maxPixel = 100)
+        val fallback = photoBytes.cachedOrSmaller("p", maxPixel = 300, smaller = 100)
+        assertEquals(100, fallback?.width)
+        assertNull(photoBytes.cachedOrSmaller("q", maxPixel = 300, smaller = 100))
+    }
 }

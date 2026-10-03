@@ -48,6 +48,7 @@ fun PhotoDetailContent(
     state: PhotoDetailState,
     modifier: Modifier = Modifier,
     imageModifier: Modifier = Modifier,
+    chromeModifier: Modifier = Modifier,
     contentPadding: PaddingValues = WindowInsets.safeDrawing.asPaddingValues(),
 ) {
     // Once deleted, the screen leaves on the next frame; it keeps showing the photo on the way out
@@ -60,8 +61,9 @@ fun PhotoDetailContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         ZoomablePhoto(photo.path, photo.title, imageModifier)
+        // chromeModifier lets a platform stage the text around the photo's transition.
         Column(
-            Modifier.padding(horizontal = 16.dp),
+            chromeModifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(photo.title, style = MaterialTheme.typography.headlineMedium)

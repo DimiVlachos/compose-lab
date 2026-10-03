@@ -16,4 +16,9 @@ internal object MorphDimens {
 
     // A rising radius outruns the bounds, so a card never lands square.
     const val RiseMs = 200
+
+    // The detail's chrome (bars, text) settles for a beat after the photo has landed, and leaves
+    // fast on a close, so it never sits over the moving photo at full strength.
+    const val ChromeFadeInMs = 1000
+    const val ChromeFadeOutMs = 120
 }

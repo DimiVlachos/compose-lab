@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.android.share.rememberShareLauncher
 import dev.dimvlachos.moodboard.android.ui.BoardNameDialog
@@ -31,6 +32,7 @@ import dev.dimvlachos.moodboard.detail.PhotoDetailContent
 import dev.dimvlachos.moodboard.detail.PhotoDetailViewModel
 import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.morph.MorphEnd
+import dev.dimvlachos.moodboard.morph.morphChrome
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,9 +52,12 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
     state.photo?.let { last[0] = it }
     val photo = last[0] ?: return
 
+    // The photo carries the morph; the bars and text are staged around it, as in the lab.
+    val chrome = Modifier.morphChrome(LocalNavAnimatedContentScope.current)
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = chrome,
                 title = { Text(photo.title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
@@ -103,6 +108,7 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
         PhotoDetailContent(
             state = state,
             imageModifier = Modifier.photoMorphEnd(photo.id, tab, MorphEnd.Detail, 1f),
+            chromeModifier = chrome,
             contentPadding = padding,
         )
     }

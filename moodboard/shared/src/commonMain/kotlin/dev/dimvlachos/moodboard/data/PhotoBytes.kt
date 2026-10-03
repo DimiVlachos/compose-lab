@@ -23,6 +23,13 @@ class PhotoBytes(
     /** A bitmap already decoded at this size, so a returning screen draws it on its first frame. */
     fun cached(path: String, maxPixel: Int): ImageBitmap? = bitmaps["$path@$maxPixel"]
 
+    /**
+     * The bitmap at [maxPixel], or else the same photo at the [smaller] size: a detail opening from
+     * the grid starts with the very pixels its card showed, never an empty frame.
+     */
+    fun cachedOrSmaller(path: String, maxPixel: Int, smaller: Int): ImageBitmap? =
+        cached(path, maxPixel) ?: cached(path, smaller)
+
     /** Decoded so its longer side is at most [maxPixel]: grid cells never hold full images. */
     suspend fun bitmap(path: String, maxPixel: Int): ImageBitmap? {
         cached(path, maxPixel)?.let {
