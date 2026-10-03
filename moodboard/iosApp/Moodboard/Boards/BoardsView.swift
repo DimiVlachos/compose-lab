@@ -11,6 +11,10 @@ struct BoardsView: View {
     var body: some View {
         NavigationStack {
             List {
+                LargeTitleHeader(title: "Boards")
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 ForEach(model.state.boards) { board in
                     NavigationLink(value: BoardRoute(id: board.id)) {
                         BoardRow(board: board)
@@ -28,7 +32,8 @@ struct BoardsView: View {
                     }
                 }
             }
-            .navigationTitle("Boards")
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollingTitle("Boards")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("New Board", systemImage: "plus") {
