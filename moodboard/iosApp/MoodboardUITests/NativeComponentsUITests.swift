@@ -1,0 +1,81 @@
+import XCTest
+
+/// Walks every native component once. Set SCREENSHOT_DIR to also save a PNG at each step.
+final class NativeComponentsUITests: XCTestCase {
+    private let app = XCUIApplication()
+
+    override func setUp() {
+        continueAfterFailure = false
+        app.launch()
+    }
+
+    func testGalleryDetailMenusAndSheets() {
+        let firstPhoto = app.scrollViews.firstMatch.buttons.firstMatch
+        XCTAssertTrue(firstPhoto.waitForExistence(timeout: 10))
+        snap("gallery")
+
+        firstPhoto.tap()
+        XCTAssertTrue(app.navigationBars["Santorini"].waitForExistence(timeout: 5))
+        snap("detail")
+        app.navigationBars.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Add to Board"].waitForExistence(timeout: 3))
+        snap("detail-menu")
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.alerts["Delete photo?"].waitForExistence(timeout: 3))
+        snap("delete-alert")
+        app.alerts.buttons["Cancel"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        let secondPhoto = app.scrollViews.firstMatch.buttons.element(boundBy: 1)
+        XCTAssertTrue(secondPhoto.waitForExistence(timeout: 5))
+        secondPhoto.press(forDuration: 1.0)
+        XCTAssertTrue(app.buttons["Favorite"].waitForExistence(timeout: 3))
+        snap("context-menu")
+        app.buttons["Add to Board"].tap()
+        XCTAssertTrue(app.buttons["New Board…"].waitForExistence(timeout: 3))
+        snap("context-submenu")
+        app.buttons["New Board…"].tap()
+        XCTAssertTrue(app.alerts["New Board"].waitForExistence(timeout: 3))
+        snap("new-board-alert")
+        app.alerts.buttons["Cancel"].tap()
+
+        app.navigationBars.buttons["Filter"].tap()
+        XCTAssertTrue(app.staticTexts["Favorites only"].waitForExistence(timeout: 5))
+        snap("filter-sheet")
+        app.swipeDown(velocity: .fast)
+    }
+
+    func testBoardsAndSearch() {
+        app.tabBars.buttons["Boards"].tap()
+        let blue = app.staticTexts["Blue"]
+        XCTAssertTrue(blue.waitForExistence(timeout: 5))
+        snap("boards")
+        app.cells.containing(.staticText, identifier: "Blue").firstMatch.swipeLeft()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Delete Board Only"].waitForExistence(timeout: 3))
+        snap("delete-board-dialog")
+        // iOS 26 presents it as a popover with no Cancel button; a tap outside dismisses it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75)).tap()
+
+        blue.tap()
+        XCTAssertTrue(app.navigationBars["Blue"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Edit"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Board"].waitForExistence(timeout: 5))
+        snap("board-editor")
+        app.navigationBars["Edit Board"].buttons["Done"].tap()
+
+        app.tabBars.buttons["Search"].tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("nemo")
+        snap("search")
+    }
+
+    private func snap(_ name: String) {
+        guard let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] else { return }
+        Thread.sleep(forTimeInterval: 0.6)
+        let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+        try? XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
+    }
+}
