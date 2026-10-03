@@ -3,7 +3,11 @@ package dev.dimvlachos.moodboard.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithTag
@@ -55,8 +59,44 @@ class SharedContentTest {
         setContent { PhotoDetailContent(PhotoDetailState(santorini, boards, isDeleted = false)) }
         onNodeWithText("Santorini").assertExists()
         onNodeWithText("sea").assertExists()
-        onNodeWithText("In Blue").assertExists()
-        onNodeWithText("In Other").assertDoesNotExist()
+        onNodeWithText("Blue").assertExists()
+        onNodeWithText("Other").assertDoesNotExist()
+    }
+
+    @Test
+    fun photoDetailTagsAndBoardsAreLabelsNotButtons() = runComposeUiTest {
+        val boards = listOf(Board("blue", "Blue", listOf("santorini")))
+        setContent { PhotoDetailContent(PhotoDetailState(santorini, boards, isDeleted = false)) }
+        onNodeWithText("sea").assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+        onNodeWithText("Blue").assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+    }
+
+    @Test
+    fun photoDetailHidesTheBoardsSectionWhenInNone() = runComposeUiTest {
+        setContent {
+            PhotoDetailContent(PhotoDetailState(santorini, emptyList(), isDeleted = false))
+        }
+        onNodeWithText("Tags").assertExists()
+        onNodeWithText("Boards").assertDoesNotExist()
+    }
+
+    @Test
+    fun filterSheetHasATitle() = runComposeUiTest {
+        setContent { FilterSheetContent(PhotoFilter(), allTags = emptyList(), onFilterChange = {}) }
+        onNodeWithText("Filter").assertExists()
+    }
+
+    @Test
+    fun boardEditorTilesReportTheirSelection() = runComposeUiTest {
+        val mykonos = santorini.copy(id = "mykonos", title = "Mykonos")
+        setContent {
+            BoardEditorContent(
+                BoardEditorState("Blue", listOf(santorini, mykonos), selected = setOf("santorini")),
+                onAction = {},
+            )
+        }
+        onNodeWithTag("photo-santorini").assertIsOn()
+        onNodeWithTag("photo-mykonos").assertIsOff()
     }
 
     @Test

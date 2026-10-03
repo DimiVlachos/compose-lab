@@ -1,6 +1,8 @@
 package dev.dimvlachos.moodboard.boards
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -10,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,12 +30,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.ui.components.PhotoImage
-
-private const val UnselectedAlpha = 0.55f
 
 /** Rename a board and pick its photos; every change applies immediately. */
 @Composable
@@ -62,27 +69,63 @@ fun BoardEditorContent(
             )
         }
         items(state.photos, key = { it.id }) { photo ->
-            val selected = photo.id in state.selected
-            Box(
-                Modifier.padding(2.dp)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onAction(BoardEditorAction.Toggle(photo.id)) }
-                    .testTag("photo-${photo.id}")
-            ) {
-                PhotoImage(
-                    photo.path,
-                    photo.title,
-                    Modifier.fillMaxSize().graphicsLayer {
-                        alpha = if (selected) 1f else UnselectedAlpha
-                    },
-                )
-                Checkbox(
-                    checked = selected,
-                    onCheckedChange = null,
-                    modifier = Modifier.align(Alignment.TopEnd),
-                )
-            }
+            EditorTile(
+                photo = photo,
+                selected = photo.id in state.selected,
+                onToggle = { onAction(BoardEditorAction.Toggle(photo.id)) },
+            )
         }
     }
 }
+
+/**
+ * A photo that shrinks into its tile and shows a filled check when picked, as in Google Photos; a
+ * checkbox on top of the photo got lost on bright pictures.
+ */
+@Composable
+private fun EditorTile(photo: Photo, selected: Boolean, onToggle: () -> Unit) {
+    val inset by animateDpAsState(if (selected) SelectedInset else 0.dp)
+    Box(
+        Modifier.padding(2.dp)
+            .aspectRatio(1f)
+            .clip(TileShape)
+            .background(
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+            )
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
+            .testTag("photo-${photo.id}")
+    ) {
+        PhotoImage(
+            photo.path,
+            photo.title,
+            Modifier.fillMaxSize().padding(inset).clip(TileShape),
+        )
+        CheckMark(selected, Modifier.align(Alignment.TopStart).padding(6.dp))
+    }
+}
+
+/** A filled circle with a tick when [selected]; an empty ring, legible on any photo, when not. */
+@Composable
+private fun CheckMark(selected: Boolean, modifier: Modifier = Modifier) {
+    val fill = MaterialTheme.colorScheme.primary
+    val tick = MaterialTheme.colorScheme.onPrimary
+    Canvas(modifier.size(24.dp)) {
+        val radius = size.minDimension / 2
+        if (selected) {
+            drawCircle(fill, radius)
+            val path =
+                Path().apply {
+                    moveTo(size.width * 0.28f, size.height * 0.52f)
+                    lineTo(size.width * 0.44f, size.height * 0.67f)
+                    lineTo(size.width * 0.73f, size.height * 0.36f)
+                }
+            drawPath(path, tick, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        } else {
+            drawCircle(Color.Black.copy(alpha = 0.25f), radius)
+            drawCircle(Color.White, radius - 1.dp.toPx(), style = Stroke(2.dp.toPx()))
+        }
+    }
+}
+
+private val SelectedInset = 10.dp
+private val TileShape = RoundedCornerShape(8.dp)

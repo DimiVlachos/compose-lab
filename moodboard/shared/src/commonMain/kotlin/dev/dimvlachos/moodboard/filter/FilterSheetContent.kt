@@ -33,9 +33,12 @@ fun FilterSheetContent(
 ) {
     // Scrolls, so a long tag list stays reachable at the iOS sheet's medium detent.
     Column(
-        modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier
+            .verticalScroll(rememberScrollState())
+            .padding(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Text("Filter", style = MaterialTheme.typography.titleLarge)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Favorites only",
