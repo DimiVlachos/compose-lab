@@ -13,6 +13,8 @@ struct SearchView: View {
                     ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
                 }
             }
+            // Few results fit on screen: then they don't scroll, and the large title can't loop.
+            .scrollBounceBehavior(.basedOnSize)
             .navigationTitle("Search")
             .searchable(text: $query, prompt: "Photos and tags")
             .searchSuggestions {
