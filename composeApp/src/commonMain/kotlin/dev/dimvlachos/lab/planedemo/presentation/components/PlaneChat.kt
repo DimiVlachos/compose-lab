@@ -13,6 +13,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.text.TextLayoutResult
 import dev.dimvlachos.lab.core.presentation.components.paperplane.LetterStream
 import dev.dimvlachos.lab.core.presentation.components.paperplane.PaperPlaneState
@@ -67,8 +68,15 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
     var heldHeight by mutableIntStateOf(0)
         private set
 
-    /** Where the send button lies in the root, as laid out, before it gulps or grows. */
+    /** Where the send button lies in the root, as laid out, before it grows. */
     var button: Rect by mutableStateOf(Rect.Zero)
+
+    /** The field the button sits in, its outline in the root: the button grows no further. */
+    var field: RoundRect by mutableStateOf(RoundRect.Zero)
+
+    /** Letters gone into the button since its last plane left: it grows with each. */
+    var swallowed by mutableIntStateOf(0)
+        private set
 
     /** Sends whose letters are still going into the button: it stays while there are any. */
     var pouring by mutableIntStateOf(0)
@@ -97,10 +105,11 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
     }
 
     /**
-     * Sends what is typed: its letters go into the button's glyph, at [icon] within the button,
-     * [arrived] for each; its place is kept at the foot of the conversation, and the glyph's plane
-     * flies them there and drops them into it. Nothing for a blank message. Returns once the last
-     * letter lies in its place; a send stopped on its way takes its message back with it.
+     * Sends what is typed: its letters go into the button's dart, at [icon] within the button,
+     * which [grown] says how much bigger it has grown with them; its place is kept at the foot of
+     * the conversation, and the dart, as big as it has grown, lifts off as the plane that flies
+     * them there and drops them into it. Nothing for a blank message. Returns once the last letter
+     * lies in its place; a send stopped on its way takes its message back with it.
      */
     suspend fun send(
         text: String,
@@ -109,7 +118,7 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
         plane: PaperPlaneState,
         list: LazyListState,
         cleared: () -> Unit,
-        arrived: () -> Unit,
+        grown: () -> Float,
     ) {
         val line = text.trim()
         val layout = draftLayout()
@@ -127,7 +136,7 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
                 // cleared, and the button with it.
                 val pour = launch {
                     try {
-                        letters.pour(layout, from, { icon(button).center }, arrived, shown)
+                        letters.pour(layout, from, { icon(button).center }, { swallowed++ }, shown)
                     } finally {
                         pouring--
                         if (pouring == 0) heldHeight = 0
@@ -142,7 +151,8 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
                 // Scrolled up the conversation, it comes back down to see the plane land.
                 launch { list.animateScrollToItem(0) }
                 pour.join()
-                val takeoff = planeTakeoff(icon(button))
+                val takeoff = planeTakeoff(icon(button).grownBy(grown()))
+                swallowed = 0
                 iconAway++
                 launch {
                     try {
@@ -178,3 +188,10 @@ internal class PlaneChat(seed: List<Pair<String, Boolean>>) {
             }
     }
 }
+
+// The same box, [scale] times the size about its middle.
+private fun Rect.grownBy(scale: Float) =
+    Rect(
+        center - Offset(width, height) * (scale / 2f),
+        center + Offset(width, height) * (scale / 2f),
+    )

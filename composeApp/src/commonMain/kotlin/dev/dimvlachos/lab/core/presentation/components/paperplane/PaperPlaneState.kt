@@ -22,6 +22,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.util.lerp
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -32,17 +33,14 @@ import kotlinx.coroutines.withContext
 
 /**
  * Where a plane leaves from: its middle at [center], nose [heading] degrees clockwise from the
- * right, [length] long from tail to nose; the glyph on a send button, as [planeTakeoff] gives it.
+ * right, [length] long from tail to nose; the dart on a send button, as [planeTakeoff] gives it.
  */
 @Immutable class Takeoff(val center: Offset, val heading: Float, val length: Float)
 
-/** Where the glyph drawn by a [PaperPlaneIcon] laid out at [iconBounds] (in the root) lies. */
+/** Where the dart drawn by a [PaperPlaneIcon] laid out at [iconBounds] (in the root) lies. */
 fun planeTakeoff(iconBounds: Rect): Takeoff =
     Takeoff(
-        Offset(
-            iconBounds.left + iconBounds.width * PaperPlaneDimens.IconMiddleX,
-            iconBounds.top + iconBounds.height * PaperPlaneDimens.IconMiddleY,
-        ),
+        iconPlacement(iconBounds).at,
         PaperPlaneDimens.IconHeading,
         iconBounds.width * PaperPlaneDimens.IconLength,
     )
@@ -77,7 +75,9 @@ internal constructor(
      */
     internal suspend fun prepare() {
         withContext(planning) {
-            if (plan == null) plan = planFolds(DartSheet)
+            if (plan == null) plan = dartPlan
+            dartPlan.lighting
+            dartOutline(iconPlacement(Rect(0f, 0f, 1f, 1f)))
             paperGrain
         }
     }
@@ -148,7 +148,7 @@ internal class Flight(
     /** What its letters are drawn from. */
     val letters = LetterAtlas(text)
 
-    // The plane's size: tail to nose, the glyph's to begin with.
+    // The plane's size: tail to nose, the icon's dart's to begin with.
     private val fullScale = PaperPlaneDimens.PlaneLength * density / plan.length
     private val startScale = takeoff.length / plan.length
 
@@ -225,7 +225,7 @@ internal class Flight(
         ((ms - firstLands) / (lastLands - firstLands)).coerceIn(0f, 1f)
 
     /**
-     * Where the plane is [ms] after the throw: along the throw, growing from the glyph it left as
+     * Where the plane is [ms] after the throw: along the throw, growing from the icon it left as
      * and turning from flat to its flying roll, rising off the screen and leaning into its turns,
      * down low over the message and up again as it leaves.
      */
@@ -239,32 +239,77 @@ internal class Flight(
         fun wobble(amount: Float, hz: Float, phase: Float) =
             grown * amount * sin(2f * PI.toFloat() * hz * seconds + phase)
         val roll =
-            // Its roll runs the other way to its heading: leaning into a turn takes the roll back
+            // Its roll runs the other way to its bank: leaning into a turn takes the roll back
             // towards level on the inside of it.
-            lerp(PaperPlaneDimens.TakeoffRoll, PaperPlaneDimens.RestRoll, grown) - path.bank(t) +
+            lerp(PaperPlaneDimens.TakeoffRoll, PaperPlaneDimens.RestRoll, grown) -
+                grown * leanAt(ms) +
                 wobble(PaperPlaneDimens.WobbleRoll, 1.3f, 0.4f) +
                 wobble(PaperPlaneDimens.WobbleRoll * 0.4f, 2.9f, 1.7f)
         val heading = path.heading(t) + wobble(PaperPlaneDimens.WobbleYaw, 0.9f, 1.1f)
         val h = heading.toRadians()
         val across = Offset(-sin(h), cos(h))
         val drift = wobble(PaperPlaneDimens.WobbleDrift * density, 1.7f, 2.3f)
+        val lift = liftAt(s) * density
         return Placement(
             path.at(t) + across * drift,
             heading,
             roll,
             scale,
-            PaperPlaneDimens.Eye * density,
-            liftAt(s) * density,
+            // Seen close up on the button, as its icon was, the eye that close kept as close to
+            // the plane, never the stage, so as it rises it never comes up into it; eased back to
+            // its own distance over the stage as it grows.
+            lerp(
+                lift + PaperPlaneDimens.IconEye * scale * plan.length,
+                PaperPlaneDimens.Eye * density,
+                grown,
+            ),
+            lift,
+            // Nose up and away as its icon showed it, swung round to the way it is going as soon
+            // as it is thrown.
+            lerp(PaperPlaneDimens.TakeoffPitch, climbAt(s), ease(ms / PaperPlaneDimens.SwingMs)),
         )
     }
 
-    // Up off the screen over the loop, down to skim the message, and up a little as it leaves.
+    // How fast it goes along the throw at [ms], in pixels a millisecond.
+    private fun speedAt(ms: Float): Float {
+        val from = (ms - 1f).coerceAtLeast(0f)
+        return (pace.distance(ms + 1f) - pace.distance(from)) / (ms + 1f - from)
+    }
+
+    // Its bank at [ms]: a plane takes a moment to roll into a turn and out of it, so it leans as
+    // the turn it has been in over the last little while asked it to.
+    private fun leanAt(ms: Float): Float {
+        val gravity = PaperPlaneDimens.Gravity * density
+        var sum = 0f
+        for (i in 0 until RollSamples) {
+            val then = (ms - PaperPlaneDimens.RollLagMs * i / (RollSamples - 1)).coerceAtLeast(0f)
+            val t = (pace.distance(then) / path.length).coerceIn(0f, 1f)
+            sum += path.bank(t, speedAt(then), gravity)
+        }
+        return sum / RollSamples
+    }
+
+    // How steeply it climbs off the screen or comes down to it at [s] along the throw, in degrees:
+    // its nose goes the way it is going, up towards the eye as it rises, down as it sinks.
+    private fun climbAt(s: Float): Float {
+        val step = 2f * density
+        val rise = (liftAt(s + step) - liftAt((s - step).coerceAtLeast(0f))) * density
+        return atan2(rise, s + step - (s - step).coerceAtLeast(0f)).toDegrees()
+    }
+
+    // Thrown up off the screen towards the eye, steeply at first, then gliding down the rest of
+    // the loop to skim the message, and up a little as it leaves.
     private fun liftAt(s: Float): Float {
         val approach = pace.approach
         if (s < approach) {
             val q = s / approach
-            return PaperPlaneDimens.SkimLift * ease(q) +
-                PaperPlaneDimens.FlightLift * sin(PI.toFloat() * q)
+            val top = PaperPlaneDimens.ClimbShare
+            if (q < top) return PaperPlaneDimens.FlightLift * ease(q / top)
+            return lerp(
+                PaperPlaneDimens.FlightLift,
+                PaperPlaneDimens.SkimLift,
+                ease((q - top) / (1f - top)),
+            )
         }
         val out = s - approach - pace.sweep
         if (out <= 0f) return PaperPlaneDimens.SkimLift
@@ -290,3 +335,6 @@ internal fun rememberPaperPlaneState(planning: CoroutineContext): PaperPlaneStat
     LaunchedEffect(state) { state.prepare() }
     return state
 }
+
+// The moments a bank is averaged over, from now back to the roll's lag.
+private const val RollSamples = 6
