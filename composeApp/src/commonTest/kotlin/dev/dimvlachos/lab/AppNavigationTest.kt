@@ -63,4 +63,38 @@ class AppNavigationTest {
         assertNull(navigation.group)
         assertFalse(navigation.canGoBack)
     }
+
+    @Test
+    fun eachScreenKnowsTheOneBackLeadsTo() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        assertEquals(AppScreen.Home, navigation.screen)
+        assertNull(navigation.backScreen)
+        navigation.openGroup(folder)
+        assertEquals(AppScreen.Folder(folder), navigation.screen)
+        assertEquals(AppScreen.Home, navigation.backScreen)
+        val version = folder.demos.first()
+        navigation.openDemo(version)
+        assertEquals(AppScreen.Open(version, folder), navigation.screen)
+        assertEquals(AppScreen.Folder(folder), navigation.backScreen)
+    }
+
+    @Test
+    fun theRecordedDemoHasNothingBehindIt() {
+        assertNull(AppNavigation(initialDemo = morphApp, record = true).backScreen)
+    }
+
+    @Test
+    fun goingDeeperPushesAndGoingBackPops() {
+        val version = folder.demos.first()
+        val home = AppScreen.Home
+        val inFolder = AppScreen.Folder(folder)
+        val fromFolder = AppScreen.Open(version, folder)
+        val fromHome = AppScreen.Open(morphApp, null)
+        assertTrue(inFolder.pushesOver(home))
+        assertTrue(fromFolder.pushesOver(inFolder))
+        assertTrue(fromHome.pushesOver(home))
+        assertFalse(home.pushesOver(inFolder))
+        assertFalse(inFolder.pushesOver(fromFolder))
+        assertFalse(home.pushesOver(fromHome))
+    }
 }
