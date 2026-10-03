@@ -30,3 +30,25 @@ targets:
           export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home)}"
           cd "$SRCROOT/../.."
           ./gradlew :moodboard:shared:embedAndSignAppleFrameworkForXcode
+  MoodboardUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - MoodboardUITests
+    dependencies:
+      - target: Moodboard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.dimvlachos.moodboard.uitests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Moodboard:
+    build:
+      targets:
+        Moodboard: all
+        MoodboardUITests: [test]
+    test:
+      targets:
+        - MoodboardUITests
