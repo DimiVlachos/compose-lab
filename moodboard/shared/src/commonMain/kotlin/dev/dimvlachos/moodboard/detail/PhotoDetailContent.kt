@@ -15,9 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,16 +64,43 @@ fun PhotoDetailContent(
         ZoomablePhoto(photo.path, photo.title, imageModifier)
         // chromeModifier lets a platform stage the text around the photo's transition.
         Column(
-            chromeModifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            chromeModifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(photo.title, style = MaterialTheme.typography.headlineMedium)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                photo.tags.sorted().forEach { AssistChip(onClick = {}, label = { Text(it) }) }
+            LabelSection("Tags", photo.tags.sorted())
+            val boards = state.boards.filter { photo.id in it.photoIds }.map { it.name }
+            if (boards.isNotEmpty()) LabelSection("Boards", boards)
+        }
+    }
+}
+
+/** A small heading over a row of pills. Plain labels: there is nothing to tap here. */
+@Composable
+private fun LabelSection(title: String, labels: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            labels.forEach { label ->
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Text(
+                        label,
+                        Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
-            state.boards
-                .filter { photo.id in it.photoIds }
-                .forEach { Text("In ${it.name}", style = MaterialTheme.typography.bodyLarge) }
         }
     }
 }
