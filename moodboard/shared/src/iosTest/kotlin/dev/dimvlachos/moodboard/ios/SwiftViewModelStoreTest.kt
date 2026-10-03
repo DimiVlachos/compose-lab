@@ -30,8 +30,12 @@ class SwiftViewModelStoreTest : MainDispatcherTest() {
         val before = detail.state.value.photo?.isFavorite
         store.clear()
         MoodboardGraph.repository.toggleFavorite("hydra")
-        assertEquals(before, detail.state.value.photo?.isFavorite)
-        MoodboardGraph.repository.toggleFavorite("hydra")
+        try {
+            assertEquals(before, detail.state.value.photo?.isFavorite)
+        } finally {
+            // The graph is process-wide: put it back even when the assertion fails.
+            MoodboardGraph.repository.toggleFavorite("hydra")
+        }
     }
 }
 

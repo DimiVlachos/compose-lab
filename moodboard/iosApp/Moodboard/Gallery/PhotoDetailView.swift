@@ -30,11 +30,12 @@ struct PhotoDetailView: View {
                             send(PhotoDetailActionToggleFavorite.shared)
                         }
                         .sensoryFeedback(.selection, trigger: photo.isFavorite)
-                        ShareLink(item: SharedPhoto(path: photo.path), preview: SharePreview(photo.title))
+                        ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
                         Menu("More", systemImage: "ellipsis") {
                             PhotoMenu(
                                 photo: photo,
                                 boards: model.state.boards,
+                                showsShare: false,
                                 onToggleFavorite: { send(PhotoDetailActionToggleFavorite.shared) },
                                 onSetMembership: { boardId, member in
                                     send(PhotoDetailActionSetMembership(boardId: boardId, member: member))

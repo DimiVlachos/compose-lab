@@ -12,9 +12,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 
 /**
  * One end of the photo container transform (Android only; iOS uses the system zoom). Both ends pass
- * the same [photoId]; only the detail end passes an [overlayZIndex], so on a close the card
- * composing underneath never covers the shrinking detail. The ends rest at different radii and each
- * travels to the other's, so their corners agree on every frame.
+ * the same [photoId] and [scope]. The scope (a tab) keeps a photo shown in two tabs' grids from
+ * pairing across them on a tab switch. Only the detail end passes an [overlayZIndex], so on a close
+ * the card composing underneath never covers the shrinking detail. The ends rest at different radii
+ * and each travels to the other's, so their corners agree on every frame.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -22,11 +23,12 @@ fun Modifier.photoMorph(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     photoId: String,
+    scope: String,
     end: MorphEnd,
     overlayZIndex: Float = 0f,
 ): Modifier =
     with(sharedTransitionScope) {
-        val sharedContentState = rememberSharedContentState(morphKey(photoId))
+        val sharedContentState = rememberSharedContentState(morphKey("$scope/$photoId"))
         val radius =
             rememberMorphCornerRadius(
                 animatedVisibilityScope = animatedVisibilityScope,

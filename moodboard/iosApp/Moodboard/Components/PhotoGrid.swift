@@ -22,8 +22,7 @@ struct PhotoGrid<Menu: View>: View {
                 .contextMenu {
                     menu(photo)
                 } preview: {
-                    PhotoThumb(path: photo.path, maxPixel: 1000, contentMode: .fit)
-                        .frame(width: 320, height: 400)
+                    PhotoPreview(path: photo.path)
                 }
             }
         }

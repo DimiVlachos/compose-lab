@@ -5,13 +5,17 @@ import SwiftUI
 struct PhotoMenu: View {
     let photo: Photo
     let boards: [Board]
+    /// Off where the screen already has its own share button.
+    var showsShare = true
     let onToggleFavorite: () -> Void
     let onSetMembership: (_ boardId: String, _ member: Bool) -> Void
     let onNewBoard: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        ShareLink(item: SharedPhoto(path: photo.path), preview: SharePreview(photo.title))
+        if showsShare {
+            ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
+        }
         Button(
             photo.isFavorite ? "Unfavorite" : "Favorite",
             systemImage: photo.isFavorite ? "heart.slash" : "heart",

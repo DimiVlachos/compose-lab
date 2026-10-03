@@ -10,7 +10,7 @@ struct SearchView: View {
         NavigationStack {
             ScrollView {
                 PhotoGrid(photos: model.state.results, zoom: zoom) { photo in
-                    ShareLink(item: SharedPhoto(path: photo.path), preview: SharePreview(photo.title))
+                    ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
                 }
             }
             .navigationTitle("Search")

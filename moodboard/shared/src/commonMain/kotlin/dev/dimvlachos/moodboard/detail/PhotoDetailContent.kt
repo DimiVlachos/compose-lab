@@ -29,7 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.ui.components.DetailMaxPixel
 import dev.dimvlachos.moodboard.ui.components.PhotoImage
 
@@ -48,10 +51,10 @@ fun PhotoDetailContent(
     contentPadding: PaddingValues = WindowInsets.safeDrawing.asPaddingValues(),
 ) {
     // Once deleted, the screen leaves on the next frame; it keeps showing the photo on the way out
-    // instead of going blank.
-    var shown by remember { mutableStateOf(state.photo) }
-    state.photo?.let { shown = it }
-    val photo = shown ?: return
+    // instead of going blank. A plain holder, not snapshot state: nothing should recompose on it.
+    val last = remember { LastPhoto() }
+    state.photo?.let { last.photo = it }
+    val photo = last.photo ?: return
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -72,14 +75,22 @@ fun PhotoDetailContent(
     }
 }
 
-/** Pinch to zoom up to 4x and pan while zoomed; double-tap toggles 2.5x. */
+private class LastPhoto {
+    var photo: Photo? = null
+}
+
+/**
+ * Pinch to zoom up to 4x and pan while zoomed, never past the photo's own edges; double-tap toggles
+ * 2.5x.
+ */
 @Composable
 private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
     val transform = rememberTransformableState { zoom, pan, _ ->
         scale = (scale * zoom).coerceIn(1f, MaxZoom)
-        offset = if (scale > 1f) offset + pan else Offset.Zero
+        offset = if (scale > 1f) (offset + pan).clampedTo(size, scale) else Offset.Zero
     }
     PhotoImage(
         path = path,
@@ -89,6 +100,7 @@ private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
             modifier
                 .fillMaxWidth()
                 .aspectRatio(4f / 5f)
+                .onSizeChanged { size = it }
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onDoubleTap = {
@@ -105,4 +117,11 @@ private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
                     translationY = offset.y
                 },
     )
+}
+
+/** The farthest a photo scaled by [scale] about its centre can move before showing an edge. */
+private fun Offset.clampedTo(size: IntSize, scale: Float): Offset {
+    val maxX = size.width * (scale - 1f) / 2f
+    val maxY = size.height * (scale - 1f) / 2f
+    return Offset(x.coerceIn(-maxX, maxX), y.coerceIn(-maxY, maxY))
 }

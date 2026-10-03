@@ -7,7 +7,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,7 +26,6 @@ fun BoardDetailScreen(
 ) {
     val viewModel = viewModel { BoardDetailViewModel(boardId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.isDeleted) { if (state.isDeleted) onBack() }
 
     Scaffold(
         topBar = {
@@ -44,6 +42,7 @@ fun BoardDetailScreen(
     ) { padding ->
         PhotoGrid(
             photos = state.photos,
+            morphScope = "Boards",
             onOpen = { onOpenPhoto(it.id) },
             contentPadding = padding,
         ) { photo, dismiss ->
