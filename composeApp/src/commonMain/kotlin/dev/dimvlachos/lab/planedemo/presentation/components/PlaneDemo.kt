@@ -44,6 +44,7 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -53,8 +54,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -81,6 +84,7 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.paperplane.LetterStage
 import dev.dimvlachos.lab.core.presentation.components.paperplane.PaperPlane
 import dev.dimvlachos.lab.core.presentation.components.paperplane.PaperPlaneIcon
+import dev.dimvlachos.lab.core.presentation.components.paperplane.iconRoom
 import dev.dimvlachos.lab.core.presentation.components.paperplane.planeLanding
 import dev.dimvlachos.lab.core.presentation.components.paperplane.rememberLetterStream
 import dev.dimvlachos.lab.core.presentation.components.paperplane.rememberPaperPlaneState
@@ -95,6 +99,7 @@ import dev.dimvlachos.lab.resources.chat_seed_3
 import dev.dimvlachos.lab.resources.chat_seed_4
 import dev.dimvlachos.lab.resources.chat_send
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
@@ -104,11 +109,12 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
-// The send button is a bare glyph, but a thumb's width to tap; the text stops short of it, there
+// The send button is a bare dart, but a thumb's width to tap; the text stops short of it, there
 // or not, so nothing typed ever runs under it.
 private val TouchTarget = 48.dp
 private val IconSize = 26.dp
-private val FieldShape = RoundedCornerShape(24.dp)
+private val FieldCorner = 24.dp
+private val FieldShape = RoundedCornerShape(FieldCorner)
 private val FieldPadding = PaddingValues(start = 18.dp, top = 12.dp, bottom = 12.dp)
 private val ButtonRoom = TouchTarget + 4.dp
 
@@ -118,8 +124,11 @@ private const val FieldMaxLines = 4
 private const val CompactFieldLines = 2
 private val CompactHeight = 480.dp
 
-// As each letter goes in, the button takes it with a small gulp.
-private const val Gulp = 0.14f
+// As each letter goes in, the button grows by this share of its size, and holds it till its plane
+// leaves: never more than this, nor past this far inside the field's edge.
+private const val GrowPerLetter = 0.03f
+private const val MostGrow = 1.6f
+private val FieldInset = 3.dp
 
 /**
  * A chat whose messages are sent as paper planes: the send button appears with the first letter
@@ -144,28 +153,32 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
     val letters = rememberLetterStream()
     val list = rememberLazyListState()
     val tap = remember { TapDot() }
-    val gulp = remember { Animatable(0f) }
+    val grow = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     // A replay or a recording is the script's to play: a hand on the field would type over it.
     val scripted = state.replay || state.recording
     val send: suspend () -> Unit = {
         chat.send(
             field.text.toString(),
-            ::glyphIn,
+            ::iconAt,
             letters,
             plane,
             list,
             cleared = { field.clearText() },
-            arrived = {
-                scope.launch {
-                    gulp.snapTo(1f)
-                    gulp.animateTo(
-                        0f,
-                        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-                    )
-                }
-            },
+            grown = { grow.value },
         )
+    }
+    // A step bigger with each letter it takes, each with a little gulp, up to the room the field
+    // has for it; back to its size once its plane is away.
+    val inset = with(LocalDensity.current) { FieldInset.toPx() }
+    val size by remember {
+        derivedStateOf {
+            val room = iconRoom(iconAt(chat.button), chat.field, inset, MostGrow)
+            min(1f + GrowPerLetter * chat.swallowed, room)
+        }
+    }
+    LaunchedEffect(size) {
+        grow.animateTo(size, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
     }
     DisposableEffect(state, chat) {
         state.setSendHandler { text, typing ->
@@ -261,7 +274,7 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
                 fieldScroll,
                 chat,
                 tap,
-                gulp = { gulp.value },
+                grow = { grow.value },
                 lines = lines,
                 enabled = !scripted,
                 onSend = { scope.launch { send() } },
@@ -269,12 +282,12 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
             )
         }
         LetterStage(letters, Modifier.fillMaxSize())
-        PaperPlane(plane, colors.accent, Modifier.fillMaxSize())
+        PaperPlane(plane, colors.paper, Modifier.fillMaxSize())
     }
 }
 
-// Where the glyph lies in the send button laid out at [button]: in its middle, its size.
-private fun glyphIn(button: Rect): Rect =
+// Where the icon lies in the send button laid out at [button]: in its middle, its size.
+private fun iconAt(button: Rect): Rect =
     Rect(button.center, button.width * (IconSize / TouchTarget) / 2f)
 
 // A plain field across the foot of the chat; the send button sits in its right-hand end once
@@ -286,7 +299,7 @@ private fun MessageField(
     scroll: ScrollState,
     chat: PlaneChat,
     tap: TapDot,
-    gulp: () -> Float,
+    grow: () -> Float,
     lines: Int,
     enabled: Boolean,
     onSend: () -> Unit,
@@ -306,6 +319,7 @@ private fun MessageField(
             if (chat.iconAway > 0) tween(0) else spring(Spring.DampingRatioMediumBouncy),
         )
     val held = with(LocalDensity.current) { chat.heldHeight.toDp() }
+    val fieldCorner = with(LocalDensity.current) { FieldCorner.toPx() }
     Box(
         modifier
             .fillMaxWidth()
@@ -313,6 +327,13 @@ private fun MessageField(
             // Held as tall as it was while the letters go in, then down to what it holds now.
             .animateContentSize()
             .heightIn(min = held)
+            .onGloballyPositioned {
+                chat.field =
+                    RoundRect(
+                        Rect(it.positionInRoot(), it.size.toSize()),
+                        CornerRadius(fieldCorner),
+                    )
+            }
             .clip(FieldShape)
             .background(colors.surface)
     ) {
@@ -367,10 +388,10 @@ private fun MessageField(
         Box(
             Modifier.align(Alignment.CenterEnd)
                 .size(TouchTarget)
-                // Where the button is laid out, before it grows in or gulps: where its glyph is.
+                // Where the button is laid out, before it grows: where its dart is.
                 .onGloballyPositioned { chat.button = Rect(it.positionInRoot(), it.size.toSize()) }
                 .graphicsLayer {
-                    val s = shown * (1f + Gulp * gulp())
+                    val s = shown * grow()
                     scaleX = s
                     scaleY = s
                     alpha = shown.coerceIn(0f, 1f)
@@ -382,7 +403,7 @@ private fun MessageField(
             contentAlignment = Alignment.Center,
         ) {
             PaperPlaneIcon(
-                colors.accent,
+                colors.paper,
                 modifier =
                     Modifier.size(IconSize).graphicsLayer {
                         scaleX = iconIn

@@ -30,8 +30,8 @@ internal class Vec3(val x: Float, val y: Float, val z: Float) {
 
 /**
  * Where the plane is: its balance point [at] on the stage and [lift] up off it towards the eye,
- * nose [heading] degrees clockwise from the right, [roll] degrees about its length, [scale] its
- * size. The eye stands [eye] in front of the stage.
+ * nose [heading] degrees clockwise from the right and [pitch] degrees up towards the eye, [roll]
+ * degrees about its length, [scale] its size. The eye stands [eye] in front of the stage.
  */
 internal class Placement(
     val at: Offset,
@@ -40,6 +40,7 @@ internal class Placement(
     val scale: Float,
     val eye: Float,
     val lift: Float = 0f,
+    val pitch: Float = 0f,
 )
 
 /** A facet in space: the sheet's point (x, y) is at [origin] + x [u] + y [v]. */
@@ -110,9 +111,23 @@ internal fun FoldPlan.space(facet: Facet, fold: Float, placement: Placement): Fa
         val axis = Vec3(crease.side.y, -crease.side.x, 0f)
         return turn(point, Vec3(crease.at.x, crease.at.y, hinge), axis, angle)
     }
-    val o = local(Offset.Zero)
-    val u = local(Offset(1f, 0f)) - o
-    val v = local(Offset(0f, 1f)) - o
+    // Creased, paper springs back a little: once the last fold is under way, the two halves of the
+    // sheet open apart about its spine, the fold down the middle, each taking its wing with it.
+    val last = folds.size - 1
+    val spine = spine
+    fun relaxed(p: Offset): Vec3 {
+        val point = local(p)
+        if (k != last || spine == null) return point
+        val middle = (top[last] + bottom[last]) / 2f
+        val upper = facet.layers[last] > middle
+        val angle = (if (upper) -1f else 1f) * keelSpread / 2f * progress
+        val axis = Vec3(spine.along.x, spine.along.y, 0f)
+        val through = Vec3(spine.at.x, spine.at.y, middle * PaperPlaneDimens.Thickness)
+        return turn(point, through, axis, angle)
+    }
+    val o = relaxed(Offset.Zero)
+    val u = relaxed(Offset(1f, 0f)) - o
+    val v = relaxed(Offset(0f, 1f)) - o
     val b = Vec3(balance.x, balance.y, 0f)
     return Pose(placement).place(FacetSpace(o - b, u, v))
 }
@@ -128,12 +143,15 @@ internal fun FoldPlan.folded(): List<FacetSpace> = facets.map {
 private val AtRest = Placement(Offset.Zero, 0f, 0f, 1f, 1f)
 
 /**
- * A [Placement] as a move in space: turned about its length by the roll, then to its heading,
- * sized, and set at its place, its turns worked out once for every point it moves.
+ * A [Placement] as a move in space: turned about its length by the roll, its nose tipped up by the
+ * pitch, then turned to its heading, sized, and set at its place, its turns worked out once for
+ * every point it moves.
  */
 internal class Pose(placement: Placement) {
     private val cr = cos(placement.roll.toRadians())
     private val sr = sin(placement.roll.toRadians())
+    private val cp = cos(placement.pitch.toRadians())
+    private val sp = sin(placement.pitch.toRadians())
     private val ch = cos(placement.heading.toRadians())
     private val sh = sin(placement.heading.toRadians())
     private val scale = placement.scale
@@ -141,14 +159,33 @@ internal class Pose(placement: Placement) {
 
     fun direction(p: Vec3): Vec3 {
         val y = p.y * cr - p.z * sr
-        val z = p.y * sr + p.z * cr
-        return Vec3((p.x * ch - y * sh) * scale, (p.x * sh + y * ch) * scale, z * scale)
+        val rolled = p.y * sr + p.z * cr
+        val x = p.x * cp - rolled * sp
+        val z = p.x * sp + rolled * cp
+        return Vec3((x * ch - y * sh) * scale, (x * sh + y * ch) * scale, z * scale)
     }
 
     fun point(p: Vec3): Vec3 = direction(p) + shift
 
     fun place(space: FacetSpace) =
         FacetSpace(point(space.origin), direction(space.u), direction(space.v))
+}
+
+/**
+ * Which rigid part of the folded dart each facet is in: the keel, or a wing. Each part is one flat
+ * stack of paper; the keel's two halves, standing apart about the spine, are a part each.
+ */
+internal fun FoldPlan.parts(): List<Int> {
+    val last = folds.size - 1
+    val middle = (top[last] + bottom[last]) / 2f
+    return facets.map { facet ->
+        val wing = folds[last].creases.indexOf(facet.moves[last]) + 1
+        if (wing == 0 && keelSpread != 0f && facet.layers[last] > middle) {
+            folds[last].creases.size + 1
+        } else {
+            wing
+        }
+    }
 }
 
 /**
@@ -160,7 +197,7 @@ internal class Pose(placement: Placement) {
  */
 internal fun FoldPlan.drawOrder(spaces: List<FacetSpace>, eye: Vec3): List<Int> {
     val last = folds.size - 1
-    val parts = facets.map { facet -> folds[last].creases.indexOf(facet.moves[last]) + 1 }
+    val parts = parts()
     val middles = facets.mapIndexed { i, facet -> spaces[i].at(facet.middle) }
     val depth =
         parts.distinct().associateWith { part ->
