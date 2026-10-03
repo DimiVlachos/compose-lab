@@ -1,6 +1,10 @@
 package dev.dimvlachos.moodboard.nav
 
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.navigation3.runtime.NavKey
 import dev.dimvlachos.moodboard.android.nav.BoardDetail
+import dev.dimvlachos.moodboard.android.nav.BoardEditor
 import dev.dimvlachos.moodboard.android.nav.Boards
 import dev.dimvlachos.moodboard.android.nav.Gallery
 import dev.dimvlachos.moodboard.android.nav.PhotoDetail
@@ -12,11 +16,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TopLevelBackStackTest {
-    private val stack = TopLevelBackStack(Gallery)
+    private val gallery = mutableStateListOf<NavKey>(Gallery)
+    private val boards = mutableStateListOf<NavKey>(Boards)
+    private val search = mutableStateListOf<NavKey>(Search)
+    private val stack =
+        TopLevelBackStack(
+            start = Gallery,
+            stacks = mapOf(Gallery to gallery, Boards to boards, Search to search),
+            current = mutableStateOf(Gallery),
+        )
 
     @Test
     fun `starts on the start tab`() {
-        assertEquals(listOf(Gallery), stack.backStack.toList())
+        assertEquals(listOf(Gallery), stack.visible)
         assertEquals(Gallery, stack.currentTab)
     }
 
@@ -24,39 +36,33 @@ class TopLevelBackStackTest {
     fun `pushing the key already on top is ignored`() {
         stack.push(PhotoDetail("naxos", "Gallery"))
         stack.push(PhotoDetail("naxos", "Gallery"))
-        assertEquals(listOf(Gallery, PhotoDetail("naxos", "Gallery")), stack.backStack.toList())
+        assertEquals(listOf(Gallery, PhotoDetail("naxos", "Gallery")), gallery.toList())
     }
 
     @Test
-    fun `nav display sees the start tab then the current tab`() {
-        stack.push(PhotoDetail("naxos", "Gallery"))
-        stack.selectTab(Search)
-        assertEquals(
-            listOf(Gallery, PhotoDetail("naxos", "Gallery"), Search),
-            stack.backStack.toList(),
-        )
+    fun `pushes land on the current tab's stack`() {
         stack.selectTab(Boards)
-        assertEquals(
-            listOf(Gallery, PhotoDetail("naxos", "Gallery"), Boards),
-            stack.backStack.toList(),
-        )
+        stack.push(BoardDetail("blue"))
+        assertEquals(listOf(Boards, BoardDetail("blue")), boards.toList())
+        assertEquals(listOf(Gallery), gallery.toList())
     }
 
     @Test
-    fun `returning to the start tab shows only its stack`() {
+    fun `visible keys are the start tab then the current tab`() {
         stack.push(PhotoDetail("naxos", "Gallery"))
         stack.selectTab(Search)
+        assertEquals(listOf(Gallery, PhotoDetail("naxos", "Gallery"), Search), stack.visible)
         stack.selectTab(Gallery)
-        assertEquals(listOf(Gallery, PhotoDetail("naxos", "Gallery")), stack.backStack.toList())
+        assertEquals(listOf(Gallery, PhotoDetail("naxos", "Gallery")), stack.visible)
     }
 
     @Test
-    fun `a tab keeps its position across switches`() {
+    fun `a tab keeps its stack across switches`() {
         stack.selectTab(Boards)
         stack.push(BoardDetail("blue"))
         stack.selectTab(Gallery)
         stack.selectTab(Boards)
-        assertEquals(BoardDetail("blue"), stack.backStack.last())
+        assertEquals(BoardDetail("blue"), stack.visible.last())
     }
 
     @Test
@@ -64,7 +70,7 @@ class TopLevelBackStackTest {
         stack.selectTab(Boards)
         stack.push(BoardDetail("blue"))
         assertTrue(stack.pop())
-        assertEquals(Boards, stack.backStack.last())
+        assertEquals(listOf(Boards), boards.toList())
     }
 
     @Test
@@ -72,20 +78,33 @@ class TopLevelBackStackTest {
         stack.selectTab(Search)
         assertTrue(stack.pop())
         assertEquals(Gallery, stack.currentTab)
-        assertEquals(listOf(Gallery), stack.backStack.toList())
+        assertEquals(listOf(Search), search.toList())
     }
 
     @Test
     fun `back from the start tab's root is not handled`() {
         assertFalse(stack.pop())
-        assertEquals(listOf(Gallery), stack.backStack.toList())
+        assertEquals(listOf(Gallery), gallery.toList())
     }
 
     @Test
-    fun `the same photo opened from two tabs gets two distinct entries`() {
+    fun `screens for deleted photos and boards leave every tab`() {
         stack.push(PhotoDetail("naxos", "Gallery"))
+        stack.selectTab(Boards)
+        stack.push(BoardDetail("blue"))
+        stack.push(BoardEditor("blue"))
         stack.selectTab(Search)
-        stack.push(PhotoDetail("naxos", "Search"))
-        assertEquals(stack.backStack.size, stack.backStack.toSet().size)
+        stack.push(PhotoDetail("milos", "Search"))
+        stack.prune(photoIds = setOf("milos"), boardIds = setOf("islands"))
+        assertEquals(listOf(Gallery), gallery.toList())
+        assertEquals(listOf(Boards), boards.toList())
+        assertEquals(listOf(Search, PhotoDetail("milos", "Search")), search.toList())
+    }
+
+    @Test
+    fun `tab roots are never pruned`() {
+        stack.prune(photoIds = emptySet(), boardIds = emptySet())
+        assertEquals(listOf(Gallery), gallery.toList())
+        assertEquals(listOf(Boards), boards.toList())
     }
 }

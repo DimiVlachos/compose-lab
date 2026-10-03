@@ -18,7 +18,9 @@ navigationEvent = "1.0.1"
 spotless = "8.9.0"
 skie = "0.10.15"
 navigation3 = "1.2.0"
+# Android-only (Moodboard): lifts androidx lifecycle to 2.11 on Android; iOS stays on `lifecycle`.
 lifecycleNavigation3 = "2.11.0"
+# Moodboard's Material 3 Expressive APIs aren't in CMP's material3 yet. Bump with composeMultiplatform.
 material3Expressive = "1.11.0-alpha07"
 kotlinxSerialization = "1.11.0"
 

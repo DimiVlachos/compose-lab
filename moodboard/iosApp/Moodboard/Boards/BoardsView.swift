@@ -41,13 +41,8 @@ struct BoardsView: View {
             .nameAlert("New Board", isPresented: $creating, name: $name, confirm: "Create") {
                 send(BoardsActionCreate(name: $0))
             }
-            .nameAlert(
-                "Rename Board",
-                isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
-                name: $name,
-                confirm: "Rename"
-            ) { newName in
-                if let board = renaming { send(BoardsActionRename(id: board.id, name: newName)) }
+            .nameAlert("Rename Board", item: $renaming, name: $name, confirm: "Rename") { board, newName in
+                send(BoardsActionRename(id: board.id, name: newName))
             }
             .confirmationDialog(
                 "Delete “\(deleting?.name ?? "")”?",

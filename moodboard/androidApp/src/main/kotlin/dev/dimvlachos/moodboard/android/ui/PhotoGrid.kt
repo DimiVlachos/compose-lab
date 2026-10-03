@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,19 +32,18 @@ import dev.dimvlachos.moodboard.ui.components.PhotoImage
 @Composable
 fun PhotoGrid(
     photos: List<Photo>,
+    morphScope: String,
     onOpen: (Photo) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    state: LazyGridState = rememberLazyGridState(),
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxSize(),
-        state = state,
         contentPadding = contentPadding,
     ) {
-        items(photos, key = { it.id }) { photo -> PhotoCell(photo, onOpen, menu) }
+        items(photos, key = { it.id }) { photo -> PhotoCell(photo, morphScope, onOpen, menu) }
     }
 }
 
@@ -54,6 +51,7 @@ fun PhotoGrid(
 @Composable
 private fun PhotoCell(
     photo: Photo,
+    morphScope: String,
     onOpen: (Photo) -> Unit,
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
@@ -64,9 +62,10 @@ private fun PhotoCell(
             photo.path,
             photo.title,
             Modifier.fillMaxSize()
-                .photoMorphEnd(photo.id, MorphEnd.Card)
+                .photoMorphEnd(photo.id, morphScope, MorphEnd.Card)
                 .combinedClickable(
                     onClick = { onOpen(photo) },
+                    onLongClickLabel = "More options",
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         menuOpen = true

@@ -61,13 +61,24 @@ class GalleryViewModel(private val repository: MoodboardRepository = MoodboardGr
     }
 }
 
-private fun galleryState(photos: List<Photo>, boards: List<Board>, filter: PhotoFilter) =
-    GalleryState(
-        photos = photos.filtered(filter),
+/**
+ * A selected tag whose photos are all gone drops out of the filter: its chip disappears from the
+ * sheet, so it could never be cleared, and the gallery would stay empty.
+ */
+private fun galleryState(
+    photos: List<Photo>,
+    boards: List<Board>,
+    filter: PhotoFilter,
+): GalleryState {
+    val allTags = photos.flatMap { it.tags }.distinct().sorted()
+    val effective = filter.copy(tags = filter.tags intersect allTags.toSet())
+    return GalleryState(
+        photos = photos.filtered(effective),
         boards = boards,
-        filter = filter,
-        allTags = photos.flatMap { it.tags }.distinct().sorted(),
+        filter = effective,
+        allTags = allTags,
     )
+}
 
 /** Tags match any selected tag; no tags selected means no tag filter. */
 private fun List<Photo>.filtered(filter: PhotoFilter): List<Photo> {

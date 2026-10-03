@@ -16,7 +16,7 @@ struct BoardDetailView: View {
     var body: some View {
         ScrollView {
             PhotoGrid(photos: model.state.photos, zoom: zoom) { photo in
-                ShareLink(item: SharedPhoto(path: photo.path), preview: SharePreview(photo.title))
+                ShareLink(item: SharedPhoto(path: photo.path, title: photo.title), preview: SharePreview(photo.title))
                 Button("Remove from Board", systemImage: "minus.circle", role: .destructive) {
                     model.viewModel.onAction(action: BoardDetailActionRemove(photoId: photo.id))
                 }

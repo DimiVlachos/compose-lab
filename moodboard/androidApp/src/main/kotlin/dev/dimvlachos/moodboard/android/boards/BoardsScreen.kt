@@ -5,7 +5,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -23,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +31,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.android.ui.BoardNameDialog
 import dev.dimvlachos.moodboard.android.ui.DeleteBoardSheet
@@ -42,16 +43,15 @@ import dev.dimvlachos.moodboard.ui.components.PhotoImage
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun BoardsScreen(
-    viewModel: BoardsViewModel,
-    listState: LazyListState,
-    onOpenBoard: (String) -> Unit,
-    bottomBar: @Composable () -> Unit,
-) {
+fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Unit) {
+    val viewModel = viewModel { BoardsViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var creating by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<BoardSummary?>(null) }
-    var deleting by remember { mutableStateOf<BoardSummary?>(null) }
+    // Ids, saved: an open dialog or sheet survives rotation.
+    var creating by rememberSaveable { mutableStateOf(false) }
+    var renamingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val renaming = state.boards.firstOrNull { it.id == renamingId }
+    val deleting = state.boards.firstOrNull { it.id == deletingId }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -68,13 +68,13 @@ fun BoardsScreen(
         },
         bottomBar = bottomBar,
     ) { padding ->
-        LazyColumn(state = listState, contentPadding = padding) {
+        LazyColumn(contentPadding = padding) {
             items(state.boards, key = { it.id }) { board ->
                 BoardRow(
                     board = board,
                     onOpen = { onOpenBoard(board.id) },
-                    onRename = { renaming = board },
-                    onDelete = { deleting = board },
+                    onRename = { renamingId = board.id },
+                    onDelete = { deletingId = board.id },
                 )
             }
         }
@@ -98,9 +98,9 @@ fun BoardsScreen(
             initialName = board.name,
             onConfirm = {
                 viewModel.onAction(BoardsAction.Rename(board.id, it))
-                renaming = null
+                renamingId = null
             },
-            onDismiss = { renaming = null },
+            onDismiss = { renamingId = null },
         )
     }
     deleting?.let { board ->
@@ -108,9 +108,9 @@ fun BoardsScreen(
             boardName = board.name,
             onDelete = { deletePhotos ->
                 viewModel.onAction(BoardsAction.Delete(board.id, deletePhotos))
-                deleting = null
+                deletingId = null
             },
-            onDismiss = { deleting = null },
+            onDismiss = { deletingId = null },
         )
     }
 }
@@ -136,6 +136,7 @@ private fun BoardRow(
             modifier =
                 Modifier.combinedClickable(
                     onClick = onOpen,
+                    onLongClickLabel = "More options",
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         menuOpen = true

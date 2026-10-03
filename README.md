@@ -185,7 +185,7 @@ PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 A second app in the repo: one Kotlin codebase that feels native on each platform instead of looking the same on both. It's a photo moodboard (gallery, boards, search) over the same bundled photos.
 
 - **iOS** is a SwiftUI shell with real iOS 26 Liquid Glass: a glass tab bar that shrinks on scroll, a bottom search field, glass toolbars, the system zoom transition, context menus with lifted previews, alerts, a confirmation dialog and detent sheets. Grids and lists are SwiftUI, so large titles collapse and the menus attach to native views.
-- **Android** is Compose with Material 3 Expressive and wallpaper-based dynamic color, Navigation 3 with predictive back, long-press menus, dialogs and bottom sheets. A photo opens through the profile gallery's container transform, ported from `imagemorph/`.
+- **Android** is Compose with Material 3 Expressive and wallpaper-based dynamic color, Navigation 3 with predictive back, long-press menus, dialogs and bottom sheets. A photo opens through the profile gallery's container transform, ported from `imagemorph/` into `moodboard/shared/.../morph` (shared so its tests keep running on the iOS simulator; only Android calls it). Each tab keeps its own back stack and state, as an iOS `TabView` does.
 - **Shared** (`moodboard/shared`): the in-memory repository, one MVI ViewModel per screen, and three Compose screens hosted inside SwiftUI on iOS (photo detail, filter sheet, board editor). SwiftUI observes the ViewModels through [SKIE](https://skie.touchlab.co); the toolbar and the hosted Compose content share one ViewModel, so they never disagree.
 
 | Feature | iOS | Android |

@@ -68,4 +68,12 @@ class GalleryViewModelTest : MainDispatcherTest() {
         viewModel.onAction(GalleryAction.Delete("naxos"))
         assertTrue(state.photos.none { it.id == "naxos" })
     }
+
+    @Test
+    fun `a selected tag whose photos are all gone stops filtering`() {
+        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("comic"))))
+        repository.deleteBoard("little-nemo", deletePhotos = true)
+        assertEquals(emptySet(), state.filter.tags)
+        assertEquals(12, state.photos.size)
+    }
 }

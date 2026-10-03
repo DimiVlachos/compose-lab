@@ -46,15 +46,8 @@ struct GalleryView: View {
                     .presentationDetents([.medium, .large])
             }
             .deletePhotoAlert($deleting) { send(GalleryActionDelete(id: $0.id)) }
-            .nameAlert(
-                "New Board",
-                isPresented: Binding(get: { newBoardFor != nil }, set: { if !$0 { newBoardFor = nil } }),
-                name: $newBoardName,
-                confirm: "Create"
-            ) { name in
-                if let photo = newBoardFor {
-                    send(GalleryActionCreateBoardWith(photoId: photo.id, name: name))
-                }
+            .nameAlert("New Board", item: $newBoardFor, name: $newBoardName, confirm: "Create") { photo, name in
+                send(GalleryActionCreateBoardWith(photoId: photo.id, name: name))
             }
         }
         .task { await model.observe() }

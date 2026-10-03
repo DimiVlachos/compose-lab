@@ -39,10 +39,38 @@ final class NativeComponentsUITests: XCTestCase {
         snap("new-board-alert")
         app.alerts.buttons["Cancel"].tap()
 
+        // Confirm paths: a new board from the context menu shows up in Boards.
+        app.scrollViews.firstMatch.buttons.element(boundBy: 2).press(forDuration: 1.0)
+        XCTAssertTrue(app.buttons["Add to Board"].waitForExistence(timeout: 3))
+        app.buttons["Add to Board"].tap()
+        app.buttons["New Board…"].tap()
+        let nameField = app.alerts["New Board"].textFields.firstMatch
+        XCTAssertTrue(nameField.waitForExistence(timeout: 3))
+        nameField.typeText("Cliffs")
+        app.alerts["New Board"].buttons["Create"].tap()
+
         app.navigationBars.buttons["Filter"].tap()
         XCTAssertTrue(app.staticTexts["Favorites only"].waitForExistence(timeout: 5))
         snap("filter-sheet")
         app.swipeDown(velocity: .fast)
+
+        app.tabBars.buttons["Boards"].tap()
+        XCTAssertTrue(app.staticTexts["Cliffs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1 photos"].exists)
+    }
+
+    func testDeletingAPhotoFromItsDetailPopsBack() {
+        let photos = app.scrollViews.firstMatch.buttons
+        XCTAssertTrue(photos.firstMatch.waitForExistence(timeout: 10))
+        let before = photos.count
+        photos.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Santorini"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["More"].tap()
+        app.buttons["Delete"].tap()
+        app.alerts["Delete photo?"].buttons["Delete"].tap()
+        XCTAssertTrue(app.navigationBars["Gallery"].waitForExistence(timeout: 5))
+        XCTAssertEqual(photos.count, before - 1)
+        XCTAssertFalse(app.navigationBars["Santorini"].exists)
     }
 
     func testBoardsAndSearch() {

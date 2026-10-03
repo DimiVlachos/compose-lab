@@ -18,6 +18,7 @@ extension BoardSummary: @retroactive Identifiable {}
 /// A photo for the system share sheet; the bytes load only once the person picks a target.
 struct SharedPhoto: Transferable {
     let path: String
+    let title: String
 
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .jpeg) { photo in
@@ -26,5 +27,6 @@ struct SharedPhoto: Transferable {
             }
             return data
         }
+        .suggestedFileName { "\($0.title).jpg" }
     }
 }

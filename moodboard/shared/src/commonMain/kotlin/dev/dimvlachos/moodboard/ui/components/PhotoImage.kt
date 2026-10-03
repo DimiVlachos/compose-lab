@@ -5,8 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import dev.dimvlachos.moodboard.MoodboardGraph
@@ -26,12 +27,16 @@ fun PhotoImage(
     contentScale: ContentScale = ContentScale.Crop,
     maxPixel: Int = GridMaxPixel,
 ) {
-    val bitmap by
-        produceState(MoodboardGraph.photoBytes.cached(path, maxPixel), path, maxPixel) {
-            value = MoodboardGraph.photoBytes.bitmap(path, maxPixel)
+    // Keyed on the photo: a new path shows its cached bitmap at once, never the previous photo.
+    val bitmap =
+        remember(path, maxPixel) {
+            mutableStateOf(MoodboardGraph.photoBytes.cached(path, maxPixel))
         }
+    LaunchedEffect(path, maxPixel) {
+        if (bitmap.value == null) bitmap.value = MoodboardGraph.photoBytes.bitmap(path, maxPixel)
+    }
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
-        bitmap?.let {
+        bitmap.value?.let {
             Image(it, contentDescription, Modifier.matchParentSize(), contentScale = contentScale)
         }
     }
