@@ -30,6 +30,12 @@ class PhotoDetailViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun `create board holds this photo`() {
+        viewModel.onAction(PhotoDetailAction.CreateBoard("Sunsets"))
+        assertEquals(listOf("santorini"), state.boards.single { it.name == "Sunsets" }.photoIds)
+    }
+
+    @Test
     fun `delete marks the screen deleted`() {
         viewModel.onAction(PhotoDetailAction.Delete)
         assertTrue(state.isDeleted)

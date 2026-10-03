@@ -58,6 +58,12 @@ class GalleryViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun `remove from board takes the photo out`() {
+        viewModel.onAction(GalleryAction.RemoveFromBoard("santorini", "blue"))
+        assertTrue("santorini" !in state.boards.single { it.id == "blue" }.photoIds)
+    }
+
+    @Test
     fun `delete removes the photo`() {
         viewModel.onAction(GalleryAction.Delete("naxos"))
         assertTrue(state.photos.none { it.id == "naxos" })

@@ -26,6 +26,8 @@ sealed interface GalleryAction {
 
     data class AddToBoard(val photoId: String, val boardId: String) : GalleryAction
 
+    data class RemoveFromBoard(val photoId: String, val boardId: String) : GalleryAction
+
     data class CreateBoardWith(val photoId: String, val name: String) : GalleryAction
 
     data class Delete(val id: String) : GalleryAction
@@ -50,6 +52,8 @@ class GalleryViewModel(private val repository: MoodboardRepository = MoodboardGr
             is GalleryAction.ToggleFavorite -> repository.toggleFavorite(action.id)
             is GalleryAction.AddToBoard ->
                 repository.setMembership(action.boardId, action.photoId, member = true)
+            is GalleryAction.RemoveFromBoard ->
+                repository.setMembership(action.boardId, action.photoId, member = false)
             is GalleryAction.CreateBoardWith -> repository.createBoard(action.name, action.photoId)
             is GalleryAction.Delete -> repository.deletePhoto(action.id)
             is GalleryAction.SetFilter -> filter.value = action.filter

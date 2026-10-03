@@ -20,6 +20,8 @@ sealed interface PhotoDetailAction {
     data object Delete : PhotoDetailAction
 
     data class SetMembership(val boardId: String, val member: Boolean) : PhotoDetailAction
+
+    data class CreateBoard(val name: String) : PhotoDetailAction
 }
 
 class PhotoDetailViewModel(
@@ -40,6 +42,7 @@ class PhotoDetailViewModel(
             PhotoDetailAction.Delete -> repository.deletePhoto(photoId)
             is PhotoDetailAction.SetMembership ->
                 repository.setMembership(action.boardId, photoId, action.member)
+            is PhotoDetailAction.CreateBoard -> repository.createBoard(action.name, photoId)
         }
     }
 
