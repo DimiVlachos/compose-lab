@@ -31,6 +31,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.moodboard.domain.Photo
@@ -61,14 +63,19 @@ fun PhotoDetailContent(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ZoomablePhoto(photo.path, photo.title, imageModifier)
+        // The headline below names the photo; the image itself stays unlabelled.
+        ZoomablePhoto(photo.path, imageModifier)
         // chromeModifier lets a platform stage the text around the photo's transition.
         Column(
             chromeModifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(photo.title, style = MaterialTheme.typography.headlineMedium)
-            LabelSection("Tags", photo.tags.sorted())
+            Text(
+                photo.title,
+                Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            if (photo.tags.isNotEmpty()) LabelSection("Tags", photo.tags.sorted())
             val boards = state.boards.filter { photo.id in it.photoIds }.map { it.name }
             if (boards.isNotEmpty()) LabelSection("Boards", boards)
         }
@@ -81,6 +88,7 @@ private fun LabelSection(title: String, labels: List<String>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title,
+            Modifier.semantics { heading() },
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -114,7 +122,7 @@ private class LastPhoto {
  * 2.5x.
  */
 @Composable
-private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
+private fun ZoomablePhoto(path: String, modifier: Modifier) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var size by remember { mutableStateOf(IntSize.Zero) }
@@ -124,7 +132,7 @@ private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
     }
     PhotoImage(
         path = path,
-        contentDescription = title,
+        contentDescription = null,
         maxPixel = DetailMaxPixel,
         modifier =
             modifier

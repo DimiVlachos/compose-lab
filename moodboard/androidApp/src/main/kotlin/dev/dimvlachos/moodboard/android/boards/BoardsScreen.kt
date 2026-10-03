@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -34,6 +37,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,7 +70,10 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeFlexibleTopAppBar(title = { Text("Boards") }, scrollBehavior = scrollBehavior)
+            LargeFlexibleTopAppBar(
+                title = { Text("Boards", Modifier.semantics { heading() }) },
+                scrollBehavior = scrollBehavior,
+            )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -84,9 +94,12 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
             return@Scaffold
         }
         // Room under the last row, so the floating button never covers it.
+        val direction = LocalLayoutDirection.current
         val listPadding =
             PaddingValues(
+                start = padding.calculateStartPadding(direction),
                 top = padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(direction),
                 bottom = padding.calculateBottomPadding() + FabClearance,
             )
         LazyColumn(contentPadding = listPadding) {
@@ -147,7 +160,7 @@ private fun BoardRow(
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     ListItem(
-        headlineContent = { Text(board.name) },
+        headlineContent = { Text(board.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(if (board.count == 1) "1 photo" else "${board.count} photos") },
         leadingContent = {
             val cover =
@@ -206,7 +219,12 @@ private fun BoardMenu(
             },
         )
         DropdownMenuItem(
-            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+            text = { Text("Delete") },
+            colors =
+                MenuDefaults.itemColors(
+                    textColor = MaterialTheme.colorScheme.error,
+                    leadingIconColor = MaterialTheme.colorScheme.error,
+                ),
             leadingIcon = { MoodboardIcon(R.drawable.ic_delete, null) },
             onClick = {
                 onDismiss()

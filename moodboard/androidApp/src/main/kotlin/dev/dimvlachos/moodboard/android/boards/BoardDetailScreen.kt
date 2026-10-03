@@ -7,8 +7,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
@@ -29,10 +35,20 @@ fun BoardDetailScreen(
     val viewModel = viewModel { BoardDetailViewModel(boardId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text(state.board?.name.orEmpty()) },
+                title = {
+                    Text(
+                        state.board?.name.orEmpty(),
+                        Modifier.semantics { heading() },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
                 },
@@ -40,7 +56,7 @@ fun BoardDetailScreen(
                     IconButton(onClick = onEdit) { MoodboardIcon(R.drawable.ic_edit, "Edit") }
                 },
             )
-        }
+        },
     ) { padding ->
         PhotoGrid(
             photos = state.photos,

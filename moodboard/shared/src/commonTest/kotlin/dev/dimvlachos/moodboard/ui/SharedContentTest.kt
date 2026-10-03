@@ -4,12 +4,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -30,6 +33,8 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class SharedContentTest {
+    private val isHeading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+
     private val santorini =
         Photo("santorini", "Santorini", "files/photos/photo_santorini.jpg", setOf("sea"), true)
 
@@ -83,7 +88,28 @@ class SharedContentTest {
     @Test
     fun filterSheetHasATitle() = runComposeUiTest {
         setContent { FilterSheetContent(PhotoFilter(), allTags = emptyList(), onFilterChange = {}) }
-        onNodeWithText("Filter").assertExists()
+        onNodeWithText("Filter").assert(isHeading)
+        onNodeWithText("Sort").assert(isHeading)
+    }
+
+    @Test
+    fun photoDetailHeadingsAndASinglePhotoName() = runComposeUiTest {
+        val boards = listOf(Board("blue", "Blue", listOf("santorini")))
+        setContent { PhotoDetailContent(PhotoDetailState(santorini, boards, isDeleted = false)) }
+        onNodeWithText("Santorini").assert(isHeading)
+        onNodeWithText("Tags").assert(isHeading)
+        onNodeWithText("Boards").assert(isHeading)
+        // The headline names the photo; the image doesn't announce it a second time.
+        onAllNodesWithContentDescription("Santorini").assertCountEquals(0)
+    }
+
+    @Test
+    fun photoDetailHidesTheTagsSectionWithoutTags() = runComposeUiTest {
+        val untagged = santorini.copy(tags = emptySet())
+        setContent {
+            PhotoDetailContent(PhotoDetailState(untagged, emptyList(), isDeleted = false))
+        }
+        onNodeWithText("Tags").assertDoesNotExist()
     }
 
     @Test

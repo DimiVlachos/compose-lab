@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,26 +56,35 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
 
     // The photo carries the morph; the bars and text are staged around it, as in the lab.
     val chrome = Modifier.morphChrome(LocalNavAnimatedContentScope.current)
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 modifier = chrome,
+                scrollBehavior = scrollBehavior,
                 // The headline under the photo names it; the bar doesn't repeat it.
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                    // A toggle with one name: TalkBack says "Favorite, on" rather than a label that
+                    // flips between Favorite and Unfavorite.
+                    IconToggleButton(
+                        checked = photo.isFavorite,
+                        onCheckedChange = {
+                            haptics.performHapticFeedback(
+                                if (it) HapticFeedbackType.ToggleOn
+                                else HapticFeedbackType.ToggleOff
+                            )
                             viewModel.onAction(PhotoDetailAction.ToggleFavorite)
-                        }
+                        },
                     ) {
                         MoodboardIcon(
                             if (photo.isFavorite) R.drawable.ic_favorite
                             else R.drawable.ic_favorite_border,
-                            if (photo.isFavorite) "Unfavorite" else "Favorite",
+                            "Favorite",
                         )
                     }
                     IconButton(onClick = { share.launch(context, photo) }) {
@@ -83,8 +95,10 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                             MoodboardIcon(R.drawable.ic_more_vert, "More")
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            // Favorite and Share already sit in the bar.
                             PhotoMenuItems(
                                 photo = photo,
+                                showShareAndFavorite = false,
                                 boards = state.boards,
                                 onShare = { share.launch(context, photo) },
                                 onToggleFavorite = {
@@ -103,7 +117,7 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                     }
                 },
             )
-        }
+        },
     ) { padding ->
         PhotoDetailContent(
             state = state,

@@ -2,7 +2,6 @@ package dev.dimvlachos.moodboard.android.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -105,11 +106,14 @@ fun DeleteBoardSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
+        Column(Modifier.padding(bottom = 16.dp)) {
             Text(
                 "Delete “$boardName”?",
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp),
+                modifier =
+                    Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp).semantics {
+                        heading()
+                    },
             )
             Text(
                 "Its photos stay in the gallery unless you delete them too.",

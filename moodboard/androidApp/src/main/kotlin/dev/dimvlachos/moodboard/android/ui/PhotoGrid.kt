@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -40,7 +41,10 @@ fun PhotoGrid(
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
     if (photos.isEmpty()) {
-        Box(modifier.fillMaxSize().padding(contentPadding)) { empty() }
+        // Consumed, so an empty state's own insets (the keyboard) don't count the bars twice.
+        Box(modifier.fillMaxSize().padding(contentPadding).consumeWindowInsets(contentPadding)) {
+            empty()
+        }
         return
     }
     LazyVerticalGrid(

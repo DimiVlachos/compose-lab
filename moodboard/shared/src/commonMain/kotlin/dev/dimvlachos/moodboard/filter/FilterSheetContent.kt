@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.moodboard.domain.PhotoFilter
 import dev.dimvlachos.moodboard.domain.SortOrder
@@ -35,10 +37,14 @@ fun FilterSheetContent(
     Column(
         modifier
             .verticalScroll(rememberScrollState())
-            .padding(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 24.dp),
+            .padding(start = 24.dp, top = 20.dp, end = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Filter", style = MaterialTheme.typography.titleLarge)
+        Text(
+            "Filter",
+            Modifier.semantics { heading() },
+            style = MaterialTheme.typography.titleLarge,
+        )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Favorites only",
@@ -51,7 +57,7 @@ fun FilterSheetContent(
                 modifier = Modifier.testTag("favoritesOnly"),
             )
         }
-        Text("Tags", style = MaterialTheme.typography.titleMedium)
+        Text("Tags", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             allTags.forEach { tag ->
                 val selected = tag in filter.tags
@@ -68,7 +74,7 @@ fun FilterSheetContent(
                 )
             }
         }
-        Text("Sort", style = MaterialTheme.typography.titleMedium)
+        Text("Sort", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SortOrder.entries.forEachIndexed { index, sort ->
                 SegmentedButton(
