@@ -5,10 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -93,25 +94,101 @@ fun Modifier.planeLanding(state: PaperPlaneState, key: Any): Modifier =
     }
 
 /**
- * A send button's paper plane: the send glyph, a dart seen from above with its nose to the right,
- * in [color]. Thrown, it lifts off as the folded dart it outlines.
+ * A send button's paper plane: the folded dart itself, seen from right above with its nose to the
+ * right, in [color], lit as it is in the air. Thrown, it is this dart that lifts off: the plane
+ * leaves the button as exactly what the button showed.
  */
 @Composable
 fun PaperPlaneIcon(color: Color, modifier: Modifier = Modifier) {
-    val glyph = remember { Path() }
+    val painter = remember { DartPainter() }
+    val inside = remember(color) { lerp(color, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
         modifier.drawBehind {
-            val k = size.width / GlyphUnits
-            glyph.reset()
-            Glyph.forEachIndexed { i, (x, y) ->
-                if (i == 0) glyph.moveTo(x * k, y * k) else glyph.lineTo(x * k, y * k)
-            }
-            glyph.close()
-            drawPath(glyph, color)
+            val placement = iconPlacement(Rect(Offset.Zero, size))
+            with(painter) { drawDart(dartPlan, placement, color, inside) }
         }
     )
 }
 
-// The send glyph on a 24-unit square: tail top, nose, tail bottom, and the notch between.
-private const val GlyphUnits = 24f
-private val Glyph = listOf(2.01f to 21f, 23f to 12f, 2.01f to 3f, 2f to 10f, 17f to 12f, 2f to 14f)
+/** The dart every icon shows and every plane is: folded the once, the first time it is needed. */
+internal val dartPlan: FoldPlan by lazy { planFolds(DartSheet) }
+
+/**
+ * Where the dart drawn by a [PaperPlaneIcon] laid out at [icon] lies: as long as the icon's share
+ * of its width, seen close up three-quarters from behind, its nose up and away to the right, and
+ * its outline in the middle of the icon. A plane thrown from the icon starts from just here.
+ */
+internal fun iconPlacement(icon: Rect): Placement {
+    val length = icon.width * PaperPlaneDimens.IconLength
+    val scale = length / dartPlan.length
+    fun at(where: Offset) =
+        Placement(
+            where,
+            PaperPlaneDimens.IconHeading,
+            PaperPlaneDimens.TakeoffRoll,
+            scale,
+            PaperPlaneDimens.IconEye * length,
+            pitch = PaperPlaneDimens.TakeoffPitch,
+        )
+    val outline = dartOutline(at(Offset.Zero))
+    val middle =
+        Offset(
+            (outline.minOf { it.x } + outline.maxOf { it.x }) / 2f,
+            (outline.minOf { it.y } + outline.maxOf { it.y }) / 2f,
+        )
+    return at(icon.center - middle)
+}
+
+/** The corners of every facet of the dart at [placement], on the stage as the eye sees them. */
+internal fun dartOutline(placement: Placement): List<Offset> {
+    val pose = Pose(placement)
+    val eye = placement.eye
+    val centre = placement.at
+    return dartPlan.facets.flatMapIndexed { i, facet ->
+        val space = pose.place(dartRest[i])
+        facet.polygon.map {
+            val q = space.at(it)
+            // A point nearer the eye lies further out from the middle of its view.
+            centre + (Offset(q.x, q.y) - centre) * (eye / (eye - q.z))
+        }
+    }
+}
+
+private val dartRest: List<FacetSpace> by lazy { dartPlan.folded() }
+
+/**
+ * How far the dart drawn by a [PaperPlaneIcon] laid out at [icon] (in the root) can grow about the
+ * icon's middle and still lie within [field], [inset] inside its edge, up to [most]: never less
+ * than its own size.
+ */
+fun iconRoom(icon: Rect, field: RoundRect, inset: Float, most: Float): Float {
+    val within =
+        RoundRect(
+            field.left + inset,
+            field.top + inset,
+            field.right - inset,
+            field.bottom - inset,
+            field.topLeftCornerRadius.shrunk(inset),
+            field.topRightCornerRadius.shrunk(inset),
+            field.bottomRightCornerRadius.shrunk(inset),
+            field.bottomLeftCornerRadius.shrunk(inset),
+        )
+    val corners = dartOutline(iconPlacement(icon))
+    fun fits(scale: Float) = corners.all {
+        within.contains(icon.center + (it - icon.center) * scale)
+    }
+    if (fits(most)) return most
+    if (!fits(1f)) return 1f
+    // The field is convex and holds the icon's middle: once a size fits, every smaller one does,
+    // each corner nearer the middle along a line inside it, so the largest is found by halving.
+    var lo = 1f
+    var hi = most
+    repeat(24) {
+        val mid = (lo + hi) / 2f
+        if (fits(mid)) lo = mid else hi = mid
+    }
+    return lo
+}
+
+private fun CornerRadius.shrunk(by: Float) =
+    CornerRadius((x - by).coerceAtLeast(0f), (y - by).coerceAtLeast(0f))
