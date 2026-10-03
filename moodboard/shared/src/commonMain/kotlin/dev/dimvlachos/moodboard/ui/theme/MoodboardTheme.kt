@@ -19,3 +19,10 @@ fun MoodboardTheme(content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+/**
+ * One color behind every screen. Samsung's dynamic dark scheme gives a near-black background under
+ * gray bars, list rows and sheets, so each of them shows as a band against the screen.
+ */
+fun ColorScheme.withSurfaceBackground(): ColorScheme =
+    copy(background = surface, onBackground = onSurface)
