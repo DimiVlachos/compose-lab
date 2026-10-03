@@ -180,6 +180,32 @@ LetterStage(letters, Modifier.fillMaxSize())
 PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 ```
 
+## Moodboard: native on both platforms (`moodboard/`)
+
+A second app in the repo: one Kotlin codebase that feels native on each platform instead of looking the same on both. It's a photo moodboard (gallery, boards, search) over the same bundled photos.
+
+- **iOS** is a SwiftUI shell with real iOS 26 Liquid Glass: a glass tab bar that shrinks on scroll, a bottom search field, glass toolbars, the system zoom transition, context menus with lifted previews, alerts, a confirmation dialog and detent sheets. Grids and lists are SwiftUI, so large titles collapse and the menus attach to native views.
+- **Android** is Compose with Material 3 Expressive and wallpaper-based dynamic color, Navigation 3 with predictive back, long-press menus, dialogs and bottom sheets. A photo opens through the profile gallery's container transform, ported from `imagemorph/`.
+- **Shared** (`moodboard/shared`): the in-memory repository, one MVI ViewModel per screen, and three Compose screens hosted inside SwiftUI on iOS (photo detail, filter sheet, board editor). SwiftUI observes the ViewModels through [SKIE](https://skie.touchlab.co); the toolbar and the hosted Compose content share one ViewModel, so they never disagree.
+
+| Feature | iOS | Android |
+|---|---|---|
+| Tabs | Glass `TabView`, search tab | `NavigationBar` |
+| Photo menu | `.contextMenu` with preview | `DropdownMenu` on long press |
+| Delete photo | `.alert` | `AlertDialog` |
+| Delete board | `.confirmationDialog` | `ModalBottomSheet` |
+| Filter | Detent sheet, shared Compose body | `ModalBottomSheet`, same body |
+| Open photo | `.navigationTransition(.zoom)` | Container-transform morph |
+| Search | `.searchable` with suggestions | M3 `SearchBar` with tag chips |
+| Share | `ShareLink` | Share intent via `FileProvider` |
+
+Run it:
+
+- Android: `./gradlew :moodboard:androidApp:installDebug`
+- iOS: `cd moodboard/iosApp && xcodegen && open Moodboard.xcodeproj` (iOS 26)
+- Tests: `./gradlew :moodboard:shared:iosSimulatorArm64Test :moodboard:androidApp:testDebugUnitTest`
+- iOS UI walk-through: `xcodebuild -project moodboard/iosApp/Moodboard.xcodeproj -scheme Moodboard -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test` (set `TEST_RUNNER_SCREENSHOT_DIR` to save a screenshot per step)
+
 ## Run
 
 Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
