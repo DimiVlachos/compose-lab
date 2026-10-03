@@ -19,6 +19,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,9 @@ fun BoardEditorContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = WindowInsets.safeDrawing.asPaddingValues(),
 ) {
+    // The field owns its text; each edit is sent on, never waited for, so the cursor and an
+    // IME composition can't be reset by the round trip through the repository.
+    var name by rememberSaveable { mutableStateOf(state.name) }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
         modifier = modifier.fillMaxSize(),
@@ -44,8 +51,11 @@ fun BoardEditorContent(
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             OutlinedTextField(
-                value = state.name,
-                onValueChange = { onAction(BoardEditorAction.Rename(it)) },
+                value = name,
+                onValueChange = {
+                    name = it
+                    onAction(BoardEditorAction.Rename(it))
+                },
                 label = { Text("Name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("boardName"),

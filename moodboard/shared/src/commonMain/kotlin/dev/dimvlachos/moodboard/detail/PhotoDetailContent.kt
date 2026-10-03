@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.moodboard.ui.components.DetailMaxPixel
 import dev.dimvlachos.moodboard.ui.components.PhotoImage
 
 private const val MaxZoom = 4f
@@ -77,25 +78,27 @@ private fun ZoomablePhoto(path: String, title: String, modifier: Modifier) {
         offset = if (scale > 1f) offset + pan else Offset.Zero
     }
     PhotoImage(
-        path,
-        title,
-        modifier
-            .fillMaxWidth()
-            .aspectRatio(4f / 5f)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        scale = if (scale > 1f) 1f else DoubleTapZoom
-                        offset = Offset.Zero
-                    }
-                )
-            }
-            .transformable(transform, canPan = { scale > 1f })
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationX = offset.x
-                translationY = offset.y
-            },
+        path = path,
+        contentDescription = title,
+        maxPixel = DetailMaxPixel,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .aspectRatio(4f / 5f)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            scale = if (scale > 1f) 1f else DoubleTapZoom
+                            offset = Offset.Zero
+                        }
+                    )
+                }
+                .transformable(transform, canPan = { scale > 1f })
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                },
     )
 }

@@ -1,5 +1,6 @@
 package dev.dimvlachos.moodboard.android.gallery
 
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
@@ -18,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.android.share.sharePhoto
 import dev.dimvlachos.moodboard.android.ui.BoardNameDialog
@@ -34,8 +34,12 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Unit) {
-    val viewModel = viewModel { GalleryViewModel() }
+fun GalleryScreen(
+    viewModel: GalleryViewModel,
+    gridState: LazyGridState,
+    onOpenPhoto: (String) -> Unit,
+    bottomBar: @Composable () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -63,6 +67,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
             photos = state.photos,
             onOpen = { onOpenPhoto(it.id) },
             contentPadding = padding,
+            state = gridState,
         ) { photo, dismiss ->
             PhotoMenuItems(
                 photo = photo,

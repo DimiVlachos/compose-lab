@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -68,6 +69,8 @@ class SharedContentTest {
             )
         }
         onNodeWithTag("boardName").performTextReplacement("Aegean")
+        // The state never echoes the rename here; the field must still show what was typed.
+        onNodeWithTag("boardName").assertTextContains("Aegean")
         onNodeWithTag("photo-santorini").performClick()
         assertEquals(
             listOf(BoardEditorAction.Rename("Aegean"), BoardEditorAction.Toggle("santorini")),

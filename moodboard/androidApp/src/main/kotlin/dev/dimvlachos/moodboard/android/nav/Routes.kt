@@ -9,10 +9,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object Search : NavKey
 
-@Serializable data class PhotoDetail(val photoId: String) : NavKey
+/** [tab] keeps the same photo opened from two tabs as two distinct entries. */
+@Serializable data class PhotoDetail(val photoId: String, val tab: String) : NavKey
 
 @Serializable data class BoardDetail(val boardId: String) : NavKey
 
 @Serializable data class BoardEditor(val boardId: String) : NavKey
-
-val TopLevelRoutes: List<NavKey> = listOf(Gallery, Boards, Search)

@@ -6,12 +6,14 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import dev.dimvlachos.moodboard.android.boards.BoardDetailScreen
@@ -23,12 +25,16 @@ import dev.dimvlachos.moodboard.android.nav.BoardDetail
 import dev.dimvlachos.moodboard.android.nav.BoardEditor
 import dev.dimvlachos.moodboard.android.nav.Boards
 import dev.dimvlachos.moodboard.android.nav.Gallery
+import dev.dimvlachos.moodboard.android.nav.NavigationViewModel
 import dev.dimvlachos.moodboard.android.nav.PhotoDetail
 import dev.dimvlachos.moodboard.android.nav.Search
 import dev.dimvlachos.moodboard.android.search.SearchScreen
 import dev.dimvlachos.moodboard.android.ui.LocalSharedTransitionScope
 import dev.dimvlachos.moodboard.android.ui.MoodboardNavigationBar
+import dev.dimvlachos.moodboard.boards.BoardsViewModel
+import dev.dimvlachos.moodboard.gallery.GalleryViewModel
 import dev.dimvlachos.moodboard.morph.rememberMorphGate
+import dev.dimvlachos.moodboard.search.SearchViewModel
 import dev.dimvlachos.moodboard.ui.theme.MoodboardTheme
 
 // Material's fade-through: the container transform carries the photo, the rest cross-fades.
@@ -39,25 +45,32 @@ private const val FadeOutMs = 90
 @Composable
 fun MoodboardApp() {
     MoodboardTheme {
-        val backStack = rememberNavBackStack(Gallery)
+        val stack = viewModel { NavigationViewModel() }.stack
+        // The tab roots live above NavDisplay, so a tab switch keeps their filter, query and
+        // scroll position the way an iOS TabView does.
+        val gallery = viewModel { GalleryViewModel() }
+        val boards = viewModel { BoardsViewModel() }
+        val search = viewModel { SearchViewModel() }
+        val galleryGrid = rememberLazyGridState()
+        val searchGrid = rememberLazyGridState()
+        val boardsList = rememberLazyListState()
+
         SharedTransitionLayout {
-            // Opens and closes queue behind a morph in flight instead of reversing it.
+            // Taps queue behind a morph in flight instead of reversing it. System back is not
+            // gated: a predictive-back gesture already owns its transition, so it pops at once.
             val gate = rememberMorphGate()
-            val push: (NavKey) -> Unit = { key -> gate { backStack.add(key) } }
-            val pop: () -> Unit = {
-                gate { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
-            }
-            val selectTab: (NavKey) -> Unit = { tab ->
-                backStack.clear()
-                backStack.add(tab)
+            val push: (NavKey) -> Unit = { key -> gate { stack.push(key) } }
+            val toolbarBack: () -> Unit = { gate { stack.pop() } }
+            val openPhoto: (String) -> Unit = { id ->
+                push(PhotoDetail(id, tab = stack.currentTab.toString()))
             }
             val bottomBar: @Composable () -> Unit = {
-                MoodboardNavigationBar(current = backStack.first(), onSelect = selectTab)
+                MoodboardNavigationBar(current = stack.currentTab, onSelect = stack::selectTab)
             }
             CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                 NavDisplay(
-                    backStack = backStack,
-                    onBack = pop,
+                    backStack = stack.backStack,
+                    onBack = { stack.pop() },
                     entryDecorators =
                         listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
@@ -75,24 +88,31 @@ fun MoodboardApp() {
                     entryProvider =
                         entryProvider {
                             entry<Gallery> {
-                                GalleryScreen(onOpenPhoto = { push(PhotoDetail(it)) }, bottomBar)
+                                GalleryScreen(gallery, galleryGrid, openPhoto, bottomBar)
                             }
                             entry<Boards> {
-                                BoardsScreen(onOpenBoard = { push(BoardDetail(it)) }, bottomBar)
+                                BoardsScreen(
+                                    boards,
+                                    boardsList,
+                                    { push(BoardDetail(it)) },
+                                    bottomBar,
+                                )
                             }
-                            entry<Search> {
-                                SearchScreen(onOpenPhoto = { push(PhotoDetail(it)) }, bottomBar)
+                            entry<Search> { SearchScreen(search, searchGrid, openPhoto, bottomBar) }
+                            entry<PhotoDetail> {
+                                PhotoDetailScreen(it.photoId, onBack = toolbarBack)
                             }
-                            entry<PhotoDetail> { PhotoDetailScreen(it.photoId, onBack = pop) }
                             entry<BoardDetail> {
                                 BoardDetailScreen(
                                     boardId = it.boardId,
-                                    onBack = pop,
-                                    onOpenPhoto = { id -> push(PhotoDetail(id)) },
+                                    onBack = toolbarBack,
+                                    onOpenPhoto = openPhoto,
                                     onEdit = { push(BoardEditor(it.boardId)) },
                                 )
                             }
-                            entry<BoardEditor> { BoardEditorScreen(it.boardId, onBack = pop) }
+                            entry<BoardEditor> {
+                                BoardEditorScreen(it.boardId, onBack = toolbarBack)
+                            }
                         },
                 )
             }
