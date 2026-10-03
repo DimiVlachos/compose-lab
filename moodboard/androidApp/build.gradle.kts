@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kermit)
+    implementation(libs.lifecycle.runtime.compose)
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
 }
