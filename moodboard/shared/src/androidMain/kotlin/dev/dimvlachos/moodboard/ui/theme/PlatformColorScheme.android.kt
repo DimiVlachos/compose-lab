@@ -9,5 +9,6 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 actual fun platformColorScheme(dark: Boolean): ColorScheme {
     val context = LocalContext.current
-    return if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val scheme = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    return scheme.withSurfaceBackground()
 }
