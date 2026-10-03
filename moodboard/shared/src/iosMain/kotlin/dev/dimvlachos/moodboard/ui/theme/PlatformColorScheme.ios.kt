@@ -16,6 +16,8 @@ private val Light =
         onSecondaryContainer = Color.Black,
         surface = Color.Transparent,
         onSurface = Color.Black,
+        // UIKit's secondaryLabel; Material's default is a purple-tinted gray.
+        onSurfaceVariant = Color(0x993C3C43),
         outline = Color(0xFFC7C7CC),
         outlineVariant = Color(0xFFD1D1D6),
     )
@@ -28,6 +30,7 @@ private val Dark =
         onSecondaryContainer = Color.White,
         surface = Color.Transparent,
         onSurface = Color.White,
+        onSurfaceVariant = Color(0x99EBEBF5),
         outline = Color(0xFF545458),
         outlineVariant = Color(0xFF48484A),
     )

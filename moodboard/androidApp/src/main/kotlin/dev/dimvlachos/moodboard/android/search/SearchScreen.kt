@@ -1,15 +1,19 @@
 package dev.dimvlachos.moodboard.android.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -21,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,7 +64,12 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
     }
     Scaffold(
         topBar = {
-            Column(Modifier.fillMaxWidth().statusBarsPadding()) {
+            // Opaque: scrolled results pass under the bar and chips, not through them.
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .statusBarsPadding()
+            ) {
                 SearchBar(
                     inputField = {
                         SearchBarDefaults.InputField(
@@ -72,12 +80,20 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
                             onExpandedChange = {},
                             placeholder = { Text("Search photos and tags") },
                             leadingIcon = { MoodboardIcon(R.drawable.ic_search, null) },
+                            trailingIcon = {
+                                if (query.isNotEmpty()) {
+                                    IconButton(onClick = { setQuery("") }) {
+                                        MoodboardIcon(R.drawable.ic_close, "Clear search")
+                                    }
+                                }
+                            },
                         )
                     },
                     expanded = false,
                     onExpandedChange = {},
                     windowInsets = WindowInsets(0),
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    // Full width on the chips' 16dp margins, rather than centred at its own size.
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 ) {}
                 FlowRow(
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -102,12 +118,17 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
             onOpen = { open(it.id) },
             morphScope = "Search",
             contentPadding = padding,
+            // Clear of the keyboard: the last results can scroll above it.
+            modifier = Modifier.consumeWindowInsets(padding).imePadding(),
             empty = {
+                // A blank query lists every photo, so empty then means none are left.
                 EmptyState(
-                    title = "No results",
-                    message = "Nothing matches “${query.trim()}”. Try a place or a tag.",
+                    title = if (query.isBlank()) "No photos" else "No results",
+                    message =
+                        if (query.isBlank())
+                            "Deleted photos come back the next time the app starts."
+                        else "Nothing matches “${query.trim()}”. Try a place or a tag.",
                     icon = { MoodboardIcon(R.drawable.ic_search, null) },
-                    modifier = Modifier.imePadding(),
                 )
             },
         ) { photo, dismiss ->
