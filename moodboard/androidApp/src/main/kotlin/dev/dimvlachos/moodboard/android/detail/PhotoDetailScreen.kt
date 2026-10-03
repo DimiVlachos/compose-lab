@@ -46,7 +46,10 @@ fun PhotoDetailScreen(photoId: String, onBack: () -> Unit) {
     var newBoard by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isDeleted) { if (state.isDeleted) onBack() }
-    val photo = state.photo ?: return
+    // Keeps the bars up through the exit after a delete, matching the content's last photo.
+    var shown by remember { mutableStateOf(state.photo) }
+    state.photo?.let { shown = it }
+    val photo = shown ?: return
 
     Scaffold(
         topBar = {

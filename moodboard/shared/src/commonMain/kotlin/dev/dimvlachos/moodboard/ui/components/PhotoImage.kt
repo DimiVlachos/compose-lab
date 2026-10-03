@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import dev.dimvlachos.moodboard.MoodboardGraph
 
@@ -28,7 +27,7 @@ fun PhotoImage(
     maxPixel: Int = GridMaxPixel,
 ) {
     val bitmap by
-        produceState<ImageBitmap?>(null, path, maxPixel) {
+        produceState(MoodboardGraph.photoBytes.cached(path, maxPixel), path, maxPixel) {
             value = MoodboardGraph.photoBytes.bitmap(path, maxPixel)
         }
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {

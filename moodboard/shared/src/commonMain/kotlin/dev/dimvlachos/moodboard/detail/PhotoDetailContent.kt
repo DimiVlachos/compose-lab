@@ -47,7 +47,11 @@ fun PhotoDetailContent(
     imageModifier: Modifier = Modifier,
     contentPadding: PaddingValues = WindowInsets.safeDrawing.asPaddingValues(),
 ) {
-    val photo = state.photo ?: return
+    // Once deleted, the screen leaves on the next frame; it keeps showing the photo on the way out
+    // instead of going blank.
+    var shown by remember { mutableStateOf(state.photo) }
+    state.photo?.let { shown = it }
+    val photo = shown ?: return
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),

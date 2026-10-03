@@ -77,4 +77,12 @@ class SharedContentTest {
             actions,
         )
     }
+
+    @Test
+    fun photoDetailKeepsTheLastPhotoWhileItLeaves() = runComposeUiTest {
+        var state by mutableStateOf(PhotoDetailState(santorini, emptyList(), isDeleted = false))
+        setContent { PhotoDetailContent(state) }
+        state = PhotoDetailState(photo = null, boards = emptyList(), isDeleted = true)
+        onNodeWithText("Santorini").assertExists()
+    }
 }

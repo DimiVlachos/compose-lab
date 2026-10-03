@@ -2,6 +2,10 @@ package dev.dimvlachos.moodboard.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
 
@@ -23,5 +27,14 @@ class DecodeSampledTest {
     fun smallImagesKeepTheirSize() {
         val bitmap = decodeSampled(png(40, 20), maxPixel = 100)!!
         assertEquals(40, bitmap.width)
+    }
+
+    @Test
+    fun aLoadedBitmapIsCachedForItsSizeOnly() = runTest {
+        val photoBytes = PhotoBytes(StandardTestDispatcher(testScheduler)) { png(400, 200) }
+        assertNull(photoBytes.cached("p", maxPixel = 100))
+        photoBytes.bitmap("p", maxPixel = 100)
+        assertNotNull(photoBytes.cached("p", maxPixel = 100))
+        assertNull(photoBytes.cached("p", maxPixel = 200))
     }
 }

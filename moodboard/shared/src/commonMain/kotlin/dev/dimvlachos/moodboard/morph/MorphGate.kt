@@ -18,13 +18,14 @@ private const val MorphStartTimeoutMs = 300L
  * transition can leave an extra entry for its key behind, and every later morph of that element
  * then draws a stray copy. The gate closes on the request itself, not on isTransitionActive, which
  * only turns true a frame or two later, once the target has composed (Builder Brigade's morph
- * hold). A request that starts no morph releases it after the start timeout.
+ * hold). A request that starts no morph releases it after the start timeout. Waiting requests run
+ * in arrival order, so two quick backs pop twice.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun SharedTransitionScope.rememberMorphGate(): (() -> Unit) -> Unit {
     val holding = remember { mutableStateOf(false) }
-    val pending = remember { mutableStateOf<(() -> Unit)?>(null) }
+    val pending = remember { ArrayDeque<() -> Unit>() }
     LaunchedEffect(this) {
         while (true) {
             snapshotFlow { holding.value }.first { it }
@@ -34,16 +35,15 @@ fun SharedTransitionScope.rememberMorphGate(): (() -> Unit) -> Unit {
                 if (withFrameMillis { it } - requestedAt >= MorphStartTimeoutMs) break
             }
             snapshotFlow { isTransitionActive }.first { !it }
-            val next = pending.value
-            pending.value = null
             // A waiting request starts the next morph and keeps the gate closed for it.
+            val next = pending.removeFirstOrNull()
             if (next == null) holding.value = false else next()
         }
     }
     return remember(this) {
         { request ->
             if (holding.value) {
-                pending.value = request
+                pending.addLast(request)
             } else {
                 holding.value = true
                 request()

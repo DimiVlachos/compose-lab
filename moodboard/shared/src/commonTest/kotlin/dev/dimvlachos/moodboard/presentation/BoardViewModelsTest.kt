@@ -71,4 +71,11 @@ class BoardViewModelsTest : MainDispatcherTest() {
         assertEquals(setOf("mykonos", "milos", "naxos"), viewModel.state.value.selected)
         assertEquals("Aegean", repository.boards.value.single { it.id == "blue" }.name)
     }
+
+    @Test
+    fun `board editor ignores a blank name`() {
+        val viewModel = BoardEditorViewModel("blue", repository)
+        viewModel.onAction(BoardEditorAction.Rename("   "))
+        assertEquals("Blue", repository.boards.value.single { it.id == "blue" }.name)
+    }
 }

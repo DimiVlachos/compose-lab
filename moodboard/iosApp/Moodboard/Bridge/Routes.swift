@@ -21,7 +21,10 @@ struct SharedPhoto: Transferable {
 
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .jpeg) { photo in
-            try await ImageDataKt.imageData(path: photo.path) ?? Data()
+            guard let data = try await ImageDataKt.imageData(path: photo.path) else {
+                throw CocoaError(.fileReadNoSuchFile)
+            }
+            return data
         }
     }
 }
