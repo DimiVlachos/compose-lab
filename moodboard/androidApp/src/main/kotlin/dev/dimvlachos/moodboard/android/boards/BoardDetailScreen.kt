@@ -1,5 +1,6 @@
 package dev.dimvlachos.moodboard.android.boards
 
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -15,6 +16,7 @@ import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
 import dev.dimvlachos.moodboard.boards.BoardDetailAction
 import dev.dimvlachos.moodboard.boards.BoardDetailViewModel
+import dev.dimvlachos.moodboard.ui.components.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,9 +47,18 @@ fun BoardDetailScreen(
             morphScope = "Boards",
             onOpen = { onOpenPhoto(it.id) },
             contentPadding = padding,
+            empty = {
+                EmptyState(
+                    title = "No photos yet",
+                    message = "Pick the photos this board should hold.",
+                    icon = { MoodboardIcon(R.drawable.ic_boards, null) },
+                    action = { Button(onClick = onEdit) { Text("Add photos") } },
+                )
+            },
         ) { photo, dismiss ->
             DropdownMenuItem(
                 text = { Text("Remove from board") },
+                leadingIcon = { MoodboardIcon(R.drawable.ic_remove, null) },
                 onClick = {
                     dismiss()
                     viewModel.onAction(BoardDetailAction.Remove(photo.id))

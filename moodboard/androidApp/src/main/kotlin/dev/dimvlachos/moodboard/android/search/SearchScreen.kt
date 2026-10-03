@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.DropdownMenuItem
@@ -22,20 +23,32 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
+import dev.dimvlachos.moodboard.android.share.rememberShareLauncher
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
 import dev.dimvlachos.moodboard.search.SearchAction
 import dev.dimvlachos.moodboard.search.SearchViewModel
+import dev.dimvlachos.moodboard.ui.components.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Unit) {
     val viewModel = viewModel { SearchViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val share = rememberShareLauncher()
+    // The keyboard goes on a search and before a photo opens, instead of riding along over it.
+    val focusManager = LocalFocusManager.current
+    val open: (String) -> Unit = { id ->
+        focusManager.clearFocus()
+        onOpenPhoto(id)
+    }
     // Owned here, like the iOS search field; the ViewModel hears each change.
     var query by rememberSaveable { mutableStateOf(state.query) }
     val setQuery: (String) -> Unit = {
@@ -54,7 +67,7 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
                         SearchBarDefaults.InputField(
                             query = query,
                             onQueryChange = setQuery,
-                            onSearch = {},
+                            onSearch = { focusManager.clearFocus() },
                             expanded = false,
                             onExpandedChange = {},
                             placeholder = { Text("Search photos and tags") },
@@ -72,7 +85,10 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
                 ) {
                     state.suggestions.forEach { tag ->
                         SuggestionChip(
-                            onClick = { setQuery(tag) },
+                            onClick = {
+                                setQuery(tag)
+                                focusManager.clearFocus()
+                            },
                             label = { Text(tag) },
                         )
                     }
@@ -83,15 +99,25 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
     ) { padding ->
         PhotoGrid(
             photos = state.results,
-            onOpen = { onOpenPhoto(it.id) },
+            onOpen = { open(it.id) },
             morphScope = "Search",
             contentPadding = padding,
+            empty = {
+                EmptyState(
+                    title = "No results",
+                    message = "Nothing matches “${query.trim()}”. Try a place or a tag.",
+                    icon = { MoodboardIcon(R.drawable.ic_search, null) },
+                    modifier = Modifier.imePadding(),
+                )
+            },
         ) { photo, dismiss ->
+            // The same single action as the iOS search results' context menu.
             DropdownMenuItem(
-                text = { Text("Open") },
+                text = { Text("Share") },
+                leadingIcon = { MoodboardIcon(R.drawable.ic_share, null) },
                 onClick = {
                     dismiss()
-                    onOpenPhoto(photo.id)
+                    share.launch(context, photo)
                 },
             )
         }

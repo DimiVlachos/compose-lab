@@ -36,8 +36,13 @@ fun PhotoGrid(
     onOpen: (Photo) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    empty: @Composable () -> Unit = {},
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
+    if (photos.isEmpty()) {
+        Box(modifier.fillMaxSize().padding(contentPadding)) { empty() }
+        return
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxSize(),

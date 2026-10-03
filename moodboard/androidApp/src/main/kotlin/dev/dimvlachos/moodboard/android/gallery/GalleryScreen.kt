@@ -1,5 +1,6 @@
 package dev.dimvlachos.moodboard.android.gallery
 
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
@@ -7,7 +8,9 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,9 +28,11 @@ import dev.dimvlachos.moodboard.android.ui.DeletePhotoDialog
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
 import dev.dimvlachos.moodboard.android.ui.PhotoMenuItems
+import dev.dimvlachos.moodboard.domain.PhotoFilter
 import dev.dimvlachos.moodboard.filter.FilterSheetContent
 import dev.dimvlachos.moodboard.gallery.GalleryAction
 import dev.dimvlachos.moodboard.gallery.GalleryViewModel
+import dev.dimvlachos.moodboard.ui.components.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -64,6 +69,30 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
             onOpen = { onOpenPhoto(it.id) },
             morphScope = "Gallery",
             contentPadding = padding,
+            empty = {
+                if (state.filter == PhotoFilter()) {
+                    EmptyState(
+                        title = "No photos",
+                        message = "Deleted photos come back the next time the app starts.",
+                        icon = { MoodboardIcon(R.drawable.ic_gallery, null) },
+                    )
+                } else {
+                    EmptyState(
+                        title = "No photos match",
+                        message = "Try other tags, or turn off Favorites only.",
+                        icon = { MoodboardIcon(R.drawable.ic_filter, null) },
+                        action = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.onAction(GalleryAction.SetFilter(PhotoFilter()))
+                                }
+                            ) {
+                                Text("Clear filter")
+                            }
+                        },
+                    )
+                }
+            },
         ) { photo, dismiss ->
             PhotoMenuItems(
                 photo = photo,
@@ -84,11 +113,17 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
     }
 
     if (filterOpen) {
-        ModalBottomSheet(onDismissRequest = { filterOpen = false }) {
+        // Short enough to show whole: a half-open sheet cut the sort row off at the screen's edge.
+        ModalBottomSheet(
+            onDismissRequest = { filterOpen = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
             FilterSheetContent(
                 filter = state.filter,
                 allTags = state.allTags,
                 onFilterChange = { viewModel.onAction(GalleryAction.SetFilter(it)) },
+                // Clear of the gesture bar: the sheet draws behind it.
+                modifier = Modifier.navigationBarsPadding(),
             )
         }
     }

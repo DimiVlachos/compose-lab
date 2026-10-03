@@ -1,8 +1,11 @@
 package dev.dimvlachos.moodboard.android.boards
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +15,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -39,6 +44,7 @@ import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.boards.BoardSummary
 import dev.dimvlachos.moodboard.boards.BoardsAction
 import dev.dimvlachos.moodboard.boards.BoardsViewModel
+import dev.dimvlachos.moodboard.ui.components.EmptyState
 import dev.dimvlachos.moodboard.ui.components.PhotoImage
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -68,7 +74,22 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
         },
         bottomBar = bottomBar,
     ) { padding ->
-        LazyColumn(contentPadding = padding) {
+        if (state.boards.isEmpty()) {
+            EmptyState(
+                title = "No boards",
+                message = "Make a board to group photos you want together.",
+                modifier = Modifier.padding(padding),
+                icon = { MoodboardIcon(R.drawable.ic_boards, null) },
+            )
+            return@Scaffold
+        }
+        // Room under the last row, so the floating button never covers it.
+        val listPadding =
+            PaddingValues(
+                top = padding.calculateTopPadding(),
+                bottom = padding.calculateBottomPadding() + FabClearance,
+            )
+        LazyColumn(contentPadding = listPadding) {
             items(state.boards, key = { it.id }) { board ->
                 BoardRow(
                     board = board,
@@ -125,41 +146,74 @@ private fun BoardRow(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
-    Box {
-        ListItem(
-            headlineContent = { Text(board.name) },
-            supportingContent = { Text("${board.count} photos") },
-            leadingContent = {
-                val cover = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp))
-                board.coverPath?.let { PhotoImage(it, null, cover) } ?: Box(cover)
+    ListItem(
+        headlineContent = { Text(board.name) },
+        supportingContent = { Text(if (board.count == 1) "1 photo" else "${board.count} photos") },
+        leadingContent = {
+            val cover =
+                Modifier.size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            board.coverPath?.let { PhotoImage(it, null, cover) }
+                ?: Box(cover, contentAlignment = Alignment.Center) {
+                    MoodboardIcon(
+                        R.drawable.ic_boards,
+                        null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+        },
+        // The menu drops from the overflow button, whether opened by it or by a long press.
+        trailingContent = {
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    MoodboardIcon(R.drawable.ic_more_vert, "More options for ${board.name}")
+                }
+                BoardMenu(
+                    expanded = menuOpen,
+                    onDismiss = { menuOpen = false },
+                    onRename = onRename,
+                    onDelete = onDelete,
+                )
+            }
+        },
+        modifier =
+            Modifier.combinedClickable(
+                onClick = onOpen,
+                onLongClickLabel = "More options",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    menuOpen = true
+                },
+            ),
+    )
+}
+
+@Composable
+private fun BoardMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text("Rename") },
+            leadingIcon = { MoodboardIcon(R.drawable.ic_edit, null) },
+            onClick = {
+                onDismiss()
+                onRename()
             },
-            modifier =
-                Modifier.combinedClickable(
-                    onClick = onOpen,
-                    onLongClickLabel = "More options",
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menuOpen = true
-                    },
-                ),
         )
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text("Rename") },
-                leadingIcon = { MoodboardIcon(R.drawable.ic_edit, null) },
-                onClick = {
-                    menuOpen = false
-                    onRename()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                leadingIcon = { MoodboardIcon(R.drawable.ic_delete, null) },
-                onClick = {
-                    menuOpen = false
-                    onDelete()
-                },
-            )
-        }
+        DropdownMenuItem(
+            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+            leadingIcon = { MoodboardIcon(R.drawable.ic_delete, null) },
+            onClick = {
+                onDismiss()
+                onDelete()
+            },
+        )
     }
 }
+
+private val FabClearance = 88.dp
