@@ -31,6 +31,9 @@ struct GalleryView: View {
                     )
                 }
             }
+            // A filtered gallery can fit on screen: then it doesn't scroll, so the large title can't
+            // be left half-collapsed over too little content to settle it (a layout loop).
+            .scrollBounceBehavior(.basedOnSize)
             .navigationTitle("Gallery")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

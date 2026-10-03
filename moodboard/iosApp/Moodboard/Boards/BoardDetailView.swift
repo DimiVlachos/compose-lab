@@ -23,6 +23,11 @@ struct BoardDetailView: View {
             }
         }
         .navigationTitle(model.state.board?.name ?? "")
+        // Inline, as pushed screens are on iOS. A board is often shorter than the screen, and a
+        // large title left half-collapsed over it fell into a layout loop: title and grid jumped
+        // between two positions every frame, even with no finger on the screen.
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollBounceBehavior(.basedOnSize)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") { editing = true }
