@@ -152,11 +152,12 @@ PageTurnBook(
 
 ![](docs/media/chat.plane.gif)
 
-A chat that sends each message as a paper plane. Type, and the send glyph appears; send, and the letters are drawn into the button one by one, the glyph lifts off as a folded paper dart, loops up the conversation and comes in low over the message's place, letting each letter go as it passes over it, before it flies off the screen.
+A chat that sends each message as a paper plane. Type, and a white paper dart appears on the send button; send, and the letters are drawn into the button one by one, the button swelling a little with each, then the dart itself lifts off, loops up the conversation and comes in low over the message's place, letting each letter go as it passes over it, before it flies off the screen.
 
-- **A dart folded for real.** The plane is a sheet of writing paper folded into a classic dart: the corners in twice, in half, and the wings opened out. The sheet is cut along every crease into flat facets, each turned about its creases in 3D and drawn under its own perspective `Matrix`. Each part of the dart is a stack of paper, drawn layer by layer as the eye sees it, so the flaps folded over the wings lie on top of them.
-- **Paper, not plastic.** A faint grain and its fibres are mapped onto every facet, so they turn and foreshorten with the paper. Every crease and edge is pressed in. Each facet is lit by how it turns to a window's light, and the dart casts a shadow on the conversation, further off the higher it flies.
-- **A throw, not a tween.** It is thrown hard off the button and slows along the loop, so it comes in over the message at the pace it drops letters at. It leans into its turns and never quite flies steady: it rocks, yaws and drifts a little, at its own pace on each.
+- **A dart folded for real.** The plane is a sheet of paper folded into a classic dart: the corners in twice, in half, and the wings opened out into a V. Creased down the middle, paper springs back, so the dart's two halves stand a little apart about its spine. The sheet is cut along every crease into flat facets, each turned about its creases in 3D and drawn under its own perspective `Matrix`. Each rigid part of the dart is a stack of paper, drawn layer by layer as the eye sees it, so the flaps folded over the wings lie on top of them.
+- **White paper, shaded by its own folds.** Paper is lit mostly by the room, from every side at once, so it stays white whichever way it turns. How much of the room each side of each facet sees is worked out once, by casting rays out from it past the rest of the dart, so it falls into shade only where its own paper stands over it: in the V between the folds and on the keel under the wings. A little window light turns it a touch brighter towards one side. A faint grain and its fibres are mapped onto every facet, and the dart casts a soft-edged shadow on the conversation that spreads the higher it flies.
+- **The icon is the plane.** The send button shows the folded dart itself, seen close up three-quarters from behind, and the plane takes off from exactly that pose and camera, then eases back to its own as it grows. The button grows with each letter it takes in, as far as the field has room for it, and the dart lifts off at that size.
+- **A throw, not a tween.** It is thrown hard off the button and slows along the loop, so it comes in over the message at the pace it drops letters at. Its nose follows its climb off the screen and its glide back down, and it banks as a glider does, by its speed and how tight it turns (`tan bank = v²κ / g`), rolling in and out with a lag. It never quite flies steady: it rocks, yaws and drifts a little, at its own pace on each.
 - **Letters that fall.** Each letter is let go a little before its place and carried on by the plane, slowed by the air, falling faster as it goes, tumbling out of its spin and growing back to its size. It lands exactly on the text it stands in for, and the bubble grows in behind the letters as they land. However long the message, the last letter lands within 0.6 s of the first.
 - **No jump.** The message's place stays shut while its letters go into the button and its plane flies round. It opens as the plane comes down to it, laid out full height at its foot the whole while, so the conversation moves up just in time and the plane flies to where the message will stay.
 
@@ -165,16 +166,18 @@ Planes fly side by side: send again while one is up and the next takes off with 
 ```kotlin
 val planes = rememberPaperPlaneState()
 val letters = rememberLetterStream()
-// In the send button: the glyph a plane lifts off as.
-PaperPlaneIcon(color = accent, modifier = Modifier.size(26.dp))
+// In the send button: the dart a plane lifts off as, grown with the letters it takes in,
+// no further than its field has room for.
+PaperPlaneIcon(color = paper, modifier = Modifier.size(26.dp).graphicsLayer { scaleX = grow; scaleY = grow })
+val most = iconRoom(iconBounds, fieldOutline, inset = 3.dp.toPx(), most = 1.6f)
 // The message's place in the list: shut until its plane comes down to it.
 Modifier.planeLanding(planes, key)
 // On send: the typed letters into the button, then the plane with the landed text's layout.
 letters.pour(draftLayout, draftOrigin, into = { button.center }, arrived = {})
-planes.launch(key, planeTakeoff(glyphBounds), landedLayout, at = { landedOrigin })
+planes.launch(key, planeTakeoff(grownIconBounds), landedLayout, at = { landedOrigin })
 // Over everything: where the letters and the planes are drawn.
 LetterStage(letters, Modifier.fillMaxSize())
-PaperPlane(planes, paper = accent, Modifier.fillMaxSize())
+PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 ```
 
 ## Run
