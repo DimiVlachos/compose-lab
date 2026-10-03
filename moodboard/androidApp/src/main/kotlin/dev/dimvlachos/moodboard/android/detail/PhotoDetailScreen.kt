@@ -5,7 +5,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,7 +57,8 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 modifier = chrome,
-                title = { Text(photo.title) },
+                // The headline under the photo names it; the bar doesn't repeat it.
+                title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
                 },
