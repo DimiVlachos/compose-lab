@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -21,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.morph.MorphEnd
@@ -50,7 +54,7 @@ fun PhotoGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = contentPadding.plusBottom(ContentEndSpacing),
     ) {
         items(photos, key = { it.id }) { photo -> PhotoCell(photo, morphScope, onOpen, menu) }
     }
@@ -89,4 +93,18 @@ private fun PhotoCell(
             menu(photo) { menuOpen = false }
         }
     }
+}
+
+// Room between the last row and whatever sits below it: the bottom bar, or the gesture bar.
+private val ContentEndSpacing = 16.dp
+
+@Composable
+private fun PaddingValues.plusBottom(extra: Dp): PaddingValues {
+    val direction = LocalLayoutDirection.current
+    return PaddingValues(
+        start = calculateStartPadding(direction),
+        top = calculateTopPadding(),
+        end = calculateEndPadding(direction),
+        bottom = calculateBottomPadding() + extra,
+    )
 }
