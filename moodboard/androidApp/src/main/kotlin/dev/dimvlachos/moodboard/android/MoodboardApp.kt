@@ -36,6 +36,7 @@ import dev.dimvlachos.moodboard.android.nav.BoardDetail
 import dev.dimvlachos.moodboard.android.nav.BoardEditor
 import dev.dimvlachos.moodboard.android.nav.Boards
 import dev.dimvlachos.moodboard.android.nav.Gallery
+import dev.dimvlachos.moodboard.android.nav.ParallaxPush
 import dev.dimvlachos.moodboard.android.nav.PhotoDetail
 import dev.dimvlachos.moodboard.android.nav.Search
 import dev.dimvlachos.moodboard.android.nav.TopLevelBackStack
@@ -107,7 +108,7 @@ fun MoodboardApp() {
                     entry<PhotoDetail>(metadata = ContainerTransform) {
                         PhotoDetailScreen(it.photoId, it.tab, onBack = toolbarBack)
                     }
-                    entry<BoardDetail> {
+                    entry<BoardDetail>(metadata = ParallaxPush) {
                         BoardDetailScreen(
                             boardId = it.boardId,
                             onBack = toolbarBack,
@@ -115,7 +116,9 @@ fun MoodboardApp() {
                             onEdit = { push(BoardEditor(it.boardId)) },
                         )
                     }
-                    entry<BoardEditor> { BoardEditorScreen(it.boardId, onBack = toolbarBack) }
+                    entry<BoardEditor>(metadata = ParallaxPush) {
+                        BoardEditorScreen(it.boardId, onBack = toolbarBack)
+                    }
                 }
             // Each tab decorates its own entries, so a hidden tab keeps its screens' ViewModels and
             // saved state (scroll, query, app bar) until they are really popped.
