@@ -40,9 +40,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.android.nav.Search
 import dev.dimvlachos.moodboard.android.share.rememberShareLauncher
+import dev.dimvlachos.moodboard.android.ui.ContentEndSpacing
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
-import dev.dimvlachos.moodboard.domain.Photo
+import dev.dimvlachos.moodboard.android.ui.plusBottom
 import dev.dimvlachos.moodboard.search.SearchAction
 import dev.dimvlachos.moodboard.search.SearchViewModel
 import dev.dimvlachos.moodboard.ui.components.EmptyState
@@ -53,7 +54,12 @@ import dev.dimvlachos.moodboard.ui.components.EmptyState
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Unit) {
+fun SearchScreen(
+    onOpenPhoto: (String) -> Unit,
+    bottomBar: @Composable () -> Unit,
+    isTopScreen: Boolean,
+    onBackHandled: () -> Unit,
+) {
     val viewModel = viewModel { SearchViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -81,8 +87,10 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
     }
 
     // Back from results returns to the suggestions first, as Android's search does; from the
-    // suggestions it leaves the tab.
-    BackHandler(enabled = query.isNotEmpty()) {
+    // suggestions it leaves the tab. Only while Search is on top: under a photo that is still
+    // opening, Back belongs to the photo, not to this screen's query.
+    BackHandler(enabled = isTopScreen && query.isNotBlank()) {
+        onBackHandled()
         setQuery("")
         focusManager.clearFocus()
     }
@@ -95,7 +103,7 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
             SearchSuggestions(
                 recent = state.recent,
                 tags = state.suggestions,
-                photos = state.results,
+                tagCounts = state.tagCounts,
                 contentPadding = padding,
                 onRecent = {
                     setQuery(it)
@@ -180,7 +188,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSearch
 private fun SearchSuggestions(
     recent: List<String>,
     tags: List<String>,
-    photos: List<Photo>,
+    tagCounts: Map<String, Int>,
     contentPadding: PaddingValues,
     onRecent: (String) -> Unit,
     onRemoveRecent: (String) -> Unit,
@@ -198,7 +206,7 @@ private fun SearchSuggestions(
         }
         return
     }
-    LazyColumn(modifier, contentPadding = contentPadding) {
+    LazyColumn(modifier, contentPadding = contentPadding.plusBottom(ContentEndSpacing)) {
         if (recent.isNotEmpty()) {
             item(key = "recent-header") { SectionHeader("Recent searches") }
             items(recent, key = { "recent-$it" }) { search ->
@@ -220,7 +228,7 @@ private fun SearchSuggestions(
         if (tags.isNotEmpty()) {
             item(key = "tags-header") { SectionHeader("Browse by tag") }
             items(tags, key = { "tag-$it" }) { tag ->
-                val count = photos.count { tag in it.tags }
+                val count = tagCounts[tag] ?: 0
                 ListItem(
                     headlineContent = { Text(tag) },
                     supportingContent = { Text(if (count == 1) "1 photo" else "$count photos") },
@@ -229,7 +237,6 @@ private fun SearchSuggestions(
                 )
             }
         }
-        item(key = "end") { Box(Modifier.padding(bottom = 16.dp)) }
     }
 }
 

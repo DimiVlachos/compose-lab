@@ -117,10 +117,10 @@ private fun PhotoCell(
 }
 
 // Room between the last row and whatever sits below it: the bottom bar, or the gesture bar.
-private val ContentEndSpacing = 16.dp
+val ContentEndSpacing = 16.dp
 
 @Composable
-private fun PaddingValues.plusBottom(extra: Dp): PaddingValues {
+fun PaddingValues.plusBottom(extra: Dp): PaddingValues {
     val direction = LocalLayoutDirection.current
     return PaddingValues(
         start = calculateStartPadding(direction),

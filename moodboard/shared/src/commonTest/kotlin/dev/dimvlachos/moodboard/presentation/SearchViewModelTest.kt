@@ -38,6 +38,13 @@ class SearchViewModelTest : MainDispatcherTest() {
     }
 
     @Test
+    fun `every tag carries how many photos have it`() {
+        assertEquals(20, state.tagCounts["greece"])
+        assertEquals(12, state.tagCounts["island"])
+        assertEquals(2, state.tagCounts["ruins"])
+    }
+
+    @Test
     fun `starts with no recent searches`() {
         assertEquals(emptyList(), state.recent)
     }
