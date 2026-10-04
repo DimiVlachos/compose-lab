@@ -39,8 +39,8 @@ internal constructor(
     }
 
     /**
-     * Drops waiting requests. Called when navigation changes outside the gate (system back), so a
-     * push queued for the old screen can't land on the new one.
+     * Drops waiting requests. Called when the screen changes outside the gate (Search clearing its
+     * results on Back), so a push queued for the old content can't land on the new one.
      */
     fun cancelPending() = pending.clear()
 }
