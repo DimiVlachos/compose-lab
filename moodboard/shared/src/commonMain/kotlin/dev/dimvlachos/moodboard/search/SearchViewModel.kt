@@ -11,12 +11,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-/** [recent] holds the latest searches, newest first, for an empty field to offer again. */
+/**
+ * [recent] holds the latest searches, newest first, for an empty field to offer again; [tagCounts]
+ * how many photos carry each tag, for browsing by tag.
+ */
 data class SearchState(
     val query: String,
     val suggestions: List<String>,
     val results: List<Photo>,
     val recent: List<String> = emptyList(),
+    val tagCounts: Map<String, Int> = emptyMap(),
 )
 
 sealed interface SearchAction {
@@ -84,5 +88,6 @@ private fun searchState(photos: List<Photo>, query: String, recent: List<String>
                     photo.tags.any { it.contains(needle, ignoreCase = true) }
             },
         recent = recent,
+        tagCounts = tags.associateWith { tag -> photos.count { tag in it.tags } },
     )
 }

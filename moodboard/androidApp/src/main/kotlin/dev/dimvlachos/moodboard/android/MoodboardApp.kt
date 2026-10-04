@@ -112,7 +112,17 @@ fun MoodboardApp() {
                 entryProvider<NavKey> {
                     entry<Gallery> { GalleryScreen(openPhoto, bottomBar) }
                     entry<Boards> { BoardsScreen({ push(BoardDetail(it)) }, bottomBar) }
-                    entry<Search> { SearchScreen(openPhoto, bottomBar) }
+                    entry<Search> {
+                        SearchScreen(
+                            onOpenPhoto = openPhoto,
+                            bottomBar = bottomBar,
+                            isTopScreen =
+                                stack.currentTab == Search &&
+                                    stacks.getValue(Search).last() == Search,
+                            // Back is handled here instead of by NavDisplay: drop queued taps.
+                            onBackHandled = gate::cancelPending,
+                        )
+                    }
                     entry<PhotoDetail>(metadata = ContainerTransform) {
                         PhotoDetailScreen(it.photoId, it.tab, onBack = toolbarBack)
                     }
