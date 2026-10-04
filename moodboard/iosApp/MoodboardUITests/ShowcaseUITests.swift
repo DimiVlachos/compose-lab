@@ -48,10 +48,11 @@ final class ShowcaseUITests: XCTestCase {
         at(41.0) {}
     }
 
-    /// A finger drag over half the screen in 0.4 s, like the Android script's swipe.
+    /// An unhurried finger drag over half the screen, about 0.8 s like the Android script's swipe,
+    /// so the title collapse reads instead of flinging past.
     private func scroll(up: Bool) {
         let (from, to) = up ? (0.8, 0.31) : (0.31, 0.8)
-        drag(from: from, to: to, velocity: 3200)
+        drag(from: from, to: to, velocity: 550)
     }
 
     private func drag(from: CGFloat, to: CGFloat, velocity: CGFloat = 2400) {

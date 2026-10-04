@@ -83,7 +83,8 @@ def act(action, target, where):
     elif action == "scroll":
         w, h = screen()
         a, b = (int(h * 0.8), int(h * 0.31)) if target == "down" else (int(h * 0.31), int(h * 0.8))
-        adb("shell", "input", "swipe", str(w // 2), str(a), str(w // 2), str(b), "400")
+        # Unhurried (0.8 s, like the iOS drag), so the title collapse reads instead of flinging past.
+        adb("shell", "input", "swipe", str(w // 2), str(a), str(w // 2), str(b), "800")
     elif action == "dismiss":
         _, h = screen()
         x, y = where
