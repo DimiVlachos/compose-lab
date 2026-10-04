@@ -17,6 +17,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -41,10 +44,12 @@ import dev.dimvlachos.moodboard.android.nav.PhotoDetail
 import dev.dimvlachos.moodboard.android.nav.Search
 import dev.dimvlachos.moodboard.android.nav.TopLevelBackStack
 import dev.dimvlachos.moodboard.android.search.SearchScreen
+import dev.dimvlachos.moodboard.android.ui.LocalMorphViewports
 import dev.dimvlachos.moodboard.android.ui.LocalSharedTransitionScope
 import dev.dimvlachos.moodboard.android.ui.MoodboardNavigationBar
 import dev.dimvlachos.moodboard.morph.MorphBackdropIn
 import dev.dimvlachos.moodboard.morph.MorphBackdropOut
+import dev.dimvlachos.moodboard.morph.MorphViewports
 import dev.dimvlachos.moodboard.morph.rememberMorphGate
 import dev.dimvlachos.moodboard.nav.LiveIdsViewModel
 import dev.dimvlachos.moodboard.ui.theme.MoodboardTheme
@@ -84,7 +89,10 @@ fun MoodboardApp() {
         val liveIds by viewModel { LiveIdsViewModel() }.state.collectAsStateWithLifecycle()
         LaunchedEffect(liveIds) { stack.prune(liveIds.photoIds, liveIds.boardIds) }
 
-        SharedTransitionLayout {
+        val viewports = remember { MorphViewports() }
+        SharedTransitionLayout(
+            Modifier.onGloballyPositioned { viewports.layoutTopInWindow = it.positionInWindow().y }
+        ) {
             // Taps and tab switches queue behind a morph in flight instead of cutting it off.
             // System back is not gated: a predictive-back gesture already owns its transition, so
             // it pops at once and drops anything still queued for the screen it leaves.
@@ -128,7 +136,10 @@ fun MoodboardApp() {
                     if (stack.currentTab == Gallery) emptyList()
                     else entries.getValue(stack.currentTab)
 
-            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            CompositionLocalProvider(
+                LocalSharedTransitionScope provides this,
+                LocalMorphViewports provides viewports,
+            ) {
                 NavDisplay(
                     entries = shown,
                     onBack = {
