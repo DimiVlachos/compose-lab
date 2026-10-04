@@ -19,6 +19,8 @@ struct PhotoGrid<Menu: View>: View {
                         .matchedTransitionSource(id: photo.id, in: zoom)
                 }
                 .buttonStyle(.plain)
+                // VoiceOver names the photo; the thumbnail alone read as an unnamed button.
+                .accessibilityLabel(photo.title)
                 .contextMenu {
                     menu(photo)
                 } preview: {

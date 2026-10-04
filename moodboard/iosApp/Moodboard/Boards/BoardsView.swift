@@ -6,6 +6,8 @@ struct BoardsView: View {
     @State private var creating = false
     @State private var renaming: BoardSummary?
     @State private var deleting: BoardSummary?
+    // Kept after `deleting` clears, so the title doesn't read “” while the dialog animates out.
+    @State private var deletingName = ""
     @State private var name = ""
 
     var body: some View {
@@ -24,10 +26,16 @@ struct BoardsView: View {
                             name = board.name
                             renaming = board
                         }
-                        Button("Delete", systemImage: "trash", role: .destructive) { deleting = board }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            deletingName = board.name
+                            deleting = board
+                        }
                     }
                     .swipeActions {
-                        Button("Delete", systemImage: "trash") { deleting = board }
+                        Button("Delete", systemImage: "trash") {
+                            deletingName = board.name
+                            deleting = board
+                        }
                             .tint(.red)
                     }
                 }
@@ -50,7 +58,7 @@ struct BoardsView: View {
                 send(BoardsActionRename(id: board.id, name: newName))
             }
             .confirmationDialog(
-                "Delete “\(deleting?.name ?? "")”?",
+                "Delete “\(deletingName)”?",
                 isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                 titleVisibility: .visible,
                 presenting: deleting

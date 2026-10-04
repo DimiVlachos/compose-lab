@@ -54,7 +54,7 @@ struct PhotoDetailView: View {
             .nameAlert("New Board", isPresented: $newBoardShown, name: $newBoardName, confirm: "Create") {
                 send(PhotoDetailActionCreateBoard(name: $0))
             }
-            .onChange(of: model.state.isDeleted) { _, deleted in
+            .onChange(of: model.state.isDeleted, initial: true) { _, deleted in
                 if deleted { dismiss() }
             }
             .task { await model.observe() }
