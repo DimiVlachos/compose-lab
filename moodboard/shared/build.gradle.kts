@@ -47,3 +47,6 @@ kotlin {
 }
 
 compose.resources { packageOfResClass = "dev.dimvlachos.moodboard.resources" }
+
+// SKIE collects build analytics and uploads them by default; nothing from this build leaves it.
+skie { analytics { enabled.set(false) } }
