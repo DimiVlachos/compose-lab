@@ -36,4 +36,50 @@ class SearchViewModelTest : MainDispatcherTest() {
         assertEquals("mainland", state.query)
         assertEquals(8, state.results.size)
     }
+
+    @Test
+    fun `starts with no recent searches`() {
+        assertEquals(emptyList(), state.recent)
+    }
+
+    @Test
+    fun `a submitted search is remembered newest first and once`() {
+        submit("Meteora")
+        submit("sea")
+        submit("meteora ")
+        assertEquals(listOf("meteora", "sea"), state.recent)
+    }
+
+    @Test
+    fun `a blank search is not remembered`() {
+        submit("   ")
+        assertEquals(emptyList(), state.recent)
+    }
+
+    @Test
+    fun `only the five latest searches are kept`() {
+        listOf("a", "b", "c", "d", "e", "f").forEach(::submit)
+        assertEquals(listOf("f", "e", "d", "c", "b"), state.recent)
+    }
+
+    @Test
+    fun `tapping a tag and opening a result remember the search`() {
+        viewModel.onAction(SearchAction.TagTapped("ruins"))
+        viewModel.onAction(SearchAction.QueryChanged("Delphi"))
+        viewModel.onAction(SearchAction.ResultOpened)
+        assertEquals(listOf("Delphi", "ruins"), state.recent)
+    }
+
+    @Test
+    fun `a recent search can be removed`() {
+        submit("sea")
+        submit("town")
+        viewModel.onAction(SearchAction.RemoveRecent("sea"))
+        assertEquals(listOf("town"), state.recent)
+    }
+
+    private fun submit(query: String) {
+        viewModel.onAction(SearchAction.QueryChanged(query))
+        viewModel.onAction(SearchAction.Submitted)
+    }
 }
