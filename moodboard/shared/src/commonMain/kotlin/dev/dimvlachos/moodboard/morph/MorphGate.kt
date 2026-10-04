@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.first
 // right after opening a board can't cut the slide off mid-flight.
 private const val MorphStartTimeoutMs = 420L
 
+// Twice the longest morph (the 500 ms open): only a transition that never ends reaches it.
+private const val MorphSettleTimeoutMs = 1_000L
+
 /**
  * Runs morph requests (open, close, tab switch) one at a time. A request that arrives while a morph
  * is under way waits and runs the moment it lands, instead of reversing it mid-flight: an
@@ -29,6 +32,10 @@ internal constructor(
     internal val holding: MutableState<Boolean>,
     internal val pending: ArrayDeque<() -> Unit>,
 ) {
+    /** True while a morph (or a push that starts none) is running and requests are queued. */
+    val isHolding: Boolean
+        get() = holding.value
+
     fun run(request: () -> Unit) {
         if (holding.value) {
             pending.addLast(request)
@@ -61,7 +68,14 @@ fun SharedTransitionScope.rememberMorphGate(): MorphGate {
             while (!isTransitionActive) {
                 if (withFrameMillis { it } - requestedAt >= MorphStartTimeoutMs) break
             }
-            snapshotFlow { isTransitionActive }.first { !it }
+            // Bounded: a shared transition left active (an interrupted one can) must not hold every
+            // later tap, tab switch and Back forever.
+            if (isTransitionActive) {
+                val settleStartedAt = withFrameMillis { it }
+                while (isTransitionActive) {
+                    if (withFrameMillis { it } - settleStartedAt >= MorphSettleTimeoutMs) break
+                }
+            }
             // A waiting request starts the next morph and keeps the gate closed for it.
             val next = gate.pending.removeFirstOrNull()
             if (next == null) holding.value = false else next()

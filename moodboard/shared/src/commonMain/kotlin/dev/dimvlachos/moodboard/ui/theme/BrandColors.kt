@@ -14,6 +14,8 @@ object Brand {
     val Seed = Color(0xFF1E6FC0)
     val IosTintLight = Color(0xFF186CBD)
     val IosTintDark = Color(0xFF5DA0F4)
+    /** Tone 10, for marks on the dark tint (6.4:1). */
+    val IosOnTintDark = Color(0xFF001C39)
 }
 
 internal val BrandLightColors =

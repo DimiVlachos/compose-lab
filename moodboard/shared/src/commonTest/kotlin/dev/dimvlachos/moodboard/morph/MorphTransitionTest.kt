@@ -13,9 +13,15 @@ import kotlin.test.assertNotEquals
 
 class MorphTransitionTest {
     @Test
-    fun bothEndsBuildTheSameKeyForOnePhoto() {
-        assertEquals(morphKey("naxos"), morphKey("naxos"))
-        assertNotEquals(morphKey("naxos"), morphKey("milos"))
+    fun bothEndsBuildTheSameKeyForOnePhotoInOneTab() {
+        assertEquals(photoMorphKey("Gallery", "naxos"), photoMorphKey("Gallery", "naxos"))
+        assertNotEquals(photoMorphKey("Gallery", "naxos"), photoMorphKey("Gallery", "milos"))
+    }
+
+    @Test
+    fun theSamePhotoInTwoTabsNeverPairs() {
+        // A tab switch shows both grids at once; their cells must not morph into each other.
+        assertNotEquals(photoMorphKey("Gallery", "naxos"), photoMorphKey("Search", "naxos"))
     }
 
     @Test

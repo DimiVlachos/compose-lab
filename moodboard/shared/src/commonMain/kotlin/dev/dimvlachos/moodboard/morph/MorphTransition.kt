@@ -7,7 +7,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.ContentScale
 
 // Both ends must build their key here, so they can never drift apart.
-internal fun morphKey(photoId: String): String = "morph_photo_$photoId"
+/**
+ * One photo in one tab's grid: the tab keeps a photo shown in two grids from pairing across them.
+ */
+internal fun photoMorphKey(scope: String, photoId: String): String = "morph_photo_$scope/$photoId"
 
 // Both ends must pass the same mode. The card and the full-bleed detail differ in ratio, and
 // scaleToBounds snaps the visible crop to the destination's on the first frame; RemeasureToBounds

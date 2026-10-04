@@ -22,7 +22,7 @@ class MorphGateTest {
             }
         }
         mainClock.advanceTimeByFrame()
-        // No morph starts, so each request holds the gate for the 300 ms start timeout.
+        // No morph starts, so each request holds the gate for the 420 ms start timeout.
         gate!!.run { ran += "open" }
         gate!!.run { ran += "back" }
         gate!!.run { ran += "back again" }

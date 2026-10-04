@@ -21,19 +21,22 @@ final class ImageCache: @unchecked Sendable {
     func image(path: String, maxPixel: CGFloat) async -> UIImage? {
         let key = key(path, maxPixel)
         if let cached = cache.object(forKey: key) { return cached }
-        let image = await loads.load(key as String) {
+        let cache = cache
+        return await loads.load(key as String) {
             guard let data = try? await ImageDataKt.imageData(path: path),
                 let full = UIImage(data: data)
             else { return nil }
             let scale = min(1, maxPixel / max(full.size.width, full.size.height))
             let size = CGSize(width: full.size.width * scale, height: full.size.height * scale)
-            return await full.byPreparingThumbnail(ofSize: size) ?? full
-        }
-        if let image {
+            let image = await full.byPreparingThumbnail(ofSize: size) ?? full
+            // Cached before the load leaves the in-flight table, so no request falls in between
+            // and decodes it again.
             let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
             cache.setObject(image, forKey: key, cost: cost)
+            // The Compose detail reads its own cache; warm it so the zoom opens on pixels.
+            try? await ImageDataKt.warmPhoto(path: path)
+            return image
         }
-        return image
     }
 
     private func key(_ path: String, _ maxPixel: CGFloat) -> NSString {

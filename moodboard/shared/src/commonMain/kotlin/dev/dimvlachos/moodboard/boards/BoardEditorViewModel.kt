@@ -6,6 +6,7 @@ import dev.dimvlachos.moodboard.MoodboardGraph
 import dev.dimvlachos.moodboard.domain.Board
 import dev.dimvlachos.moodboard.domain.MoodboardRepository
 import dev.dimvlachos.moodboard.domain.Photo
+import dev.dimvlachos.moodboard.domain.boardName
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -36,7 +37,7 @@ class BoardEditorViewModel(
         when (action) {
             // A board always keeps a name; an emptied field leaves the last one in place.
             is BoardEditorAction.Rename ->
-                if (action.name.isNotBlank()) repository.renameBoard(boardId, action.name.trim())
+                boardName(action.name)?.let { repository.renameBoard(boardId, it) }
             is BoardEditorAction.Toggle -> {
                 val members = repository.boards.value.firstOrNull { it.id == boardId }?.photoIds
                 repository.setMembership(

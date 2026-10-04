@@ -8,6 +8,7 @@ import dev.dimvlachos.moodboard.domain.MoodboardRepository
 import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.domain.PhotoFilter
 import dev.dimvlachos.moodboard.domain.SortOrder
+import dev.dimvlachos.moodboard.domain.boardName
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -54,7 +55,8 @@ class GalleryViewModel(private val repository: MoodboardRepository = MoodboardGr
                 repository.setMembership(action.boardId, action.photoId, member = true)
             is GalleryAction.RemoveFromBoard ->
                 repository.setMembership(action.boardId, action.photoId, member = false)
-            is GalleryAction.CreateBoardWith -> repository.createBoard(action.name, action.photoId)
+            is GalleryAction.CreateBoardWith ->
+                boardName(action.name)?.let { repository.createBoard(it, action.photoId) }
             is GalleryAction.Delete -> repository.deletePhoto(action.id)
             is GalleryAction.SetFilter -> filter.value = action.filter
         }

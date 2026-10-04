@@ -6,6 +6,7 @@ import dev.dimvlachos.moodboard.MoodboardGraph
 import dev.dimvlachos.moodboard.domain.Board
 import dev.dimvlachos.moodboard.domain.MoodboardRepository
 import dev.dimvlachos.moodboard.domain.Photo
+import dev.dimvlachos.moodboard.domain.boardName
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -35,8 +36,9 @@ class BoardsViewModel(private val repository: MoodboardRepository = MoodboardGra
 
     fun onAction(action: BoardsAction) {
         when (action) {
-            is BoardsAction.Create -> repository.createBoard(action.name)
-            is BoardsAction.Rename -> repository.renameBoard(action.id, action.name)
+            is BoardsAction.Create -> boardName(action.name)?.let { repository.createBoard(it) }
+            is BoardsAction.Rename ->
+                boardName(action.name)?.let { repository.renameBoard(action.id, it) }
             is BoardsAction.Delete -> repository.deleteBoard(action.id, action.deletePhotos)
         }
     }

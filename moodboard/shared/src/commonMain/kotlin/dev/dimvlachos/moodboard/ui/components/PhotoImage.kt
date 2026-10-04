@@ -36,9 +36,9 @@ fun PhotoImage(
             mutableStateOf(photoBytes.cachedOrSmaller(path, maxPixel, smaller = GridMaxPixel))
         }
     LaunchedEffect(path, maxPixel) {
-        if (photoBytes.cached(path, maxPixel) == null) {
-            photoBytes.bitmap(path, maxPixel)?.let { bitmap.value = it }
-        }
+        // Always assigned: bitmap() returns a cached copy without decoding, and a copy that landed
+        // between composition and this effect must still replace the placeholder or small copy.
+        photoBytes.bitmap(path, maxPixel)?.let { bitmap.value = it }
     }
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         bitmap.value?.let {
