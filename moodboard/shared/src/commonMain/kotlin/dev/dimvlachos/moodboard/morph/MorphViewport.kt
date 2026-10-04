@@ -16,18 +16,19 @@ import kotlin.math.max
  */
 @Stable
 class MorphViewport {
-    // The grid's frame and its content insets (the bars), kept apart: the frame only moves on
-    // layout, while the insets change as a large top bar collapses.
+    // The grid's frame, and its opaque bars' heights, kept apart: the frame only moves on layout,
+    // while a large top bar's height changes as it collapses. The heights are read when the clip
+    // is drawn, never stored, so they are always current without recomposing the grid.
     var frameTop by mutableFloatStateOf(Float.NaN)
     var frameBottom by mutableFloatStateOf(Float.NaN)
-    var insetTop by mutableFloatStateOf(0f)
-    var insetBottom by mutableFloatStateOf(0f)
+    var insetTop: () -> Float = { 0f }
+    var insetBottom: () -> Float = { 0f }
 
     internal val top: Float
-        get() = frameTop + insetTop
+        get() = frameTop + insetTop()
 
     internal val bottom: Float
-        get() = frameBottom - insetBottom
+        get() = frameBottom - insetBottom()
 }
 
 /** One viewport per morph scope (a tab), so each detail clips to its own grid. */

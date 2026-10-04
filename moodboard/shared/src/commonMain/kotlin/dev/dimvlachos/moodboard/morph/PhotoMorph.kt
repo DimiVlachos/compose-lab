@@ -89,9 +89,8 @@ private fun rememberMorphViewportFraction(
     val animated =
         transition.animateFloat(
             transitionSpec = {
-                val opening = (end == MorphEnd.Detail) == (targetState == EnterExitState.Visible)
                 tween(
-                    if (opening) MorphDimens.OpenMs else MorphDimens.CloseMs,
+                    morphViewportMs(end, targetVisible = targetState == EnterExitState.Visible),
                     easing = MorphDimens.MorphEasing,
                 )
             },
@@ -103,3 +102,7 @@ private fun rememberMorphViewportFraction(
         derivedStateOf { if (sharedContentState.isMatchFound) animated.value else rest }
     }
 }
+
+// The bounds' timing (MorphBoundsTransform): an open is the detail arriving and the card leaving.
+internal fun morphViewportMs(end: MorphEnd, targetVisible: Boolean): Int =
+    if ((end == MorphEnd.Detail) == targetVisible) MorphDimens.OpenMs else MorphDimens.CloseMs

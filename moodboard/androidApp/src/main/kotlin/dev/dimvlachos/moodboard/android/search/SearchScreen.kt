@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
+import dev.dimvlachos.moodboard.android.nav.Search
 import dev.dimvlachos.moodboard.android.share.rememberShareLauncher
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
@@ -116,7 +117,7 @@ fun SearchScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Uni
         PhotoGrid(
             photos = state.results,
             onOpen = { open(it.id) },
-            morphScope = "Search",
+            morphScope = Search.toString(),
             contentPadding = padding,
             // Clear of the keyboard: the last results can scroll above it.
             modifier = Modifier.consumeWindowInsets(padding).imePadding(),
