@@ -1,8 +1,5 @@
 package dev.dimvlachos.moodboard.android.ui
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
@@ -30,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -118,7 +114,7 @@ fun DeleteBoardSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.padding(bottom = 16.dp)) {
+        Column(Modifier.padding(bottom = 16.dp).sheetContentEntrance()) {
             Text(
                 "Delete “$boardName”?",
                 style = MaterialTheme.typography.titleLarge,
@@ -162,21 +158,3 @@ fun DeleteBoardSheet(
         }
     }
 }
-
-/**
- * Dialogs ease in from a little smaller on a soft spring, over the platform's fade, instead of only
- * fading in at full size. Read in the layer block, so the animation never recomposes.
- */
-@Composable
-private fun Modifier.dialogEntrance(): Modifier {
-    val scale = remember { Animatable(EntranceScale) }
-    LaunchedEffect(Unit) { scale.animateTo(1f, EntranceSpring) }
-    return graphicsLayer {
-        scaleX = scale.value
-        scaleY = scale.value
-    }
-}
-
-private const val EntranceScale = 0.92f
-private val EntranceSpring =
-    spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
