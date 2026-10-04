@@ -11,7 +11,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import kotlinx.coroutines.flow.first
 
-private const val MorphStartTimeoutMs = 300L
+// Outlasts Android's 400 ms parallax push (no morph, so it waits out this timeout), so a tap
+// right after opening a board can't cut the slide off mid-flight.
+private const val MorphStartTimeoutMs = 420L
 
 /**
  * Runs morph requests (open, close, tab switch) one at a time. A request that arrives while a morph
