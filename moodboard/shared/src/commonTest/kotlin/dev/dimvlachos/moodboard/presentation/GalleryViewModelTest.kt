@@ -19,27 +19,30 @@ class GalleryViewModelTest : MainDispatcherTest() {
     fun `starts with every photo board and tag`() {
         assertEquals(20, state.photos.size)
         assertEquals(3, state.boards.size)
-        assertEquals(listOf("comic", "greece", "island", "little nemo", "sea"), state.allTags)
+        assertEquals(
+            listOf("greece", "island", "mainland", "mountains", "ruins", "sea", "town"),
+            state.allTags,
+        )
     }
 
     @Test
     fun `favorites-only filter keeps favorites`() {
         viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(favoritesOnly = true)))
-        assertEquals(listOf("santorini", "book_spread_1"), state.photos.map { it.id })
+        assertEquals(listOf("santorini", "meteora"), state.photos.map { it.id })
     }
 
     @Test
     fun `tag filter keeps photos with any selected tag`() {
-        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("comic"))))
+        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("mainland"))))
         assertEquals(8, state.photos.size)
-        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("comic", "sea"))))
+        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("mainland", "sea"))))
         assertEquals(20, state.photos.size)
     }
 
     @Test
     fun `title sort orders photos alphabetically`() {
         viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(sort = SortOrder.Title)))
-        assertEquals("Corfu", state.photos.first().title)
+        assertEquals("Acropolis", state.photos.first().title)
         assertEquals("Zakynthos", state.photos.last().title)
     }
 
@@ -71,8 +74,8 @@ class GalleryViewModelTest : MainDispatcherTest() {
 
     @Test
     fun `a selected tag whose photos are all gone stops filtering`() {
-        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("comic"))))
-        repository.deleteBoard("little-nemo", deletePhotos = true)
+        viewModel.onAction(GalleryAction.SetFilter(PhotoFilter(tags = setOf("mainland"))))
+        repository.deleteBoard("mainland", deletePhotos = true)
         assertEquals(emptySet(), state.filter.tags)
         assertEquals(12, state.photos.size)
     }

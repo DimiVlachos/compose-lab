@@ -19,7 +19,19 @@ internal object SeedData {
             "folegandros",
             "zakynthos",
         )
-    private val favorites = setOf("santorini", "book_spread_1")
+    // Mainland places, each with the kind of place it is as a second tag.
+    private val mainland =
+        listOf(
+            Place("meteora", "Meteora", "mountains"),
+            Place("meteora_night", "Meteora at Night", "mountains"),
+            Place("delphi", "Delphi", "ruins"),
+            Place("acropolis", "Acropolis", "ruins"),
+            Place("nafplio", "Nafplio", "town"),
+            Place("monemvasia", "Monemvasia", "town"),
+            Place("vikos", "Vikos Gorge", "mountains"),
+            Place("kalogeriko", "Kalogeriko Bridge", "mountains"),
+        )
+    private val favorites = setOf("santorini", "meteora")
 
     val photos: List<Photo> =
         islands.map { id ->
@@ -31,21 +43,22 @@ internal object SeedData {
                 isFavorite = id in favorites,
             )
         } +
-            (1..8).map { n ->
-                val id = "book_spread_$n"
+            mainland.map { place ->
                 Photo(
-                    id = id,
-                    title = "Little Nemo · Spread $n",
-                    path = "files/photos/$id.jpg",
-                    tags = setOf("comic", "little nemo"),
-                    isFavorite = id in favorites,
+                    id = place.id,
+                    title = place.title,
+                    path = "files/photos/photo_${place.id}.jpg",
+                    tags = setOf("mainland", "greece", place.kind),
+                    isFavorite = place.id in favorites,
                 )
             }
 
     val boards: List<Board> =
         listOf(
             Board("islands", "Islands", islands),
-            Board("little-nemo", "Little Nemo", (1..8).map { "book_spread_$it" }),
+            Board("mainland", "Mainland", mainland.map { it.id }),
             Board("blue", "Blue", listOf("santorini", "mykonos", "milos")),
         )
 }
+
+private class Place(val id: String, val title: String, val kind: String)

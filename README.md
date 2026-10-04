@@ -182,7 +182,7 @@ PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 
 ## Moodboard: native on both platforms (`moodboard/`)
 
-A second app in the repo: one Kotlin codebase that feels native on each platform instead of looking the same on both. It's a photo moodboard (gallery, boards, search) over the same bundled photos.
+A second app in the repo: one Kotlin codebase that feels native on each platform instead of looking the same on both. It's a photo moodboard (gallery, boards, search) over bundled photos of Greek islands and mainland places.
 
 - **iOS** is a SwiftUI shell with real iOS 26 Liquid Glass: a glass tab bar that shrinks on scroll, a bottom search field, glass toolbars, the system zoom transition, context menus with lifted previews, alerts, a confirmation dialog and detent sheets. Grids and lists are SwiftUI, so large titles collapse and the menus attach to native views.
 - **Android** is Compose with Material 3 Expressive and wallpaper-based dynamic color, Navigation 3 with predictive back, long-press menus, dialogs and bottom sheets. A photo opens through the profile gallery's container transform, ported from `imagemorph/` into `moodboard/shared/.../morph` (shared so its tests keep running on the iOS simulator; only Android calls it). Each tab keeps its own back stack and state, as an iOS `TabView` does.
@@ -272,3 +272,16 @@ Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](ht
 | [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the bathroom in the fogged mirror: on its own, or behind you, cut out of the camera) | nana |
 | [Contemporary bathroom interior with mirror above washbasin at home](https://www.pexels.com/photo/7046159/) (the wall the fogged mirror hangs on, extended with more tiles above and a counter front below) | Max Vakhtbovych |
 | [Water droplets on foggy glass](https://www.pexels.com/photo/water-droplets-on-foggy-glass-8628343/) (the fog's condensation, via `scripts/fog-texture.py`) | Chris F |
+
+The Moodboard's mainland photos are from [Wikimedia Commons](https://commons.wikimedia.org), cropped to 640×800, under their Creative Commons licences:
+
+| Photo | Author | Licence |
+|---|---|---|
+| [Meteora](https://commons.wikimedia.org/wiki/File:Meteora_Agios_Triadas_IMG_7632.jpg) | Dido3 | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
+| [Meteora at Night](https://commons.wikimedia.org/wiki/File:%CE%9C%CE%B5%CF%84%CE%B5%CF%89%CF%81%CE%B1_by_night.jpg) | Argiriskaramouzas | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| [Delphi](https://commons.wikimedia.org/wiki/File:Delphi_BW_2017-10-08_11-49-24.jpg) | Berthold Werner | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
+| [Acropolis](https://commons.wikimedia.org/wiki/File:Akropolis_fra_Pnyx_2017_(1).jpg) | Peulle | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| [Nafplio](https://commons.wikimedia.org/wiki/File:%CE%9D%CE%B1%CF%8D%CF%80%CE%BB%CE%B9%CE%BF_7834.jpg) | C messier | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| [Monemvasia](https://commons.wikimedia.org/wiki/File:%CE%9C%CE%BF%CE%BD%CE%B5%CE%BC%CE%B2%CE%B1%CF%83%CE%B9%CE%AC_0412.jpg) | C messier | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| [Vikos Gorge](https://commons.wikimedia.org/wiki/File:Vikos_Gorge_(%CE%A6%CE%B1%CF%81%CF%81%CE%AC%CE%B3%CE%B3%CE%B9_%CF%84%CE%BF%CF%85_%CE%92%CE%AF%CE%BA%CE%BF%CF%85)_by_Pudelek_2.JPG) | Pudelek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| [Kalogeriko Bridge](https://commons.wikimedia.org/wiki/File:Old_Bridge_Kalogeriko.jpg) | Jolovema | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
