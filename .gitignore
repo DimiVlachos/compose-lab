@@ -12,3 +12,6 @@ xcuserdata/
 .superpowers/
 __pycache__/
 scripts/fog_full.jpg
+moodboard/iosApp/Moodboard.xcodeproj/
+moodboard/iosApp/build/
+moodboard/iosApp/Moodboard/Info.plist

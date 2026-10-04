@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Moodboard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/moodboard_surface</item>
+    </style>
+    <color name="moodboard_surface">#101319</color>
+</resources>

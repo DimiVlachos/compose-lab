@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose (launch splash, rotation): the brand scheme's surface, light or
+         dark with the system, so it never flashes the other one. -->
+    <style name="Theme.Moodboard" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/moodboard_surface</item>
+    </style>
+    <color name="moodboard_surface">#F8F9FF</color>
+</resources>
