@@ -247,7 +247,7 @@ MIT. Icon path data comes from Material Icons (Apache 2.0). On Android, the fogg
 
 The page-turn book's pages are Winsor McCay's *Little Nemo in Slumberland*, the New York Herald Sunday pages of 15 October 1905 to 4 February 1906 (1905-12-03 from a smaller scan, 1906-01-28 left out), public domain, from the scans on [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Little_Nemo_in_Slumberland).
 
-Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](https://unsplash.com/license):
+Photos from [Unsplash](https://unsplash.com), used under the [Unsplash licence](https://unsplash.com/license) (the island photos are also bundled in the Moodboard):
 
 | Photo | Photographer |
 |---|---|
@@ -275,7 +275,7 @@ Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](ht
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 
-The Moodboard's mainland photos are from [Wikimedia Commons](https://commons.wikimedia.org), cropped to 640×800, under their Creative Commons licences:
+The Moodboard's mainland photos are from [Wikimedia Commons](https://commons.wikimedia.org), cropped to 640×800. The cropped files (`moodboard/shared/src/commonMain/composeResources/files/photos/photo_{meteora,meteora_night,delphi,acropolis,nafplio,monemvasia,vikos,kalogeriko}.jpg`) stay under the Creative Commons licence listed for each, not the repo's MIT licence:
 
 | Photo | Author | Licence |
 |---|---|---|
