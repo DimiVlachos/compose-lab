@@ -182,22 +182,29 @@ PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 
 ## Moodboard: native on both platforms (`moodboard/`)
 
-A second app in the repo: one Kotlin codebase that feels native on each platform instead of looking the same on both. It's a photo moodboard (gallery, boards, search) over bundled photos of Greek islands and mainland places.
+**The point:** the right way to build a Kotlin Multiplatform app is to share what users never see and keep what they touch native. An iPhone user and an Android user should both feel at home: the same app and the same features, with each platform's own components, gestures and motion. Not one UI drawn the same on both.
 
-- **iOS** is a SwiftUI shell with real iOS 26 Liquid Glass: a glass tab bar that shrinks on scroll, a bottom search field, glass toolbars, the system zoom transition, context menus with lifted previews, alerts, a confirmation dialog and detent sheets. Grids and lists are SwiftUI, so large titles collapse and the menus attach to native views.
-- **Android** is Compose with Material 3 Expressive and wallpaper-based dynamic color, Navigation 3 with predictive back, long-press menus, dialogs and bottom sheets. A photo opens through the profile gallery's container transform, ported from `imagemorph/` into `moodboard/shared/.../morph` (shared so its tests keep running on the iOS simulator; only Android calls it). Each tab keeps its own back stack and state, as an iOS `TabView` does.
-- **Shared** (`moodboard/shared`): the in-memory repository, one MVI ViewModel per screen, and three Compose screens hosted inside SwiftUI on iOS (photo detail, filter sheet, board editor). SwiftUI observes the ViewModels through [SKIE](https://skie.touchlab.co); the toolbar and the hosted Compose content share one ViewModel, so they never disagree.
+Moodboard is a photo moodboard (gallery, boards, search) built that way. One Kotlin codebase holds the data, the logic and one MVI ViewModel per screen. Each platform draws its own chrome on top.
 
 | Feature | iOS | Android |
 |---|---|---|
-| Tabs | Glass `TabView`, search tab | `NavigationBar` |
-| Photo menu | `.contextMenu` with preview | `DropdownMenu` on long press |
-| Delete photo | `.alert` | `AlertDialog` |
-| Delete board | `.confirmationDialog` | `ModalBottomSheet` |
-| Filter | Detent sheet, shared Compose body | `ModalBottomSheet`, same body |
-| Open photo | `.navigationTransition(.zoom)` | Container-transform morph |
-| Search | `.searchable` with suggestions | M3 `SearchBar` with tag chips |
-| Share | `ShareLink` | Share intent via `FileProvider` |
+| Tabs | Liquid Glass `TabView` that shrinks on scroll, search as its own tab | Material 3 Expressive short navigation bar, cross-fading tabs |
+| Screen title | Big title that scrolls with the content, inline title in a glass bar | Large app bar that collapses into a small one |
+| Open a photo | System zoom transition from the cell | Container-transform morph from the cell, staying under the bars |
+| Inner screens | Native push with swipe back | Parallax push with predictive back |
+| Photo menu | `.contextMenu` with a lifted preview | `DropdownMenu` on long press |
+| Delete a photo | `.alert` | `AlertDialog` |
+| Delete a board | `.confirmationDialog` | `ModalBottomSheet` |
+| Filter | Detent sheet | `ModalBottomSheet` (same shared Compose body) |
+| Search | `.searchable` with suggestions | Search bar with recent searches and tags first, results as you type |
+| Share | `ShareLink` | Share sheet via `FileProvider` |
+
+**What's shared, and what isn't:**
+
+- **Shared** (`moodboard/shared`): the repository, the ViewModels, and three Compose screens with no native-chrome dependency, hosted inside SwiftUI on iOS (photo detail, filter sheet, board editor). SwiftUI observes the ViewModels through [SKIE](https://skie.touchlab.co), so a native toolbar and the hosted Compose content read one state and never disagree.
+- **Native on iOS** (`moodboard/iosApp`): a SwiftUI shell for iOS 26. Its grids and lists are SwiftUI so the glass bars, context menus and zoom transition attach to real native views.
+- **Native on Android** (`moodboard/androidApp`): Compose with Material 3 Expressive and Navigation 3. Each tab keeps its own back stack, like an iOS `TabView`.
+- **One brand across both:** an Aegean blue accent (a full Material scheme on Android, the app tint on iOS), Instrument Serif on the big titles while body text keeps each platform's system font, and one app icon. They read as the same app; neither imitates the other.
 
 Run it:
 
