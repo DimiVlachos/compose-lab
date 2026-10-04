@@ -30,6 +30,7 @@ import dev.dimvlachos.moodboard.android.ui.DeletePhotoDialog
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
 import dev.dimvlachos.moodboard.android.ui.PhotoMenuItems
+import dev.dimvlachos.moodboard.android.ui.sheetContentEntrance
 import dev.dimvlachos.moodboard.filter.FilterSheetContent
 import dev.dimvlachos.moodboard.gallery.GalleryAction
 import dev.dimvlachos.moodboard.gallery.GalleryViewModel
@@ -127,6 +128,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
                 filter = state.filter,
                 allTags = state.allTags,
                 onFilterChange = { viewModel.onAction(GalleryAction.SetFilter(it)) },
+                modifier = Modifier.sheetContentEntrance(),
             )
         }
     }
