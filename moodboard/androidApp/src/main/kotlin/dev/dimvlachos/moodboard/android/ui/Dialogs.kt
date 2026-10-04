@@ -45,6 +45,7 @@ import dev.dimvlachos.moodboard.R
 fun DeletePhotoDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogEntrance(),
         title = { Text("Delete photo?") },
         text = { Text("“$title” will be removed from the gallery and every board.") },
         confirmButton = {
@@ -75,17 +76,11 @@ fun BoardNameDialog(
     val confirm = { if (name.text.isNotBlank()) onConfirm(name.text.trim()) }
     // The window no longer resizes for the keyboard, which snapped the dialog down and then up
     // as it opened; the content pads itself by the keyboard's insets instead, so the centred
-    // dialog glides up with the keyboard frame by frame. It also eases in from a little smaller.
-    val entrance = remember { Animatable(EntranceScale) }
-    LaunchedEffect(Unit) { entrance.animateTo(1f, EntranceSpring) }
+    // dialog glides up with the keyboard frame by frame.
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        modifier =
-            Modifier.imePadding().graphicsLayer {
-                scaleX = entrance.value
-                scaleY = entrance.value
-            },
+        modifier = Modifier.imePadding().dialogEntrance(),
         title = { Text(title) },
         text = {
             OutlinedTextField(
@@ -165,6 +160,20 @@ fun DeleteBoardSheet(
                 modifier = Modifier.clickable(onClick = onDismiss),
             )
         }
+    }
+}
+
+/**
+ * Dialogs ease in from a little smaller on a soft spring, over the platform's fade, instead of only
+ * fading in at full size. Read in the layer block, so the animation never recomposes.
+ */
+@Composable
+private fun Modifier.dialogEntrance(): Modifier {
+    val scale = remember { Animatable(EntranceScale) }
+    LaunchedEffect(Unit) { scale.animateTo(1f, EntranceSpring) }
+    return graphicsLayer {
+        scaleX = scale.value
+        scaleY = scale.value
     }
 }
 
