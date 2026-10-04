@@ -1,7 +1,11 @@
 package dev.dimvlachos.moodboard.android.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -33,6 +38,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import dev.dimvlachos.moodboard.R
 
 @Composable
@@ -67,8 +73,19 @@ fun BoardNameDialog(
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     val confirm = { if (name.text.isNotBlank()) onConfirm(name.text.trim()) }
+    // The window no longer resizes for the keyboard, which snapped the dialog down and then up
+    // as it opened; the content pads itself by the keyboard's insets instead, so the centred
+    // dialog glides up with the keyboard frame by frame. It also eases in from a little smaller.
+    val entrance = remember { Animatable(EntranceScale) }
+    LaunchedEffect(Unit) { entrance.animateTo(1f, EntranceSpring) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        modifier =
+            Modifier.imePadding().graphicsLayer {
+                scaleX = entrance.value
+                scaleY = entrance.value
+            },
         title = { Text(title) },
         text = {
             OutlinedTextField(
@@ -150,3 +167,7 @@ fun DeleteBoardSheet(
         }
     }
 }
+
+private const val EntranceScale = 0.92f
+private val EntranceSpring =
+    spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
