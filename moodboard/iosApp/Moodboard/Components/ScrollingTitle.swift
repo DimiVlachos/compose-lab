@@ -7,7 +7,8 @@ struct LargeTitleHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.largeTitle.bold())
+            // The brand display face, as on Android's big titles; scales with Dynamic Type.
+            .font(.brandDisplay(size: 44, relativeTo: .largeTitle))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -53,5 +54,13 @@ private struct ScrollingTitle: ViewModifier {
                         .accessibilityHidden(!headerScrolledAway)
                 }
             }
+    }
+}
+
+extension Font {
+    /// Instrument Serif, the brand display face both apps use for their big titles. It runs small
+    /// for its size, so sizes are a little larger than SF's for the same role.
+    static func brandDisplay(size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
+        .custom("InstrumentSerif-Regular", size: size, relativeTo: style)
     }
 }

@@ -6,11 +6,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// UIKit's systemBlue and the grouped grays, so the shared Compose bits sit quietly among native
-// controls instead of carrying Material's default purple.
+// UIKit's grouped grays tinted with the brand blue (the same tones SwiftUI tints with), so the
+// shared Compose bits sit among native controls instead of carrying Material's default purple.
 private val Light =
     lightColorScheme(
-        primary = Color(0xFF007AFF),
+        primary = Brand.IosTintLight,
         onPrimary = Color.White,
         secondaryContainer = Color(0xFFE5E5EA),
         onSecondaryContainer = Color.Black,
@@ -24,7 +24,7 @@ private val Light =
 
 private val Dark =
     darkColorScheme(
-        primary = Color(0xFF0A84FF),
+        primary = Brand.IosTintDark,
         onPrimary = Color.White,
         secondaryContainer = Color(0xFF3A3A3C),
         onSecondaryContainer = Color.White,
