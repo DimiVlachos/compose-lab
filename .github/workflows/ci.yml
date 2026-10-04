@@ -46,6 +46,20 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew :androidApp:assembleDebug --stacktrace
 
+      - name: Moodboard tests (iOS simulator)
+        run: ./gradlew :moodboard:shared:iosSimulatorArm64Test --stacktrace
+
+      # Links the framework the SwiftUI app imports, which runs SKIE's Swift generation: a
+      # Kotlin or SKIE change that breaks it fails here, not first in Xcode.
+      - name: Moodboard iOS framework
+        run: ./gradlew :moodboard:shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+
+      - name: Moodboard architecture (Konsist)
+        run: ./gradlew :moodboard:androidApp:testDebugUnitTest --stacktrace
+
+      - name: Moodboard debug APK
+        run: ./gradlew :moodboard:androidApp:assembleDebug --stacktrace
+
       - name: Upload Reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -56,5 +70,7 @@ jobs:
             composeApp/build/test-results/**
             androidApp/build/reports/tests/**
             androidApp/build/test-results/**
+            moodboard/*/build/reports/tests/**
+            moodboard/*/build/test-results/**
           retention-days: 7
           if-no-files-found: ignore

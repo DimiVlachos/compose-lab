@@ -1,6 +1,5 @@
 package dev.dimvlachos.lab.architecture
 
-import com.lemonappdev.konsist.api.Konsist
 import com.lemonappdev.konsist.api.verify.assertFalse
 import org.junit.Test
 
@@ -8,7 +7,7 @@ class FeatureBoundaryKonsistTest {
 
     @Test
     fun `core never imports a feature package or App`() {
-        Konsist.scopeFromProject()
+        labScope()
             .files
             .filter {
                 it.packagee?.name.orEmpty().let { p ->
@@ -39,7 +38,7 @@ class FeatureBoundaryKonsistTest {
 
     @Test
     fun `core presentation components never imports core demo`() {
-        Konsist.scopeFromProject()
+        labScope()
             .files
             .filter {
                 val p = it.packagee?.name.orEmpty()
