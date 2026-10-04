@@ -73,6 +73,24 @@ final class NativeComponentsUITests: XCTestCase {
         XCTAssertFalse(app.navigationBars["Santorini"].exists)
     }
 
+    func testRemovingAPhotoFromItsBoardShowsOnTheBoard() {
+        app.tabBars.buttons["Boards"].tap()
+        let blue = app.staticTexts["Blue"]
+        XCTAssertTrue(blue.waitForExistence(timeout: 5))
+        blue.tap()
+        XCTAssertTrue(app.navigationBars["Blue"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Santorini"].waitForExistence(timeout: 5))
+        // Remove the photo from the board while the board is covered by it.
+        app.buttons["Santorini"].tap()
+        XCTAssertTrue(app.navigationBars["Santorini"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["More"].tap()
+        app.buttons["Add to Board"].tap()
+        app.buttons.matching(identifier: "Blue").element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Blue"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Santorini"].exists)
+    }
+
     func testBoardsAndSearch() {
         app.tabBars.buttons["Boards"].tap()
         let blue = app.staticTexts["Blue"]

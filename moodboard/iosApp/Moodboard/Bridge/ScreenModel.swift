@@ -2,8 +2,8 @@ import MoodboardShared
 import Observation
 
 /// One SwiftUI screen's view of a shared Kotlin ViewModel. It mirrors the ViewModel's
-/// StateFlow into `state` and clears its SwiftViewModelStore when the screen goes away, which
-/// cancels the ViewModel's scope.
+/// StateFlow into `state` for as long as the screen exists, and clears its SwiftViewModelStore
+/// when the screen goes away, which cancels the ViewModel's scope.
 ///
 /// SwiftUI builds a fresh `@State` initial value each time a parent re-renders and throws all
 /// but the first away, so the store and ViewModel are created on first use: a discarded
@@ -15,6 +15,7 @@ final class ScreenModel<ViewModel: AnyObject, State: AnyObject> {
     @ObservationIgnored private let stateFlow: (ViewModel) -> SkieSwiftStateFlow<State>
     @ObservationIgnored private var store: SwiftViewModelStore?
     @ObservationIgnored private var bound: (viewModel: ViewModel, flow: SkieSwiftStateFlow<State>)?
+    @ObservationIgnored private var collecting: Task<Void, Never>?
     private var latest: State?
 
     init(
@@ -29,10 +30,16 @@ final class ScreenModel<ViewModel: AnyObject, State: AnyObject> {
 
     var state: State { latest ?? binding().flow.value }
 
-    /// Run from the screen's `.task`, so collection stops when the view disappears.
+    /// Starts mirroring the state. Not tied to the view's `.task`, which SwiftUI cancels whenever
+    /// another screen is pushed over this one: a covered board kept showing a photo removed from
+    /// the screen above it, and only caught up after the zoom back had landed on the stale grid.
     func observe() async {
-        for await value in binding().flow {
-            latest = value
+        guard collecting == nil else { return }
+        let flow = binding().flow
+        collecting = Task { [weak self] in
+            for await value in flow {
+                self?.latest = value
+            }
         }
     }
 
@@ -46,7 +53,8 @@ final class ScreenModel<ViewModel: AnyObject, State: AnyObject> {
         return made
     }
 
-    deinit {
+    isolated deinit {
+        collecting?.cancel()
         store?.clear()
     }
 }

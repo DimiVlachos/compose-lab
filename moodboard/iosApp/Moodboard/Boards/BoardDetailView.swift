@@ -40,7 +40,7 @@ struct BoardDetailView: View {
         .sheet(isPresented: $editing) {
             BoardEditorSheet(boardId: boardId)
         }
-        .onChange(of: model.state.isDeleted) { _, deleted in
+        .onChange(of: model.state.isDeleted, initial: true) { _, deleted in
             if deleted { dismiss() }
         }
         .task { await model.observe() }
