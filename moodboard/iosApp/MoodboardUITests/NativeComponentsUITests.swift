@@ -56,7 +56,7 @@ final class NativeComponentsUITests: XCTestCase {
 
         app.tabBars.buttons["Boards"].tap()
         XCTAssertTrue(app.staticTexts["Cliffs"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["1 photos"].exists)
+        XCTAssertTrue(app.staticTexts["1 photo"].exists)
     }
 
     func testDeletingAPhotoFromItsDetailPopsBack() {

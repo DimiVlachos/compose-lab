@@ -6,12 +6,17 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - Moodboard
+      # The brand display face, shared with the Compose screens (shared composeResources).
+      - path: ../shared/src/commonMain/composeResources/font/instrument_serif_regular.ttf
+        buildPhase: resources
     info:
       path: Moodboard/Info.plist
       properties:
         CFBundleDisplayName: Moodboard
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchScreen: {}
+        UIAppFonts:
+          - instrument_serif_regular.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
     settings:
@@ -19,6 +24,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dimvlachos.moodboard
         # iPhone only: the app is portrait-only, which iPad multitasking doesn't allow.
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The brand's Aegean blue (light and dark), the app-wide tint.
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"

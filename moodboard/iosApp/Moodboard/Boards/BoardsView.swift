@@ -86,7 +86,7 @@ private struct BoardRow: View {
             .clipShape(.rect(cornerRadius: 10))
             VStack(alignment: .leading) {
                 Text(board.name).font(.headline)
-                Text("\(board.count) photos").font(.subheadline).foregroundStyle(.secondary)
+                Text(board.count == 1 ? "1 photo" : "\(board.count) photos").font(.subheadline).foregroundStyle(.secondary)
             }
         }
     }

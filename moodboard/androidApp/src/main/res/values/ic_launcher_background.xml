@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The brand's Aegean blue, Brand.Seed in the shared theme. -->
+    <color name="ic_launcher_background">#1E6FC0</color>
+</resources>
