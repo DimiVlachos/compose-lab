@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,13 @@ fun SearchScreen(
     val share = rememberShareLauncher()
     // The keyboard goes on a search and before a photo opens, instead of riding along over it.
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Clearing focus alone leaves the keyboard up until the window changes (it rode over a photo
+    // opening from the results); drop the focus, then hide it outright.
+    val dismissKeyboard = {
+        focusManager.clearFocus()
+        keyboard?.hide()
+    }
     // Owned here, like the iOS search field; the ViewModel hears each change.
     var query by rememberSaveable { mutableStateOf(state.query) }
     val setQuery: (String) -> Unit = {
@@ -78,10 +86,12 @@ fun SearchScreen(
     }
     val submit: () -> Unit = {
         viewModel.onAction(SearchAction.Submitted)
-        focusManager.clearFocus()
+        dismissKeyboard()
     }
     val open: (String) -> Unit = { id ->
-        focusManager.clearFocus()
+        // Hidden but still focused: dropping focus with the keyboard up makes it flick to another
+        // layout for a couple of frames, right over the opening photo.
+        keyboard?.hide()
         viewModel.onAction(SearchAction.ResultOpened)
         onOpenPhoto(id)
     }
@@ -90,7 +100,7 @@ fun SearchScreen(
     // suggestions it leaves the tab. Only while Search is on top: under a photo that is still
     // opening, Back belongs to the photo, not to this screen's query.
     BackHandler(enabled = isTopScreen && query.isNotBlank()) {
-        focusManager.clearFocus()
+        dismissKeyboard()
         gated { setQuery("") }
     }
 
@@ -112,7 +122,7 @@ fun SearchScreen(
                 onTag = { tag ->
                     query = tag
                     viewModel.onAction(SearchAction.TagTapped(tag))
-                    focusManager.clearFocus()
+                    dismissKeyboard()
                 },
             )
         } else {
