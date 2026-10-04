@@ -214,10 +214,11 @@ Run it:
 - iOS: `cd moodboard/iosApp && xcodegen && open Moodboard.xcodeproj` (iOS 26)
 - Tests: `./gradlew :moodboard:shared:iosSimulatorArm64Test :moodboard:androidApp:testDebugUnitTest`
 - iOS UI walk-through: `xcodebuild -project moodboard/iosApp/Moodboard.xcodeproj -scheme Moodboard -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test` (set `TEST_RUNNER_SCREENSHOT_DIR` to save a screenshot per step)
-- The showcase clip: both apps play one 30 s script, step for step.
+- The showcase clip: both apps play one 41 s script, step for step.
   - Android: `scripts/moodboard/showcase-android.py out/moodboard-android.mp4` (an emulator records full resolution on the host).
   - iOS: record with `xcrun simctl io booted recordVideo out/moodboard-ios.mov` while running `TEST_RUNNER_SHOWCASE=1 xcodebuild … test -only-testing:MoodboardUITests/ShowcaseUITests`.
-  - Then `scripts/moodboard/showcase-compose.sh out/moodboard-ios.mov <iosStart> out/moodboard-android.mp4 <androidStart> <android-studio.png> out/moodboard.showcase-both.mp4` and `GIF_FPS=12 GIF_WIDTH=960 GIF_COLORS=128 scripts/gif.sh moodboard.showcase both`. Each start is the second, in that take, at which its script began: the Delete alert appears 8.5 s in.
+  - `scripts/moodboard/showcase-align.py out/moodboard-ios.mov <iosStart> out/moodboard-android.mp4 <androidStart> out/moodboard-ios-aligned.mp4` lines each iOS step up with Android's (each start is the second, in that take, at which its script began: the first scroll).
+  - `scripts/moodboard/showcase-compose.sh out/moodboard-ios-aligned.mp4 <androidStart> out/moodboard-android.mp4 <androidStart> <android-studio.png> out/moodboard.showcase-both.mp4`, then the GIF at 12 fps and 960 px wide (`scripts/gif.sh` builds the palette in memory, which a 40 s clip can outgrow; ffmpeg's two-pass palettegen/paletteuse makes the same GIF).
 
 ## Run
 

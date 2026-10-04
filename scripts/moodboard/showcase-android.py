@@ -18,25 +18,31 @@ ACTIVITY = f"{APP}/.android.MainActivity"
 
 # (seconds from the start, action, target). Keep in step with ShowcaseUITests.swift.
 STEPS = [
-    (1.5, "tap", "Mykonos"),          # open a photo
-    (4.5, "back", None),              # close it
-    (6.5, "long", "Santorini"),       # the photo menu
-    (8.5, "tap", "Delete"),           # delete: the confirmation
-    (10.0, "tap", "Cancel"),
-    (11.5, "tap", "Search"),          # search tab: suggestions first
-    (13.0, "tap", "Search photos and tags"),
-    (14.0, "type", "ruins"),          # results as you type
-    (15.5, "enter", None),
-    (17.0, "tap", "Delphi"),          # open a result
-    (19.5, "back", None),
-    (21.0, "tap", "Gallery"),         # back to the gallery
-    (22.5, "tap", "Boards"),          # boards tab
-    (24.0, "tap", "Islands"),         # a board
-    (26.5, "back", None),
-    (28.0, "tap", "Gallery"),         # home
+    (1.5, "scroll", "down"),          # scroll: the large title collapses
+    (3.0, "scroll", "up"),
+    (4.5, "tap", "Mykonos"),          # open a photo
+    (7.5, "back", None),              # close it
+    (9.0, "long", "Santorini"),       # the photo menu
+    (11.0, "tap", "Delete"),          # delete: the confirmation
+    (12.5, "tap", "Cancel"),
+    (14.0, "tap", "Filter"),          # the filter sheet
+    (16.0, "dismiss", "Drag handle"),  # swiped away by its handle
+    (17.5, "tap", "Search"),          # search tab: suggestions first
+    (19.0, "tap", "Search photos and tags"),
+    (20.0, "type", "ruins"),          # results as you type
+    (21.5, "enter", None),
+    (23.0, "tap", "Delphi"),          # open a result
+    (25.5, "back", None),
+    (27.0, "tap", "Gallery"),         # back to the gallery
+    (28.5, "tap", "Boards"),          # boards tab
+    (30.0, "tap", "Islands"),         # a board
+    (32.5, "edgeback", None),         # the back gesture
+    (34.0, "tap", "More options for Blue"),  # delete a board: the action sheet
+    (35.5, "tap", "Delete"),
+    (37.5, "tap", "Cancel"),
+    (39.0, "tap", "Gallery"),         # home
 ]
-END_S = 30.5
-
+END_S = 41.0
 
 def adb(*args, capture=False):
     cmd = ["adb", *args]
@@ -57,6 +63,12 @@ def find(label):
     sys.exit(f"'{label}' not on screen")
 
 
+def screen():
+    size = adb("shell", "wm", "size", capture=True).split()[-1]
+    w, h = map(int, size.split("x"))
+    return w, h
+
+
 def restart():
     adb("shell", "am", "force-stop", APP)
     adb("shell", "am", "start", "-n", ACTIVITY)
@@ -68,12 +80,27 @@ def act(action, target, where):
         adb("shell", "input", "tap", *map(str, where))
     elif action == "long":
         adb("shell", "input", "swipe", *map(str, where), *map(str, where), "700")
+    elif action == "scroll":
+        w, h = screen()
+        a, b = (int(h * 0.8), int(h * 0.31)) if target == "down" else (int(h * 0.31), int(h * 0.8))
+        adb("shell", "input", "swipe", str(w // 2), str(a), str(w // 2), str(b), "400")
+    elif action == "dismiss":
+        _, h = screen()
+        x, y = where
+        adb("shell", "input", "swipe", str(x), str(y), str(x), str(int(h * 0.98)), "180")
+    elif action == "edgeback":
+        w, h = screen()
+        adb("shell", "input", "swipe", "2", str(h // 2), str(int(w * 0.6)), str(h // 2), "350")
     elif action == "back":
         adb("shell", "input", "keyevent", "4")
     elif action == "type":
         adb("shell", "input", "text", target)
     elif action == "enter":
-        adb("shell", "input", "keyevent", "66")
+        # The keyboard's own Search key, as a finger presses it (it then closes the keyboard, as
+        # iOS's does); a hardware Enter submits but leaves the keyboard up. Gboard on a Pixel puts
+        # it at the bottom right.
+        w, h = screen()
+        adb("shell", "input", "tap", str(int(w * 0.922)), str(int(h * 0.911)))
 
 
 def calibrate():
@@ -81,7 +108,7 @@ def calibrate():
     restart()
     points = []
     for _, action, target in STEPS:
-        where = find(target) if action in ("tap", "long") else None
+        where = find(target) if action in ("tap", "long", "dismiss") else None
         points.append(where)
         act(action, target, where)
         time.sleep(2.5)
