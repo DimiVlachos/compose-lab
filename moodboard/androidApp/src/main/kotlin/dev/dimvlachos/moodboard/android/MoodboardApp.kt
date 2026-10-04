@@ -107,8 +107,11 @@ fun MoodboardApp() {
             Modifier.onGloballyPositioned { viewports.layoutTopInWindow = it.positionInWindow().y }
         ) {
             // Taps and tab switches queue behind a morph in flight instead of cutting it off.
-            // System back is not gated: a predictive-back gesture already owns its transition, so
-            // it pops at once and drops anything still queued for the screen it leaves.
+            // System back is gated too. Popping a photo whose open morph is still running made
+            // NavDisplay rewind the push (its cancelled-gesture path): the grid wasn't drawn until
+            // the photo landed, and the next open kept the grid on screen. Now Back waits for the
+            // morph to land, at most its length, then closes it; with nothing in flight it pops at
+            // once, predictive gesture included.
             val gate = rememberMorphGate()
             val push: (NavKey) -> Unit = { key -> gate.run { stack.push(key) } }
             val toolbarBack: () -> Unit = { gate.run { stack.pop() } }
@@ -165,10 +168,7 @@ fun MoodboardApp() {
             ) {
                 NavDisplay(
                     entries = shown,
-                    onBack = {
-                        gate.cancelPending()
-                        stack.pop()
-                    },
+                    onBack = { gate.run { stack.pop() } },
                     transitionSpec = { tabFadeIn() },
                     popTransitionSpec = { TabFadeOut },
                     predictivePopTransitionSpec = { TabFadeOut },
