@@ -15,12 +15,18 @@ H=940; IW=432; AW=421; GAP=90; TOP=46; RIGHT=90
 IX=$(( 1920 - RIGHT - AW - GAP - IW )); AX=$(( IX + IW + GAP ))
 swift "$here/showcase-assets.swift" "$assets" $IW $H 58 "iOS" ios >/dev/null
 swift "$here/showcase-assets.swift" "$assets" $AW $H 46 "Android" android >/dev/null
+# The simulator only writes a frame when the screen changes: make the take constant-rate before
+# seeking into it, or the clip starts on a missing (black) frame and runs early by the gap. One
+# continuous take with one offset: each step lands within a second of Android's, and nothing can play
+# twice the way cutting the take per step did.
+ios_cfr="$assets/ios-cfr.mp4"
+ffmpeg -loglevel error -y -i "$ios" -vf fps=60 -c:v libx264 -crf 12 "$ios_cfr"
 # Ends half a second before the script does: then the iOS test finishes and Xcode closes the app.
 DUR=40; PRE=0.5
 
 ffmpeg -loglevel error -y \
   -loop 1 -i "$bg" \
-  -ss "$(echo "$ios0 + $PRE" | bc)" -t $DUR -i "$ios" \
+  -ss "$(echo "$ios0 + $PRE" | bc)" -t $DUR -i "$ios_cfr" \
   -ss "$(echo "$android0 + $PRE" | bc)" -t $DUR -i "$android" \
   -i "$assets/ios-mask.png" -i "$assets/android-mask.png" \
   -i "$assets/ios-shadow.png" -i "$assets/android-shadow.png" \
