@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
+import dev.dimvlachos.moodboard.android.nav.Gallery
 import dev.dimvlachos.moodboard.android.share.rememberShareLauncher
 import dev.dimvlachos.moodboard.android.ui.BoardNameDialog
 import dev.dimvlachos.moodboard.android.ui.DeletePhotoDialog
@@ -67,7 +68,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
         PhotoGrid(
             photos = state.photos,
             onOpen = { onOpenPhoto(it.id) },
-            morphScope = "Gallery",
+            morphScope = Gallery.toString(),
             contentPadding = padding,
             empty = {
                 val filtered = state.filter.favoritesOnly || state.filter.tags.isNotEmpty()

@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.dimvlachos.moodboard.R
+import dev.dimvlachos.moodboard.android.nav.Boards
 import dev.dimvlachos.moodboard.android.ui.MoodboardIcon
 import dev.dimvlachos.moodboard.android.ui.PhotoGrid
 import dev.dimvlachos.moodboard.boards.BoardDetailAction
@@ -60,7 +61,9 @@ fun BoardDetailScreen(
     ) { padding ->
         PhotoGrid(
             photos = state.photos,
-            morphScope = "Boards",
+            morphScope = Boards.toString(),
+            // No bottom bar here, only the transparent gesture bar.
+            opaqueBottomBar = false,
             onOpen = { onOpenPhoto(it.id) },
             contentPadding = padding,
             empty = {

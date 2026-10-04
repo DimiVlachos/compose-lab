@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +45,7 @@ fun PhotoGrid(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
     empty: @Composable () -> Unit = {},
+    opaqueBottomBar: Boolean = true,
     menu: @Composable ColumnScope.(photo: Photo, dismiss: () -> Unit) -> Unit,
 ) {
     if (photos.isEmpty()) {
@@ -59,12 +59,14 @@ fun PhotoGrid(
     val viewport = LocalMorphViewports.current.of(morphScope)
     val viewports = LocalMorphViewports.current
     val density = LocalDensity.current
-    SideEffect {
-        with(density) {
-            viewport.insetTop = contentPadding.calculateTopPadding().toPx()
-            viewport.insetBottom = contentPadding.calculateBottomPadding().toPx()
+    // Only opaque bars clip: behind a transparent gesture bar the photos still show.
+    viewport.insetTop = { with(density) { contentPadding.calculateTopPadding().toPx() } }
+    viewport.insetBottom =
+        if (opaqueBottomBar) {
+            { with(density) { contentPadding.calculateBottomPadding().toPx() } }
+        } else {
+            { 0f }
         }
-    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier =

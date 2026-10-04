@@ -54,4 +54,30 @@ class MorphViewportTest {
         val underTheBar = Path().apply { addRect(Rect(0f, 900f, 300f, 1100f)) }
         assertTrue(Path.combine(PathOperation.Intersect, path, underTheBar).isEmpty)
     }
+
+    @Test
+    fun bothEndsTakeTheOpenTimingOnAnOpenAndTheCloseTimingOnAClose() {
+        // Open: the card leaves, the detail arrives. Close: the reverse.
+        assertEquals(MorphDimens.OpenMs, morphViewportMs(MorphEnd.Card, targetVisible = false))
+        assertEquals(MorphDimens.OpenMs, morphViewportMs(MorphEnd.Detail, targetVisible = true))
+        assertEquals(MorphDimens.CloseMs, morphViewportMs(MorphEnd.Card, targetVisible = true))
+        assertEquals(MorphDimens.CloseMs, morphViewportMs(MorphEnd.Detail, targetVisible = false))
+    }
+
+    @Test
+    fun theViewportReadsTheBarsLiveAtDrawTime() {
+        // The bars' heights change as a large top bar collapses, without recomposing the grid.
+        var topBar = 200f
+        val viewport =
+            MorphViewport().apply {
+                frameTop = 0f
+                frameBottom = 1000f
+                insetTop = { topBar }
+                insetBottom = { 100f }
+            }
+        assertEquals(200f, viewport.top)
+        topBar = 120f
+        assertEquals(120f, viewport.top)
+        assertEquals(900f, viewport.bottom)
+    }
 }
