@@ -5,7 +5,7 @@
         android:label="Moodboard"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/Theme.Moodboard">
         <activity
             android:name=".android.MainActivity"
             android:exported="true"

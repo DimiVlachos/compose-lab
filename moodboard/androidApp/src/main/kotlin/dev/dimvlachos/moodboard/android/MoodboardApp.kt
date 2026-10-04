@@ -1,5 +1,6 @@
 package dev.dimvlachos.moodboard.android
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
@@ -52,6 +53,7 @@ import dev.dimvlachos.moodboard.android.ui.LocalSharedTransitionScope
 import dev.dimvlachos.moodboard.android.ui.MoodboardNavigationBar
 import dev.dimvlachos.moodboard.morph.MorphBackdropIn
 import dev.dimvlachos.moodboard.morph.MorphBackdropOut
+import dev.dimvlachos.moodboard.morph.MorphGate
 import dev.dimvlachos.moodboard.morph.MorphViewports
 import dev.dimvlachos.moodboard.morph.rememberMorphGate
 import dev.dimvlachos.moodboard.nav.LiveIdsViewModel
@@ -114,7 +116,7 @@ fun MoodboardApp() {
             // once, predictive gesture included.
             val gate = rememberMorphGate()
             val push: (NavKey) -> Unit = { key -> gate.run { stack.push(key) } }
-            val toolbarBack: () -> Unit = { gate.run { stack.pop() } }
+            val backFrom: (NavKey) -> () -> Unit = { key -> { gate.run { stack.popFrom(key) } } }
             val openPhoto: (String) -> Unit = { id ->
                 push(PhotoDetail(id, tab = stack.currentTab.toString()))
             }
@@ -135,23 +137,24 @@ fun MoodboardApp() {
                             isTopScreen =
                                 stack.currentTab == Search &&
                                     stacks.getValue(Search).last() == Search,
-                            // Back is handled here instead of by NavDisplay: drop queued taps.
-                            onBackHandled = gate::cancelPending,
+                            // Search clears its query on Back; through the gate, so the results
+                            // never vanish under a photo still closing into them.
+                            gated = gate::run,
                         )
                     }
                     entry<PhotoDetail>(metadata = ContainerTransform) {
-                        PhotoDetailScreen(it.photoId, it.tab, onBack = toolbarBack)
+                        PhotoDetailScreen(it.photoId, it.tab, onBack = backFrom(it))
                     }
                     entry<BoardDetail>(metadata = ParallaxPush) {
                         BoardDetailScreen(
                             boardId = it.boardId,
-                            onBack = toolbarBack,
+                            onBack = backFrom(it),
                             onOpenPhoto = openPhoto,
                             onEdit = { push(BoardEditor(it.boardId)) },
                         )
                     }
                     entry<BoardEditor>(metadata = ParallaxPush) {
-                        BoardEditorScreen(it.boardId, onBack = toolbarBack)
+                        BoardEditorScreen(it.boardId, onBack = backFrom(it))
                     }
                 }
             // Each tab decorates its own entries, so a hidden tab keeps its screens' ViewModels and
@@ -173,6 +176,10 @@ fun MoodboardApp() {
                     popTransitionSpec = { TabFadeOut },
                     predictivePopTransitionSpec = { TabFadeOut },
                 )
+                // While a morph runs, Back is queued instead of letting NavDisplay start a
+                // predictive gesture it can't commit (it would spring back, then close again).
+                // Composed after NavDisplay, so it outranks NavDisplay's own handler.
+                GatedBackWhileHolding(gate) { stack.pop() }
             }
         }
     }
@@ -198,3 +205,8 @@ private val TabSaver =
         save = { Tabs.indexOf(it.value) },
         restore = { mutableStateOf(Tabs[it]) },
     )
+
+@Composable
+private fun GatedBackWhileHolding(gate: MorphGate, pop: () -> Unit) {
+    BackHandler(enabled = gate.isHolding) { gate.run { pop() } }
+}

@@ -107,4 +107,16 @@ class TopLevelBackStackTest {
         assertEquals(listOf(Gallery), gallery.toList())
         assertEquals(listOf(Boards), boards.toList())
     }
+
+    @Test
+    fun `back from a screen pops only while that screen is on top`() {
+        stack.selectTab(Boards)
+        stack.push(BoardDetail("blue"))
+        stack.push(PhotoDetail("naxos", tab = "Boards"))
+        // A double tap on the photo's Back arrow: the second tap belongs to a screen already gone.
+        assertTrue(stack.popFrom(PhotoDetail("naxos", tab = "Boards")))
+        assertFalse(stack.popFrom(PhotoDetail("naxos", tab = "Boards")))
+        assertEquals(listOf(Boards, BoardDetail("blue")), boards.toList())
+        assertEquals(Boards, stack.currentTab)
+    }
 }

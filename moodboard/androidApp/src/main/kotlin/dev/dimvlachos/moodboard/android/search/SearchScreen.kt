@@ -58,7 +58,7 @@ fun SearchScreen(
     onOpenPhoto: (String) -> Unit,
     bottomBar: @Composable () -> Unit,
     isTopScreen: Boolean,
-    onBackHandled: () -> Unit,
+    gated: (() -> Unit) -> Unit,
 ) {
     val viewModel = viewModel { SearchViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -90,9 +90,8 @@ fun SearchScreen(
     // suggestions it leaves the tab. Only while Search is on top: under a photo that is still
     // opening, Back belongs to the photo, not to this screen's query.
     BackHandler(enabled = isTopScreen && query.isNotBlank()) {
-        onBackHandled()
-        setQuery("")
         focusManager.clearFocus()
+        gated { setQuery("") }
     }
 
     Scaffold(

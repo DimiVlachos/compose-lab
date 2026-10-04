@@ -47,6 +47,12 @@ class TopLevelBackStack(
         }
 
     /**
+     * A screen's own Back (its toolbar arrow): pops only while [key] is still on top, so a second
+     * tap queued behind the first close can't pop the screen underneath, or leave the tab.
+     */
+    fun popFrom(key: NavKey): Boolean = currentStack.last() == key && pop()
+
+    /**
      * Drops every screen whose photo or board no longer exists, in every tab. Screens never pop
      * themselves on a delete, so a hidden tab's stale screen can't navigate the visible one.
      */
