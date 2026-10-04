@@ -14,31 +14,32 @@ class InMemoryMoodboardRepositoryTest {
     private fun board(name: String) = repository.boards.value.single { it.name == name }
 
     @Test
-    fun `seed has twelve islands and eight Little Nemo spreads`() {
+    fun `seed has twelve islands and eight mainland places`() {
         val photos = repository.photos.value
         assertEquals(20, photos.size)
         assertEquals(12, photos.count { "island" in it.tags })
-        assertEquals(8, photos.count { "little nemo" in it.tags })
+        assertEquals(8, photos.count { "mainland" in it.tags })
         assertEquals("files/photos/photo_santorini.jpg", photo("santorini").path)
-        assertEquals("Little Nemo · Spread 1", photo("book_spread_1").title)
+        assertEquals("Kalogeriko Bridge", photo("kalogeriko").title)
+        assertEquals("files/photos/photo_kalogeriko.jpg", photo("kalogeriko").path)
     }
 
     @Test
-    fun `seed favorites are Santorini and the first spread`() {
+    fun `seed favorites are Santorini and Meteora`() {
         assertEquals(
-            setOf("santorini", "book_spread_1"),
+            setOf("santorini", "meteora"),
             repository.photos.value.filter { it.isFavorite }.map { it.id }.toSet(),
         )
     }
 
     @Test
-    fun `seed boards are Islands then Little Nemo then Blue`() {
+    fun `seed boards are Islands then Mainland then Blue`() {
         assertEquals(
-            listOf("Islands", "Little Nemo", "Blue"),
+            listOf("Islands", "Mainland", "Blue"),
             repository.boards.value.map { it.name },
         )
         assertEquals(12, board("Islands").photoIds.size)
-        assertEquals(8, board("Little Nemo").photoIds.size)
+        assertEquals(8, board("Mainland").photoIds.size)
         assertEquals(listOf("santorini", "mykonos", "milos"), board("Blue").photoIds)
     }
 

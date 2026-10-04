@@ -14,7 +14,7 @@ class SearchViewModelTest : MainDispatcherTest() {
     @Test
     fun `blank query shows every photo and every tag`() {
         assertEquals(20, state.results.size)
-        assertEquals(5, state.suggestions.size)
+        assertEquals(7, state.suggestions.size)
     }
 
     @Test
@@ -25,15 +25,15 @@ class SearchViewModelTest : MainDispatcherTest() {
 
     @Test
     fun `query matches tags and narrows suggestions`() {
-        viewModel.onAction(SearchAction.QueryChanged("nemo"))
-        assertEquals(8, state.results.size)
-        assertEquals(listOf("little nemo"), state.suggestions)
+        viewModel.onAction(SearchAction.QueryChanged("moun"))
+        assertEquals(4, state.results.size)
+        assertEquals(listOf("mountains"), state.suggestions)
     }
 
     @Test
     fun `tapping a tag searches for it`() {
-        viewModel.onAction(SearchAction.TagTapped("comic"))
-        assertEquals("comic", state.query)
+        viewModel.onAction(SearchAction.TagTapped("mainland"))
+        assertEquals("mainland", state.query)
         assertEquals(8, state.results.size)
     }
 }

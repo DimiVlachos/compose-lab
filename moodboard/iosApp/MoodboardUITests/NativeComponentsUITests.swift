@@ -96,7 +96,7 @@ final class NativeComponentsUITests: XCTestCase {
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
-        field.typeText("nemo")
+        field.typeText("moun")
         snap("search")
     }
 
