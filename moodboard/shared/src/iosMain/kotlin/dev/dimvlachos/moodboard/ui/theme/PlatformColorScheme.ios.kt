@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Color
 
 // UIKit's grouped grays tinted with the brand blue (the same tones SwiftUI tints with), so the
 // shared Compose bits sit among native controls instead of carrying Material's default purple.
-private val Light =
+internal val IosLightColors =
     lightColorScheme(
         primary = Brand.IosTintLight,
         onPrimary = Color.White,
@@ -20,12 +20,20 @@ private val Light =
         onSurfaceVariant = Color(0x993C3C43),
         outline = Color(0xFFC7C7CC),
         outlineVariant = Color(0xFFD1D1D6),
+        // UIKit's fills and grouped backgrounds: placeholders, a Switch's track, containers.
+        surfaceVariant = Color(0xFFE5E5EA),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceContainerLow = Color(0xFFF2F2F7),
+        surfaceContainer = Color(0xFFF2F2F7),
+        surfaceContainerHigh = Color(0xFFE5E5EA),
+        surfaceContainerHighest = Color(0xFFE5E5EA),
     )
 
-private val Dark =
+internal val IosDarkColors =
     darkColorScheme(
         primary = Brand.IosTintDark,
-        onPrimary = Color.White,
+        // The dark tint is light: white on it is 2.7:1, too faint for a tick or a Switch handle.
+        onPrimary = Brand.IosOnTintDark,
         secondaryContainer = Color(0xFF3A3A3C),
         onSecondaryContainer = Color.White,
         surface = Color.Transparent,
@@ -33,6 +41,14 @@ private val Dark =
         onSurfaceVariant = Color(0x99EBEBF5),
         outline = Color(0xFF545458),
         outlineVariant = Color(0xFF48484A),
+        surfaceVariant = Color(0xFF3A3A3C),
+        surfaceContainerLowest = Color(0xFF000000),
+        surfaceContainerLow = Color(0xFF1C1C1E),
+        surfaceContainer = Color(0xFF1C1C1E),
+        surfaceContainerHigh = Color(0xFF2C2C2E),
+        surfaceContainerHighest = Color(0xFF3A3A3C),
     )
 
-@Composable actual fun platformColorScheme(dark: Boolean): ColorScheme = if (dark) Dark else Light
+@Composable
+actual fun platformColorScheme(dark: Boolean): ColorScheme =
+    if (dark) IosDarkColors else IosLightColors

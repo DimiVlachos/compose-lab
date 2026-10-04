@@ -6,6 +6,7 @@ import dev.dimvlachos.moodboard.MoodboardGraph
 import dev.dimvlachos.moodboard.domain.Board
 import dev.dimvlachos.moodboard.domain.MoodboardRepository
 import dev.dimvlachos.moodboard.domain.Photo
+import dev.dimvlachos.moodboard.domain.boardName
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -42,7 +43,8 @@ class PhotoDetailViewModel(
             PhotoDetailAction.Delete -> repository.deletePhoto(photoId)
             is PhotoDetailAction.SetMembership ->
                 repository.setMembership(action.boardId, photoId, action.member)
-            is PhotoDetailAction.CreateBoard -> repository.createBoard(action.name, photoId)
+            is PhotoDetailAction.CreateBoard ->
+                boardName(action.name)?.let { repository.createBoard(it, photoId) }
         }
     }
 

@@ -37,13 +37,18 @@ fun Modifier.photoMorph(
     viewport: MorphViewport? = null,
 ): Modifier =
     with(sharedTransitionScope) {
-        val sharedContentState = rememberSharedContentState(morphKey("$scope/$photoId"))
+        val sharedContentState = rememberSharedContentState(photoMorphKey(scope, photoId))
         val radius =
             rememberMorphCornerRadius(
                 animatedVisibilityScope = animatedVisibilityScope,
                 sharedContentState = sharedContentState,
                 restRadius = morphRestRadius(end),
                 counterpartRadius = morphCounterpartRadius(end, paired = true),
+                // The arriving detail draws its first, unmatched frame at the card's radius, as the
+                // lab's detail does, not square over the still-rounded card.
+                preMorphRadius =
+                    if (end == MorphEnd.Detail) morphCounterpartRadius(end, paired = true)
+                    else morphRestRadius(end),
             )
         sharedBounds(
                 sharedContentState = sharedContentState,

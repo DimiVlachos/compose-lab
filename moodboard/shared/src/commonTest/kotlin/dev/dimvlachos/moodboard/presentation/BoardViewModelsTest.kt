@@ -78,4 +78,16 @@ class BoardViewModelsTest : MainDispatcherTest() {
         viewModel.onAction(BoardEditorAction.Rename("   "))
         assertEquals("Blue", repository.boards.value.single { it.id == "blue" }.name)
     }
+
+    @Test
+    fun `boards list ignores blank names and trims the rest`() {
+        val viewModel = BoardsViewModel(repository)
+        val before = viewModel.state.value.boards.size
+        viewModel.onAction(BoardsAction.Create("   "))
+        assertEquals(before, viewModel.state.value.boards.size)
+        viewModel.onAction(BoardsAction.Create("  Sunsets "))
+        assertEquals("Sunsets", viewModel.state.value.boards.last().name)
+        viewModel.onAction(BoardsAction.Rename("blue", " "))
+        assertEquals("Blue", viewModel.state.value.boards.single { it.id == "blue" }.name)
+    }
 }
