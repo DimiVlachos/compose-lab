@@ -182,6 +182,8 @@ PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 
 ## Moodboard: native on both platforms (`moodboard/`)
 
+![](docs/media/moodboard.showcase.gif)
+
 **The point:** the right way to build a Kotlin Multiplatform app is to share what users never see and keep what they touch native. An iPhone user and an Android user should both feel at home: the same app and the same features, with each platform's own components, gestures and motion. Not one UI drawn the same on both.
 
 Moodboard is a photo moodboard (gallery, boards, search) built that way. One Kotlin codebase holds the data, the logic and one MVI ViewModel per screen. Each platform draws its own chrome on top.
@@ -212,6 +214,10 @@ Run it:
 - iOS: `cd moodboard/iosApp && xcodegen && open Moodboard.xcodeproj` (iOS 26)
 - Tests: `./gradlew :moodboard:shared:iosSimulatorArm64Test :moodboard:androidApp:testDebugUnitTest`
 - iOS UI walk-through: `xcodebuild -project moodboard/iosApp/Moodboard.xcodeproj -scheme Moodboard -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test` (set `TEST_RUNNER_SCREENSHOT_DIR` to save a screenshot per step)
+- The showcase clip: both apps play one 30 s script, step for step.
+  - Android: `scripts/moodboard/showcase-android.py out/moodboard-android.mp4` (an emulator records full resolution on the host).
+  - iOS: record with `xcrun simctl io booted recordVideo out/moodboard-ios.mov` while running `TEST_RUNNER_SHOWCASE=1 xcodebuild … test -only-testing:MoodboardUITests/ShowcaseUITests`.
+  - Then `scripts/moodboard/showcase-compose.sh out/moodboard-ios.mov <iosStart> out/moodboard-android.mp4 <androidStart> <android-studio.png> out/moodboard.showcase-both.mp4` and `GIF_FPS=12 GIF_WIDTH=960 GIF_COLORS=128 scripts/gif.sh moodboard.showcase both`. Each start is the second, in that take, at which its script began: the Delete alert appears 8.5 s in.
 
 ## Run
 
