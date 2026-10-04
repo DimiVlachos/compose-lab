@@ -22,14 +22,14 @@ class MorphOverlayClipTest {
 
     @Test
     fun zeroRadiusClipsToTheWholeBounds() {
-        val clip = RoundedOverlayClip { 0.dp }
+        val clip = RoundedOverlayClip({ 0.dp })
         assertTrue(coversTheWholeRect(clip.clipPath(bounds, density)))
     }
 
     @Test
     fun radiusIsReadOnEveryCall() {
         var radius: Dp = 0.dp
-        val clip = RoundedOverlayClip { radius }
+        val clip = RoundedOverlayClip({ radius })
         assertTrue(coversTheWholeRect(clip.clipPath(bounds, density)))
         radius = 16.dp
         // The corners are now cut away, so the clip no longer covers the rectangle.

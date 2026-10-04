@@ -16,12 +16,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -51,9 +55,24 @@ fun PhotoGrid(
         }
         return
     }
+    // Where these photos can be seen, for a morph to stay inside: the grid's frame, less the bars.
+    val viewport = LocalMorphViewports.current.of(morphScope)
+    val viewports = LocalMorphViewports.current
+    val density = LocalDensity.current
+    SideEffect {
+        with(density) {
+            viewport.insetTop = contentPadding.calculateTopPadding().toPx()
+            viewport.insetBottom = contentPadding.calculateBottomPadding().toPx()
+        }
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = modifier.fillMaxSize(),
+        modifier =
+            modifier.fillMaxSize().onGloballyPositioned {
+                val top = it.positionInWindow().y - viewports.layoutTopInWindow
+                viewport.frameTop = top
+                viewport.frameBottom = top + it.size.height
+            },
         contentPadding = contentPadding.plusBottom(ContentEndSpacing),
     ) {
         items(photos, key = { it.id }) { photo -> PhotoCell(photo, morphScope, onOpen, menu) }
