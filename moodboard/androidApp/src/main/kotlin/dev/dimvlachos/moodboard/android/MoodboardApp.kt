@@ -1,9 +1,12 @@
 package dev.dimvlachos.moodboard.android
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -54,9 +57,19 @@ import dev.dimvlachos.moodboard.morph.rememberMorphGate
 import dev.dimvlachos.moodboard.nav.LiveIdsViewModel
 import dev.dimvlachos.moodboard.ui.theme.MoodboardTheme
 
-// Material's fade-through: the container transform carries the photo, the rest cross-fades.
-private const val FadeInMs = 220
-private const val FadeOutMs = 90
+// Tab switches cross-fade: the screen on top fades over the other, which stays fully drawn
+// underneath. Fading both at once (the old one out in 90 ms) dipped to the bare background in
+// between, which read as a cut. Inner screens bring their own transitions (morph, parallax).
+private const val TabFadeMs = 200
+
+// KeepUntilTransitionsFinished is only reachable inside a transition scope, hence a function.
+private fun AnimatedContentTransitionScope<*>.tabFadeIn(): ContentTransform =
+    fadeIn(tween(TabFadeMs, easing = LinearOutSlowInEasing)) togetherWith
+        ExitTransition.KeepUntilTransitionsFinished
+
+// On a pop the leaving screen is the one on top, so it fades off the one returning.
+private val TabFadeOut: ContentTransform =
+    EnterTransition.None togetherWith fadeOut(tween(TabFadeMs, easing = LinearOutSlowInEasing))
 
 private val Tabs: List<NavKey> = listOf(Gallery, Boards, Search)
 
@@ -156,15 +169,9 @@ fun MoodboardApp() {
                         gate.cancelPending()
                         stack.pop()
                     },
-                    transitionSpec = {
-                        fadeIn(tween(FadeInMs)) togetherWith fadeOut(tween(FadeOutMs))
-                    },
-                    popTransitionSpec = {
-                        fadeIn(tween(FadeInMs)) togetherWith fadeOut(tween(FadeOutMs))
-                    },
-                    predictivePopTransitionSpec = {
-                        fadeIn(tween(FadeInMs)) togetherWith fadeOut(tween(FadeOutMs))
-                    },
+                    transitionSpec = { tabFadeIn() },
+                    popTransitionSpec = { TabFadeOut },
+                    predictivePopTransitionSpec = { TabFadeOut },
                 )
             }
         }
