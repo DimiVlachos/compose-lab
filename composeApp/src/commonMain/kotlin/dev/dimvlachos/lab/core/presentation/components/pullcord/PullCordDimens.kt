@@ -93,6 +93,11 @@ internal object PullCordDimens {
     const val HaloGlow = 0.4f
     val HaloRadius = 64.dp
 
+    // The bulb's light all round it under the rim, out to the sides as well as down: faint, and
+    // reaching about twice the rim's width.
+    const val SpillGlow = 0.2f
+    val SpillRadius = 150.dp
+
     // A shade lets light out only under its rim: the cone fades in over this much below the rim,
     // and the bulb's glow reaches only this far up past it, just catching the rim's edge.
     val RimFade = 26.dp

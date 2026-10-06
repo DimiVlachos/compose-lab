@@ -47,6 +47,7 @@ internal class LampPainter {
     private var halo: Brush = SolidColor(Color.Transparent)
     private var sheen: Brush = SolidColor(Color.Transparent)
     private var underRim: Brush = SolidColor(Color.Transparent)
+    private var spill: Brush = SolidColor(Color.Transparent)
 
     private fun brushes(colors: AppColors, reach: Float) {
         if (colors == brushColors && reach == brushReach) return
@@ -81,6 +82,16 @@ internal class LampPainter {
                 },
                 center = Offset.Zero,
                 radius = PullCordDimens.HaloRadius.value,
+            )
+        // The bulb lights everything under the rim, not only what is straight below: a faint glow
+        // all round it, which the rim cuts off above and the cone outshines below.
+        spill =
+            Brush.radialGradient(
+                *falloff(colors.lampLight, PullCordDimens.SpillGlow) { t ->
+                    exp(-SpillSpread * t * t) * (1f - t)
+                },
+                center = Offset.Zero,
+                radius = PullCordDimens.SpillRadius.value,
             )
         val rim = PullCordDimens.ShadeRim.value / 2f
         // Clear above the rim, opaque a little below it: what keeps the light under the shade.
@@ -165,14 +176,22 @@ internal class LampPainter {
                         blendMode = BlendMode.DstIn,
                     )
                 }
+                // The glow all round the bulb, over the cone: it is masked by the rim with it, but
+                // not by the cone's sides.
+                translate(bulb.x, bulb.y) {
+                    val radius = PullCordDimens.SpillRadius.value
+                    drawCircle(spill, radius, Offset.Zero, blendMode = BlendMode.Plus)
+                }
                 // And none of it above the rim: the cone's point is up inside the shade, and its
                 // sides would otherwise show past the shade's curve as a wedge of light rising to
                 // the rod. Out of a real shade, the light starts at the rim and fades in under it.
+                // It covers everything drawn above the rim, the glow's top as well as the cone's.
                 translate(bulb.x, bulb.y) {
+                    val above = max(rise, PullCordDimens.SpillRadius.value) + MaskMargin
                     drawRect(
                         underRim,
-                        Offset(-reach - MaskMargin, -rise - MaskMargin),
-                        Size(2f * (reach + MaskMargin), reach + rise + 2f * MaskMargin),
+                        Offset(-reach - MaskMargin, -above),
+                        Size(2f * (reach + MaskMargin), reach + above + MaskMargin),
                         blendMode = BlendMode.DstIn,
                     )
                 }
@@ -318,6 +337,7 @@ private const val MaskMargin = 4f
 private const val Smoothness = 16
 private const val ConeFalloff = 5f
 private const val HaloSpread = 4f
+private const val SpillSpread = 2.5f
 
 // [color] at [peak] times f(t) of its alpha, at evenly spaced stops t from 0 to 1.
 private inline fun falloff(
