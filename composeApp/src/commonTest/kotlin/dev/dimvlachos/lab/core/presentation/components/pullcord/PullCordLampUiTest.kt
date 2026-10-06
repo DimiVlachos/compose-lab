@@ -208,11 +208,16 @@ class PullCordLampUiTest {
         val lamp = lamp()
         runOnUiThread { lamp.state.toggle() }
         mainClock.advanceTimeBy(1_000)
-        // Just above the rim, a little out past either end of it: dark, as the shade keeps it.
+        // Above the rim, out past either end of it, beyond the soft edge of the shade's shadow
+        // that hugs the rim's ends: dark, as the shade keeps it.
         val rim = PullCordDimens.Rod.value + PullCordDimens.ShadeHeight.value
-        val beside = PullCordDimens.ShadeRim.value / 2f + 6f
-        assertTrue(lightAt((150f - beside).dp, (rim - 4f).dp) < 0.04f, "left of the shade")
-        assertTrue(lightAt((150f + beside).dp, (rim - 4f).dp) < 0.04f, "right of the shade")
+        val beside = PullCordDimens.ShadeRim.value / 2f + 20f
+        assertTrue(lightAt((150f - beside).dp, (rim - 8f).dp) < 0.04f, "left of the shade")
+        assertTrue(lightAt((150f + beside).dp, (rim - 8f).dp) < 0.04f, "right of the shade")
+        // And right under the rim, out towards its ends, lit: the whole opening lets light out.
+        val under = PullCordDimens.ShadeRim.value / 2f - 6f
+        assertTrue(lightAt((150f - under).dp, (rim + 6f).dp) > 0.08f, "under the rim's left end")
+        assertTrue(lightAt((150f + under).dp, (rim + 6f).dp) > 0.08f, "under the rim's right end")
         // And lit below it.
         assertTrue(lightAt(150.dp, (rim + 60f).dp) > 0.1f, "under the bulb")
     }

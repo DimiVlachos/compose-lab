@@ -98,6 +98,10 @@ internal object PullCordDimens {
     const val SpillGlow = 0.14f
     val SpillRadius = 150.dp
 
+    // How far up inside the shade, above the rim, the light comes from: the shade's shadow is cast
+    // from there, out through the rim's ends.
+    val LightSource = 30.dp
+
     // The pool of light right under the rim, where it is strongest.
     const val PoolGlow = 0.42f
     val PoolRadius = 120.dp

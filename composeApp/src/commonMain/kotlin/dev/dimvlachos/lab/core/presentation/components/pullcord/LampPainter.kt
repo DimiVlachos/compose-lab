@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
@@ -193,8 +194,11 @@ internal class LampPainter {
                 // And none of it above the rim: the cone's point is up inside the shade, and its
                 // sides would otherwise show past the shade's curve as a wedge of light rising to
                 // the rod. Out of a real shade, the light starts at the rim and fades in under it.
-                // It covers everything drawn about the bulb, above it as well as below.
-                translate(bulb.x, bulb.y) {
+                // It is cast from where the light comes from, up inside the shade, so its edges
+                // run out through the rim's ends: all the rim's opening lets light through, right
+                // to its ends, and nothing at the rim's own height gets out beside it. It covers
+                // everything drawn about the bulb, above it as well as below.
+                translate(bulb.x, bulb.y - PullCordDimens.LightSource.value) {
                     val around = reach + MaskMargin
                     drawRect(
                         underRim,
@@ -377,11 +381,14 @@ private fun sides(from: Float, full: Float, fade: Float, to: Float): Array<Pair<
     return stops.toTypedArray()
 }
 
-// The shade's shadow edge, in turns of a sweep from the right, clockwise: how far below level the
-// light starts to show past the rim's ends, and how far below level it is at full strength. It
-// starts below level, not at it, so no light runs out sideways along the rim's own height.
-private const val EdgeStart = 0.02f
-private const val EdgeFull = 0.13f
+// The shade's shadow edge, in turns of a sweep from the right, clockwise, from where the light
+// comes from: through the rim's ends, softened either side of them by this much, as a real bulb's
+// size softens a shade's shadow, and more so the further it falls.
+private val EdgeThroughRim =
+    (atan2(PullCordDimens.LightSource.value, PullCordDimens.ShadeRim.value / 2f) / Turn)
+private const val EdgeSoftness = 0.04f
+private val EdgeStart = EdgeThroughRim - EdgeSoftness
+private val EdgeFull = EdgeThroughRim + EdgeSoftness
 
 // The sweep for the shade's shadow edge: dark above it, lit below, easing between over the edge
 // on both sides of the shade.
