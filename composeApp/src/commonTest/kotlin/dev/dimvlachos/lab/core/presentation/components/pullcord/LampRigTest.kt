@@ -26,8 +26,31 @@ class LampRigTest {
     fun itStartsAtRestWithTheBeadHangingUnderTheShade() {
         val (rig, _) = rig()
         assertTrue(rig.atRest)
-        assertEquals(rig.cordTop.x, rig.bead.x, 1e-3f)
-        assertTrue(rig.bead.y > rig.cordTop.y + PullCordDimens.CordLength.value - 1f)
+        assertEquals(rig.point(0).x, rig.bead.x, 1e-3f)
+        assertTrue(rig.bead.y > rig.point(0).y + PullCordDimens.CordLength.value - 1f)
+    }
+
+    @Test
+    fun aSecondFingerCannotTakeOverAPull() {
+        val (rig, clicks) = rig()
+        val at = rig.bead
+        assertTrue(rig.grab(at))
+        rig.drag(at, Offset(0f, PullCordDimens.ClickPull.value + 12f))
+        assertEquals(1, clicks.size)
+        // Another finger on the bead mid-pull is refused, so it can't arm a second click.
+        assertFalse(rig.grab(rig.bead))
+        rig.drag(at + Offset(0f, 60f), Offset(0f, 60f))
+        assertEquals(1, clicks.size)
+    }
+
+    @Test
+    fun aSidewaysSwingThatSagsAsFarDownStillOnlySwings() {
+        val (rig, clicks) = rig()
+        val at = rig.bead
+        assertTrue(rig.grab(at))
+        rig.drag(at, Offset(120f, PullCordDimens.ClickPull.value + 2f))
+        assertEquals(0, clicks.size)
+        rig.release()
     }
 
     @Test
@@ -85,7 +108,7 @@ class LampRigTest {
         var furthest = 0f
         repeat(120) {
             rig.advance(1f / 60f)
-            furthest = maxOf(furthest, abs(rig.bead.x - rig.cordTop.x))
+            furthest = maxOf(furthest, abs(rig.bead.x - rig.point(0).x))
         }
         assertEquals(0, clicks.size)
         assertTrue(furthest > 20f, "it swung only $furthest")
@@ -128,7 +151,7 @@ class LampRigTest {
         rig.advance(12f)
         assertTrue(rig.atRest, "still moving")
         assertEquals(rest, rig.bead.y, 1f)
-        assertEquals(rig.cordTop.x, rig.bead.x, 0.5f)
+        assertEquals(rig.point(0).x, rig.bead.x, 0.5f)
     }
 
     @Test

@@ -157,6 +157,24 @@ class PullCordLampUiTest {
     }
 
     @Test
+    fun switchedBackMidSpreadTheCircleShrinksAndNothingElseChanges() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val lamp = lamp()
+        runOnUiThread { lamp.state.toggle() }
+        mainClock.advanceTimeBy(PullCordDimens.RevealMs / 2L)
+        assertTrue(lightAt(4.dp, 596.dp) > 0.9f, "the far corner, still day")
+        runOnUiThread { lamp.state.toggle() }
+        mainClock.advanceTimeByFrame()
+        // The day outside the circle stays day: it never flashes over to night.
+        assertTrue(lightAt(4.dp, 596.dp) > 0.9f, "the far corner, switched back")
+        mainClock.advanceTimeBy(PullCordDimens.RevealMs.toLong())
+        assertFalse(lamp.state.lit)
+        assertFalse(lamp.state.revealing)
+        assertTrue(lightAt(150.dp, 150.dp) > 0.9f, "under the bulb, back to day")
+        assertTrue(lightAt(4.dp, 596.dp) > 0.9f, "the far corner, after")
+    }
+
+    @Test
     fun litTheLampThrowsLightBelowItAndNotAboveIt() = runComposeUiTest {
         mainClock.autoAdvance = false
         val lamp = lamp()

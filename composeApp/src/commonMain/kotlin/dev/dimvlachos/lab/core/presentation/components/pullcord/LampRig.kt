@@ -51,10 +51,6 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     val bead: Offset
         get() = rope[rope.size - 1]
 
-    /** Where the cord hangs from the shade. */
-    val cordTop: Offset
-        get() = rope[0]
-
     /** The cord's points, top first. */
     val points: Int
         get() = rope.size
@@ -66,6 +62,8 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
 
     /** Takes the bead if [at] is on it, and says whether it did. */
     fun grab(at: Offset): Boolean {
+        // One hand on the cord at a time: a second can't take over a pull, or re-arm its click.
+        if (finger != null) return false
         if ((at - bead).getDistance() > PullCordDimens.GrabRadius.value) return false
         finger = at
         grabbedAt = at
@@ -81,7 +79,10 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
         finger = at
         atRest = false
         quiet = 0
-        if (!clicked && at.y - grabbedAt.y >= PullCordDimens.ClickPull.value) {
+        // Down, not along: a sideways swing that sags as far still only swings.
+        val down = at.y - grabbedAt.y
+        val along = abs(at.x - grabbedAt.x)
+        if (!clicked && down >= PullCordDimens.ClickPull.value && down >= 2f * along) {
             clicked = true
             onClick()
         }
@@ -98,7 +99,7 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
         val by = to - pivot
         pivot = to
         rope.shift(by)
-        finger = finger?.plus(by)
+        // A finger stays where it is on the screen: only the lamp moves under it.
         grabbedAt += by
     }
 

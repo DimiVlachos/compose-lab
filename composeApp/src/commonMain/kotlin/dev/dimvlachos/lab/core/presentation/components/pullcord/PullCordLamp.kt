@@ -1,7 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,14 +17,19 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -92,57 +96,77 @@ public fun PullCordLamp(
     val density = LocalDensity.current.density
     val label = stringResource(Res.string.pullcord_cord)
     val lit = state.lit
-    // The old look under the new while the new one spreads; the new one alone once it has. Each
-    // look keeps its own place in the composition as it moves from top to underneath.
-    val looks = if (state.revealing) listOf(!lit, lit) else listOf(lit)
+    // While a look spreads, the one under it shows round its circle; once it has spread, the
+    // look the lamp is on shows alone.
+    val revealing = state.revealing
+    val top = state.revealTop
     Box(
         modifier
             .onSizeChanged { state.place(it.width, density) }
             .pointerInput(state) {
                 awaitEachGesture {
                     // Seen before the screen sees it: a finger on the bead is the cord's, any other
-                    // is left to the screen.
-                    val down =
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    if (!state.grab(down.position)) return@awaitEachGesture
+                    // is left to the screen. Every finger that comes down is looked at, so a thumb
+                    // resting on the screen doesn't keep the bead from being taken.
+                    var down: PointerInputChange? = null
+                    while (down == null) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        down =
+                            event.changes.firstOrNull {
+                                it.changedToDown() && state.grab(it.position)
+                            }
+                        if (down == null && event.changes.none { it.pressed })
+                            return@awaitEachGesture
+                    }
                     down.consume()
                     try {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             change.consume()
-                            if (!change.pressed) break
+                            // Where the finger lifts counts too: a flick's last move can stop
+                            // short of the click.
                             state.dragTo(change.position)
+                            if (!change.pressed) break
                         }
                     } finally {
                         state.release()
                     }
                 }
             }
-            .drawWithContent {
-                drawContent()
-                with(painter) { drawLamp(state, colors) }
-            }
     ) {
+        val looks = if (revealing) listOf(!top, top) else listOf(lit)
         for (look in looks) {
-            key(look) {
+            // Keyed by its part, not its look: the screen the lamp is on keeps its place, and its
+            // focus, as it changes look; the one going is only ever a picture of the other.
+            key(if (look == lit) LiveLook else GoingLook) {
                 Box(
-                    Modifier.fillMaxSize().drawWithContent {
-                        val draw: () -> Unit = {
-                            drawContent()
-                            if (look) with(painter) { drawLight(state, colors) }
+                    Modifier.fillMaxSize()
+                        .then(if (look == lit) Modifier else Modifier.clearAndSetSemantics {})
+                        .drawWithContent {
+                            val draw: () -> Unit = {
+                                drawContent()
+                                if (look) with(painter) { drawLight(state, colors) }
+                            }
+                            if (state.revealing && look == state.revealTop) {
+                                with(painter) { clipToReveal(state) { draw() } }
+                            } else {
+                                draw()
+                            }
                         }
-                        if (state.revealing && look == state.lit) {
-                            with(painter) { clipToReveal(state) { draw() } }
-                        } else {
-                            draw()
-                        }
-                    }
                 ) {
-                    content(look)
+                    // In a layer of its own, so a frame of the cord or the light redraws the
+                    // screen's recorded picture rather than drawing it all again.
+                    Box(Modifier.fillMaxSize().graphicsLayer()) { content(look) }
                 }
             }
         }
+        // The lamp over everything, in a layer of its own, so its frames redraw it alone.
+        Spacer(
+            Modifier.fillMaxSize().graphicsLayer().drawBehind {
+                with(painter) { drawLamp(state, colors) }
+            }
+        )
         // The bead, for a screen reader and for tests: a switch that follows the bead.
         Spacer(
             Modifier.offset {
@@ -163,3 +187,6 @@ public fun PullCordLamp(
         )
     }
 }
+
+private const val LiveLook = "live"
+private const val GoingLook = "going"

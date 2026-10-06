@@ -13,7 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -21,8 +23,9 @@ import kotlinx.coroutines.launch
  * A pull-cord lamp and the screen it lights: [lit] or not. A finger takes the bead with [grab],
  * pulls it with [dragTo] and lets go with [release], each at a point in the lamp's own pixels, as a
  * pointer reports it; pulled far enough down, the cord clicks and the lamp switches, once a pull.
- * [toggle] switches it without the cord. Only [lit] is read in composition: the cord, the shade and
- * the light are read while drawing, so a swinging cord never recomposes.
+ * [toggle] switches it without the cord. Only [lit], and whether a new look is still spreading, are
+ * read in composition: the cord, the shade and the light are read while drawing, so a swinging cord
+ * never recomposes.
  */
 @Stable
 public class PullCordState internal constructor(lit: Boolean, private val scope: CoroutineScope) {
@@ -50,6 +53,13 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
 
     /** How far the new look has spread, 0 at the bulb to 1 over the whole screen. */
     internal val reveal = Animatable(1f)
+
+    /**
+     * Which look is on top, clipped to the circle: the new one as it spreads, or, switched back
+     * while it spread, the one going as its circle shrinks back into the bulb.
+     */
+    internal var revealTop by mutableStateOf(lit)
+        private set
 
     /** Where the new look spreads from: where the bulb was when it switched, in px. */
     internal var revealFrom = Offset.Zero
@@ -86,17 +96,38 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     /** Switches the lamp: the new look spreads out from the bulb over the old. */
     public fun toggle() {
         lit = !lit
-        revealFrom = bulb()
-        revealing = true
         onSwitch?.invoke(lit)
         revealJob?.cancel()
-        revealJob = scope.launch {
-            reveal.snapTo(0f)
-            reveal.animateTo(
-                1f,
-                tween(PullCordDimens.RevealMs, easing = FastOutSlowInEasing),
-            )
-            revealing = false
+        // Undispatched, so the circle is at its start before the next frame draws either look.
+        if (revealing) {
+            // Switched again mid-spread: the circle turns round from where it got to. Back to
+            // the look under it, it shrinks into the bulb; back to its own, it spreads on. Either
+            // way, nothing jumps.
+            val to = if (revealTop == lit) 1f else 0f
+            revealJob =
+                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    reveal.animateTo(
+                        to,
+                        tween(
+                            (PullCordDimens.RevealMs * abs(to - reveal.value)).toInt(),
+                            easing = FastOutSlowInEasing,
+                        ),
+                    )
+                    revealing = false
+                }
+        } else {
+            revealFrom = bulb()
+            revealTop = lit
+            revealing = true
+            revealJob =
+                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    reveal.snapTo(0f)
+                    reveal.animateTo(
+                        1f,
+                        tween(PullCordDimens.RevealMs, easing = FastOutSlowInEasing),
+                    )
+                    revealing = false
+                }
         }
         brightnessJob?.cancel()
         brightnessJob = scope.launch {
@@ -140,6 +171,8 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
 
     private fun hang() {
         rig.moveTo(Offset(width * across / density, 0f))
+        // Mid-spread, the circle follows the bulb to where it now hangs.
+        if (revealing) revealFrom = bulb()
         frame++
     }
 
