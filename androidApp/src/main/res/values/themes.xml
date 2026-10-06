@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose (launch splash, rotation): the theme's background, so launching
+         never flashes white. -->
+    <style name="Theme.Lab" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/lab_background</item>
+    </style>
+</resources>

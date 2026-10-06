@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct iOSApp: App {
+struct ComposeLabApp: App {
     private let launch = LaunchOptions(ProcessInfo.processInfo.arguments)
 
     var body: some Scene {

@@ -12,7 +12,9 @@
 
     <application
         android:label="Compose Lab"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.Lab">
         <activity
             android:name=".MainActivity"
             android:exported="true"
