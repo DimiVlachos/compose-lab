@@ -13,12 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -67,7 +67,8 @@ private const val LampAcross = 0.62f
 // The scripted finger holds the bead this long at the end of a pull before it lets go.
 private const val HoldMs = 120L
 
-private val CardShape = RoundedCornerShape(20.dp)
+private val KnobInset = 3.dp
+private val DividerHeight = 1.dp
 private val RowHeight = 52.dp
 private val AvatarSize = 52.dp
 private val SwitchWidth = 44.dp
@@ -150,7 +151,7 @@ private fun Settings(
         Profile(palette)
         Column(
             Modifier.fillMaxWidth()
-                .clip(CardShape)
+                .clip(LabTheme.shapes.extraLarge)
                 .background(palette.surface)
                 .padding(horizontal = spacing.medium)
         ) {
@@ -167,7 +168,8 @@ private fun Settings(
             stringResource(Res.string.pullcord_hint),
             style = type.label,
             color = palette.textMuted,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+            // Clear of the gesture bar along the bottom of the screen.
+            modifier = Modifier.align(Alignment.CenterHorizontally).navigationBarsPadding(),
         )
     }
 }
@@ -177,7 +179,10 @@ private fun Profile(palette: ScreenPalette) {
     val spacing = LabTheme.spacing
     val name = stringResource(Res.string.profile_name)
     Row(
-        Modifier.fillMaxWidth().clip(CardShape).background(palette.surface).padding(spacing.medium),
+        Modifier.fillMaxWidth()
+            .clip(LabTheme.shapes.extraLarge)
+            .background(palette.surface)
+            .padding(spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -232,7 +237,7 @@ private fun PaletteSwitch(on: Boolean, palette: ScreenPalette) {
         Modifier.size(SwitchWidth, SwitchHeight)
             .clip(CircleShape)
             .background(if (on) palette.accent else palette.track)
-            .padding(horizontal = 3.dp),
+            .padding(horizontal = KnobInset),
         contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
@@ -245,7 +250,7 @@ private fun PaletteSwitch(on: Boolean, palette: ScreenPalette) {
 
 @Composable
 private fun Divider(palette: ScreenPalette) {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(palette.divider))
+    Box(Modifier.fillMaxWidth().height(DividerHeight).background(palette.divider))
 }
 
 /**

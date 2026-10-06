@@ -21,8 +21,11 @@ class PullCordDemosTest {
     fun theClipSwitchesTheLampOnSwingsItAndSwitchesItOff() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         PullCordDemos.all.single().script.play(controller)
-        val pulls = controller.calls.filter { it.second.startsWith("pullCord") }
-        assertEquals(3, pulls.size)
+        // On, still on after the tug, and off again.
+        assertEquals(listOf(true, true, false), controller.litAfterPulls)
+        val tug = controller.calls.filter { it.second.startsWith("pullCord") }[1].second
+        assertTrue(tug.startsWith("pullCord(${PullCordDemos.Tug}"), tug)
+        assertTrue(tug.endsWith(", ${PullCordDemos.Swing})"), tug)
         assertFalse(controller.lampLit)
     }
 

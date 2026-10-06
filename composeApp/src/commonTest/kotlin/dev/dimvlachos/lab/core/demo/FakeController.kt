@@ -29,6 +29,9 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     var lampLit = false
         private set
 
+    /** Whether the lamp was lit after each pull, in order. */
+    val litAfterPulls = mutableListOf<Boolean>()
+
     val calls = mutableListOf<Pair<Long, String>>()
 
     override fun select(index: Int) {
@@ -73,6 +76,7 @@ internal class FakeController(private val now: () -> Long) : DemoController {
 
     override suspend fun pullCord(down: Dp, duration: Duration, across: Dp) {
         if (down >= PullCordDimens.ClickPull) lampLit = !lampLit
+        litAfterPulls += lampLit
         calls += now() to "pullCord($down, $duration, $across)"
     }
 }

@@ -22,6 +22,7 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
@@ -56,11 +57,12 @@ class PullCordDemoUiTest {
         // The first pull has switched it on, and the light has spread.
         mainClock.advanceTimeBy(2_600)
         cord.assertIsOn()
+        assertFalse(lamp!!.revealing, "the night look must have spread over the whole screen")
         // The tug sideways swings the cord, and nothing recomposes while it does.
         val beforeTug = compositions
         mainClock.advanceTimeBy(3_400)
         cord.assertIsOn()
-        assertEquals(beforeTug, compositions, "a swinging cord must not recompose the demo")
+        assertEquals(beforeTug, compositions, "a swinging cord must not recompose the lamp")
         // Off again by the end, and hanging still, so the clip loops.
         mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 6_000 + 100)
         assertTrue(finished)

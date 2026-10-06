@@ -22,7 +22,7 @@ internal object PullCordDemos {
     private val cord =
         demoScript(holdEnd = 4.8.seconds) {
             at(0.6.seconds, lasts = 1.seconds) { pullCord(Pull, 500.milliseconds) }
-            at(3.4.seconds, lasts = 0.9.seconds) {
+            at(3.4.seconds, lasts = 1.seconds) {
                 pullCord(Tug, 450.milliseconds, across = Swing)
             }
             at(6.6.seconds, lasts = 1.seconds) { pullCord(Pull, 500.milliseconds) }

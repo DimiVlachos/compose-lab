@@ -238,7 +238,7 @@ A pendant lamp hangs over a settings screen with a bead on its cord. Pull the be
 - **The new look spreads from the bulb.** Switched, the screen is drawn in both looks, the old one underneath and the new one clipped to a circle that grows from the bulb to the farthest corner, then the old one is let go.
 - **Light that adds.** Lit, the lamp throws a cone of warm light down over the screen, a radial gradient drawn with `BlendMode.Plus` and feathered at its edges by a conic mask, and the bulb flickers twice as it catches.
 
-Nothing recomposes while the cord swings or the light spreads: the rope, the shade, the reveal and the flicker are all read in layout or draw, and only a switch recomposes. The lamp sleeps once it hangs still.
+Nothing recomposes while the cord swings or the light spreads: the rope, the shade, the reveal and the flicker are all read in layout or draw, and only a switch, and the end of its spread, recomposes. The lamp sleeps once it hangs still.
 
 ```kotlin
 val lamp = rememberPullCordState()
@@ -354,7 +354,7 @@ The page-turn book shows a two-page spread, 2:1, each spread one image; for cris
 
 The paper plane carries one message of any length; a bubble up to 264 dp wide comes down within its 0.6 s whatever its length, the plane crossing it faster for a long one. The message field grows to 4 lines, 2 on a short screen, and scrolls past that; only the letters it shows are poured into the button. Messages are dropped from the left, whatever the script's direction.
 
-The pull cord hangs one lamp over a screen it fills. While a new look spreads, the screen is composed twice, once in each look, so its state belongs outside it; a pull that switches the lamp again before the last look has finished spreading starts the spread over from the bulb.
+The pull cord hangs one lamp over a screen it fills. While a new look spreads, the screen is composed twice, once in each look, so its state belongs outside it; a switch back before the new look has finished spreading turns its circle round, shrinking it back into the bulb.
 
 ## Contributing
 
