@@ -53,7 +53,7 @@ class CatalogTest {
     }
 
     @Test
-    fun everyScriptFitsInALinkedInClipAndTheRecorder() {
+    fun everyScriptFitsInAShortClipAndTheRecorder() {
         // The recorder plays a script twice after a 1.5 s pre-roll, and waits 60 s in all for the
         // app to start and finish.
         for (demo in Catalog.demos) {

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Turn a photo of fogged glass into the fogged window's two textures.
 
 Source: "Water droplets on foggy glass" by Chris F, Pexels

@@ -50,8 +50,8 @@ import dev.dimvlachos.moodboard.search.SearchViewModel
 import dev.dimvlachos.moodboard.ui.components.EmptyState
 
 /**
- * Search keeps only the field stays at the top. An empty field offers recent searches and the
- * tags to browse; once there is something to search for, the matching photos take their place.
+ * Search keeps only the field stays at the top. An empty field offers recent searches and the tags
+ * to browse; once there is something to search for, the matching photos take their place.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

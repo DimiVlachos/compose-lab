@@ -23,9 +23,9 @@ private const val MorphSettleTimeoutMs = 1_000L
  * is under way waits and runs the moment it lands, instead of reversing it mid-flight: an
  * interrupted shared transition can leave an extra entry for its key behind, and every later morph
  * of that element then draws a stray copy. The gate closes on the request itself, not on
- * isTransitionActive, which only turns true a frame or two later, once the target has composed
- *. A request that starts no morph releases it after the start
- * timeout. Waiting requests run in arrival order, so two quick backs pop twice.
+ * isTransitionActive, which only turns true a frame or two later, once the target has composed. A
+ * request that starts no morph releases it after the start timeout. Waiting requests run in arrival
+ * order, so two quick backs pop twice.
  */
 class MorphGate
 internal constructor(

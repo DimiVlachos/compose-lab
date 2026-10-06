@@ -9,7 +9,6 @@ out/
 iosApp/iosApp.xcodeproj/
 iosApp/iosApp/Info.plist
 xcuserdata/
-.superpowers/
 __pycache__/
 scripts/fog_full.jpg
 moodboard/iosApp/Moodboard.xcodeproj/

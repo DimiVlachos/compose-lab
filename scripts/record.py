@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record one compose-lab demo and encode a LinkedIn-ready clip: 4:5, or 16:9 for a landscape demo.
+"""Record one compose-lab demo and encode a social-ready clip: 4:5, or 16:9 for a landscape demo.
 
 Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape]
 
@@ -222,7 +222,7 @@ def encode(raw, start, done, dest, landscape):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Record one compose-lab demo as a LinkedIn-ready clip.")
+    parser = argparse.ArgumentParser(description="Record one compose-lab demo as a social-ready clip.")
     parser.add_argument("platform", choices=["android", "ios"])
     parser.add_argument("demo_id")
     parser.add_argument("--label", action="store_true", help="draw the platform name on the stage (for side-by-side clips)")
