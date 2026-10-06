@@ -230,6 +230,8 @@ PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 
 ## Pull cord (`core/presentation/components/pullcord/`)
 
+![](docs/media/lamp.cord.gif)
+
 A pendant lamp hangs over a settings screen with a bead on its cord. Pull the bead down and the cord clicks, the lamp comes on and the screen turns dark in its light; pull it again and it goes off. A real pull turns into a UI action.
 
 - **A cord that is a rope.** The cord is a Verlet rope of 12 points, pinned at the shade, falling under gravity and held to its length two dozen times a step. It only pulls, so thrown up it goes slack and crumples. It is stepped at a fixed 120 Hz on `withFrameNanos`, so it moves the same on any screen, a finger's move spread over a frame's steps so a flick keeps its speed at 60 Hz too, and drawn as one smooth `Path` through its points with the bead on the end.
