@@ -48,6 +48,7 @@ internal class LampPainter {
     private var sheen: Brush = SolidColor(Color.Transparent)
     private var underRim: Brush = SolidColor(Color.Transparent)
     private var spill: Brush = SolidColor(Color.Transparent)
+    private var pool: Brush = SolidColor(Color.Transparent)
 
     private fun brushes(colors: AppColors, reach: Float) {
         if (colors == brushColors && reach == brushReach) return
@@ -92,6 +93,16 @@ internal class LampPainter {
                 },
                 center = Offset.Zero,
                 radius = PullCordDimens.SpillRadius.value,
+            )
+        // Right under the rim the light is at its strongest: a broad pool of it just below the
+        // opening, fading smoothly down and out.
+        pool =
+            Brush.radialGradient(
+                *falloff(colors.lampLight, PullCordDimens.PoolGlow) { t ->
+                    exp(-PoolSpread * t * t) * (1f - t)
+                },
+                center = Offset.Zero,
+                radius = PullCordDimens.PoolRadius.value,
             )
         val rim = PullCordDimens.ShadeRim.value / 2f
         // Clear above the rim, opaque a little below it: what keeps the light under the shade.
@@ -176,6 +187,8 @@ internal class LampPainter {
                 translate(bulb.x, bulb.y) {
                     val radius = PullCordDimens.SpillRadius.value
                     drawCircle(spill, radius, Offset.Zero, blendMode = BlendMode.Plus)
+                    val pooled = PullCordDimens.PoolRadius.value
+                    drawCircle(pool, pooled, Offset.Zero, blendMode = BlendMode.Plus)
                 }
                 // And none of it above the rim: the cone's point is up inside the shade, and its
                 // sides would otherwise show past the shade's curve as a wedge of light rising to
@@ -333,6 +346,7 @@ private const val Smoothness = 16
 private const val ConeFalloff = 5f
 private const val HaloSpread = 4f
 private const val SpillSpread = 2.5f
+private const val PoolSpread = 3f
 
 // [color] at [peak] times f(t) of its alpha, at evenly spaced stops t from 0 to 1.
 private inline fun falloff(
@@ -363,20 +377,21 @@ private fun sides(from: Float, full: Float, fade: Float, to: Float): Array<Pair<
     return stops.toTypedArray()
 }
 
-// The shade's shadow edge, in turns of a sweep from the right, clockwise: how far above level the
-// light starts to show past the rim, and how far below it it is at full strength.
-private const val EdgeAbove = 0.035f
-private const val EdgeBelow = 0.08f
+// The shade's shadow edge, in turns of a sweep from the right, clockwise: how far below level the
+// light starts to show past the rim's ends, and how far below level it is at full strength. It
+// starts below level, not at it, so no light runs out sideways along the rim's own height.
+private const val EdgeStart = 0.02f
+private const val EdgeFull = 0.13f
 
 // The sweep for the shade's shadow edge: dark above it, lit below, easing between over the edge
 // on both sides of the shade.
 private fun shadowEdge(): Array<Pair<Float, Color>> {
-    val span = EdgeAbove + EdgeBelow
+    val span = EdgeFull - EdgeStart
     fun lit(turn: Float): Float {
         // How far into the lit side of the nearer edge [turn] is, 0 dark to 1 lit.
         val right = if (turn > 0.5f) turn - 1f else turn
-        val fromRight = (right + EdgeAbove) / span
-        val fromLeft = (0.5f + EdgeAbove - turn) / span
+        val fromRight = (right - EdgeStart) / span
+        val fromLeft = (0.5f - EdgeStart - turn) / span
         val t = minOf(fromRight, fromLeft).coerceIn(0f, 1f)
         return t * t * (3f - 2f * t)
     }

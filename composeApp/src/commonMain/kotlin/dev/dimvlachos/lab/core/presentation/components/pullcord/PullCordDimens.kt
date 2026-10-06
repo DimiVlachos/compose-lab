@@ -95,8 +95,12 @@ internal object PullCordDimens {
 
     // The bulb's light all round it under the rim, out to the sides as well as down: faint, and
     // reaching about twice the rim's width.
-    const val SpillGlow = 0.2f
+    const val SpillGlow = 0.14f
     val SpillRadius = 150.dp
+
+    // The pool of light right under the rim, where it is strongest.
+    const val PoolGlow = 0.42f
+    val PoolRadius = 120.dp
 
     // The bulb's own glow reaches only this far up past the rim, just catching the rim's edge.
 
