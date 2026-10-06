@@ -90,8 +90,8 @@ internal object PullCordDimens {
     // its brightest, at the bulb.
     const val ConeHalfAngle = 0.62f
     const val ConeGlow = 0.34f
-    const val HaloGlow = 0.55f
-    val HaloRadius = 46.dp
+    const val HaloGlow = 0.4f
+    val HaloRadius = 64.dp
 
     // A shade lets light out only under its rim: the cone fades in over this much below the rim,
     // and the bulb's glow reaches only this far up past it, just catching the rim's edge.

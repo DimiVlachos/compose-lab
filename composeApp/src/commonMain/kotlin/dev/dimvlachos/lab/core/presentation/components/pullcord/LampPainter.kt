@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.tan
@@ -51,32 +52,33 @@ internal class LampPainter {
         if (colors == brushColors && reach == brushReach) return
         brushColors = colors
         brushReach = reach
+        // Light thins with distance as a curve, not in straight steps: many stops along it, so
+        // the eye finds no ring where one step meets the next.
         cone =
             Brush.radialGradient(
-                0f to colors.lampLight.copy(alpha = PullCordDimens.ConeGlow),
-                0.35f to colors.lampLight.copy(alpha = PullCordDimens.ConeGlow * 0.4f),
-                1f to Color.Transparent,
+                *falloff(colors.lampLight, PullCordDimens.ConeGlow) { t ->
+                    (1f - t) * (1f - t) / (1f + ConeFalloff * t)
+                },
                 center = Offset.Zero,
                 radius = reach,
             )
-        // Straight down is a quarter of the way round from the right, clockwise.
+        // Straight down is a quarter of the way round from the right, clockwise. The cone's sides
+        // ease out over a wide soft band, rather than a straight ramp with a corner at each end.
         val half = PullCordDimens.ConeHalfAngle
         val inner = (half - half * Feather) / Turn
         val outer = (half + half * Feather) / Turn
         coneMask =
             Brush.sweepGradient(
-                0f to Color.Transparent,
-                Down - outer to Color.Transparent,
-                Down - inner to Color.Black,
-                Down + inner to Color.Black,
-                Down + outer to Color.Transparent,
-                1f to Color.Transparent,
+                *sides(Down - outer, Down - inner, Down + inner, Down + outer),
                 center = Offset.Zero,
             )
+        // The bulb's own glow: soft all the way out, with no edge for it to end at, so it melts
+        // into the cone rather than sitting on it as a disc.
         halo =
             Brush.radialGradient(
-                0f to colors.bulbLit.copy(alpha = PullCordDimens.HaloGlow),
-                1f to Color.Transparent,
+                *falloff(colors.bulbLit, PullCordDimens.HaloGlow) { t ->
+                    exp(-HaloSpread * t * t) * (1f - t)
+                },
                 center = Offset.Zero,
                 radius = PullCordDimens.HaloRadius.value,
             )
@@ -84,8 +86,10 @@ internal class LampPainter {
         // Clear above the rim, opaque a little below it: what keeps the light under the shade.
         underRim =
             Brush.verticalGradient(
-                0f to Color.Transparent,
-                1f to Color.Black,
+                *Array(Smoothness + 1) { i ->
+                    val t = i / Smoothness.toFloat()
+                    t to Color.Black.copy(alpha = t * t * (3f - 2f * t))
+                },
                 startY = 0f,
                 endY = PullCordDimens.RimFade.value,
             )
@@ -304,10 +308,45 @@ internal class LampPainter {
 private val RimY = PullCordDimens.Rod.value + PullCordDimens.ShadeHeight.value
 
 // The feathered share either side of the cone's edge, and where straight down is in a turn.
-private const val Feather = 0.45f
+private const val Feather = 0.8f
 private const val Turn = 2f * PI.toFloat()
 private const val Down = 0.25f
 private const val MaskMargin = 4f
+
+// How many stops a soft gradient takes; how fast the cone's light thins with distance; how fast
+// the bulb's glow falls away from it.
+private const val Smoothness = 16
+private const val ConeFalloff = 5f
+private const val HaloSpread = 4f
+
+// [color] at [peak] times f(t) of its alpha, at evenly spaced stops t from 0 to 1.
+private inline fun falloff(
+    color: Color,
+    peak: Float,
+    f: (Float) -> Float,
+): Array<Pair<Float, Color>> =
+    Array(Smoothness + 1) { i ->
+        val t = i / Smoothness.toFloat()
+        t to color.copy(alpha = peak * f(t))
+    }
+
+// A sweep mask: clear outside [from]..[to], opaque from [full] to [fade], easing in and out
+// between, all in turns.
+private fun sides(from: Float, full: Float, fade: Float, to: Float): Array<Pair<Float, Color>> {
+    val ease = Smoothness / 2
+    val stops = ArrayList<Pair<Float, Color>>()
+    stops += 0f to Color.Transparent
+    for (i in 0..ease) {
+        val t = i / ease.toFloat()
+        stops += (from + (full - from) * t) to Color.Black.copy(alpha = t * t * (3f - 2f * t))
+    }
+    for (i in 0..ease) {
+        val t = i / ease.toFloat()
+        stops += (fade + (to - fade) * t) to Color.Black.copy(alpha = 1f - t * t * (3f - 2f * t))
+    }
+    stops += 1f to Color.Transparent
+    return stops.toTypedArray()
+}
 
 // The bulb's glow, where it meets the rim, as a share of the rim's width.
 private const val HaloNarrowing = 0.9f
