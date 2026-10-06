@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -25,8 +26,8 @@ import kotlin.math.max
 import kotlin.math.tan
 
 /**
- * Draws a [LampRig]: its paths are kept from frame to frame, so a swinging cord allocates nothing.
- * Everything is drawn in dp, scaled up to the screen's pixels.
+ * Draws a [LampRig]: its paths, strokes and brushes are kept from frame to frame, so a swinging
+ * cord allocates next to nothing. Everything is drawn in dp, scaled up to the screen's pixels.
  */
 internal class LampPainter {
     private val cord = Path()
@@ -34,6 +35,61 @@ internal class LampPainter {
     private val addLight = Paint().apply { blendMode = BlendMode.Plus }
     private val circle = Path()
     private var shadeBuilt = false
+    private val cordStroke = Stroke(PullCordDimens.CordWidth.value, cap = StrokeCap.Round)
+
+    // The brushes, made about the origin and moved to the bulb as it swings: made again only when
+    // the colours or the light's reach change, never for a frame. The light's brightness is drawn
+    // as an alpha over them.
+    private var brushColors: AppColors? = null
+    private var brushReach = -1f
+    private var cone: Brush = SolidColor(Color.Transparent)
+    private var coneMask: Brush = SolidColor(Color.Transparent)
+    private var halo: Brush = SolidColor(Color.Transparent)
+    private var sheen: Brush = SolidColor(Color.Transparent)
+
+    private fun brushes(colors: AppColors, reach: Float) {
+        if (colors == brushColors && reach == brushReach) return
+        brushColors = colors
+        brushReach = reach
+        cone =
+            Brush.radialGradient(
+                0f to colors.lampLight.copy(alpha = PullCordDimens.ConeGlow),
+                0.35f to colors.lampLight.copy(alpha = PullCordDimens.ConeGlow * 0.4f),
+                1f to Color.Transparent,
+                center = Offset.Zero,
+                radius = reach,
+            )
+        // Straight down is a quarter of the way round from the right, clockwise.
+        val half = PullCordDimens.ConeHalfAngle
+        val inner = (half - half * Feather) / Turn
+        val outer = (half + half * Feather) / Turn
+        coneMask =
+            Brush.sweepGradient(
+                0f to Color.Transparent,
+                Down - outer to Color.Transparent,
+                Down - inner to Color.Black,
+                Down + inner to Color.Black,
+                Down + outer to Color.Transparent,
+                1f to Color.Transparent,
+                center = Offset.Zero,
+            )
+        halo =
+            Brush.radialGradient(
+                0f to colors.bulbLit.copy(alpha = PullCordDimens.HaloGlow),
+                1f to Color.Transparent,
+                center = Offset.Zero,
+                radius = PullCordDimens.HaloRadius.value,
+            )
+        val rim = PullCordDimens.ShadeRim.value / 2f
+        sheen =
+            Brush.horizontalGradient(
+                0f to colors.lampShadeSheen.copy(alpha = 0f),
+                0.28f to colors.lampShadeSheen.copy(alpha = 0.8f),
+                0.55f to colors.lampShadeSheen.copy(alpha = 0f),
+                startX = -rim,
+                endX = rim,
+            )
+    }
 
     /**
      * Draws [content] with the new look clipped to a circle spreading from where the bulb was,
@@ -72,43 +128,28 @@ internal class LampPainter {
             rotateRad(rig.tilt, rig.pivot) {
                 val bulb = rig.pivot + Offset(0f, RimY)
                 val reach = max(bounds.width, bounds.height) * ConeReach
-                val half = PullCordDimens.ConeHalfAngle
+                brushes(colors, reach)
                 // The cone's edges meet up inside the shade, so it leaves the rim as wide as the
                 // rim.
-                val apex = bulb - Offset(0f, PullCordDimens.ShadeRim.value / 2f / tan(half))
-                val area = Rect(apex.x - reach, apex.y, apex.x + reach, apex.y + reach)
-                drawRect(
-                    Brush.radialGradient(
-                        0f to colors.lampLight.copy(alpha = PullCordDimens.ConeGlow * glow),
-                        0.35f to
-                            colors.lampLight.copy(alpha = PullCordDimens.ConeGlow * 0.4f * glow),
-                        1f to Color.Transparent,
-                        center = bulb,
-                        radius = reach,
-                    ),
-                    area.topLeft,
-                    area.size,
-                )
-                // Straight down is a quarter of the way round from the right, clockwise. The
-                // mask reaches past the light on every side, so no sliver of the light's edge is
-                // left uncovered by it.
-                val inner = (half - half * Feather) / Turn
-                val outer = (half + half * Feather) / Turn
-                val mask = area.inflate(MaskMargin)
-                drawRect(
-                    Brush.sweepGradient(
-                        0f to Color.Transparent,
-                        Down - outer to Color.Transparent,
-                        Down - inner to Color.Black,
-                        Down + inner to Color.Black,
-                        Down + outer to Color.Transparent,
-                        1f to Color.Transparent,
-                        center = apex,
-                    ),
-                    mask.topLeft,
-                    mask.size,
-                    blendMode = BlendMode.DstIn,
-                )
+                val rise = PullCordDimens.ShadeRim.value / 2f / tan(PullCordDimens.ConeHalfAngle)
+                translate(bulb.x, bulb.y) {
+                    drawRect(
+                        cone,
+                        Offset(-reach, -rise),
+                        Size(2f * reach, reach),
+                        alpha = glow,
+                    )
+                }
+                // The mask reaches past the light on every side, so no sliver of the light's
+                // edge is left uncovered by it.
+                translate(bulb.x, bulb.y - rise) {
+                    drawRect(
+                        coneMask,
+                        Offset(-reach - MaskMargin, -MaskMargin),
+                        Size(2f * (reach + MaskMargin), reach + 2f * MaskMargin),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
             }
             drawIntoCanvas { it.restore() }
         }
@@ -120,6 +161,7 @@ internal class LampPainter {
         val rig = state.rig
         val glow = state.brightness.value
         buildShade()
+        brushes(colors, if (brushReach < 0f) 1f else brushReach)
         scale(state.density, state.density, Offset.Zero) {
             val pivot = rig.pivot
             drawRoundRect(
@@ -146,18 +188,15 @@ internal class LampPainter {
                 // A glow about the bulb as well as the light it throws, under the shade, so the
                 // shade stays dark against it.
                 if (glow > 0f) {
-                    val bulb = pivot + Offset(0f, RimY)
-                    drawCircle(
-                        Brush.radialGradient(
-                            0f to colors.bulbLit.copy(alpha = PullCordDimens.HaloGlow * glow),
-                            1f to Color.Transparent,
-                            center = bulb,
-                            radius = PullCordDimens.HaloRadius.value,
-                        ),
-                        PullCordDimens.HaloRadius.value,
-                        bulb,
-                        blendMode = BlendMode.Plus,
-                    )
+                    translate(pivot.x, pivot.y + RimY) {
+                        drawCircle(
+                            halo,
+                            PullCordDimens.HaloRadius.value,
+                            Offset.Zero,
+                            alpha = glow,
+                            blendMode = BlendMode.Plus,
+                        )
+                    }
                 }
                 drawShade(pivot + Offset(0f, PullCordDimens.Rod.value), colors)
             }
@@ -177,11 +216,7 @@ internal class LampPainter {
         }
         val last = rig.point(rig.points - 1)
         cord.lineTo(last.x, last.y)
-        drawPath(
-            cord,
-            colors.lampCord,
-            style = Stroke(PullCordDimens.CordWidth.value, cap = StrokeCap.Round),
-        )
+        drawPath(cord, colors.lampCord, style = cordStroke)
     }
 
     // A brass bead with a glint on its upper left.
@@ -202,16 +237,7 @@ internal class LampPainter {
         val box = Rect(top.x - rim, top.y, top.x + rim, top.y + height)
         translate(top.x, top.y) {
             drawPath(shade, colors.lampShade)
-            drawPath(
-                shade,
-                Brush.horizontalGradient(
-                    0f to colors.lampShadeSheen.copy(alpha = 0f),
-                    0.28f to colors.lampShadeSheen.copy(alpha = 0.8f),
-                    0.55f to colors.lampShadeSheen.copy(alpha = 0f),
-                    startX = -rim,
-                    endX = rim,
-                ),
-            )
+            drawPath(shade, sheen)
         }
         drawLine(
             colors.lampBrass,
