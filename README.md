@@ -1,6 +1,54 @@
-# compose-lab
+<h1 align="center">compose-lab</h1>
 
-Compose Multiplatform components, rebuilt from scratch and recorded as short clips. Each component lives in its own package under `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/` and runs the same on Android and iOS.
+<p align="center">
+Compose Multiplatform components, rebuilt from scratch and recorded as short clips.<br>
+One Kotlin codebase, the same pixels on Android and iOS.
+</p>
+
+<p align="center">
+  <a href="https://github.com/DimiVlachos/compose-lab/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DimiVlachos/compose-lab/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-blue.svg"></a>
+  <img alt="Kotlin 2.4" src="https://img.shields.io/badge/Kotlin-2.4-7F52FF.svg?logo=kotlin&logoColor=white">
+  <img alt="Compose Multiplatform 1.11" src="https://img.shields.io/badge/Compose%20Multiplatform-1.11-4285F4.svg?logo=jetpackcompose&logoColor=white">
+  <img alt="Platforms: Android, iOS" src="https://img.shields.io/badge/platforms-Android%20%7C%20iOS-lightgrey.svg">
+</p>
+
+<p align="center">
+  <a href="#nav-bar-corepresentationcomponentsnavbar"><img src="docs/media/navbar.all.gif" width="200" alt="Nav bar"></a>
+  <a href="#fogged-mirror-corepresentationcomponentsfog"><img src="docs/media/fog.mirror.bathroom.gif" width="200" alt="Fogged mirror"></a>
+  <a href="#paper-plane-corepresentationcomponentspaperplane"><img src="docs/media/chat.plane.gif" width="200" alt="Paper plane"></a>
+</p>
+
+Each component lives in its own package under `composeApp/src/commonMain/kotlin/dev/dimvlachos/lab/core/presentation/components/`, has a demo that plays a timed script, and is covered by common tests that run on the iOS simulator in CI.
+
+| Component | Package | Demo | What it shows |
+|---|---|---|---|
+| [Nav bar](#nav-bar-corepresentationcomponentsnavbar) | `navbar` | `navbar.all` | A bottom bar of switchable layers: morphing indicator, cutout, collapse on scroll, jelly action button |
+| [Profile gallery](#profile-gallery-corepresentationcomponentsgallery) | `gallery`, `imagemorph`, `profile` | `morph.app` | Every open is a shared-element morph, serialised by a morph gate |
+| [Fogged mirror](#fogged-mirror-corepresentationcomponentsfog) | `fog` | `fog.mirror.bathroom`, `fog.mirror.camera` | Wipe steam off a mirror; running drops; your live face, cut out on the phone |
+| [Page-turn book](#page-turn-book-corepresentationcomponentspageturn) | `pageturn` | `book.turn` | Pages that curl in 3D under the finger, in plain `DrawScope` |
+| [Paper plane](#paper-plane-corepresentationcomponentspaperplane) | `paperplane` | `chat.plane` | A chat that sends each message as a folded paper dart |
+| [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
+
+The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
+
+<details>
+<summary><b>Contents</b></summary>
+
+- [Nav bar](#nav-bar-corepresentationcomponentsnavbar)
+- [Profile gallery](#profile-gallery-corepresentationcomponentsgallery)
+- [Fogged mirror](#fogged-mirror-corepresentationcomponentsfog)
+- [Page-turn book](#page-turn-book-corepresentationcomponentspageturn)
+- [Paper plane](#paper-plane-corepresentationcomponentspaperplane)
+- [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
+- [Project structure](#project-structure)
+- [Run](#run)
+- [Record a clip](#record-a-clip)
+- [Envelope](#envelope)
+- [Contributing](#contributing)
+- [Licence](#licence)
+
+</details>
 
 ## Nav bar (`core/presentation/components/navbar/`)
 
@@ -217,14 +265,41 @@ Run it:
   - iOS: record with `xcrun simctl io booted recordVideo out/moodboard-ios.mov` while running `TEST_RUNNER_SHOWCASE=1 xcodebuild … test -only-testing:MoodboardUITests/ShowcaseUITests`.
   - `scripts/moodboard/showcase-compose.sh out/moodboard-ios.mov <iosStart> out/moodboard-android.mp4 <androidStart> <android-studio.png> out/moodboard.showcase-both.mp4` (each start is the second, in that take, at which its script began: the first scroll), then the GIF at 12 fps and 960 px wide (`scripts/gif.sh` builds the palette in memory, which a 40 s clip can outgrow; ffmpeg's two-pass palettegen/paletteuse makes the same GIF).
 
+## Project structure
+
+```
+composeApp/            the components, their demos and the catalog (Kotlin Multiplatform library)
+  core/presentation/   components/ (one package each) and ui/ (LabTheme: colours, type, motion)
+  core/demo/           the scripted-demo engine: timed steps, a scripted finger, record mode
+  *demo/               one package per component: the demos that the clips are recorded from
+  catalog/             the list of demos, opened by id (-demo navbar.all) or from the home screen
+androidApp/            the Android app: one Activity hosting App()
+iosApp/                the iOS app: SwiftUI hosting MainViewController (XcodeGen project)
+moodboard/shared/      Moodboard's data, logic, ViewModels and shared Compose screens
+moodboard/androidApp/  Moodboard on Android: Material 3 Expressive, Navigation 3
+moodboard/iosApp/      Moodboard on iOS: SwiftUI for iOS 26, with SKIE-bridged ViewModels
+build-logic/           Gradle convention plugins shared by the four modules
+scripts/               recording, GIF and texture tools
+```
+
 ## Run
 
-Prerequisites: macOS with Xcode for iOS and for the iOS tests (`iosSimulatorArm64Test`), an Android SDK (`ANDROID_HOME` or `local.properties`'s `sdk.dir`), Python 3 and ffmpeg for recording, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) for iOS.
+Requirements:
+
+| Tool | Version |
+|---|---|
+| JDK | 25 for the Gradle daemon (downloaded automatically if missing); Android code targets Java 17 |
+| Android | Android Studio with AGP 9.3 support, compile SDK 37, a device on Android 12 (API 31) or later |
+| iOS | macOS with Xcode 26 and [XcodeGen](https://github.com/yonaskolb/XcodeGen); the lab app runs on iOS 16+, Moodboard on iOS 26+ |
+| Recording | Python 3 and ffmpeg |
+
+Point Gradle at the Android SDK with `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 
 - Android: `./gradlew :androidApp:installDebug`
 - iOS: boot a simulator, then run `scripts/install-ios.sh`
 - Tests: `./gradlew :composeApp:iosSimulatorArm64Test`
 - Architecture (Konsist): `./gradlew :androidApp:testDebugUnitTest`
+- Lint: `./gradlew :androidApp:lintDebug`
 - Formatting: `./gradlew spotlessApply`
 
 ## Record a clip
@@ -251,6 +326,10 @@ The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo st
 The page-turn book shows a two-page spread, 2:1, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
 
 The paper plane carries one message of any length; a bubble up to 264 dp wide comes down within its 0.6 s whatever its length, the plane crossing it faster for a long one. The message field grows to 4 lines, 2 on a short screen, and scrolls past that; only the letters it shows are poured into the button. Messages are dropped from the left, whatever the script's direction.
+
+## Contributing
+
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
 
 ## Licence
 
@@ -298,3 +377,7 @@ The Moodboard's mainland photos are from [Wikimedia Commons](https://commons.wik
 | [Monemvasia](https://commons.wikimedia.org/wiki/File:%CE%9C%CE%BF%CE%BD%CE%B5%CE%BC%CE%B2%CE%B1%CF%83%CE%B9%CE%AC_0412.jpg) | C messier | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 | [Vikos Gorge](https://commons.wikimedia.org/wiki/File:Vikos_Gorge_(%CE%A6%CE%B1%CF%81%CF%81%CE%AC%CE%B3%CE%B3%CE%B9_%CF%84%CE%BF%CF%85_%CE%92%CE%AF%CE%BA%CE%BF%CF%85)_by_Pudelek_2.JPG) | Pudelek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 | [Kalogeriko Bridge](https://commons.wikimedia.org/wiki/File:Old_Bridge_Kalogeriko.jpg) | Jolovema | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+
+---
+
+<p align="center">If a component here helped you, a ⭐ helps others find it.</p>

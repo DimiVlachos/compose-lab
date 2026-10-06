@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in a component or app doesn't work or look right.
+labels: [bug]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Nav bar
+        - Profile gallery
+        - Fogged mirror
+        - Page-turn book
+        - Paper plane
+        - Moodboard
+        - Build or tooling
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android
+        - iOS
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead. A screen recording helps a lot for animation bugs.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      placeholder: Pixel 9, Android 16 / iPhone 17 Pro simulator, iOS 26
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: The commit you built from (git rev-parse --short HEAD).

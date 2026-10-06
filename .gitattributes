@@ -1,0 +1,12 @@
+# Normalise text to LF in the repo; Windows scripts keep CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# Binary assets: never diff or merge them as text.
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.ttf binary
+*.jar binary

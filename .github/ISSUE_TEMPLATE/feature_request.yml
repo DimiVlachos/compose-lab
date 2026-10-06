@@ -1,0 +1,16 @@
+name: Idea
+description: A new component, or a way to make one better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should it do, and where have you seen something like it? Links to videos or apps are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it belongs here
+      description: What would it show about Compose that the lab doesn't show yet?
