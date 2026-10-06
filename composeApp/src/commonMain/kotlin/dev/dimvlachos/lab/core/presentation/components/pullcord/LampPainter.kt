@@ -95,15 +95,10 @@ internal class LampPainter {
             )
         val rim = PullCordDimens.ShadeRim.value / 2f
         // Clear above the rim, opaque a little below it: what keeps the light under the shade.
-        underRim =
-            Brush.verticalGradient(
-                *Array(Smoothness + 1) { i ->
-                    val t = i / Smoothness.toFloat()
-                    t to Color.Black.copy(alpha = t * t * (3f - 2f * t))
-                },
-                startY = 0f,
-                endY = PullCordDimens.RimFade.value,
-            )
+        // The shade's shadow edge: not a level line, but an angle out from the bulb past the rim,
+        // soft, and softer the further it goes, as a shade's shadow is on a wall. Light just
+        // above level still gets out past the rim's edge; well above it, none does.
+        underRim = Brush.sweepGradient(*shadowEdge(), center = Offset.Zero)
         sheen =
             Brush.horizontalGradient(
                 0f to colors.lampShadeSheen.copy(alpha = 0f),
@@ -185,13 +180,13 @@ internal class LampPainter {
                 // And none of it above the rim: the cone's point is up inside the shade, and its
                 // sides would otherwise show past the shade's curve as a wedge of light rising to
                 // the rod. Out of a real shade, the light starts at the rim and fades in under it.
-                // It covers everything drawn above the rim, the glow's top as well as the cone's.
+                // It covers everything drawn about the bulb, above it as well as below.
                 translate(bulb.x, bulb.y) {
-                    val above = max(rise, PullCordDimens.SpillRadius.value) + MaskMargin
+                    val around = reach + MaskMargin
                     drawRect(
                         underRim,
-                        Offset(-reach - MaskMargin, -above),
-                        Size(2f * (reach + MaskMargin), reach + above + MaskMargin),
+                        Offset(-around, -around),
+                        Size(2f * around, 2f * around),
                         blendMode = BlendMode.DstIn,
                     )
                 }
@@ -367,6 +362,31 @@ private fun sides(from: Float, full: Float, fade: Float, to: Float): Array<Pair<
     stops += 1f to Color.Transparent
     return stops.toTypedArray()
 }
+
+// The shade's shadow edge, in turns of a sweep from the right, clockwise: how far above level the
+// light starts to show past the rim, and how far below it it is at full strength.
+private const val EdgeAbove = 0.035f
+private const val EdgeBelow = 0.08f
+
+// The sweep for the shade's shadow edge: dark above it, lit below, easing between over the edge
+// on both sides of the shade.
+private fun shadowEdge(): Array<Pair<Float, Color>> {
+    val span = EdgeAbove + EdgeBelow
+    fun lit(turn: Float): Float {
+        // How far into the lit side of the nearer edge [turn] is, 0 dark to 1 lit.
+        val right = if (turn > 0.5f) turn - 1f else turn
+        val fromRight = (right + EdgeAbove) / span
+        val fromLeft = (0.5f + EdgeAbove - turn) / span
+        val t = minOf(fromRight, fromLeft).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+    return Array(EdgeStops + 1) { i ->
+        val turn = i / EdgeStops.toFloat()
+        turn to Color.Black.copy(alpha = lit(turn))
+    }
+}
+
+private const val EdgeStops = 240
 
 // The bulb's glow, where it meets the rim, as a share of the rim's width.
 private const val HaloNarrowing = 0.9f
