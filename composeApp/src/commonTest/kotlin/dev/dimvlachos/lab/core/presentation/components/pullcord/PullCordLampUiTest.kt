@@ -203,6 +203,21 @@ class PullCordLampUiTest {
     }
 
     @Test
+    fun litTheShadeLetsNoLightOutAboveItsRim() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val lamp = lamp()
+        runOnUiThread { lamp.state.toggle() }
+        mainClock.advanceTimeBy(1_000)
+        // Just above the rim, a little out past either end of it: dark, as the shade keeps it.
+        val rim = PullCordDimens.Rod.value + PullCordDimens.ShadeHeight.value
+        val beside = PullCordDimens.ShadeRim.value / 2f + 6f
+        assertTrue(lightAt((150f - beside).dp, (rim - 4f).dp) < 0.04f, "left of the shade")
+        assertTrue(lightAt((150f + beside).dp, (rim - 4f).dp) < 0.04f, "right of the shade")
+        // And lit below it.
+        assertTrue(lightAt(150.dp, (rim + 60f).dp) > 0.1f, "under the bulb")
+    }
+
+    @Test
     fun litTheLampThrowsLightBelowItAndNotAboveIt() = runComposeUiTest {
         mainClock.autoAdvance = false
         val lamp = lamp()

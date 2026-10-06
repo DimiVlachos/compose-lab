@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotateRad
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -44,6 +45,7 @@ internal class LampPainter {
     private var coneMask: Brush = SolidColor(Color.Transparent)
     private var halo: Brush = SolidColor(Color.Transparent)
     private var sheen: Brush = SolidColor(Color.Transparent)
+    private var underRim: Brush = SolidColor(Color.Transparent)
 
     private fun brushes(colors: AppColors, reach: Float) {
         if (colors == brushColors && reach == brushReach) return
@@ -79,6 +81,14 @@ internal class LampPainter {
                 radius = PullCordDimens.HaloRadius.value,
             )
         val rim = PullCordDimens.ShadeRim.value / 2f
+        // Clear above the rim, opaque a little below it: what keeps the light under the shade.
+        underRim =
+            Brush.verticalGradient(
+                0f to Color.Transparent,
+                1f to Color.Black,
+                startY = 0f,
+                endY = PullCordDimens.RimFade.value,
+            )
         sheen =
             Brush.horizontalGradient(
                 0f to colors.lampShadeSheen.copy(alpha = 0f),
@@ -132,9 +142,12 @@ internal class LampPainter {
                 val bulb = rig.pivot + Offset(0f, RimY)
                 val reach = max(width, height) * ConeReach
                 brushes(colors, reach)
-                // The cone's edges meet up inside the shade, so it leaves the rim as wide as the
-                // rim.
-                val rise = PullCordDimens.ShadeRim.value / 2f / tan(PullCordDimens.ConeHalfAngle)
+                // The cone's edges meet just inside the shade, a little above the bulb: its light
+                // comes out of the rim's middle and opens out from there, rather than leaving the
+                // rim already as wide as the rim and needing cutting off flat beside it.
+                val rise =
+                    PullCordDimens.ShadeRim.value / 2f / tan(PullCordDimens.ConeHalfAngle) *
+                        PullCordDimens.ApexInside
                 translate(bulb.x, bulb.y) {
                     drawRect(cone, Offset(-reach, -rise), Size(2f * reach, reach))
                 }
@@ -145,6 +158,17 @@ internal class LampPainter {
                         coneMask,
                         Offset(-reach - MaskMargin, -MaskMargin),
                         Size(2f * (reach + MaskMargin), reach + 2f * MaskMargin),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
+                // And none of it above the rim: the cone's point is up inside the shade, and its
+                // sides would otherwise show past the shade's curve as a wedge of light rising to
+                // the rod. Out of a real shade, the light starts at the rim and fades in under it.
+                translate(bulb.x, bulb.y) {
+                    drawRect(
+                        underRim,
+                        Offset(-reach - MaskMargin, -rise - MaskMargin),
+                        Size(2f * (reach + MaskMargin), reach + rise + 2f * MaskMargin),
                         blendMode = BlendMode.DstIn,
                     )
                 }
@@ -185,14 +209,24 @@ internal class LampPainter {
                 // A glow about the bulb as well as the light it throws, under the shade, so the
                 // shade stays dark against it.
                 if (glow > 0f) {
+                    // The bulb's glow below the rim only: above it, the shade hides the bulb, and
+                    // its outside stays dark but for the rim's own edge catching the light.
+                    // Narrowed to the rim's width where it meets it, so its cut-off top never shows
+                    // past the rim's ends as a flat band.
                     translate(pivot.x, pivot.y + RimY) {
-                        drawCircle(
-                            halo,
-                            PullCordDimens.HaloRadius.value,
-                            Offset.Zero,
-                            alpha = glow,
-                            blendMode = BlendMode.Plus,
-                        )
+                        val radius = PullCordDimens.HaloRadius.value
+                        val narrow = PullCordDimens.ShadeRim.value / 2f / radius * HaloNarrowing
+                        clipRect(-radius, -PullCordDimens.RimCatch.value, radius, radius) {
+                            scale(narrow, 1f, pivot = Offset.Zero) {
+                                drawCircle(
+                                    halo,
+                                    radius,
+                                    Offset.Zero,
+                                    alpha = glow,
+                                    blendMode = BlendMode.Plus,
+                                )
+                            }
+                        }
                     }
                 }
                 drawShade(pivot + Offset(0f, PullCordDimens.Rod.value), colors)
@@ -274,6 +308,9 @@ private const val Feather = 0.45f
 private const val Turn = 2f * PI.toFloat()
 private const val Down = 0.25f
 private const val MaskMargin = 4f
+
+// The bulb's glow, where it meets the rim, as a share of the rim's width.
+private const val HaloNarrowing = 0.9f
 
 // How far the light reaches down the screen, as a share of its longer side: past its far edge.
 private const val ConeReach = 1.4f
