@@ -87,13 +87,13 @@ class PullCordLampUiTest {
         val lamp = lamp()
         pull(down = 80.dp)
         assertTrue(lamp.state.lit)
-        assertEquals(listOf(HapticFeedbackType.ToggleOn), lamp.ticks.types)
+        assertEquals(listOf(HapticFeedbackType.VirtualKey), lamp.ticks.types)
         onNodeWithContentDescription("Lamp cord").assertIsOn()
         mainClock.advanceTimeBy(6_000)
         pull(down = 80.dp)
         assertFalse(lamp.state.lit)
         assertEquals(
-            listOf(HapticFeedbackType.ToggleOn, HapticFeedbackType.ToggleOff),
+            listOf(HapticFeedbackType.VirtualKey, HapticFeedbackType.VirtualKey),
             lamp.ticks.types,
         )
     }

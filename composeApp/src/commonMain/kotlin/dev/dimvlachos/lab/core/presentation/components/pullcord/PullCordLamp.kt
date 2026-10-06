@@ -63,9 +63,9 @@ public fun PullCordLamp(
     val currentOnSwitch by rememberUpdatedState(onSwitch)
     DisposableEffect(state, haptics) {
         state.onSwitch = { lit ->
-            haptics.performHapticFeedback(
-                if (lit) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
-            )
+            // A key's click: a light impact on iOS, and a click on every Android this runs on.
+            // The toggle haptics would say on or off, but Android only plays them from 14 on.
+            haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
             currentOnSwitch(lit)
         }
         onDispose { state.onSwitch = null }
