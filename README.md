@@ -28,6 +28,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Fogged mirror](#fogged-mirror-corepresentationcomponentsfog) | `fog` | `fog.mirror.bathroom`, `fog.mirror.camera` | Wipe steam off a mirror; running drops; your live face, cut out on the phone |
 | [Page-turn book](#page-turn-book-corepresentationcomponentspageturn) | `pageturn` | `book.turn` | Pages that curl in 3D under the finger, in plain `DrawScope` |
 | [Paper plane](#paper-plane-corepresentationcomponentspaperplane) | `paperplane` | `chat.plane` | A chat that sends each message as a folded paper dart |
+| [Pull cord](#pull-cord-corepresentationcomponentspullcord) | `pullcord` | `lamp.cord` | Pull a lamp's cord to switch a screen between light and dark |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -40,6 +41,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Fogged mirror](#fogged-mirror-corepresentationcomponentsfog)
 - [Page-turn book](#page-turn-book-corepresentationcomponentspageturn)
 - [Paper plane](#paper-plane-corepresentationcomponentspaperplane)
+- [Pull cord](#pull-cord-corepresentationcomponentspullcord)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [Project structure](#project-structure)
 - [Run](#run)
@@ -226,6 +228,35 @@ LetterStage(letters, Modifier.fillMaxSize())
 PaperPlane(planes, paper = paper, Modifier.fillMaxSize())
 ```
 
+## Pull cord (`core/presentation/components/pullcord/`)
+
+![](docs/media/lamp.cord.gif)
+
+A pendant lamp hangs over a settings screen with a bead on its cord, already swaying as the screen opens, as if the door had let in a breath of air. Pull the bead down and the cord clicks, the lamp comes on and the screen turns dark in its light; pull it again and it goes off. A real pull turns into a UI action.
+
+- **A cord that is a rope.** The cord is a Verlet rope of 12 points, pinned at the shade, falling under gravity and held to its length two dozen times a step. It only pulls, so thrown up it goes slack and crumples. It is stepped at a fixed 120 Hz on `withFrameNanos`, so it moves the same on any screen, a finger's move spread over a frame's steps so a flick keeps its speed at 60 Hz too, and drawn as one smooth `Path` through its points with the bead on the end.
+- **Resistance, then a click.** Past its length the cord gives a little, less and less the further it goes, like a spring switch. A finger 48 dp down from where it took the bead clicks it, once a pull however the finger goes on; a tick of haptics goes with it, from Compose's own `LocalHapticFeedback`: a key's click on Android and a light impact on iOS, so no platform code. A sideways tug only swings it.
+- **A shade that answers the pull.** The shade is a damped pendulum from the ceiling. The stretched cord pulls on its side, so its rim dips towards the finger, and let go, the stretch comes out at once and throws the bead up past where it hangs; the cord and the shade sway and settle.
+- **The new look spreads from the bulb.** Switched, the screen is drawn in both looks, the old one underneath and the new one clipped to a circle that grows from the bulb to the farthest corner, then the old one is let go. The look the lamp is on is always the one on top, so it alone takes touches and is read by a screen reader.
+- **Light that adds.** Lit, the lamp throws a cone of warm light down over the screen, a radial gradient in a layer of its own blended with `BlendMode.Plus` and feathered at its edges by a conic mask, and the bulb warms up smoothly as it comes on. The warm-up is the layer's alpha, so it never redraws the cone; switched off, the bulb goes out at once and its light fades with the lit look as the day look covers it.
+- **A switch for a screen reader.** The bead is a 48 dp switch, "Lamp cord", that says whether the light is on and switches it with a tap. It stays where the bead hangs at rest, so its focus doesn't chase a swinging cord.
+
+Nothing recomposes while the cord swings or the light spreads: the rope, the shade, the reveal and the warm-up are all read in layout or draw, and only a switch, and the end of its spread, recomposes. The lamp sleeps once it hangs still. Whether it is lit is saved, so it comes back lit after a rotation; `snapTo(lit)` sets it without a switch, its haptics or `onSwitch`. `stir()` sets the cord swaying as a breath of air would, for a lamp that is already alive when its screen opens.
+
+```kotlin
+val lamp = rememberPullCordState()
+
+PullCordLamp(
+    state = lamp,
+    across = 0.62f, // where it hangs, as a share of the width from the left
+    onSwitch = { lit -> /* after the click's haptic tick */ },
+) { lit ->
+    // The screen in one look or the other, over an opaque background; while the new one
+    // spreads, both are composed.
+    SettingsScreen(if (lit) nightPalette else dayPalette)
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -326,6 +357,8 @@ The profile gallery shows photos in 2 columns of 4:5 cards. Opening one photo st
 The page-turn book shows a two-page spread, 2:1, each spread one image; for crisp strips, give it images whose width divides by 36. It turns one leaf at a time: a tap while a page is still landing lands it at once and turns the next.
 
 The paper plane carries one message of any length; a bubble up to 264 dp wide comes down within its 0.6 s whatever its length, the plane crossing it faster for a long one. The message field grows to 4 lines, 2 on a short screen, and scrolls past that; only the letters it shows are poured into the button. Messages are dropped from the left, whatever the script's direction.
+
+The pull cord hangs one lamp over a screen it fills. While a new look spreads, the screen is composed twice, once in each look, so its state belongs outside it, scroll position included, and it must paint an opaque background; a switch back before the new look has finished spreading turns its circle round, shrinking it back into the bulb. `across` is measured from the left whatever the layout direction, so a right-to-left screen mirrors it itself, as the demo does; the demo's settings scroll when they don't fit.
 
 ## Contributing
 

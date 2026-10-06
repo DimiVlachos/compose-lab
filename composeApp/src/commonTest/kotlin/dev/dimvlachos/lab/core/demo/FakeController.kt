@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.demo
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
+import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordDimens
+import kotlin.math.abs
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
@@ -22,6 +25,13 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     /** Messages sent and not yet taken back out of the conversation. */
     var messagesOut = 0
         private set
+
+    /** Whether the lamp is lit: each pull of the cord far enough down switches it. */
+    var lampLit = false
+        private set
+
+    /** Whether the lamp was lit after each pull, in order. */
+    val litAfterPulls = mutableListOf<Boolean>()
 
     val calls = mutableListOf<Pair<Long, String>>()
 
@@ -63,5 +73,14 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun clearMessages() {
         messagesOut = 0
         calls += now() to "clearMessages()"
+    }
+
+    override suspend fun pullCord(down: Dp, duration: Duration, across: Dp) {
+        // As the lamp's own rig does: far enough down, and more down than along.
+        if (down >= PullCordDimens.ClickPull && down.value >= 2f * abs(across.value)) {
+            lampLit = !lampLit
+        }
+        litAfterPulls += lampLit
+        calls += now() to "pullCord($down, $duration, $across)"
     }
 }
