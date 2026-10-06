@@ -4,7 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
-interface DemoController {
+internal interface DemoController {
     val selectedIndex: Int
 
     fun select(index: Int)

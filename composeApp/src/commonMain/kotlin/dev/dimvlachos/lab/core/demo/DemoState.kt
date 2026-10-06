@@ -14,7 +14,7 @@ import org.jetbrains.compose.resources.StringResource
  * the user watches the script again, until they stop it.
  */
 @Stable
-class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoController {
+internal class DemoState(val recording: Boolean = false, replay: Boolean = false) : DemoController {
     override var selectedIndex: Int by mutableIntStateOf(0)
         private set
 

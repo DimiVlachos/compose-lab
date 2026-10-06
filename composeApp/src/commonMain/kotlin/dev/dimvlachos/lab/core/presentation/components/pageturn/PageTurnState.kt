@@ -81,16 +81,17 @@ private class Landing(val pair: TurnPair, val turn: Anim, val paper: Paper)
 
 /**
  * The open book's state: which spread is open, the leaf in hand and any leaves still coming down. A
- * finger and a script drive the same calls ([next], [previous], and [dragStart], [dragBy],
+ * finger and a script drive the same calls ([next], [previous], and [dragStart], [dragTo],
  * [dragEnd]), so a scripted drag turns the page exactly as a finger would.
  *
  * Leafing through quickly, a page let go is still landing when the next one is taken: it goes on
  * landing by itself, so several leaves can be in the air at once, as in a real book.
  */
 @Stable
-class PageTurnState
+public class PageTurnState
 internal constructor(
-    val spreadCount: Int,
+    /** How many spreads the book has. */
+    public val spreadCount: Int,
     initialSpread: Int,
     private val scope: CoroutineScope,
 ) {
@@ -100,7 +101,7 @@ internal constructor(
      * The spread lying open, counting leaves still landing as landed; it changes when a turn lands
      * or a landing leaf is left to land by itself.
      */
-    var spread: Int by mutableIntStateOf(initialSpread.coerceIn(0, lastSpread))
+    public var spread: Int by mutableIntStateOf(initialSpread.coerceIn(0, lastSpread))
         private set
 
     internal var phase: TurnPhase by mutableStateOf(TurnPhase.Idle)
@@ -173,23 +174,35 @@ internal constructor(
         }
 
     /** Whether a page is up: under a finger, or on its way down. */
-    val isTurning: Boolean
+    public val isTurning: Boolean
         get() = phase != TurnPhase.Idle || landings.isNotEmpty()
 
     /** Whether a finger holds a page; taps wait until it lets go. */
-    val isDragging: Boolean
+    public val isDragging: Boolean
         get() = phase is TurnPhase.Dragging
 
     /**
      * The spread the book comes to rest at once every page in the air lands: where the next tap
      * turns from, so taps can follow each other before the last page is down.
      */
-    val destination: Int
+    public val destination: Int
         get() = (phase as? TurnPhase.Settling)?.landing ?: spread
 
-    fun next() = request(forward = true)
+    /**
+     * Turns to the next spread, as a tap on the right page does; nothing while a finger holds a
+     * page, or on the last spread.
+     */
+    public fun next() {
+        request(forward = true)
+    }
 
-    fun previous() = request(forward = false)
+    /**
+     * Turns back to the previous spread, as a tap on the left page does; nothing while a finger
+     * holds a page, or on the first spread.
+     */
+    public fun previous() {
+        request(forward = false)
+    }
 
     /**
      * Starts a drag that went down at [down] and has now reached [position], in the book's box (a
@@ -199,7 +212,7 @@ internal constructor(
      * would turn while it is still coming down, is caught where it is. Returns false with no page
      * that way.
      */
-    fun dragStart(down: Offset, position: Offset): Boolean {
+    public fun dragStart(down: Offset, position: Offset): Boolean {
         val layout = layout ?: return false
         if (phase is TurnPhase.Dragging) return false
         val forward = position.x < down.x
@@ -283,7 +296,7 @@ internal constructor(
     }
 
     /** Moves the finger to [position], in the book's box: the paper it holds follows. */
-    fun dragTo(position: Offset) {
+    public fun dragTo(position: Offset) {
         val layout = layout ?: return
         if (phase !is TurnPhase.Dragging) return
         val finger = position - Offset(layout.left, layout.top)
@@ -307,7 +320,7 @@ internal constructor(
      * Lets go, moving at [velocity] px a second: the page finishes or falls back, by where it is
      * and how fast it goes the way it turns.
      */
-    fun dragEnd(velocity: Offset) {
+    public fun dragEnd(velocity: Offset) {
         val pair = (phase as? TurnPhase.Dragging)?.pair ?: return
         val layout = layout
         val placed = placed()
@@ -559,8 +572,12 @@ private const val TurningVelocity = 0.05f
 private fun leafTime(pair: TurnPair, progress: Float): Float =
     if (pair.forward) progress else 1f - progress
 
+/**
+ * A [PageTurnState] for a book of [spreadCount] spreads, open at [initialSpread]. A new count makes
+ * a new book.
+ */
 @Composable
-fun rememberPageTurnState(spreadCount: Int, initialSpread: Int = 0): PageTurnState {
+public fun rememberPageTurnState(spreadCount: Int, initialSpread: Int = 0): PageTurnState {
     val scope = rememberCoroutineScope()
     return remember(spreadCount) { PageTurnState(spreadCount, initialSpread, scope) }
 }

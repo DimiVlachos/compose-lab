@@ -3,7 +3,7 @@ package dev.dimvlachos.lab.core.demo
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.StringResource
 
-class Demo(
+internal class Demo(
     val id: String,
     val title: StringResource,
     val script: DemoScript,

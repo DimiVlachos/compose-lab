@@ -8,13 +8,13 @@ import kotlin.math.roundToInt
  * How opaque a pixel of the person's mask is, from the model's [confidence] it is the person: sure
  * of the room, clear; sure of the person, opaque; between, a short soft ramp, so hair blends.
  */
-fun personAlpha(confidence: Float): Float {
+internal fun personAlpha(confidence: Float): Float {
     val t = ((confidence - EdgeFrom) / (EdgeTo - EdgeFrom)).coerceIn(0f, 1f)
     return t * t * (3 - 2 * t)
 }
 
 /** The frame shrunk to the model's own size, its shape kept: a smaller picture is quicker. */
-fun segmentSize(width: Int, height: Int): IntSize {
+internal fun segmentSize(width: Int, height: Int): IntSize {
     val scale = SegmentLongSide.toFloat() / max(width, height)
     return IntSize((width * scale).roundToInt(), (height * scale).roundToInt())
 }
@@ -24,7 +24,7 @@ fun segmentSize(width: Int, height: Int): IntSize {
  * after that a frame is waited for briefly, and only many slow or failed frames in a row give up,
  * not one hiccup.
  */
-class SegmentationHealth {
+internal class SegmentationHealth {
     private var warmedUp = false
     private var failures = 0
 

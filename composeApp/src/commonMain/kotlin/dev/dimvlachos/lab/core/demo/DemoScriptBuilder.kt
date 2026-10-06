@@ -3,7 +3,7 @@ package dev.dimvlachos.lab.core.demo
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class DemoScriptBuilder internal constructor() {
+internal class DemoScriptBuilder internal constructor() {
     private val steps = mutableListOf<DemoStep>()
 
     /** Plays [action] at [time]; one that goes on, such as a mist, [lasts] that long. */
@@ -19,7 +19,7 @@ class DemoScriptBuilder internal constructor() {
         DemoScript(holdStart, holdEnd, steps.toList())
 }
 
-fun demoScript(
+internal fun demoScript(
     holdStart: Duration = 600.milliseconds,
     holdEnd: Duration = 600.milliseconds,
     block: DemoScriptBuilder.() -> Unit,

@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
  * brightened [gain] times, for a dim room. With a [mask], only the person shows: the mask stands
  * upright, unmirrored, as large as it likes, opaque where the person is.
  */
-class CameraFrame(
+internal class CameraFrame(
     val image: ImageBitmap,
     val width: Int,
     val height: Int,
@@ -40,7 +40,7 @@ class CameraFrame(
  * new frame only redraws: the frame is read while drawing, never while composing, and the size
  * changes only with the resolution or the rotation.
  */
-class MirrorFramePainter : Painter() {
+internal class MirrorFramePainter : Painter() {
     private var frame by mutableStateOf<CameraFrame?>(null)
     private var uprightSize by mutableStateOf(Size.Unspecified)
     private var colorFilter: ColorFilter? = null

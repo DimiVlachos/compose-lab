@@ -35,10 +35,11 @@ import kotlinx.coroutines.withContext
  * Where a plane leaves from: its middle at [center], nose [heading] degrees clockwise from the
  * right, [length] long from tail to nose; the dart on a send button, as [planeTakeoff] gives it.
  */
-@Immutable class Takeoff(val center: Offset, val heading: Float, val length: Float)
+@Immutable
+public class Takeoff(public val center: Offset, public val heading: Float, public val length: Float)
 
 /** Where the dart drawn by a [PaperPlaneIcon] laid out at [iconBounds] (in the root) lies. */
-fun planeTakeoff(iconBounds: Rect): Takeoff =
+public fun planeTakeoff(iconBounds: Rect): Takeoff =
     Takeoff(
         iconPlacement(iconBounds).at,
         PaperPlaneDimens.IconHeading,
@@ -51,7 +52,7 @@ fun planeTakeoff(iconBounds: Rect): Takeoff =
  * over each, before it flies on out of the stage. Places are in the root's coordinates.
  */
 @Stable
-class PaperPlaneState
+public class PaperPlaneState
 internal constructor(
     // Where the folds are worked out: off the main thread, so a throw never stalls a frame.
     private val planning: CoroutineContext = Dispatchers.Default
@@ -88,7 +89,12 @@ internal constructor(
      * place that moves while the plane is up is still found). Returns once the last letter lies in
      * its place and the plane is gone.
      */
-    suspend fun launch(key: Any, takeoff: Takeoff, text: TextLayoutResult, at: () -> Offset) {
+    public suspend fun launch(
+        key: Any,
+        takeoff: Takeoff,
+        text: TextLayoutResult,
+        at: () -> Offset,
+    ) {
         val boxes = letterBoxes(text)
         if (boxes.isEmpty()) return
         prepare()
@@ -109,7 +115,7 @@ internal constructor(
      * How far the message for [key] has come down, 0 until its first letter lands to 1 once its
      * last lies in its place, and from then on: what its bubble grows in by.
      */
-    fun delivered(key: Any): Float =
+    public fun delivered(key: Any): Float =
         flights.firstOrNull { it.key == key }?.delivered?.value ?: if (key in landed) 1f else 0f
 
     /**
@@ -117,7 +123,7 @@ internal constructor(
      * letters go into the button and the plane flies round, and opening as it comes down to it, so
      * the conversation makes room just in time and never jumps; open from then on.
      */
-    fun opening(key: Any): Float =
+    public fun opening(key: Any): Float =
         flights.firstOrNull { it.key == key }?.opening?.value ?: if (key in landed) 1f else 0f
 }
 
@@ -324,8 +330,12 @@ internal class Flight(
  */
 internal class Drop(val box: Rect, val letGo: Float, val spin: Float, val from: Offset)
 
+/**
+ * A [PaperPlaneState] to throw planes with; draw them with a [PaperPlane]. The dart is folded off
+ * the main thread as soon as it is remembered, so the first throw is ready.
+ */
 @Composable
-fun rememberPaperPlaneState(): PaperPlaneState = rememberPaperPlaneState(Dispatchers.Default)
+public fun rememberPaperPlaneState(): PaperPlaneState = rememberPaperPlaneState(Dispatchers.Default)
 
 /** A [PaperPlaneState] whose planes are folded in [planning]: a test folds them in its own time. */
 @Composable

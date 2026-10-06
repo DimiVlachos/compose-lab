@@ -60,8 +60,14 @@ internal const val NavBarRowTestTag = "navBarRow"
 internal const val NavBarBubbleTestTag = "navBarBubble"
 internal const val NavBarBubbleIconTestTag = "navBarBubbleIcon"
 
+/**
+ * One bar, built from layers that can each be switched on or off. Tapping a tab calls [onSelect]
+ * with its index, and tapping a tab's action button calls [onActionClick] with the tab's index; the
+ * caller moves [selectedIndex]. With a [scrollState] and [NavBarLayers.scrollAware] on, the bar
+ * collapses as the content scrolls. Nothing recomposes while it animates.
+ */
 @Composable
-fun AnimatedNavBar(
+public fun AnimatedNavBar(
     items: List<NavItem>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,

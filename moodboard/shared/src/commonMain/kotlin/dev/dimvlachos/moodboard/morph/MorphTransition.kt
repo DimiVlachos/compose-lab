@@ -1,3 +1,4 @@
+// A deliberate copy of composeApp's imagemorph/MorphTransition.kt, so each sample stands alone.
 package dev.dimvlachos.moodboard.morph
 
 import androidx.compose.animation.BoundsTransform

@@ -23,7 +23,7 @@ internal fun CatalogCard(
     Column(
         modifier
             .fillMaxWidth()
-            .clip(LabTheme.shapes.Large)
+            .clip(LabTheme.shapes.large)
             .background(LabTheme.colors.surface)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(LabTheme.spacing.medium)

@@ -4,8 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/** The lab's spacing scale, in dp: from [none] and a 2 dp [minimum] up to a 40 dp [huge]. */
 @Immutable
-data class Spacing(
+public data class Spacing(
     val none: Dp = 0.dp,
     val minimum: Dp = 2.dp,
     val extraSmall: Dp = 4.dp,

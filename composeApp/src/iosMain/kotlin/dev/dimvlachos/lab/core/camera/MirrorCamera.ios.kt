@@ -4,4 +4,4 @@ import androidx.compose.runtime.Composable
 
 // No camera on iOS yet: the mirror shows its still reflection.
 @Composable
-actual fun rememberCameraAccess(enabled: Boolean): CameraAccess = CameraAccess.Unavailable
+internal actual fun rememberCameraAccess(enabled: Boolean): CameraAccess = CameraAccess.Unavailable

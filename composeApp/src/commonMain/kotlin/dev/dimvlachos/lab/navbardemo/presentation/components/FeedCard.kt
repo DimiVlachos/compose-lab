@@ -17,7 +17,7 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 internal fun FeedCard(index: Int) {
     Column(
         Modifier.fillMaxWidth()
-            .background(LabTheme.colors.surface, LabTheme.shapes.Large)
+            .background(LabTheme.colors.surface, LabTheme.shapes.large)
             .padding(LabTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
     ) {
@@ -36,6 +36,6 @@ private fun SkeletonLine(widthFraction: Float, height: Dp, alpha: Float) {
     Box(
         Modifier.fillMaxWidth(widthFraction)
             .height(height)
-            .background(LabTheme.colors.textMuted.copy(alpha = alpha), LabTheme.shapes.Full)
+            .background(LabTheme.colors.textMuted.copy(alpha = alpha), LabTheme.shapes.full)
     )
 }

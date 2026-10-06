@@ -50,7 +50,7 @@ import org.jetbrains.compose.resources.imageResource
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun ImageMorph(
+public fun ImageMorph(
     photos: List<MorphPhoto>,
     expandedIndex: Int,
     onExpand: (Int) -> Unit,

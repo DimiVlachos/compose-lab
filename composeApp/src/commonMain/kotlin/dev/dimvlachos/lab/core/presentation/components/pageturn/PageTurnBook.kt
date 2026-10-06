@@ -27,7 +27,7 @@ import kotlin.math.max
  * bows and sways with how fast it moves, finishing or falling back when let go.
  */
 @Composable
-fun PageTurnBook(
+public fun PageTurnBook(
     spreads: List<ImageBitmap?>,
     state: PageTurnState,
     modifier: Modifier = Modifier,

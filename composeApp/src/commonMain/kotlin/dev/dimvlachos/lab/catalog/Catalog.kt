@@ -9,7 +9,7 @@ import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog
 
-object Catalog {
+internal object Catalog {
     // The finished demo of each component, each one a clip; the fogged mirror in two versions.
     val entries: List<CatalogEntry> =
         (NavBarDemos.all + GalleryDemos.all).map { CatalogEntry.Single(it) } +

@@ -8,25 +8,32 @@ private val LocalAppColors = staticCompositionLocalOf { AppColors() }
 private val LocalSpacing = staticCompositionLocalOf { Spacing() }
 private val LocalMotion = staticCompositionLocalOf { Motion() }
 
-object LabTheme {
-    val colors: AppColors
+/** The lab's design tokens, read inside a [LabTheme] composable. */
+public object LabTheme {
+    /** The colours in use. */
+    public val colors: AppColors
         @Composable get() = LocalAppColors.current
 
-    val spacing: Spacing
+    /** The spacing scale in use. */
+    public val spacing: Spacing
         @Composable get() = LocalSpacing.current
 
-    val motion: Motion
+    /** The animation timing in use. */
+    public val motion: Motion
         @Composable get() = LocalMotion.current
 
-    val shapes: AppShape
+    /** The corner shapes. */
+    public val shapes: AppShape
         get() = AppShape
 
-    val typography: AppTextStyle
+    /** The text styles. */
+    public val typography: AppTextStyle
         get() = AppTextStyle
 }
 
+/** Provides the lab's colours, spacing and motion to [content]. */
 @Composable
-fun LabTheme(content: @Composable () -> Unit) {
+public fun LabTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalAppColors provides AppColors(),
         LocalSpacing provides Spacing(),

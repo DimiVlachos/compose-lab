@@ -23,15 +23,22 @@ import kotlinx.coroutines.launch
 private val SettleSpec =
     spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 
+/**
+ * How far an [AnimatedNavBar] has collapsed as its content scrolls. Hook [nestedScrollConnection]
+ * to the scrolling content with `Modifier.nestedScroll`; on release, the bar settles fully open or
+ * fully collapsed. Made by [rememberNavBarScrollState].
+ */
 @Stable
-class NavBarScrollState internal constructor(private val collapseDistancePx: Float) {
-    var collapse: Float by mutableFloatStateOf(0f)
+public class NavBarScrollState internal constructor(private val collapseDistancePx: Float) {
+    /** How far the bar has collapsed: 0 open, 1 a floating pill. */
+    public var collapse: Float by mutableFloatStateOf(0f)
         private set
 
     private var settleJob: Job? = null
     private var lastDeltaY = 0f
 
-    val nestedScrollConnection: NestedScrollConnection =
+    /** Collapses the bar as the content scrolls, and settles it once a fling ends. */
+    public val nestedScrollConnection: NestedScrollConnection =
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 onScroll(available.y)
@@ -44,7 +51,11 @@ class NavBarScrollState internal constructor(private val collapseDistancePx: Flo
             }
         }
 
-    fun onScroll(deltaY: Float) {
+    /**
+     * Moves the bar by a scroll of [deltaY] px: a negative delta, the content moving up, collapses
+     * it, and a positive one opens it. Stops a settle in progress.
+     */
+    public fun onScroll(deltaY: Float) {
         settleJob?.cancel()
         settleJob = null
         collapse = (collapse - deltaY / collapseDistancePx).coerceIn(0f, 1f)
@@ -77,8 +88,9 @@ class NavBarScrollState internal constructor(private val collapseDistancePx: Flo
     }
 }
 
+/** A [NavBarScrollState] that collapses the bar fully over [collapseDistance] of scrolling. */
 @Composable
-fun rememberNavBarScrollState(collapseDistance: Dp = 120.dp): NavBarScrollState {
+public fun rememberNavBarScrollState(collapseDistance: Dp = 120.dp): NavBarScrollState {
     val distancePx = with(LocalDensity.current) { collapseDistance.toPx() }
     return remember(distancePx) { NavBarScrollState(distancePx) }
 }

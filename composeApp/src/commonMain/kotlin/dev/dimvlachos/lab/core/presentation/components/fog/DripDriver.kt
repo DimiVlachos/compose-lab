@@ -19,14 +19,15 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * A drop of water on the glass: [at] as a fraction of it, [resting] once it has stopped, and
- * [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight as it runs,
- * [alpha], how much of it still shows as fog covers it or it is smeared away, and [softness], from
- * 0, a fresh bead, to 1, settled into the condensation around it once it has stopped, and [spread],
- * from 0 to 1 as a drop meeting a wiped patch slumps and spreads along its edge, merging in.
+ * A drop of water on the glass: [at] as a fraction of it, [radius] its size, [resting] once it has
+ * stopped, and [stretch], from 0, a round bead, to 1, pulled long into a teardrop by its own weight
+ * as it runs, [alpha], how much of it still shows as fog covers it or it is smeared away, and
+ * [softness], from 0, a fresh bead, to 1, settled into the condensation around it once it has
+ * stopped, and [spread], from 0 to 1 as a drop meeting a wiped patch slumps and spreads along its
+ * edge, merging in.
  */
 @Immutable
-data class Bead(
+public data class Bead(
     val at: Offset,
     val radius: Dp,
     val resting: Boolean,
@@ -43,27 +44,27 @@ data class Bead(
  * moves it all on; [drip] starts a drop at a given spot, for a script.
  */
 @Stable
-class DripDriver(
+public class DripDriver(
     private val fog: FogState,
     private val random: Random = Random.Default,
     private val wipeRadius: Dp = FogDimens.BrushRadius,
 ) {
     /** The glass's size; nothing drips until it has one. */
-    var glass: DpSize = DpSize.Zero
+    public var glass: DpSize = DpSize.Zero
 
     /** Whether drops start by themselves every few seconds; off, only [drip] starts one. */
-    var randomStarts: Boolean = true
+    public var randomStarts: Boolean = true
 
     /** Whether a drop is growing or running. */
-    var moving: Boolean by mutableStateOf(false)
+    internal var moving: Boolean by mutableStateOf(false)
         private set
 
     /** Whether the glass needs frames: a drop is moving, or one that stopped is still relaxing. */
-    var needsFrames: Boolean by mutableStateOf(false)
+    public var needsFrames: Boolean by mutableStateOf(false)
         private set
 
     /** Seconds until a drop starts by itself, or null while [randomStarts] is off. */
-    val secondsToNextStart: Float?
+    public val secondsToNextStart: Float?
         get() = if (randomStarts) untilNext else null
 
     // Bumped at every change, so a reader of [beads] redraws when the drops move.
@@ -85,7 +86,7 @@ class DripDriver(
      * The drops to draw, each as clear as it still is: a resting drop is fogged over as a breath's
      * front passes it, and one that is wiped or pushed out fades away rather than vanishing.
      */
-    val beads: List<Bead>
+    public val beads: List<Bead>
         get() {
             version
             return (resting + running + fading).map { it.bead(it.visibility()) }
@@ -95,7 +96,7 @@ class DripDriver(
      * Whether the glass needs frames now, or will once a drop starts to fade: read in a snapshot,
      * so a sleeping loop wakes when a wipe or a breath takes a drop off the glass.
      */
-    val wantsFrames: Boolean
+    public val wantsFrames: Boolean
         get() {
             version
             if (needsFrames) return true
@@ -103,13 +104,13 @@ class DripDriver(
         }
 
     /** Starts a drop at [at], to run [length] of the glass's height. */
-    fun drip(at: Offset, length: Float) {
+    public fun drip(at: Offset, length: Float) {
         running += Drip(at, length)
         changed()
     }
 
     /** Moves everything on by [seconds]; with none, only takes wiped drops off the glass. */
-    fun advance(seconds: Float) {
+    public fun advance(seconds: Float) {
         if (glass.width <= 0.dp || glass.height <= 0.dp) return
         if (seconds > 0f && randomStarts) {
             untilNext -= seconds

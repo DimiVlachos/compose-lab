@@ -10,14 +10,14 @@ import androidx.compose.ui.unit.dp
  * A scripted fingertip, the same in every demo: it comes down this long, a tap holds it this long,
  * and it lifts this long.
  */
-object ScriptedTouch {
+internal object ScriptedTouch {
     const val DownMs = 90
     const val TapHoldMs = 110L
     const val UpMs = 260
 }
 
 /** The scripted fingertip at [center], [alpha] of the way down: a soft spot in [color], ringed. */
-fun DrawScope.drawTouch(color: Color, center: Offset, alpha: Float) {
+internal fun DrawScope.drawTouch(color: Color, center: Offset, alpha: Float) {
     if (alpha <= 0f) return
     val radius = TouchRadius.toPx()
     drawCircle(color.copy(alpha = FillAlpha * alpha), radius, center)

@@ -3,8 +3,21 @@ package dev.dimvlachos.lab.core.presentation.ui
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
+/**
+ * The lab's colours: a dark scheme with a violet accent, plus the warm paper tones of the book and
+ * the chat.
+ *
+ * @property background Behind every screen.
+ * @property surface Cards and dialogs.
+ * @property bar The nav bar and the search bar.
+ * @property textPrimary Text and icons.
+ * @property textMuted Secondary text and unselected icons.
+ * @property accent The selected tab, buttons and your own chat bubbles.
+ * @property accentSoft The accent, faint: the nav bar's indicator.
+ * @property onAccent Text and icons on the accent.
+ */
 @Immutable
-data class AppColors(
+public data class AppColors(
     val background: Color = Color(0xFF0B0D12),
     val surface: Color = Color(0xFF171A22),
     val bar: Color = Color(0xFF232733),

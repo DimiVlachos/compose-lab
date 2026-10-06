@@ -98,7 +98,7 @@ internal fun ActionButton(
                 scaleY = state.scaleYValue
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
-            .clip(LabTheme.shapes.Full)
+            .clip(LabTheme.shapes.full)
             .background(colors.accent)
             .then(
                 if (isActive) {

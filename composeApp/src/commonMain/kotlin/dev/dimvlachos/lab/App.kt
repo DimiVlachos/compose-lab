@@ -25,8 +25,14 @@ import dev.dimvlachos.lab.resources.catalog_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * The lab: a catalog of every demo, each opening on its own screen. [initialDemoId] opens that demo
+ * straight away (null, or an id the catalog does not know, starts on the catalog). With [record],
+ * that demo plays as a clip for the screen recorder: framed for the crop, with no Back button.
+ * [label] shows the platform's name over each demo, for side-by-side captures.
+ */
 @Composable
-fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
+public fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
     LabTheme {
         val initialDemo = remember { Catalog.find(initialDemoId) }
         val navigation = remember { AppNavigation(initialDemo, record) }

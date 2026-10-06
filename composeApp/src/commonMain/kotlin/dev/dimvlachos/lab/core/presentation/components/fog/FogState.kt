@@ -17,17 +17,18 @@ import androidx.compose.ui.unit.Dp
  * fractions of the window, so the marks stay put when the window changes size.
  */
 @Stable
-class FogState(startClear: Boolean = false) {
+public class FogState(startClear: Boolean = false) {
     private val _marks =
         mutableStateListOf<FogMark>().apply {
             if (startClear) add(Evaporation().apply { amount = 1f })
         }
 
-    val marks: List<FogMark>
+    /** Every mark on the glass, oldest first. */
+    public val marks: List<FogMark>
         get() = _marks
 
     /** Each wipe's points, oldest first. */
-    val strokes: List<List<Offset>>
+    public val strokes: List<List<Offset>>
         get() = _marks.filterIsInstance<WipeStroke>().map { it.points }
 
     /**
@@ -35,19 +36,19 @@ class FogState(startClear: Boolean = false) {
      * script's can wipe at once without joining up. [clarity] is how much of the fog it clears: 1
      * wipes it away, less leaves a wet film, as a running drop does.
      */
-    fun beginStroke(at: Offset, radius: Dp? = null, clarity: Float = 1f): WipeStroke {
+    public fun beginStroke(at: Offset, radius: Dp? = null, clarity: Float = 1f): WipeStroke {
         val stroke = WipeStroke(mutableStateListOf(at), radius, clarity)
         _marks += stroke
         return stroke
     }
 
     /** Adds [to] to [stroke]; a stroke from before the last [clear] stays gone. */
-    fun extendStroke(stroke: WipeStroke, to: Offset) {
+    public fun extendStroke(stroke: WipeStroke, to: Offset) {
         stroke.points += to
     }
 
     /** Starts a breath with its fog at the bottom edge, and returns it. */
-    fun beginBreath(): Breath {
+    public fun beginBreath(): Breath {
         val breath = Breath()
         _marks += breath
         return breath
@@ -59,7 +60,7 @@ class FogState(startClear: Boolean = false) {
      * fresh fog: the breath and every mark before it are dropped, and so are drops' part-clear
      * trails laid while it rose, which it has fogged over too.
      */
-    fun setBreathLevel(breath: Breath, level: Float) {
+    public fun setBreathLevel(breath: Breath, level: Float) {
         val index = _marks.indexOf(breath)
         if (index < 0 || level <= breath.level) return
         breath.level = level
@@ -70,7 +71,7 @@ class FogState(startClear: Boolean = false) {
     }
 
     /** Starts fog misting back evenly over the whole window, and returns the mist. */
-    fun beginMist(): Mist {
+    public fun beginMist(): Mist {
         val mist = Mist()
         _marks += mist
         return mist
@@ -81,7 +82,7 @@ class FogState(startClear: Boolean = false) {
      * and a mist already dropped stays gone. At 1 the window is fresh fog: the mist and every mark
      * before it are dropped, with drops' trails laid while it thickened.
      */
-    fun setMistAmount(mist: Mist, amount: Float) {
+    public fun setMistAmount(mist: Mist, amount: Float) {
         val index = _marks.indexOf(mist)
         if (index < 0 || amount <= mist.amount) return
         mist.amount = amount.coerceAtMost(1f)
@@ -92,7 +93,7 @@ class FogState(startClear: Boolean = false) {
     }
 
     /** Starts the fog evaporating evenly over the whole window, and returns the evaporation. */
-    fun beginEvaporation(): Evaporation {
+    public fun beginEvaporation(): Evaporation {
         val evaporation = Evaporation()
         _marks += evaporation
         return evaporation
@@ -103,7 +104,7 @@ class FogState(startClear: Boolean = false) {
      * and an evaporation already dropped stays gone. At 1 nothing before it shows: the evaporation
      * is all that is left.
      */
-    fun setEvaporationAmount(evaporation: Evaporation, amount: Float) {
+    public fun setEvaporationAmount(evaporation: Evaporation, amount: Float) {
         val index = _marks.indexOf(evaporation)
         if (index < 0 || amount <= evaporation.amount) return
         evaporation.amount = amount.coerceAtMost(1f)
@@ -116,29 +117,29 @@ class FogState(startClear: Boolean = false) {
     }
 
     /** Clears the whole window at once. */
-    fun evaporate() {
+    public fun evaporate() {
         _marks.clear()
         _marks += Evaporation().apply { amount = 1f }
     }
 
     /** Fogs the whole window over again. */
-    fun clear() {
+    public fun clear() {
         _marks.clear()
     }
 }
 
-/** A wipe or a breath on a [FogState]. */
-sealed interface FogMark
+/** A mark on a [FogState]: a wipe, a breath, a mist or an evaporation. */
+public sealed interface FogMark
 
 /**
  * One finger's stroke on a [FogState], from [FogState.beginStroke]; [radius] its own brush, a
  * fingertip say, or null for the window's; [clarity] how much of the fog it clears.
  */
-class WipeStroke
+public class WipeStroke
 internal constructor(
     internal val points: SnapshotStateList<Offset>,
-    val radius: Dp? = null,
-    val clarity: Float = 1f,
+    public val radius: Dp? = null,
+    public val clarity: Float = 1f,
 ) : FogMark {
     private var cachedDabs: List<Offset> = emptyList()
     private var cachedPoints = -1
@@ -164,19 +165,22 @@ internal constructor(
 }
 
 /** The fog evaporating evenly, from [FogState.beginEvaporation]; at 1 the glass is clear. */
-class Evaporation internal constructor() : FogMark {
-    var amount by mutableFloatStateOf(0f)
+public class Evaporation internal constructor() : FogMark {
+    /** How far it has cleared the glass, 0 to 1. */
+    public var amount: Float by mutableFloatStateOf(0f)
         internal set
 }
 
 /** Fog misting back evenly over a [FogState], from [FogState.beginMist]; at 1 it is all fog. */
-class Mist internal constructor() : FogMark {
-    var amount by mutableFloatStateOf(0f)
+public class Mist internal constructor() : FogMark {
+    /** How thick it has fogged the glass, 0 to 1. */
+    public var amount: Float by mutableFloatStateOf(0f)
         internal set
 }
 
 /** Fog rising from the bottom of a [FogState], from [FogState.beginBreath]. */
-class Breath internal constructor() : FogMark {
-    var level by mutableFloatStateOf(0f)
+public class Breath internal constructor() : FogMark {
+    /** How high its fog has risen, as a fraction of the window's height from the bottom. */
+    public var level: Float by mutableFloatStateOf(0f)
         internal set
 }

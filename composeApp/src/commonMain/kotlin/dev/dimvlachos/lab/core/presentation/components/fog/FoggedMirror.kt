@@ -61,7 +61,7 @@ import org.jetbrains.compose.resources.imageResource
  * of water on the glass, read while drawing, so a moving drop only redraws.
  */
 @Composable
-fun FoggedMirror(
+public fun FoggedMirror(
     photo: Painter,
     state: FogState,
     modifier: Modifier = Modifier,

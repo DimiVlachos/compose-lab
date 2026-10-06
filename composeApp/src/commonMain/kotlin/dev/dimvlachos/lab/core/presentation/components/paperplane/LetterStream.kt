@@ -31,7 +31,7 @@ import kotlin.math.min
  * goes in.
  */
 @Stable
-class LetterStream internal constructor() {
+public class LetterStream internal constructor() {
     internal val pours = mutableStateListOf<Pour>()
 
     /** Where the stream is drawn, set by its stage as it is laid out. */
@@ -43,7 +43,7 @@ class LetterStream internal constructor() {
      * (in the root), if given: a field scrolled through a long text shows only some of it. Returns
      * once the last one has.
      */
-    suspend fun pour(
+    public suspend fun pour(
         layout: TextLayoutResult,
         origin: Offset,
         into: () -> Offset,
@@ -82,11 +82,12 @@ class LetterStream internal constructor() {
     }
 }
 
-@Composable fun rememberLetterStream(): LetterStream = remember { LetterStream() }
+/** A [LetterStream] to pour letters into a send button with; draw it with a [LetterStage]. */
+@Composable public fun rememberLetterStream(): LetterStream = remember { LetterStream() }
 
 /** Where a [LetterStream]'s letters are drawn: lay it over the field and the button. */
 @Composable
-fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
+public fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
     Spacer(
         modifier
             .onGloballyPositioned { stream.stage = it.positionInRoot() }

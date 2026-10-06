@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
 
 @Composable
-actual fun rememberCameraAccess(enabled: Boolean): CameraAccess {
+internal actual fun rememberCameraAccess(enabled: Boolean): CameraAccess {
     if (!enabled) return CameraAccess.Unavailable
     val context = LocalContext.current
     val hasFrontCamera = remember {

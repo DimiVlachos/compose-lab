@@ -29,7 +29,7 @@ import kotlin.math.sin
  * lands.
  */
 @Composable
-fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier = Modifier) {
+public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier = Modifier) {
     val inside = remember(paper) { lerp(paper, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
         modifier
@@ -86,7 +86,7 @@ private fun DrawScope.drawDrops(flight: Flight, origin: Offset) {
  * height at the foot of the place the whole while, so the message lies where it will stay as the
  * rest of the list moves up to make room, and the plane flies to where it will be.
  */
-fun Modifier.planeLanding(state: PaperPlaneState, key: Any): Modifier =
+public fun Modifier.planeLanding(state: PaperPlaneState, key: Any): Modifier =
     layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
         val height = (placeable.height * state.opening(key)).roundToInt()
@@ -99,7 +99,7 @@ fun Modifier.planeLanding(state: PaperPlaneState, key: Any): Modifier =
  * leaves the button as exactly what the button showed.
  */
 @Composable
-fun PaperPlaneIcon(color: Color, modifier: Modifier = Modifier) {
+public fun PaperPlaneIcon(color: Color, modifier: Modifier = Modifier) {
     val painter = remember { DartPainter() }
     val inside = remember(color) { lerp(color, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
@@ -161,7 +161,7 @@ private val dartRest: List<FacetSpace> by lazy { dartPlan.folded() }
  * icon's middle and still lie within [field], [inset] inside its edge, up to [most]: never less
  * than its own size.
  */
-fun iconRoom(icon: Rect, field: RoundRect, inset: Float, most: Float): Float {
+public fun iconRoom(icon: Rect, field: RoundRect, inset: Float, most: Float): Float {
     val within =
         RoundRect(
             field.left + inset,

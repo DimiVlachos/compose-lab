@@ -4,7 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
-class FakeController(private val now: () -> Long) : DemoController {
+internal class FakeController(private val now: () -> Long) : DemoController {
     override var selectedIndex: Int = 0
         private set
 

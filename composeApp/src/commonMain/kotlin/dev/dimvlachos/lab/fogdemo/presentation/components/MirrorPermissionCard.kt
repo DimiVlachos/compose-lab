@@ -68,7 +68,7 @@ internal fun MirrorPermissionCard(
         modifier
             .widthIn(max = CardMaxWidth)
             .padding(horizontal = LabTheme.spacing.large)
-            .background(LabTheme.colors.surface, LabTheme.shapes.ExtraLarge)
+            .background(LabTheme.colors.surface, LabTheme.shapes.extraLarge)
             // Landscape or large text can make it taller than the stage: it scrolls, so the
             // buttons are always within reach.
             .verticalScroll(rememberScrollState())

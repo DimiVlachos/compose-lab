@@ -122,7 +122,7 @@ private val FabEdgeInset = 36.dp
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun ProfileGallery(
+public fun ProfileGallery(
     name: String,
     portrait: DrawableResource,
     photos: List<MorphPhoto>,

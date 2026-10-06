@@ -8,7 +8,7 @@ import androidx.compose.runtime.Immutable
  * screen shows the nearest legal scene.
  */
 @Immutable
-data class GalleryScene(
+public data class GalleryScene(
     val photo: Int = 0,
     val avatar: Boolean = false,
     val dialog: Boolean = false,

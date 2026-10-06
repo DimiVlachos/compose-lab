@@ -1,6 +1,7 @@
 plugins { alias(libs.plugins.lab.kmp.library) }
 
 kotlin {
+    explicitApi()
     android { namespace = "dev.dimvlachos.lab.shared" }
     iosFramework(baseName = "ComposeApp")
 

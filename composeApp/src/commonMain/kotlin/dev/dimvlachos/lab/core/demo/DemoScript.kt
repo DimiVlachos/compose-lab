@@ -5,7 +5,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class DemoScript(
+internal class DemoScript(
     val holdStart: Duration,
     val holdEnd: Duration,
     val steps: List<DemoStep>,

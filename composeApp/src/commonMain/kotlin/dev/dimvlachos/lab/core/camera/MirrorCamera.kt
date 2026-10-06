@@ -3,7 +3,7 @@ package dev.dimvlachos.lab.core.camera
 import androidx.compose.runtime.Composable
 
 /** The front camera, shown as a mirror. */
-interface MirrorCamera {
+internal interface MirrorCamera {
     /**
      * Shows the camera in [mirror] until cancelled, which stops it but keeps its last frame, so a
      * pause never flashes something else. Throws if the camera cannot work at all; a camera that
@@ -19,7 +19,7 @@ interface MirrorCamera {
 }
 
 /** Whether this demo may use the camera, and what can be done if not. */
-sealed interface CameraAccess {
+internal sealed interface CameraAccess {
     /** No camera to ask for: not on this platform, no front camera, or not while recording. */
     data object Unavailable : CameraAccess
 
@@ -39,4 +39,4 @@ sealed interface CameraAccess {
  * Where the front camera stands for this app; it never asks by itself. Disabled, it is always
  * [CameraAccess.Unavailable].
  */
-@Composable expect fun rememberCameraAccess(enabled: Boolean): CameraAccess
+@Composable internal expect fun rememberCameraAccess(enabled: Boolean): CameraAccess

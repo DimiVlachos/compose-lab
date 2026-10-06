@@ -1,3 +1,4 @@
+// A deliberate copy of moodboard/shared's morph/MorphTransition.kt, so each sample stands alone.
 package dev.dimvlachos.lab.core.presentation.components.imagemorph
 
 import androidx.compose.animation.BoundsTransform

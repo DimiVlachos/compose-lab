@@ -8,7 +8,7 @@ import androidx.compose.runtime.Stable
  * the new wipe on top of the mist; the mist starts over once the hand stops again.
  */
 @Stable
-class MistDriver(
+internal class MistDriver(
     private val fog: FogState,
     private val waitSeconds: Float = 2f,
     private val riseSeconds: Float = 25f,
