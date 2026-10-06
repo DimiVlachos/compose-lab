@@ -28,7 +28,7 @@ CI runs these on every pull request. Run them locally first:
 ./gradlew :moodboard:androidApp:lintDebug
 ```
 
-CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE problem shows up), and builds the lab app in Xcode; [ci.yml](.github/workflows/ci.yml) has every step. The iOS tests and builds need macOS with Xcode.
+CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE problem shows up), and builds the lab app in Xcode; [ci.yml](.github/workflows/ci.yml) has every step. The iOS tests and builds need macOS with Xcode. A separate hygiene check (`scripts/check-hygiene.sh`) keeps private links, local notes and oversized GIFs out of the repo.
 
 ## Code
 

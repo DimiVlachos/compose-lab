@@ -1,0 +1,38 @@
+name: Hygiene
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    name: Nothing private in files or commit messages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check files and commits
+        env:
+          HYGIENE_EXTRA_PATTERNS: ${{ vars.HYGIENE_EXTRA_PATTERNS }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # A new branch or a force-push has no usable base; then check the head commit alone.
+          if [[ -n "$BASE" ]] && git cat-file -e "$BASE^{commit}" 2>/dev/null \
+            && git merge-base --is-ancestor "$BASE" "$HEAD"; then
+            range="$BASE..$HEAD"
+          else
+            range="$HEAD^!"
+          fi
+          scripts/check-hygiene.sh "$range"
