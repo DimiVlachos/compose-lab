@@ -6,15 +6,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotateRad
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -32,14 +31,13 @@ import kotlin.math.tan
 internal class LampPainter {
     private val cord = Path()
     private val shade = Path()
-    private val addLight = Paint().apply { blendMode = BlendMode.Plus }
     private val circle = Path()
     private var shadeBuilt = false
     private val cordStroke = Stroke(PullCordDimens.CordWidth.value, cap = StrokeCap.Round)
 
     // The brushes, made about the origin and moved to the bulb as it swings: made again only when
-    // the colours or the light's reach change, never for a frame. The light's brightness is drawn
-    // as an alpha over them.
+    // the colours or the light's reach change, never for a frame. The light is drawn at full
+    // glow; its brightness is its layer's alpha.
     private var brushColors: AppColors? = null
     private var brushReach = -1f
     private var cone: Brush = SolidColor(Color.Transparent)
@@ -92,10 +90,14 @@ internal class LampPainter {
     }
 
     /**
-     * Draws [content] with the new look clipped to a circle spreading from where the bulb was,
-     * [state]'s reveal of the way to the screen's farthest corner.
+     * Draws [content] clipped to a circle spreading from where the bulb was, [state]'s reveal of
+     * the way to the screen's farthest corner: [inside] it, or outside it.
      */
-    fun DrawScope.clipToReveal(state: PullCordState, content: DrawScope.() -> Unit) {
+    fun DrawScope.clipToReveal(
+        state: PullCordState,
+        inside: Boolean,
+        content: DrawScope.() -> Unit,
+    ) {
         val from = state.revealFrom
         val farthest =
             max(
@@ -108,37 +110,33 @@ internal class LampPainter {
         val radius = farthest * state.reveal.value
         circle.rewind()
         circle.addOval(Rect(from, radius))
-        clipPath(circle) { content() }
+        clipPath(circle, if (inside) ClipOp.Intersect else ClipOp.Difference) { content() }
     }
 
     /**
-     * The light the lamp throws down over the screen, added to what is there: a cone out of the
-     * shade, bright at the bulb and fading with distance, its edges feathered by a conic mask, so
-     * it fades out sideways rather than stopping at a line.
+     * The light the lamp throws down over the screen, at full glow, into a layer of its own that is
+     * added to what is under it: a cone out of the shade, bright at the bulb and fading with
+     * distance, its edges feathered by a conic mask, so it fades out sideways rather than stopping
+     * at a line.
      */
     fun DrawScope.drawLight(state: PullCordState, colors: AppColors) {
+        // Dark, it draws nothing, and needn't be drawn again as the cord swings.
+        if (!state.lit && !state.revealing) return
         state.frame
-        val glow = state.brightness.value
-        if (glow <= 0f) return
         val rig = state.rig
         val density = state.density
         scale(density, density, Offset.Zero) {
-            val bounds = Rect(0f, 0f, size.width / density, size.height / density)
-            drawIntoCanvas { it.saveLayer(bounds, addLight) }
+            val width = size.width / density
+            val height = size.height / density
             rotateRad(rig.tilt, rig.pivot) {
                 val bulb = rig.pivot + Offset(0f, RimY)
-                val reach = max(bounds.width, bounds.height) * ConeReach
+                val reach = max(width, height) * ConeReach
                 brushes(colors, reach)
                 // The cone's edges meet up inside the shade, so it leaves the rim as wide as the
                 // rim.
                 val rise = PullCordDimens.ShadeRim.value / 2f / tan(PullCordDimens.ConeHalfAngle)
                 translate(bulb.x, bulb.y) {
-                    drawRect(
-                        cone,
-                        Offset(-reach, -rise),
-                        Size(2f * reach, reach),
-                        alpha = glow,
-                    )
+                    drawRect(cone, Offset(-reach, -rise), Size(2f * reach, reach))
                 }
                 // The mask reaches past the light on every side, so no sliver of the light's
                 // edge is left uncovered by it.
@@ -151,7 +149,6 @@ internal class LampPainter {
                     )
                 }
             }
-            drawIntoCanvas { it.restore() }
         }
     }
 

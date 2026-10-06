@@ -19,6 +19,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -34,12 +36,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.IntOffset
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.pullcord_cord
+import dev.dimvlachos.lab.resources.pullcord_light_off
+import dev.dimvlachos.lab.resources.pullcord_light_on
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
@@ -51,9 +56,15 @@ import org.jetbrains.compose.resources.stringResource
  * look or the other, lit or not; as the lamp switches, the new look spreads out from the bulb over
  * the old, and lit, the lamp throws a cone of warm light down over it.
  *
- * While the new look spreads, [content] is composed twice, once in each look, so keep its state
- * outside it. [onSwitch] hears each switch, after a tick of haptics. Nothing recomposes while the
- * cord swings or the light spreads: only a switch does. The lamp fills the space it is given.
+ * [across] is where the lamp hangs, as a share of its width, 0 at the left edge to 1 at the right,
+ * whatever the layout direction.
+ *
+ * [content] must paint an opaque background over all of it: the new look is drawn over the old, and
+ * wherever it is see-through, the old look shows through it. While the new look spreads, [content]
+ * is composed twice, once in each look, so keep its state outside it; only the look the lamp is on
+ * takes touches and is read by a screen reader. [onSwitch] hears each switch, after a tick of
+ * haptics. Nothing recomposes while the cord swings or the light spreads: only a switch, and the
+ * end of its spread, recomposes. The lamp fills the space it is given.
  */
 @Composable
 public fun PullCordLamp(
@@ -67,13 +78,15 @@ public fun PullCordLamp(
     val haptics = LocalHapticFeedback.current
     val currentOnSwitch by rememberUpdatedState(onSwitch)
     DisposableEffect(state, haptics) {
-        state.onSwitch = { lit ->
+        val hook: (Boolean) -> Unit = { lit ->
             // A key's click: a light impact on iOS, and a click on every Android this runs on.
             // The toggle haptics would say on or off, but Android only plays them from 14 on.
             haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
             currentOnSwitch(lit)
         }
-        onDispose { state.onSwitch = null }
+        state.onSwitch = hook
+        // Only this lamp's own hook: another lamp may have hung its own on the state since.
+        onDispose { if (state.onSwitch === hook) state.onSwitch = null }
     }
     // The cord and the shade step on a frame at a time while they move or are held, and the loop
     // sleeps once they hang still.
@@ -95,11 +108,12 @@ public fun PullCordLamp(
     val colors = LabTheme.colors
     val density = LocalDensity.current.density
     val label = stringResource(Res.string.pullcord_cord)
+    val on = stringResource(Res.string.pullcord_light_on)
+    val off = stringResource(Res.string.pullcord_light_off)
     val lit = state.lit
     // While a look spreads, the one under it shows round its circle; once it has spread, the
     // look the lamp is on shows alone.
     val revealing = state.revealing
-    val top = state.revealTop
     Box(
         modifier
             .onSizeChanged { state.place(it.width, density) }
@@ -135,29 +149,48 @@ public fun PullCordLamp(
                 }
             }
     ) {
-        val looks = if (revealing) listOf(!top, top) else listOf(lit)
+        // The look going under the live one, which is always on top, so it alone is hit by a
+        // touch. When the going look should show over it, inside its circle as it shrinks back
+        // into the bulb, the live look is clipped to outside that circle instead.
+        val looks = if (revealing) listOf(!lit, lit) else listOf(lit)
         for (look in looks) {
+            val live = look == lit
             // Keyed by its part, not its look: the screen the lamp is on keeps its place, and its
             // focus, as it changes look; the one going is only ever a picture of the other.
-            key(if (look == lit) LiveLook else GoingLook) {
+            key(if (live) LiveLook else GoingLook) {
                 Box(
                     Modifier.fillMaxSize()
-                        .then(if (look == lit) Modifier else Modifier.clearAndSetSemantics {})
+                        .then(if (live) Modifier else Modifier.clearAndSetSemantics {}.inert())
                         .drawWithContent {
-                            val draw: () -> Unit = {
-                                drawContent()
-                                if (look) with(painter) { drawLight(state, colors) }
-                            }
-                            if (state.revealing && look == state.revealTop) {
-                                with(painter) { clipToReveal(state) { draw() } }
+                            if (live && state.revealing) {
+                                val inside = state.revealTop == look
+                                with(painter) {
+                                    clipToReveal(state, inside) {
+                                        this@drawWithContent.drawContent()
+                                    }
+                                }
                             } else {
-                                draw()
+                                drawContent()
                             }
                         }
                 ) {
                     // In a layer of its own, so a frame of the cord or the light redraws the
                     // screen's recorded picture rather than drawing it all again.
                     Box(Modifier.fillMaxSize().graphicsLayer()) { content(look) }
+                    if (look) {
+                        // The light over the lit look, inside it so it is clipped with it. Its
+                        // brightness is the layer's alpha, so a flicker only changes the layer;
+                        // the cone is drawn again only as the lamp swings.
+                        Spacer(
+                            Modifier.fillMaxSize()
+                                .graphicsLayer {
+                                    compositingStrategy = CompositingStrategy.Offscreen
+                                    blendMode = BlendMode.Plus
+                                    alpha = state.glow
+                                }
+                                .drawBehind { with(painter) { drawLight(state, colors) } }
+                        )
+                    }
                 }
             }
         }
@@ -167,10 +200,12 @@ public fun PullCordLamp(
                 with(painter) { drawLamp(state, colors) }
             }
         )
-        // The bead, for a screen reader and for tests: a switch that follows the bead.
+        // The bead, for a screen reader and for tests: a switch where the bead hangs at rest. It
+        // stays there as the cord swings, so it isn't placed again every frame, and a screen
+        // reader's focus doesn't chase the bead about.
         Spacer(
             Modifier.offset {
-                    val at = state.bead
+                    val at = state.restingBead
                     val half = PullCordDimens.GrabRadius.toPx()
                     IntOffset((at.x - half).roundToInt(), (at.y - half).roundToInt())
                 }
@@ -179,6 +214,7 @@ public fun PullCordLamp(
                     contentDescription = label
                     role = Role.Switch
                     toggleableState = ToggleableState(lit)
+                    stateDescription = if (lit) on else off
                     onClick {
                         state.toggle()
                         true
@@ -187,6 +223,16 @@ public fun PullCordLamp(
         )
     }
 }
+
+// Keeps any touch from what is under it: the going look is only ever a picture.
+private fun Modifier.inert(): Modifier =
+    pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+            }
+        }
+    }
 
 private const val LiveLook = "live"
 private const val GoingLook = "going"

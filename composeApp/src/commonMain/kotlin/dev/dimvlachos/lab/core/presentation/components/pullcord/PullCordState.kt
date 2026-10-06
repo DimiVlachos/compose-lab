@@ -9,8 +9,9 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.abs
@@ -23,13 +24,13 @@ import kotlinx.coroutines.launch
  * A pull-cord lamp and the screen it lights: [lit] or not. A finger takes the bead with [grab],
  * pulls it with [dragTo] and lets go with [release], each at a point in the lamp's own pixels, as a
  * pointer reports it; pulled far enough down, the cord clicks and the lamp switches, once a pull.
- * [toggle] switches it without the cord. Only [lit], and whether a new look is still spreading, are
- * read in composition: the cord, the shade and the light are read while drawing, so a swinging cord
- * never recomposes.
+ * [toggle] switches it without the cord, and [snapTo] sets it without a switch at all. Only [lit],
+ * and whether a new look is still spreading, are read in composition: the cord, the shade and the
+ * light are read while drawing, so a swinging cord never recomposes.
  */
 @Stable
 public class PullCordState internal constructor(lit: Boolean, private val scope: CoroutineScope) {
-    /** Whether the lamp is on: the screen under it shows its dark look, lit by the lamp. */
+    /** Whether the lamp is on, and content is shown lit. */
     public var lit: Boolean by mutableStateOf(lit)
         private set
 
@@ -42,6 +43,9 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     /** Bumped every step of the cord, so whatever draws it is drawn again. */
     internal var frame by mutableIntStateOf(0)
         private set
+
+    /** Bumped each time the lamp is hung somewhere new, so whatever is placed by it moves. */
+    private var hung by mutableIntStateOf(0)
 
     /** Whether the cord or the shade is moving, or held: the frame loop runs while it is. */
     internal var awake by mutableStateOf(false)
@@ -68,13 +72,33 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     /** How bright the bulb is, 0 off to 1 on: it flickers as it comes on. */
     internal val brightness = Animatable(if (lit) 1f else 0f)
 
-    /** Called as the lamp switches, with whether it is now lit: a tick of haptics, say. */
+    // How bright the bulb was as it was switched off: the light it throws fades from there.
+    private var offFrom = 1f
+
+    /**
+     * How bright the light the lamp throws is, 0 to 1: the bulb's brightness, but going out, it
+     * fades with the lit look, by the share of it the other look has yet to cover, rather than
+     * going out before the look it falls on has gone. Read in a layer or drawing.
+     */
+    internal val glow: Float
+        get() {
+            if (lit || !revealing) return brightness.value
+            // The lit look is the one going: under the day look as that spreads, or on top as its
+            // own circle shrinks back into the bulb.
+            val left = if (revealTop) reveal.value else 1f - reveal.value
+            return offFrom * left
+        }
+
+    /** Called once the lamp has switched, with whether it is now lit: a tick of haptics, say. */
     internal var onSwitch: ((Boolean) -> Unit)? = null
 
     private var revealJob: Job? = null
     private var brightnessJob: Job? = null
 
-    /** Takes the bead if [at] is on it, and says whether it did. */
+    /**
+     * Takes the bead if [at] is on it, and says whether it did. Refuses while a finger already has
+     * it.
+     */
     public fun grab(at: Offset): Boolean {
         val taken = rig.grab(at / density)
         if (taken) awake = true
@@ -88,15 +112,20 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         awake = true
     }
 
-    /** Lets go of the bead: the cord springs back up and sways. */
+    /**
+     * Lets go of the bead: the cord springs back up and sways. Does nothing if no finger has it.
+     */
     public fun release() {
         rig.release()
     }
 
-    /** Switches the lamp: the new look spreads out from the bulb over the old. */
+    /**
+     * Switches the lamp: the new look spreads out from the bulb over the old. Switched again while
+     * it spreads, its circle turns round from where it got to. Each switch plays a tick of haptics
+     * and then calls the lamp's onSwitch, as a pull's click does.
+     */
     public fun toggle() {
         lit = !lit
-        onSwitch?.invoke(lit)
         revealJob?.cancel()
         // Undispatched, so the circle is at its start before the next frame draws either look.
         if (revealing) {
@@ -129,19 +158,20 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
                     revealing = false
                 }
         }
+        if (!lit) offFrom = brightness.value
         brightnessJob?.cancel()
         brightnessJob = scope.launch {
             if (lit) {
-                // On with two quick dips, as a filament catching does.
+                // On with two quick dips, as a filament catching does, from however bright it
+                // still is: switched back on as it goes out, it doesn't drop to dark first.
                 brightness.animateTo(
                     1f,
                     keyframes {
                         durationMillis = PullCordDimens.FlickerMs
-                        0f at 0
-                        1f at 40
-                        0.3f at 90
-                        1f at 140
-                        0.45f at 200
+                        1f at PullCordDimens.FlickerFullMs
+                        PullCordDimens.FirstDip at PullCordDimens.FirstDipMs
+                        1f at PullCordDimens.FlickerBackMs
+                        PullCordDimens.SecondDip at PullCordDimens.SecondDipMs
                         1f at PullCordDimens.FlickerMs
                     },
                 )
@@ -149,6 +179,25 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
                 brightness.animateTo(0f, tween(PullCordDimens.OffMs))
             }
         }
+        // Last, so whatever it does sees the switch complete.
+        onSwitch?.invoke(lit)
+    }
+
+    /**
+     * Sets the lamp [lit] or not at once: no spread, no flicker, no haptics and no onSwitch. For a
+     * lamp put back as it was, or a state set from elsewhere.
+     */
+    public fun snapTo(lit: Boolean) {
+        revealJob?.cancel()
+        brightnessJob?.cancel()
+        this.lit = lit
+        revealTop = lit
+        revealing = false
+        revealJob =
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                reveal.snapTo(1f)
+                brightness.snapTo(if (lit) 1f else 0f)
+            }
     }
 
     // How wide the stage is, in px, and where across it the lamp hangs, as a share of its width.
@@ -162,10 +211,15 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         hang()
     }
 
-    /** Hangs the lamp [across] the stage's width instead, as a share of it. */
+    /**
+     * Hangs the lamp [across] the stage's width instead, as a share of it, kept to the stage; a
+     * share that is no number at all is ignored.
+     */
     internal fun hangAcross(across: Float) {
-        if (across == this.across) return
-        this.across = across
+        if (!across.isFinite()) return
+        val share = across.coerceIn(0f, 1f)
+        if (share == this.across) return
+        this.across = share
         hang()
     }
 
@@ -174,6 +228,7 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         // Mid-spread, the circle follows the bulb to where it now hangs.
         if (revealing) revealFrom = bulb()
         frame++
+        hung++
     }
 
     /** Steps the cord and the shade on by [seconds]; at rest, the frame loop sleeps. */
@@ -188,17 +243,36 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         rig.onShade(Offset(0f, PullCordDimens.Rod.value + PullCordDimens.ShadeHeight.value)) *
             density
 
-    /** Where the bead is, in px: for a fingertip drawn on it. Read while drawing. */
+    /** Where the bead is, in px: for a fingertip drawn on it. Read in layout or drawing. */
     internal val bead: Offset
         get() {
             frame
             return rig.bead * density
         }
+
+    /**
+     * Where the bead hangs at rest, in px: it moves only when the lamp is hung somewhere new, not
+     * as the cord swings. Read in layout or drawing.
+     */
+    internal val restingBead: Offset
+        get() {
+            hung
+            return rig.restingBead * density
+        }
+
+    internal companion object {
+        // Only whether it is lit outlives the screen: the cord hangs still in a new one.
+        fun saver(scope: CoroutineScope): Saver<PullCordState, Boolean> =
+            Saver(save = { it.lit }, restore = { PullCordState(it, scope) })
+    }
 }
 
-/** A [PullCordState], [lit] to begin with. */
+/**
+ * A [PullCordState], [lit] to begin with. Whether it is lit is saved, so it survives the screen
+ * being made again, as on a rotation.
+ */
 @Composable
 public fun rememberPullCordState(lit: Boolean = false): PullCordState {
     val scope = rememberCoroutineScope()
-    return remember { PullCordState(lit, scope) }
+    return rememberSaveable(saver = PullCordState.saver(scope)) { PullCordState(lit, scope) }
 }

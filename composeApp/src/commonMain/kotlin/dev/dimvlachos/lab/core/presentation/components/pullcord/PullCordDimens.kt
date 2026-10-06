@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.ui.unit.dp
 
+/** The pull-cord lamp's sizes, timings and physics, in dp, seconds and milliseconds. */
 internal object PullCordDimens {
     // The lamp hangs on a rod from a small canopy on the ceiling; the shade is a dome this wide at
     // its rim and this tall, and the bulb shows just under the rim.
@@ -17,12 +18,13 @@ internal object PullCordDimens {
     val CordInset = 24.dp
 
     // The cord: this many points, this long in all, with a bead on its end. A finger within this
-    // much of the bead takes it, a thumb's width.
+    // much of the bead takes it: a 48 dp target, and no more, so a tap just below it still reaches
+    // the screen.
     const val CordPoints = 12
     val CordLength = 110.dp
     val CordWidth = 1.6.dp
     val BeadRadius = 7.dp
-    val GrabRadius = 28.dp
+    val GrabRadius = 24.dp
 
     // A finger this far down from where it took the bead clicks the switch.
     val ClickPull = 48.dp
@@ -68,11 +70,21 @@ internal object PullCordDimens {
     const val LevelSwing = 0.01f
     const val QuietSteps = 30
 
-    // Switched on, the light spreads out over the screen from the bulb in this long; it flickers
-    // twice as it comes on, and goes out in this long.
+    // Switched on, the light spreads out over the screen from the bulb in this long; the bulb
+    // flickers twice as it comes on, and goes out in this long. The light it throws goes out with
+    // the lit look, as the other look covers it.
     const val RevealMs = 520
     const val FlickerMs = 300
     const val OffMs = 120
+
+    // The flicker: full at the first time, down to the first dip at the next, full again, down to
+    // the second dip, and full from then on, at FlickerMs.
+    const val FlickerFullMs = 40
+    const val FirstDipMs = 90
+    const val FirstDip = 0.3f
+    const val FlickerBackMs = 140
+    const val SecondDipMs = 200
+    const val SecondDip = 0.45f
 
     // The cone of light the lamp throws, either side of straight down, and how bright it is at
     // its brightest, at the bulb.
