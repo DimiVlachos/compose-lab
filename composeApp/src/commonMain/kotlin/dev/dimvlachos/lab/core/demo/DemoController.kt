@@ -1,6 +1,8 @@
 package dev.dimvlachos.lab.core.demo
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
@@ -36,4 +38,11 @@ internal interface DemoController {
 
     /** Takes the messages sent so far back out of the conversation, leaving it as it began. */
     suspend fun clearMessages()
+
+    /**
+     * Takes the lamp's bead with a fingertip, pulls it [down] and [across] (negative is up and
+     * left) over [duration], and lets go. Pulled far enough down, the cord clicks and the lamp
+     * switches. Returns once the finger has let go; the cord sways on by itself.
+     */
+    suspend fun pullCord(down: Dp, duration: Duration, across: Dp = 0.dp)
 }
