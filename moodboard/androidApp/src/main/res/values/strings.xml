@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Moodboard</string>
     <!-- Screens and navigation tabs -->
     <string name="screen_gallery">Gallery</string>
     <string name="screen_boards">Boards</string>

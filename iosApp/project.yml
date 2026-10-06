@@ -10,6 +10,8 @@ targets:
       path: iosApp/Info.plist
       properties:
         CFBundleDisplayName: Compose Lab
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchScreen: {}
         # Landscape too, so a landscape demo (book.turn) can ask the scene to turn.

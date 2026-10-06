@@ -28,9 +28,9 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
-          distribution: temurin
-          # The Gradle daemon's JDK (gradle/gradle-daemon-jvm.properties). Android code still
-          # compiles to Java 17 bytecode.
+          distribution: jetbrains
+          # The Gradle daemon's JDK, vendor and version as in gradle/gradle-daemon-jvm.properties.
+          # Android code still compiles to Java 17 bytecode.
           java-version: '25'
 
       - name: Setup Gradle

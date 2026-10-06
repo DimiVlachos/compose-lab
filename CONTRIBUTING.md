@@ -25,9 +25,10 @@ CI runs these on every pull request. Run them locally first:
 ./gradlew :androidApp:testDebugUnitTest          # architecture rules (Konsist)
 ./gradlew :androidApp:lintDebug                  # Android lint
 ./gradlew :moodboard:shared:iosSimulatorArm64Test :moodboard:androidApp:testDebugUnitTest
+./gradlew :moodboard:androidApp:lintDebug
 ```
 
-The iOS tests need macOS with Xcode.
+CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE problem shows up), and builds the lab app in Xcode; [ci.yml](.github/workflows/ci.yml) has every step. The iOS tests and builds need macOS with Xcode.
 
 ## Code
 

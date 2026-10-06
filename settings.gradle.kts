@@ -15,8 +15,9 @@ pluginManagement {
     }
 }
 
-// Downloads the daemon's JDK (gradle/gradle-daemon-jvm.properties) when it isn't installed. The
-// settings plugins block can't read the version catalog, so its version lives here.
+// Resolves the JDK download links in gradle/gradle-daemon-jvm.properties when they're regenerated
+// with updateDaemonJvm. The settings plugins block can't read the version catalog, so its version
+// lives here.
 plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0" }
 
 dependencyResolutionManagement {
