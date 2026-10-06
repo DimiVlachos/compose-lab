@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
@@ -33,6 +34,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var mistHandler: (suspend (Duration) -> Unit)? = null
     private var sendHandler: (suspend (StringResource, Duration) -> Unit)? = null
     private var clearHandler: (suspend () -> Unit)? = null
+    private var cordHandler: (suspend (Dp, Duration, Dp) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -66,6 +68,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         clearHandler?.invoke()
     }
 
+    override suspend fun pullCord(down: Dp, duration: Duration, across: Dp) {
+        cordHandler?.invoke(down, duration, across)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -92,5 +98,9 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setClearHandler(handler: (suspend () -> Unit)?) {
         clearHandler = handler
+    }
+
+    fun setCordHandler(handler: (suspend (Dp, Duration, Dp) -> Unit)?) {
+        cordHandler = handler
     }
 }
