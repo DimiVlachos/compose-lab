@@ -175,4 +175,68 @@ class LampRigTest {
         assertEquals(bead + Offset(60f, 0f), rig.bead)
         assertTrue(rig.atRest)
     }
+
+    @Test
+    fun aMoveMidPullStillClicksAStraightPull() {
+        val (rig, clicks) = rig()
+        val at = rig.bead
+        assertTrue(rig.grab(at))
+        // The lamp moves across under the finger, which stays put on the screen.
+        rig.moveTo(rig.pivot + Offset(40f, 0f))
+        rig.drag(at, Offset(0f, PullCordDimens.ClickPull.value + 10f))
+        assertEquals(1, clicks.size)
+    }
+
+    @Test
+    fun releaseWithoutGrabIsANoOp() {
+        val (rig, _) = rig()
+        val bead = rig.bead
+        rig.release()
+        rig.advance(1f / 60f)
+        assertTrue(rig.atRest)
+        assertFalse(rig.held)
+        assertEquals(bead, rig.bead)
+    }
+
+    @Test
+    fun aFlickAtSixtyHertzKeepsItsSpeed() {
+        // The same quick flick sideways, 60 dp in a twentieth of a second, let go at full speed:
+        // at 60 Hz, two steps to a frame, and at 120 Hz, one.
+        fun flick(hz: Int): Float {
+            val (rig, _) = rig()
+            val at = rig.bead
+            assertTrue(rig.grab(at))
+            val frames = hz / 20
+            for (i in 1..frames) {
+                rig.dragTo(at + Offset(60f * i / frames, 0f))
+                rig.advance(1f / hz)
+            }
+            rig.release()
+            val before = rig.bead.x
+            rig.advance(1f / 60f)
+            return rig.bead.x - before
+        }
+        val sixty = flick(60)
+        val oneTwenty = flick(120)
+        assertTrue(oneTwenty > 1f, "at 120 Hz it carried on only $oneTwenty")
+        assertTrue(sixty > oneTwenty * 0.6f, "at 60 Hz it carried on $sixty, at 120 Hz $oneTwenty")
+    }
+
+    @Test
+    fun aLetGoStepsTheFingersLastMoveFirst() {
+        val (rig, _) = rig()
+        val at = rig.bead
+        assertTrue(rig.grab(at))
+        rig.drag(at, Offset(30f, 0f), seconds = 0.1f, steps = 6)
+        // A last move, and let go before a frame has stepped it.
+        rig.dragTo(at + Offset(60f, 0f))
+        rig.release()
+        assertFalse(rig.held)
+        val before = rig.bead.x
+        rig.advance(1f / 60f)
+        assertTrue(
+            rig.bead.x - before > 10f,
+            "the last move carried it only ${rig.bead.x - before}",
+        )
+    }
 }

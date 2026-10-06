@@ -2,6 +2,8 @@ package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,6 +18,18 @@ class CordRopeTest {
             pin(top)
             step(PullCordDimens.StepSeconds)
         }
+    }
+
+    // Held out at its full length, [angle] radians anticlockwise of straight down, until it hangs
+    // there, and let go: as a hand would swing it out.
+    private fun CordRope.swingOut(angle: Float) {
+        val end = top + Offset(sin(angle), cos(angle)) * (10f * (size - 1))
+        repeat(120) {
+            pin(top)
+            hold(end, stretch = 1f)
+            step(PullCordDimens.StepSeconds)
+        }
+        letGo()
     }
 
     @Test

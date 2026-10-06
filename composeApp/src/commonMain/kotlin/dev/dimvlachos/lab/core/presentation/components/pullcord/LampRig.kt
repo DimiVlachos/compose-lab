@@ -1,6 +1,8 @@
 package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.geometry.lerp
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -33,23 +35,35 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     private var carried = 0f
     private var quiet = 0
 
-    // The finger's place and where it took the bead, and the bead's offset from it at the time,
-    // so a bead taken off-centre doesn't jump to the fingertip.
-    private var finger: Offset? = null
+    // The finger's place, unspecified while no finger has the bead, and where it was as of the
+    // last step: a frame's move is spread over that frame's steps, so a quick flick keeps its
+    // speed however many steps a frame takes. Also where it took the bead, and the bead's offset
+    // from it at the time, so a bead taken off-centre doesn't jump to the fingertip.
+    private var finger = Offset.Unspecified
+    private var stepFinger = Offset.Unspecified
     private var grabbedAt = Offset.Zero
     private var hold = Offset.Zero
     private var clicked = false
 
+    // Let go of before its last move was stepped: the next steps carry the cord there, then let
+    // it go.
+    private var lettingGo = false
+
     /** Whether a finger has the bead. */
     val held: Boolean
-        get() = finger != null
+        get() = finger.isSpecified && !lettingGo
 
     /** Whether nothing is moving: no finger, the cord still and the shade level. */
     var atRest = true
         private set
 
+    /** Where the bead is. Read in layout or drawing. */
     val bead: Offset
         get() = rope[rope.size - 1]
+
+    /** Where the bead hangs when the lamp is at rest. */
+    val restingBead: Offset
+        get() = attachment(0f) + Offset(0f, length)
 
     /** The cord's points, top first. */
     val points: Int
@@ -60,12 +74,17 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     /** Where a point on the shade, [local] from the pivot as the shade hangs level, is now. */
     fun onShade(local: Offset): Offset = pivot + rotate(local, tilt)
 
-    /** Takes the bead if [at] is on it, and says whether it did. */
+    /**
+     * Takes the bead if [at] is on it, and says whether it did. Refuses while a finger already has
+     * it.
+     */
     fun grab(at: Offset): Boolean {
         // One hand on the cord at a time: a second can't take over a pull, or re-arm its click.
-        if (finger != null) return false
+        if (held) return false
         if ((at - bead).getDistance() > PullCordDimens.GrabRadius.value) return false
         finger = at
+        stepFinger = at
+        lettingGo = false
         grabbedAt = at
         hold = bead - at
         clicked = false
@@ -75,7 +94,7 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     }
 
     fun dragTo(at: Offset) {
-        if (finger == null) return
+        if (!held) return
         finger = at
         atRest = false
         quiet = 0
@@ -88,19 +107,32 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
         }
     }
 
+    /**
+     * Lets go of the bead, from where the finger last was: a move not yet stepped is stepped first,
+     * so a flick's last move isn't lost. Does nothing if no finger has the bead.
+     */
     fun release() {
-        if (finger == null) return
-        finger = null
+        if (!held) return
+        if (finger == stepFinger) letGo() else lettingGo = true
+    }
+
+    private fun letGo() {
+        finger = Offset.Unspecified
+        stepFinger = Offset.Unspecified
+        lettingGo = false
         rope.letGo()
     }
 
-    /** Hangs the lamp from [to] instead, as it is: the screen has changed size. */
+    /**
+     * Hangs the lamp from [to] instead, as it is: the screen or the lamp's place across it has
+     * changed.
+     */
     fun moveTo(to: Offset) {
         val by = to - pivot
         pivot = to
         rope.shift(by)
-        // A finger stays where it is on the screen: only the lamp moves under it.
-        grabbedAt += by
+        // A finger stays where it is on the screen, and so does where it took the bead: only the
+        // lamp moves under it, so a pull straight down still clicks.
     }
 
     /**
@@ -110,27 +142,36 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
         if (atRest) return
         carried += seconds
         val dt = PullCordDimens.StepSeconds
+        var steps = 0
         while (carried >= dt) {
             carried -= dt
-            step(dt)
+            steps++
+        }
+        for (k in 1..steps) {
+            // The finger is where it was at the last step, the share of the way through this
+            // frame's move that this step is.
+            step(dt, k / steps.toFloat())
             val level =
-                !held &&
+                !finger.isSpecified &&
                     rope.still &&
                     rope.stretch == 1f &&
                     abs(tilt) < PullCordDimens.LevelTilt &&
                     abs(swing) < PullCordDimens.LevelSwing
             quiet = if (level) quiet + 1 else 0
         }
+        if (steps > 0 && finger.isSpecified) {
+            stepFinger = finger
+            if (lettingGo) letGo()
+        }
         atRest = quiet >= PullCordDimens.QuietSteps
         if (atRest) carried = 0f
     }
 
-    private fun step(dt: Float) {
-        val finger = finger
-        if (finger != null) {
+    private fun step(dt: Float, share: Float) {
+        if (finger.isSpecified) {
             // Past its length the cord gives, less and less: it never stretches more than so far.
             val top = rope[0]
-            val wanted = finger + hold - top
+            val wanted = lerp(stepFinger, finger, share) + hold - top
             val reach = wanted.getDistance()
             val most = PullCordDimens.MostStretch.value
             val over = reach - length

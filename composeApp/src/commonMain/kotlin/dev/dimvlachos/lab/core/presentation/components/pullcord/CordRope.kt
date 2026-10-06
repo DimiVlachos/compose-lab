@@ -1,10 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -20,8 +19,9 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
     private val lastX = FloatArray(points)
     private val lastY = FloatArray(points)
 
-    // Where a finger holds the end, if it does.
-    private var held: Offset? = null
+    // Where a finger holds the end, or unspecified while nothing does: a plain value, so stepping
+    // a held cord boxes nothing.
+    private var held: Offset = Offset.Unspecified
 
     /** How far each segment is stretched, 1 at its own length. */
     var stretch = 1f
@@ -63,19 +63,9 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
         this.stretch = stretch
     }
 
+    /** Lets go of the end: it carries on at the speed it was last moved at. */
     fun letGo() {
-        held = null
-    }
-
-    /** Lays the cord out straight from its top, [angle] radians anticlockwise of straight down. */
-    fun swingOut(angle: Float) {
-        for (i in 1 until size) {
-            x[i] = x[0] + sin(angle) * i * segment
-            y[i] = y[0] + cos(angle) * i * segment
-            lastX[i] = x[i]
-            lastY[i] = y[i]
-        }
-        still = false
+        held = Offset.Unspecified
     }
 
     /** Moves every point by [by], as it is, speed and all: the lamp has been moved. */
@@ -101,9 +91,10 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
             x[i] += vx
             y[i] += vy + fall
         }
-        held?.let {
-            x[end] = it.x
-            y[end] = it.y
+        val holding = held.isSpecified
+        if (holding) {
+            x[end] = held.x
+            y[end] = held.y
         }
         val length = segment * stretch
         repeat(PullCordDimens.ConstraintPasses) { pass ->
@@ -117,7 +108,7 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
                 // The pinned top and a held end don't give; a free point gives half, or all of it
                 // when the other end of its segment can't.
                 val firstFree = i - 1 > 0
-                val secondFree = i < end || held == null
+                val secondFree = i < end || !holding
                 val first = if (!firstFree) 0f else if (secondFree) 0.5f else 1f
                 val second = if (!secondFree) 0f else if (firstFree) 0.5f else 1f
                 x[i - 1] += dx * over * first
