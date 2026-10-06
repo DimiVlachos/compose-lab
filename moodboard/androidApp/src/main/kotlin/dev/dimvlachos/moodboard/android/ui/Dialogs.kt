@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -42,14 +43,19 @@ fun DeletePhotoDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Uni
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.dialogEntrance(),
-        title = { Text("Delete photo?") },
-        text = { Text("“$title” will be removed from the gallery and every board.") },
+        title = { Text(stringResource(R.string.delete_photo_title)) },
+        text = { Text(stringResource(R.string.delete_photo_message, title)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(R.string.action_delete),
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -82,7 +88,7 @@ fun BoardNameDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") },
+                label = { Text(stringResource(R.string.board_name_label)) },
                 singleLine = true,
                 keyboardOptions =
                     KeyboardOptions(
@@ -98,7 +104,9 @@ fun BoardNameDialog(
                 Text(confirmLabel)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -116,7 +124,7 @@ fun DeleteBoardSheet(
     ) {
         Column(Modifier.padding(bottom = 16.dp).sheetContentEntrance()) {
             Text(
-                "Delete “$boardName”?",
+                stringResource(R.string.delete_board_title, boardName),
                 style = MaterialTheme.typography.titleLarge,
                 modifier =
                     Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp).semantics {
@@ -124,7 +132,7 @@ fun DeleteBoardSheet(
                     },
             )
             Text(
-                "Its photos stay in the gallery unless you delete them too.",
+                stringResource(R.string.delete_board_message),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
@@ -138,19 +146,19 @@ fun DeleteBoardSheet(
                     leadingIconColor = MaterialTheme.colorScheme.error,
                 )
             ListItem(
-                headlineContent = { Text("Delete board only") },
+                headlineContent = { Text(stringResource(R.string.delete_board_only)) },
                 leadingContent = { MoodboardIcon(R.drawable.ic_boards, null) },
                 colors = rows,
                 modifier = Modifier.clickable { onDelete(false) },
             )
             ListItem(
-                headlineContent = { Text("Delete board and its photos") },
+                headlineContent = { Text(stringResource(R.string.delete_board_and_photos)) },
                 leadingContent = { MoodboardIcon(R.drawable.ic_delete, null) },
                 colors = danger,
                 modifier = Modifier.clickable { onDelete(true) },
             )
             ListItem(
-                headlineContent = { Text("Cancel") },
+                headlineContent = { Text(stringResource(R.string.action_cancel)) },
                 leadingContent = { MoodboardIcon(R.drawable.ic_close, null) },
                 colors = rows,
                 modifier = Modifier.clickable(onClick = onDismiss),

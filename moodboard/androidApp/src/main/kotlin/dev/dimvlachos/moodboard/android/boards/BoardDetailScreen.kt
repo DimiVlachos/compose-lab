@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,10 +52,14 @@ fun BoardDetailScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
+                    IconButton(onClick = onBack) {
+                        MoodboardIcon(R.drawable.ic_arrow_back, stringResource(R.string.cd_back))
+                    }
                 },
                 actions = {
-                    IconButton(onClick = onEdit) { MoodboardIcon(R.drawable.ic_edit, "Edit") }
+                    IconButton(onClick = onEdit) {
+                        MoodboardIcon(R.drawable.ic_edit, stringResource(R.string.cd_edit))
+                    }
                 },
             )
         },
@@ -68,15 +73,19 @@ fun BoardDetailScreen(
             contentPadding = padding,
             empty = {
                 EmptyState(
-                    title = "No photos yet",
-                    message = "Pick the photos this board should hold.",
+                    title = stringResource(R.string.empty_board_no_photos_title),
+                    message = stringResource(R.string.empty_board_no_photos_message),
                     icon = { MoodboardIcon(R.drawable.ic_boards, null) },
-                    action = { Button(onClick = onEdit) { Text("Add photos") } },
+                    action = {
+                        Button(onClick = onEdit) {
+                            Text(stringResource(R.string.action_add_photos))
+                        }
+                    },
                 )
             },
         ) { photo, dismiss ->
             DropdownMenuItem(
-                text = { Text("Remove from board") },
+                text = { Text(stringResource(R.string.action_remove_from_board)) },
                 leadingIcon = { MoodboardIcon(R.drawable.ic_remove, null) },
                 onClick = {
                     dismiss()

@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,10 +56,12 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
-                title = { Text("Gallery", Modifier.semantics { heading() }) },
+                title = {
+                    Text(stringResource(R.string.screen_gallery), Modifier.semantics { heading() })
+                },
                 actions = {
                     IconButton(onClick = { filterOpen = true }) {
-                        MoodboardIcon(R.drawable.ic_filter, "Filter")
+                        MoodboardIcon(R.drawable.ic_filter, stringResource(R.string.cd_filter))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -75,14 +78,14 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
                 val filtered = state.filter.favoritesOnly || state.filter.tags.isNotEmpty()
                 if (!filtered) {
                     EmptyState(
-                        title = "No photos",
-                        message = "Deleted photos come back the next time the app starts.",
+                        title = stringResource(R.string.empty_no_photos_title),
+                        message = stringResource(R.string.empty_no_photos_message),
                         icon = { MoodboardIcon(R.drawable.ic_gallery, null) },
                     )
                 } else {
                     EmptyState(
-                        title = "No photos match",
-                        message = "Try other tags, or turn off Favorites only.",
+                        title = stringResource(R.string.empty_no_match_title),
+                        message = stringResource(R.string.empty_no_match_message),
                         icon = { MoodboardIcon(R.drawable.ic_filter, null) },
                         action = {
                             TextButton(
@@ -93,7 +96,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
                                     viewModel.onAction(GalleryAction.SetFilter(cleared))
                                 }
                             ) {
-                                Text("Clear filter")
+                                Text(stringResource(R.string.action_clear_filter))
                             }
                         },
                     )
@@ -144,8 +147,8 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
     }
     newBoardFor?.let { photo ->
         BoardNameDialog(
-            title = "New board",
-            confirmLabel = "Create",
+            title = stringResource(R.string.action_new_board),
+            confirmLabel = stringResource(R.string.action_create),
             onConfirm = {
                 viewModel.onAction(GalleryAction.CreateBoardWith(photo.id, it))
                 newBoardForId = null

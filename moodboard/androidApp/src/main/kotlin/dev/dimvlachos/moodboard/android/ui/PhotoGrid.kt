@@ -27,8 +27,10 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.moodboard.R
 import dev.dimvlachos.moodboard.domain.Photo
 import dev.dimvlachos.moodboard.morph.MorphEnd
 import dev.dimvlachos.moodboard.ui.components.PhotoImage
@@ -103,7 +105,7 @@ private fun PhotoCell(
                     interactionSource = null,
                     indication = null,
                     onClick = { onOpen(photo) },
-                    onLongClickLabel = "More options",
+                    onLongClickLabel = stringResource(R.string.action_more_options),
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         menuOpen = true

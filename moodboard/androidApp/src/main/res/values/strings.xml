@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screens and navigation tabs -->
+    <string name="screen_gallery">Gallery</string>
+    <string name="screen_boards">Boards</string>
+    <string name="screen_search">Search</string>
+    <string name="screen_edit_board">Edit board</string>
+
+    <!-- Actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_share">Share</string>
+    <string name="action_favorite">Favorite</string>
+    <string name="action_unfavorite">Unfavorite</string>
+    <string name="action_add_to_board">Add to board</string>
+    <string name="action_new_board">New board</string>
+    <string name="action_new_board_ellipsis">New board…</string>
+    <string name="action_create">Create</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_add_photos">Add photos</string>
+    <string name="action_remove_from_board">Remove from board</string>
+    <string name="action_clear_filter">Clear filter</string>
+    <string name="action_more_options">More options</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_edit">Edit</string>
+    <string name="cd_more">More</string>
+    <string name="cd_filter">Filter</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_more_options_for">More options for %1$s</string>
+    <string name="cd_remove_recent_search">Remove %1$s from recent searches</string>
+
+    <!-- Dialogs and sheets -->
+    <string name="delete_photo_title">Delete photo?</string>
+    <string name="delete_photo_message">“%1$s” will be removed from the gallery and every board.</string>
+    <string name="board_name_label">Name</string>
+    <string name="rename_board_title">Rename board</string>
+    <string name="delete_board_title">Delete “%1$s”?</string>
+    <string name="delete_board_message">Its photos stay in the gallery unless you delete them too.</string>
+    <string name="delete_board_only">Delete board only</string>
+    <string name="delete_board_and_photos">Delete board and its photos</string>
+
+    <!-- Empty states -->
+    <string name="empty_no_photos_title">No photos</string>
+    <string name="empty_no_photos_message">Deleted photos come back the next time the app starts.</string>
+    <string name="empty_no_match_title">No photos match</string>
+    <string name="empty_no_match_message">Try other tags, or turn off Favorites only.</string>
+    <string name="empty_board_no_photos_title">No photos yet</string>
+    <string name="empty_board_no_photos_message">Pick the photos this board should hold.</string>
+    <string name="empty_no_boards_title">No boards</string>
+    <string name="empty_no_boards_message">Make a board to group photos you want together.</string>
+    <string name="empty_no_results_title">No results</string>
+    <string name="empty_no_results_message">Nothing matches “%1$s”. Try a place or a tag.</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search photos and tags</string>
+    <string name="search_recent_header">Recent searches</string>
+    <string name="search_tags_header">Browse by tag</string>
+
+    <plurals name="photo_count">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+</resources>

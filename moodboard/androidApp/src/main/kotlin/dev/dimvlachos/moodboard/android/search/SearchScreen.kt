@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -135,15 +137,15 @@ fun SearchScreen(
                 modifier = Modifier.consumeWindowInsets(padding).imePadding(),
                 empty = {
                     EmptyState(
-                        title = "No results",
-                        message = "Nothing matches “${query.trim()}”. Try a place or a tag.",
+                        title = stringResource(R.string.empty_no_results_title),
+                        message = stringResource(R.string.empty_no_results_message, query.trim()),
                         icon = { MoodboardIcon(R.drawable.ic_search, null) },
                     )
                 },
             ) { photo, dismiss ->
                 // The same single action as the iOS search results' context menu.
                 DropdownMenuItem(
-                    text = { Text("Share") },
+                    text = { Text(stringResource(R.string.action_share)) },
                     leadingIcon = { MoodboardIcon(R.drawable.ic_share, null) },
                     onClick = {
                         dismiss()
@@ -173,12 +175,15 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSearch
                     onSearch = { onSearch() },
                     expanded = false,
                     onExpandedChange = {},
-                    placeholder = { Text("Search photos and tags") },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
                     leadingIcon = { MoodboardIcon(R.drawable.ic_search, null) },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                MoodboardIcon(R.drawable.ic_close, "Clear search")
+                                MoodboardIcon(
+                                    R.drawable.ic_close,
+                                    stringResource(R.string.cd_clear_search),
+                                )
                             }
                         }
                     },
@@ -208,8 +213,8 @@ private fun SearchSuggestions(
     if (recent.isEmpty() && tags.isEmpty()) {
         Box(modifier.padding(contentPadding)) {
             EmptyState(
-                title = "No photos",
-                message = "Deleted photos come back the next time the app starts.",
+                title = stringResource(R.string.empty_no_photos_title),
+                message = stringResource(R.string.empty_no_photos_message),
                 icon = { MoodboardIcon(R.drawable.ic_search, null) },
             )
         }
@@ -217,7 +222,9 @@ private fun SearchSuggestions(
     }
     LazyColumn(modifier, contentPadding = contentPadding.plusBottom(ContentEndSpacing)) {
         if (recent.isNotEmpty()) {
-            item(key = "recent-header") { SectionHeader("Recent searches") }
+            item(key = "recent-header") {
+                SectionHeader(stringResource(R.string.search_recent_header))
+            }
             items(recent, key = { "recent-$it" }) { search ->
                 ListItem(
                     headlineContent = { Text(search) },
@@ -226,7 +233,7 @@ private fun SearchSuggestions(
                         IconButton(onClick = { onRemoveRecent(search) }) {
                             MoodboardIcon(
                                 R.drawable.ic_close,
-                                "Remove $search from recent searches",
+                                stringResource(R.string.cd_remove_recent_search, search),
                             )
                         }
                     },
@@ -235,12 +242,14 @@ private fun SearchSuggestions(
             }
         }
         if (tags.isNotEmpty()) {
-            item(key = "tags-header") { SectionHeader("Browse by tag") }
+            item(key = "tags-header") { SectionHeader(stringResource(R.string.search_tags_header)) }
             items(tags, key = { "tag-$it" }) { tag ->
                 val count = tagCounts[tag] ?: 0
                 ListItem(
                     headlineContent = { Text(tag) },
-                    supportingContent = { Text(if (count == 1) "1 photo" else "$count photos") },
+                    supportingContent = {
+                        Text(pluralStringResource(R.plurals.photo_count, count, count))
+                    },
                     leadingContent = { MoodboardIcon(R.drawable.ic_tag, null) },
                     modifier = Modifier.clickable { onTag(tag) },
                 )

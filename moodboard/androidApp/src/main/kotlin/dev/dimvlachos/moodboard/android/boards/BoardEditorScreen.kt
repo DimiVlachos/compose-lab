@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,10 +32,17 @@ fun BoardEditorScreen(boardId: String, onBack: () -> Unit) {
             // Edits apply as they are made, so Back is the only way out; a Done beside it did the
             // same thing.
             TopAppBar(
-                title = { Text("Edit board", Modifier.semantics { heading() }) },
+                title = {
+                    Text(
+                        stringResource(R.string.screen_edit_board),
+                        Modifier.semantics { heading() },
+                    )
+                },
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
+                    IconButton(onClick = onBack) {
+                        MoodboardIcon(R.drawable.ic_arrow_back, stringResource(R.string.cd_back))
+                    }
                 },
             )
         },

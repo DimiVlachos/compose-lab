@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -42,7 +43,7 @@ fun ColumnScope.PhotoMenuItems(
     }
     Box {
         DropdownMenuItem(
-            text = { Text("Add to board") },
+            text = { Text(stringResource(R.string.action_add_to_board)) },
             leadingIcon = { MoodboardIcon(R.drawable.ic_boards, null) },
             trailingIcon = { MoodboardIcon(R.drawable.ic_chevron_right, null) },
             onClick = { boardsOpen = true },
@@ -68,7 +69,7 @@ fun ColumnScope.PhotoMenuItems(
             }
             HorizontalDivider()
             DropdownMenuItem(
-                text = { Text("New board…") },
+                text = { Text(stringResource(R.string.action_new_board_ellipsis)) },
                 leadingIcon = { MoodboardIcon(R.drawable.ic_add, null) },
                 onClick = {
                     boardsOpen = false
@@ -80,7 +81,7 @@ fun ColumnScope.PhotoMenuItems(
     }
     HorizontalDivider()
     DropdownMenuItem(
-        text = { Text("Delete") },
+        text = { Text(stringResource(R.string.action_delete)) },
         colors =
             MenuDefaults.itemColors(
                 textColor = MaterialTheme.colorScheme.error,
@@ -102,7 +103,7 @@ private fun ShareAndFavoriteItems(
     dismiss: () -> Unit,
 ) {
     DropdownMenuItem(
-        text = { Text("Share") },
+        text = { Text(stringResource(R.string.action_share)) },
         leadingIcon = { MoodboardIcon(R.drawable.ic_share, null) },
         onClick = {
             dismiss()
@@ -110,7 +111,13 @@ private fun ShareAndFavoriteItems(
         },
     )
     DropdownMenuItem(
-        text = { Text(if (photo.isFavorite) "Unfavorite" else "Favorite") },
+        text = {
+            Text(
+                stringResource(
+                    if (photo.isFavorite) R.string.action_unfavorite else R.string.action_favorite
+                )
+            )
+        },
         leadingIcon = {
             MoodboardIcon(
                 if (photo.isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border,

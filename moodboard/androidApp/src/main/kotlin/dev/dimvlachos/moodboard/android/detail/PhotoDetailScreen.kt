@@ -19,6 +19,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
@@ -66,7 +67,9 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                 // The headline under the photo names it; the bar doesn't repeat it.
                 title = {},
                 navigationIcon = {
-                    IconButton(onClick = onBack) { MoodboardIcon(R.drawable.ic_arrow_back, "Back") }
+                    IconButton(onClick = onBack) {
+                        MoodboardIcon(R.drawable.ic_arrow_back, stringResource(R.string.cd_back))
+                    }
                 },
                 actions = {
                     // A toggle with one name: TalkBack says "Favorite, on" rather than a label that
@@ -84,15 +87,15 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                         MoodboardIcon(
                             if (photo.isFavorite) R.drawable.ic_favorite
                             else R.drawable.ic_favorite_border,
-                            "Favorite",
+                            stringResource(R.string.action_favorite),
                         )
                     }
                     IconButton(onClick = { share.launch(context, photo) }) {
-                        MoodboardIcon(R.drawable.ic_share, "Share")
+                        MoodboardIcon(R.drawable.ic_share, stringResource(R.string.action_share))
                     }
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
-                            MoodboardIcon(R.drawable.ic_more_vert, "More")
+                            MoodboardIcon(R.drawable.ic_more_vert, stringResource(R.string.cd_more))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             // Favorite and Share already sit in the bar.
@@ -139,8 +142,8 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
     }
     if (newBoard) {
         BoardNameDialog(
-            title = "New board",
-            confirmLabel = "Create",
+            title = stringResource(R.string.action_new_board),
+            confirmLabel = stringResource(R.string.action_create),
             onConfirm = {
                 viewModel.onAction(PhotoDetailAction.CreateBoard(it))
                 newBoard = false

@@ -38,6 +38,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +73,9 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
-                title = { Text("Boards", Modifier.semantics { heading() }) },
+                title = {
+                    Text(stringResource(R.string.screen_boards), Modifier.semantics { heading() })
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -79,15 +83,15 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
             ExtendedFloatingActionButton(
                 onClick = { creating = true },
                 icon = { MoodboardIcon(R.drawable.ic_add, null) },
-                text = { Text("New board") },
+                text = { Text(stringResource(R.string.action_new_board)) },
             )
         },
         bottomBar = bottomBar,
     ) { padding ->
         if (state.boards.isEmpty()) {
             EmptyState(
-                title = "No boards",
-                message = "Make a board to group photos you want together.",
+                title = stringResource(R.string.empty_no_boards_title),
+                message = stringResource(R.string.empty_no_boards_message),
                 modifier = Modifier.padding(padding),
                 icon = { MoodboardIcon(R.drawable.ic_boards, null) },
             )
@@ -116,8 +120,8 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
 
     if (creating) {
         BoardNameDialog(
-            title = "New board",
-            confirmLabel = "Create",
+            title = stringResource(R.string.action_new_board),
+            confirmLabel = stringResource(R.string.action_create),
             onConfirm = {
                 viewModel.onAction(BoardsAction.Create(it))
                 creating = false
@@ -127,8 +131,8 @@ fun BoardsScreen(onOpenBoard: (String) -> Unit, bottomBar: @Composable () -> Uni
     }
     renaming?.let { board ->
         BoardNameDialog(
-            title = "Rename board",
-            confirmLabel = "Rename",
+            title = stringResource(R.string.rename_board_title),
+            confirmLabel = stringResource(R.string.action_rename),
             initialName = board.name,
             onConfirm = {
                 viewModel.onAction(BoardsAction.Rename(board.id, it))
@@ -161,7 +165,9 @@ private fun BoardRow(
     val haptics = LocalHapticFeedback.current
     ListItem(
         headlineContent = { Text(board.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(if (board.count == 1) "1 photo" else "${board.count} photos") },
+        supportingContent = {
+            Text(pluralStringResource(R.plurals.photo_count, board.count, board.count))
+        },
         leadingContent = {
             val cover =
                 Modifier.size(64.dp)
@@ -180,7 +186,10 @@ private fun BoardRow(
         trailingContent = {
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    MoodboardIcon(R.drawable.ic_more_vert, "More options for ${board.name}")
+                    MoodboardIcon(
+                        R.drawable.ic_more_vert,
+                        stringResource(R.string.cd_more_options_for, board.name),
+                    )
                 }
                 BoardMenu(
                     expanded = menuOpen,
@@ -193,7 +202,7 @@ private fun BoardRow(
         modifier =
             Modifier.combinedClickable(
                 onClick = onOpen,
-                onLongClickLabel = "More options",
+                onLongClickLabel = stringResource(R.string.action_more_options),
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     menuOpen = true
@@ -211,7 +220,7 @@ private fun BoardMenu(
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            text = { Text("Rename") },
+            text = { Text(stringResource(R.string.action_rename)) },
             leadingIcon = { MoodboardIcon(R.drawable.ic_edit, null) },
             onClick = {
                 onDismiss()
@@ -219,7 +228,7 @@ private fun BoardMenu(
             },
         )
         DropdownMenuItem(
-            text = { Text("Delete") },
+            text = { Text(stringResource(R.string.action_delete)) },
             colors =
                 MenuDefaults.itemColors(
                     textColor = MaterialTheme.colorScheme.error,
