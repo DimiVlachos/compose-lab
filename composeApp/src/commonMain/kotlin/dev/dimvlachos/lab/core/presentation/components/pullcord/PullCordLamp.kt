@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -85,6 +86,7 @@ public fun PullCordLamp(
             }
         }
     }
+    SideEffect { state.hangAcross(across) }
     val painter = remember { LampPainter() }
     val colors = LabTheme.colors
     val density = LocalDensity.current.density
@@ -95,7 +97,7 @@ public fun PullCordLamp(
     val looks = if (state.revealing) listOf(!lit, lit) else listOf(lit)
     Box(
         modifier
-            .onSizeChanged { state.place(it.width, across, density) }
+            .onSizeChanged { state.place(it.width, density) }
             .pointerInput(state) {
                 awaitEachGesture {
                     // Seen before the screen sees it: a finger on the bead is the cord's, any other

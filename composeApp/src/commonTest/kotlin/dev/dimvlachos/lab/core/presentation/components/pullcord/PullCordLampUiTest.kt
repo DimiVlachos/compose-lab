@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -203,5 +206,24 @@ class PullCordLampUiTest {
         onNodeWithContentDescription("Lamp cord").performSemanticsAction(SemanticsActions.OnClick)
         assertTrue(lamp.state.lit)
         onNodeWithContentDescription("Lamp cord").assertIsOn()
+    }
+
+    @Test
+    fun hungFurtherAcrossTheLampMovesWithItsCord() = runComposeUiTest {
+        var across by mutableStateOf(0.5f)
+        var state: PullCordState? = null
+        setContent {
+            val lamp = rememberPullCordState()
+            state = lamp
+            PullCordLamp(lamp, Modifier.size(300.dp, 600.dp), across = across) { Box(Modifier) }
+        }
+        waitForIdle()
+        val lamp = state!!
+        val before = lamp.bead
+        across = 0.8f
+        waitForIdle()
+        val moved = 300.dp.value * 0.3f * density.density
+        assertEquals(before.x + moved, lamp.bead.x, 1f)
+        assertTrue(lamp.rig.atRest)
     }
 }

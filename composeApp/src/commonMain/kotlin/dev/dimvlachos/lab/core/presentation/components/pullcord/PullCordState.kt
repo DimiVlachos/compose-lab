@@ -120,9 +120,25 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         }
     }
 
-    /** Hangs the lamp [across] the width of a stage [width] px wide, at [density]. */
-    internal fun place(width: Int, across: Float, density: Float) {
+    // How wide the stage is, in px, and where across it the lamp hangs, as a share of its width.
+    private var width = 0
+    private var across = 0.5f
+
+    /** Lays the lamp out on a stage [width] px wide at [density]. */
+    internal fun place(width: Int, density: Float) {
+        this.width = width
         this.density = density
+        hang()
+    }
+
+    /** Hangs the lamp [across] the stage's width instead, as a share of it. */
+    internal fun hangAcross(across: Float) {
+        if (across == this.across) return
+        this.across = across
+        hang()
+    }
+
+    private fun hang() {
         rig.moveTo(Offset(width * across / density, 0f))
         frame++
     }
