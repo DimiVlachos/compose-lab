@@ -2,12 +2,14 @@
 
 package dev.dimvlachos.lab.pullcorddemo
 
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordDimens
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
@@ -37,5 +39,15 @@ class PullCordDemosTest {
         assertTrue(PullCordDemos.Tug < PullCordDimens.ClickPull)
         assertTrue(PullCordDemos.Swing > PullCordDemos.Tug)
         assertEquals(3, script.steps.size)
+    }
+
+    @Test
+    fun theFakeClicksOnlyAPullThatIsMoreDownThanAlong() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        val down = PullCordDimens.ClickPull + 10.dp
+        controller.pullCord(down, 400.milliseconds, across = down)
+        assertFalse(controller.lampLit, "a pull as far along as down only swings")
+        controller.pullCord(down, 400.milliseconds, across = down / 2)
+        assertTrue(controller.lampLit)
     }
 }

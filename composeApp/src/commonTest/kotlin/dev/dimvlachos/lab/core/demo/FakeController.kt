@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.demo
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordDimens
+import kotlin.math.abs
 import kotlin.time.Duration
 import org.jetbrains.compose.resources.StringResource
 
@@ -75,7 +76,10 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     }
 
     override suspend fun pullCord(down: Dp, duration: Duration, across: Dp) {
-        if (down >= PullCordDimens.ClickPull) lampLit = !lampLit
+        // As the lamp's own rig does: far enough down, and more down than along.
+        if (down >= PullCordDimens.ClickPull && down.value >= 2f * abs(across.value)) {
+            lampLit = !lampLit
+        }
         litAfterPulls += lampLit
         calls += now() to "pullCord($down, $duration, $across)"
     }

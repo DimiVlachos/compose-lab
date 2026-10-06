@@ -4,21 +4,31 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,6 +36,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +46,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordLamp
@@ -61,11 +76,15 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 // The lamp hangs right of the middle, clear of the title, so its cord falls between the rows'
-// names and their switches.
+// names and their switches: on the other side of the middle when they are laid out right to left.
 private const val LampAcross = 0.62f
 
 // The scripted finger holds the bead this long at the end of a pull before it lets go.
 private const val HoldMs = 120L
+
+// Room above the cards for the lamp's shade to hang in, and enough that the bead's 48 dp target,
+// at the end of its 214 dp from the ceiling, hangs clear of the rows below it.
+private val ShadeRoom = 64.dp
 
 private val KnobInset = 3.dp
 private val DividerHeight = 1.dp
@@ -92,23 +111,28 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
         }
         onDispose { state.setCordHandler(null) }
     }
-    // The screen's settings live out here, not in the screen: it is drawn in both looks at once
-    // while the light spreads, and both must agree.
-    var notifications by remember { mutableStateOf(true) }
-    var sounds by remember { mutableStateOf(false) }
-    var previews by remember { mutableStateOf(true) }
+    // The screen's settings, and where it is scrolled to, live out here, not in the screen: it is
+    // drawn in both looks at once while the light spreads, and both must agree.
+    var notifications by rememberSaveable { mutableStateOf(true) }
+    var sounds by rememberSaveable { mutableStateOf(false) }
+    var previews by rememberSaveable { mutableStateOf(true) }
+    val scroll = rememberScrollState()
     val touch = LabTheme.colors.touch
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     PullCordLamp(
         lamp,
-        Modifier.fillMaxSize().drawWithContent {
+        // Clear of the navigation bar, so its buttons stay light on the app's dark background
+        // rather than lost on the day look's paper.
+        Modifier.fillMaxSize().navigationBarsPadding().drawWithContent {
             drawContent()
             with(finger) { drawFinger(lamp, touch, ScreenPalette.Day.textPrimary) }
         },
-        across = LampAcross,
+        across = if (rtl) 1f - LampAcross else LampAcross,
     ) { lit ->
         val palette = if (lit) ScreenPalette.Night else ScreenPalette.Day
         Settings(
             palette,
+            scroll,
             darkTheme = lit,
             onDarkTheme = { lamp.toggle() },
             notifications = notifications,
@@ -124,6 +148,7 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
 @Composable
 private fun Settings(
     palette: ScreenPalette,
+    scroll: ScrollState,
     darkTheme: Boolean,
     onDarkTheme: (Boolean) -> Unit,
     notifications: Boolean,
@@ -135,42 +160,56 @@ private fun Settings(
 ) {
     val spacing = LabTheme.spacing
     val type = LabTheme.typography
-    Column(
-        Modifier.fillMaxSize()
-            .background(palette.background)
-            .padding(horizontal = spacing.mediumLarge, vertical = spacing.mediumLarge),
-        verticalArrangement = Arrangement.spacedBy(spacing.medium),
-    ) {
-        Text(
-            stringResource(Res.string.pullcord_settings),
-            style = type.title,
-            color = palette.textPrimary,
-        )
-        // Room for the lamp's shade to hang in, above the cards.
-        Spacer(Modifier.height(spacing.huge))
-        Profile(palette)
+    // It scrolls when it is taller than the screen, as in landscape or at a large font size; with
+    // room to spare, the hint sits at the bottom.
+    BoxWithConstraints(Modifier.fillMaxSize().background(palette.background)) {
         Column(
             Modifier.fillMaxWidth()
-                .clip(LabTheme.shapes.extraLarge)
-                .background(palette.surface)
-                .padding(horizontal = spacing.medium)
+                .verticalScroll(scroll)
+                .heightIn(min = maxHeight)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                .padding(horizontal = spacing.mediumLarge, vertical = spacing.mediumLarge),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            SettingRow(Res.string.pullcord_dark_theme, darkTheme, onDarkTheme, palette)
-            Divider(palette)
-            SettingRow(Res.string.pullcord_notifications, notifications, onNotifications, palette)
-            Divider(palette)
-            SettingRow(Res.string.pullcord_sounds, sounds, onSounds, palette)
-            Divider(palette)
-            SettingRow(Res.string.pullcord_previews, previews, onPreviews, palette)
+            Column(
+                Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(spacing.medium),
+            ) {
+                Text(
+                    stringResource(Res.string.pullcord_settings),
+                    style = type.title,
+                    color = palette.textPrimary,
+                )
+                Spacer(Modifier.height(ShadeRoom))
+                Profile(palette)
+                Column(
+                    Modifier.fillMaxWidth()
+                        .clip(LabTheme.shapes.extraLarge)
+                        .background(palette.surface)
+                        .padding(horizontal = spacing.medium)
+                ) {
+                    SettingRow(Res.string.pullcord_dark_theme, darkTheme, onDarkTheme, palette)
+                    Divider(palette)
+                    SettingRow(
+                        Res.string.pullcord_notifications,
+                        notifications,
+                        onNotifications,
+                        palette,
+                    )
+                    Divider(palette)
+                    SettingRow(Res.string.pullcord_sounds, sounds, onSounds, palette)
+                    Divider(palette)
+                    SettingRow(Res.string.pullcord_previews, previews, onPreviews, palette)
+                }
+            }
+            Text(
+                stringResource(Res.string.pullcord_hint),
+                style = type.label,
+                color = palette.textMuted,
+                modifier =
+                    Modifier.align(Alignment.CenterHorizontally).padding(top = spacing.large),
+            )
         }
-        Spacer(Modifier.weight(1f))
-        Text(
-            stringResource(Res.string.pullcord_hint),
-            style = type.label,
-            color = palette.textMuted,
-            // Clear of the gesture bar along the bottom of the screen.
-            modifier = Modifier.align(Alignment.CenterHorizontally).navigationBarsPadding(),
-        )
     }
 }
 
@@ -178,15 +217,21 @@ private fun Settings(
 private fun Profile(palette: ScreenPalette) {
     val spacing = LabTheme.spacing
     val name = stringResource(Res.string.profile_name)
+    // One card to a screen reader: the name and the handle, without the initials, which only
+    // say the name again.
     Row(
         Modifier.fillMaxWidth()
+            .semantics(mergeDescendants = true) {}
             .clip(LabTheme.shapes.extraLarge)
             .background(palette.surface)
             .padding(spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(AvatarSize).clip(CircleShape).background(palette.accent),
+            Modifier.size(AvatarSize)
+                .clip(CircleShape)
+                .background(palette.accent)
+                .clearAndSetSemantics {},
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -216,7 +261,7 @@ private fun SettingRow(
 ) {
     Row(
         Modifier.fillMaxWidth()
-            .height(RowHeight)
+            .heightIn(min = RowHeight)
             .toggleable(value = on, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -265,17 +310,21 @@ private class CordFinger {
     private var letGo by mutableStateOf<Offset?>(null)
 
     /**
-     * Takes [lamp]'s bead, pulls it [by] px over [durationMs] as a hand does, quick to start and
-     * easing in, holds it a moment and lets go. A script stopped mid-pull still lets go.
+     * Takes [lamp]'s bead, then shows the fingertip on it, pulls it [by] px over [durationMs] as a
+     * hand does, quick to start and easing in, holds it a moment and lets go. A bead it can't take,
+     * held by a real finger, say, it leaves alone, and shows no fingertip. A script stopped
+     * mid-pull still lets go.
      */
     suspend fun pull(lamp: PullCordState, by: Offset, durationMs: Int) {
-        val from = lamp.bead
         letGo = null
         var holding = false
         try {
-            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            // Where the bead is as it is taken, not before the fingertip faded in: it may have
+            // swung on meanwhile.
+            val from = lamp.bead
             holding = lamp.grab(from)
             if (!holding) return
+            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
             animate(0f, 1f, animationSpec = tween(durationMs, easing = FastOutSlowInEasing)) {
                 fraction,
                 _ ->
