@@ -1,37 +1,20 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidKmpLibrary)
-    alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.lab.kmp.library)
     alias(libs.plugins.skie)
 }
 
 kotlin {
-    android {
-        namespace = "dev.dimvlachos.moodboard.shared"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        compilerOptions { jvmTarget = JvmTarget.JVM_17 }
-        experimentalProperties["android.experimental.kmp.enableAndroidResources"] = true
-    }
-
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
-        target.binaries.framework {
-            baseName = "MoodboardShared"
-            isStatic = true
-        }
-    }
+    android { namespace = "dev.dimvlachos.moodboard.shared" }
+    iosFramework(baseName = "MoodboardShared")
 
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.animation)
-            implementation(compose.foundation)
-            implementation(compose.ui)
+            implementation(libs.cmp.runtime)
+            implementation(libs.cmp.animation)
+            implementation(libs.cmp.foundation)
+            implementation(libs.cmp.ui)
             implementation(libs.cmp.material3.expressive)
-            implementation(compose.components.resources)
+            implementation(libs.cmp.components.resources)
             implementation(libs.cmp.ui.tooling.preview)
             implementation(libs.kermit)
             api(libs.kotlinx.coroutines.core)

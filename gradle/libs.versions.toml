@@ -7,6 +7,9 @@ agp = "9.3.1"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "36"
+# The version both apps ship as; tagged releases match it.
+app-versionCode = "1"
+app-versionName = "0.1.0"
 composeMultiplatform = "1.11.1"
 coreKtx = "1.19.0"
 coroutines = "1.11.0"
@@ -23,8 +26,16 @@ lifecycleNavigation3 = "2.11.0"
 # Moodboard's Material 3 Expressive APIs aren't in CMP's material3 yet. Bump with composeMultiplatform.
 material3Expressive = "1.11.0-alpha07"
 kotlinxSerialization = "1.11.0"
+# compose.material3 resolved to this under composeMultiplatform 1.11.1; bump the two together.
+cmpMaterial3 = "1.9.0"
 
 [libraries]
+cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+cmp-animation = { module = "org.jetbrains.compose.animation:animation", version.ref = "composeMultiplatform" }
+cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "cmpMaterial3" }
+cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
@@ -48,6 +59,10 @@ androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", vers
 androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycleNavigation3" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
 
+# Build logic
+android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -57,3 +72,5 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+lab-kmp-library = { id = "lab.kmp.library" }
+lab-android-application = { id = "lab.android.application" }
