@@ -136,6 +136,19 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     }
 
     /**
+     * A breath of air through the room, as when a door opens: the cord is pushed sideways at
+     * [speed] dp a second at its bead, and the shade with it, and the physics plays it out from
+     * there. A held cord is the hand's, and a breath doesn't move it.
+     */
+    fun stir(speed: Float) {
+        if (finger.isSpecified) return
+        rope.push(speed, PullCordDimens.StepSeconds)
+        swing += speed * PullCordDimens.ShadeStir
+        atRest = false
+        quiet = 0
+    }
+
+    /**
      * Steps the lamp on by [seconds], in fixed steps; what is left over waits for the next call.
      */
     fun advance(seconds: Float) {

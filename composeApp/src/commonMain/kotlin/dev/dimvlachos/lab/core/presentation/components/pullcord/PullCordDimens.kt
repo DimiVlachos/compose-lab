@@ -103,4 +103,10 @@ internal object PullCordDimens {
     // would meet if the light left the whole rim.
     const val ApexInside = 0.3f
     val RimCatch = 1.5.dp
+
+    // A breath of air through the room as the screen opens: how fast it pushes the bead sideways,
+    // in dp a second, and how much of that, in radians a second for each dp a second, the shade
+    // takes.
+    const val DraughtSpeed = 140f
+    const val ShadeStir = 0.003f
 }

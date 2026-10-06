@@ -176,6 +176,17 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     }
 
     /**
+     * Sets the cord and the shade swaying, as a breath of air would when a door opens: a gentle
+     * push sideways that the cord's own physics plays out and settles. Call it as the screen opens
+     * for a lamp that is already alive when it is first seen. A held cord isn't moved.
+     */
+    public fun stir() {
+        rig.stir(PullCordDimens.DraughtSpeed)
+        awake = true
+        frame++
+    }
+
+    /**
      * Sets the lamp [lit] or not at once: no spread, no warm-up, no haptics and no onSwitch. For a
      * lamp put back as it was, or a state set from elsewhere.
      */

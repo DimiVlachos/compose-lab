@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +112,9 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
         }
         onDispose { state.setCordHandler(null) }
     }
+    // Opened, the room's air comes in with the screen, and the cord is already swaying, as a lamp
+    // does when a door opens. Not for the script, whose pulls need the bead where it hangs.
+    LaunchedEffect(lamp) { if (!state.replay && !state.recording) lamp.stir() }
     // The screen's settings, and where it is scrolled to, live out here, not in the screen: it is
     // drawn in both looks at once while the light spreads, and both must agree.
     var notifications by rememberSaveable { mutableStateOf(true) }

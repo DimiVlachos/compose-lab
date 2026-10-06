@@ -54,6 +54,35 @@ class LampRigTest {
     }
 
     @Test
+    fun aBreathOfAirSetsTheCordSwayingAndItSettles() {
+        val (rig, clicks) = rig()
+        val rest = rig.bead
+        rig.stir(PullCordDimens.DraughtSpeed)
+        assertFalse(rig.atRest)
+        var furthest = 0f
+        repeat(60) {
+            rig.advance(1f / 60f)
+            furthest = maxOf(furthest, abs(rig.bead.x - rest.x))
+        }
+        assertTrue(furthest > 4f, "it swayed only $furthest dp")
+        // A breath is no pull: it never switches the lamp, and the cord comes back to rest.
+        repeat(60 * 12) { rig.advance(1f / 60f) }
+        assertTrue(rig.atRest)
+        assertEquals(0, clicks.size)
+        assertEquals(rest.x, rig.bead.x, 0.5f)
+    }
+
+    @Test
+    fun aBreathOfAirDoesntMoveAHeldCord() {
+        val (rig, _) = rig()
+        val at = rig.bead
+        assertTrue(rig.grab(at))
+        rig.stir(PullCordDimens.DraughtSpeed)
+        repeat(20) { rig.advance(1f / 60f) }
+        assertEquals(at.x, rig.bead.x, 0.5f)
+    }
+
+    @Test
     fun aFingerAwayFromTheBeadTakesNothing() {
         val (rig, _) = rig()
         assertFalse(rig.grab(rig.bead + Offset(80f, 0f)))

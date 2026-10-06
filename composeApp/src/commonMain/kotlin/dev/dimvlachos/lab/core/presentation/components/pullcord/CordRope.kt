@@ -68,6 +68,18 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
         held = Offset.Unspecified
     }
 
+    /**
+     * Sets the cord moving sideways at [speed] dp a second at its end, less towards the top where
+     * it hangs from, as a breath of air would: steps of [dt] then carry it on.
+     */
+    fun push(speed: Float, dt: Float) {
+        val end = size - 1
+        for (i in 1 until size) {
+            lastX[i] = x[i] - speed * (i / end.toFloat()) * dt
+        }
+        still = false
+    }
+
     /** Moves every point by [by], as it is, speed and all: the lamp has been moved. */
     fun shift(by: Offset) {
         for (i in 0 until size) {
