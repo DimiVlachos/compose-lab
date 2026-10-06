@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   checks:
-    name: Static analysis, tests and debug builds
+    name: Static analysis, tests and debug build
     runs-on: macos-latest
     timeout-minutes: 45
 
