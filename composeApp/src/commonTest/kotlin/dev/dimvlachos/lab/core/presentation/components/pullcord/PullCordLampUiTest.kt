@@ -177,7 +177,8 @@ class PullCordLampUiTest {
         runOnUiThread { lamp.state.toggle() }
         mainClock.advanceTimeBy(PullCordDimens.RevealMs / 3L)
         // Under the bulb it is already night; in the far corner still day.
-        assertTrue(lightAt(150.dp, 150.dp) < 0.5f, "under the bulb")
+        // Beside the lamp, out of its light, where night reads dark and day white.
+        assertTrue(lightAt(8.dp, 150.dp) < 0.3f, "beside the lamp")
         assertTrue(lightAt(4.dp, 596.dp) > 0.9f, "the far corner")
         mainClock.advanceTimeBy(PullCordDimens.RevealMs.toLong())
         assertTrue(lightAt(4.dp, 596.dp) < 0.3f, "the far corner, after")
@@ -234,35 +235,20 @@ class PullCordLampUiTest {
     }
 
     @Test
-    fun switchedOnTheBulbFlickersTwiceThenStaysOn() = runComposeUiTest {
+    fun switchedOnTheBulbWarmsUpWithoutAFlash() = runComposeUiTest {
         mainClock.autoAdvance = false
         val lamp = lamp()
-        val start = mainClock.currentTime
         runOnUiThread { lamp.state.toggle() }
-        val samples = mutableListOf<Pair<Long, Float>>()
+        val values = mutableListOf<Float>()
         repeat(40) {
             mainClock.advanceTimeBy(10)
-            samples += (mainClock.currentTime - start) to lamp.state.brightness.value
+            values += lamp.state.brightness.value
         }
-        val values = samples.map { it.second }
-        var dips = 0
-        for (i in 1 until values.size - 1) {
-            val low = values[i] < values[i - 1] && values[i] <= values[i + 1]
-            if (low && values[i] < 0.6f && i > 2) dips++
+        // Only ever brighter, never a jump to full and back: the light comes on, with no flash.
+        for (i in 1 until values.size) {
+            assertTrue(values[i] >= values[i - 1], "brightness $values")
         }
-        assertEquals(2, dips, "brightness $samples")
-        // Each dip as deep as it is meant to be, give or take where the frames fall.
-        fun lowest(from: Int, to: Int) = samples.filter { it.first in from..to }.minOf { it.second }
-        val first = lowest(PullCordDimens.FlickerFullMs, PullCordDimens.FlickerBackMs)
-        val second = lowest(PullCordDimens.FlickerBackMs, PullCordDimens.FlickerMs)
-        assertTrue(
-            first in PullCordDimens.FirstDip - 0.01f..PullCordDimens.FirstDip + 0.2f,
-            "$first",
-        )
-        assertTrue(
-            second in PullCordDimens.SecondDip - 0.01f..PullCordDimens.SecondDip + 0.2f,
-            "$second",
-        )
+        assertTrue(values.first() < 0.5f, "it starts dim: $values")
         assertEquals(1f, values.last())
     }
 
@@ -277,22 +263,22 @@ class PullCordLampUiTest {
         val fading = lamp.state.brightness.value
         assertTrue(fading in 0.2f..0.9f, "going out, it is at $fading")
         runOnUiThread { lamp.state.toggle() }
-        // Up from there to full, not down to dark first; the dips come after.
+        // Up from there to full, not down to dark first.
         repeat(2) {
             mainClock.advanceTimeByFrame()
             val now = lamp.state.brightness.value
             assertTrue(now >= fading - 0.02f, "it dropped from $fading to $now")
         }
-        mainClock.advanceTimeBy(PullCordDimens.FlickerMs.toLong())
+        mainClock.advanceTimeBy(PullCordDimens.WarmUpMs.toLong())
         assertEquals(1f, lamp.state.brightness.value)
     }
 
     @Test
-    fun switchedOffMidFlickerTheBulbGoesOut() = runComposeUiTest {
+    fun switchedOffMidWarmUpTheBulbGoesOut() = runComposeUiTest {
         mainClock.autoAdvance = false
         val lamp = lamp()
         runOnUiThread { lamp.state.toggle() }
-        mainClock.advanceTimeBy(PullCordDimens.FirstDipMs.toLong())
+        mainClock.advanceTimeBy(PullCordDimens.WarmUpMs / 3L)
         runOnUiThread { lamp.state.toggle() }
         mainClock.advanceTimeBy(PullCordDimens.RevealMs + 100L)
         assertFalse(lamp.state.lit)
@@ -394,7 +380,8 @@ class PullCordLampUiTest {
         mainClock.advanceTimeByFrame()
         assertTrue(lamp.state.lit)
         assertFalse(lamp.state.revealing)
-        assertTrue(lightAt(150.dp, 150.dp) < 0.5f, "under the bulb")
+        // Beside the lamp, out of its light, where night reads dark and day white.
+        assertTrue(lightAt(8.dp, 150.dp) < 0.3f, "beside the lamp")
         assertTrue(lightAt(4.dp, 596.dp) < 0.3f, "the far corner")
         onNodeWithContentDescription(CordLabel).assertIsOn()
         // Only the toggle in between was a switch.
@@ -413,7 +400,8 @@ class PullCordLampUiTest {
         runOnUiThread { lamp.state.toggle() }
         mainClock.advanceTimeByFrame()
         // On again: the circle spreads on from where it had shrunk to, and nothing flashes.
-        assertTrue(lightAt(150.dp, 150.dp) < 0.5f, "under the bulb")
+        // Beside the lamp, out of its light, where night reads dark and day white.
+        assertTrue(lightAt(8.dp, 150.dp) < 0.3f, "beside the lamp")
         assertTrue(lightAt(4.dp, 596.dp) > 0.9f, "the far corner, still day")
         mainClock.advanceTimeBy(PullCordDimens.RevealMs * 2L)
         assertTrue(lamp.state.lit)

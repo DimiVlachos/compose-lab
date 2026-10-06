@@ -179,7 +179,7 @@ public fun PullCordLamp(
                     Box(Modifier.fillMaxSize().graphicsLayer()) { content(look) }
                     if (look) {
                         // The light over the lit look, inside it so it is clipped with it. Its
-                        // brightness is the layer's alpha, so a flicker only changes the layer;
+                        // brightness is the layer's alpha, so warming up only changes the layer;
                         // the cone is drawn again only as the lamp swings.
                         Spacer(
                             Modifier.fillMaxSize()

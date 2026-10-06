@@ -2,7 +2,6 @@ package dev.dimvlachos.lab.core.presentation.components.pullcord
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -69,7 +68,7 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     internal var revealFrom = Offset.Zero
         private set
 
-    /** How bright the bulb is, 0 off to 1 on: it flickers as it comes on. */
+    /** How bright the bulb is, 0 off to 1 on: it warms up smoothly as it comes on. */
     internal val brightness = Animatable(if (lit) 1f else 0f)
 
     // How bright the bulb was as it was switched off: the light it throws fades from there.
@@ -162,18 +161,11 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
         brightnessJob?.cancel()
         brightnessJob = scope.launch {
             if (lit) {
-                // On with two quick dips, as a filament catching does, from however bright it
-                // still is: switched back on as it goes out, it doesn't drop to dark first.
+                // On with a short, smooth warm-up, from however bright it still is: no flash, and
+                // switched back on as it goes out, it doesn't drop to dark first.
                 brightness.animateTo(
                     1f,
-                    keyframes {
-                        durationMillis = PullCordDimens.FlickerMs
-                        1f at PullCordDimens.FlickerFullMs
-                        PullCordDimens.FirstDip at PullCordDimens.FirstDipMs
-                        1f at PullCordDimens.FlickerBackMs
-                        PullCordDimens.SecondDip at PullCordDimens.SecondDipMs
-                        1f at PullCordDimens.FlickerMs
-                    },
+                    tween(PullCordDimens.WarmUpMs, easing = FastOutSlowInEasing),
                 )
             } else {
                 brightness.animateTo(0f, tween(PullCordDimens.OffMs))
@@ -184,7 +176,7 @@ public class PullCordState internal constructor(lit: Boolean, private val scope:
     }
 
     /**
-     * Sets the lamp [lit] or not at once: no spread, no flicker, no haptics and no onSwitch. For a
+     * Sets the lamp [lit] or not at once: no spread, no warm-up, no haptics and no onSwitch. For a
      * lamp put back as it was, or a state set from elsewhere.
      */
     public fun snapTo(lit: Boolean) {

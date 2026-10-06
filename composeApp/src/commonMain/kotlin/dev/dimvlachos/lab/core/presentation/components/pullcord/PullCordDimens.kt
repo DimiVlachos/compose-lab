@@ -71,24 +71,15 @@ internal object PullCordDimens {
     const val QuietSteps = 30
 
     // Switched on, the light spreads out over the screen from the bulb in this long; the bulb
-    // flickers twice as it comes on, and goes out in this long. The light it throws goes out with
-    // the lit look, as the other look covers it.
+    // warms up to full in this long, smoothly, and goes out in this long. The light it throws goes
+    // out with the lit look, as the other look covers it.
     const val RevealMs = 520
-    const val FlickerMs = 300
+    const val WarmUpMs = 260
     const val OffMs = 120
-
-    // The flicker: full at the first time, down to the first dip at the next, full again, down to
-    // the second dip, and full from then on, at FlickerMs.
-    const val FlickerFullMs = 40
-    const val FirstDipMs = 90
-    const val FirstDip = 0.3f
-    const val FlickerBackMs = 140
-    const val SecondDipMs = 200
-    const val SecondDip = 0.45f
 
     // The cone of light the lamp throws, either side of straight down, and how bright it is at
     // its brightest, at the bulb.
-    const val ConeHalfAngle = 0.62f
+    const val ConeHalfAngle = 0.78f
     const val ConeGlow = 0.34f
     const val HaloGlow = 0.4f
     val HaloRadius = 64.dp
@@ -96,7 +87,7 @@ internal object PullCordDimens {
     // The bulb's light all round it under the rim, out to the sides as well as down: faint, and
     // reaching about twice the rim's width.
     const val SpillGlow = 0.14f
-    val SpillRadius = 150.dp
+    val SpillRadius = 230.dp
 
     // How far up inside the shade, above the rim, the light comes from: the shade's shadow is cast
     // from there, out through the rim's ends.
