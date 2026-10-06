@@ -46,4 +46,14 @@ public data class AppColors(
     // folded from.
     val bubbleTheirs: Color = Color(0xFF262A36),
     val paper: Color = Color(0xFFF3F1EC),
+    // The pull-cord lamp: its green enamel shade, the brass of its rod, rim and bead, the cotton
+    // cord, the bulb dark and lit, and the warm light it throws. It hangs over a light screen and
+    // a dark one alike, so it reads on both.
+    val lampShade: Color = Color(0xFF2E4A3E),
+    val lampShadeSheen: Color = Color(0xFF5F8273),
+    val lampBrass: Color = Color(0xFFB8945A),
+    val lampCord: Color = Color(0xFF8E8676),
+    val bulbOff: Color = Color(0xFFD9D3C4),
+    val bulbLit: Color = Color(0xFFFFF6DC),
+    val lampLight: Color = Color(0xFFFFD592),
 )
