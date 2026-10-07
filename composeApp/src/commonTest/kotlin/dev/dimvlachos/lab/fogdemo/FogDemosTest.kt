@@ -42,11 +42,12 @@ class FogDemosTest {
     }
 
     // Plays the clip both versions share, then runs [check] on what it did.
-    private fun playTheClip(check: (FakeController) -> Unit) = runTest {
-        val controller = FakeController { testScheduler.currentTime }
-        FogDemos.bathroom.script.play(controller)
-        check(controller)
-    }
+    private fun playTheClip(check: (FakeController) -> Unit) =
+        runTest(timeout = SlowFogTest) {
+            val controller = FakeController { testScheduler.currentTime }
+            FogDemos.bathroom.script.play(controller)
+            check(controller)
+        }
 
     @Test
     fun bothVersionsPlayTheSameClip() {

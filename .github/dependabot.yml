@@ -18,6 +18,11 @@ updates:
       others:
         patterns:
           - "*"
+    ignore:
+      # Held at 1.11: under Compose Multiplatform 1.12.1, Material 3 1.9's text fields throw as
+      # their screen is disposed (Moodboard's board editor). Lift this once a fixed release is out.
+      - dependency-name: "org.jetbrains.compose*"
+        versions: ["1.12.x"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

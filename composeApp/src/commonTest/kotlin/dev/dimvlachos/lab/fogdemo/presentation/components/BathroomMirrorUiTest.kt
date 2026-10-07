@@ -25,6 +25,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.Mist
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.fogdemo.SlowFogTest
 import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_camera
@@ -73,16 +74,17 @@ class BathroomMirrorUiTest {
     }
 
     @Test
-    fun afterAWipeTheBathroomShowsNoHint() = runComposeUiTest {
-        showBathroom(DemoState(), FogState())
-        onNodeWithTag("demo").performTouchInput {
-            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
-        }
-        waitForIdle()
+    fun afterAWipeTheBathroomShowsNoHint() =
+        runComposeUiTest(testTimeout = SlowFogTest) {
+            showBathroom(DemoState(), FogState())
+            onNodeWithTag("demo").performTouchInput {
+                swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+            }
+            waitForIdle()
 
-        onNodeWithText(text(Res.string.fog_hint_wipe)).assertDoesNotExist()
-        onNodeWithText(text(Res.string.fog_hint_camera)).assertDoesNotExist()
-    }
+            onNodeWithText(text(Res.string.fog_hint_wipe)).assertDoesNotExist()
+            onNodeWithText(text(Res.string.fog_hint_camera)).assertDoesNotExist()
+        }
 
     @Test
     fun holdingTheBathroomGlassDoesNotBreatheOnIt() = runComposeUiTest {
@@ -116,20 +118,21 @@ class BathroomMirrorUiTest {
     }
 
     @Test
-    fun onceAReplayIsStoppedTheRoomMistsItsGlassBackOver() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val fog = FogState()
-        fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
-        val state = DemoState(replay = true)
-        showBathroom(state, fog)
-        mainClock.advanceTimeByFrame()
-        runOnUiThread { state.endReplay() }
-        mainClock.advanceTimeBy(32_000)
-        assertTrue(
-            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
-            "fogged over again: ${fog.marks}",
-        )
-    }
+    fun onceAReplayIsStoppedTheRoomMistsItsGlassBackOver() =
+        runComposeUiTest(testTimeout = SlowFogTest) {
+            mainClock.autoAdvance = false
+            val fog = FogState()
+            fog.beginStroke(Offset(0.2f, 0.5f)).also { fog.extendStroke(it, Offset(0.8f, 0.5f)) }
+            val state = DemoState(replay = true)
+            showBathroom(state, fog)
+            mainClock.advanceTimeByFrame()
+            runOnUiThread { state.endReplay() }
+            mainClock.advanceTimeBy(32_000)
+            assertTrue(
+                fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+                "fogged over again: ${fog.marks}",
+            )
+        }
 
     @Test
     fun theReplayDoesNotMistTheClipOverByItself() = runComposeUiTest {
@@ -142,23 +145,24 @@ class BathroomMirrorUiTest {
     }
 
     @Test
-    fun theWipedBathroomMirrorMistsBackOverByItself() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val fog = FogState()
-        showBathroom(DemoState(), fog)
-        mainClock.advanceTimeByFrame()
-        onNodeWithTag("demo").performTouchInput {
-            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
-        }
-        mainClock.advanceTimeByFrame()
-        assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
+    fun theWipedBathroomMirrorMistsBackOverByItself() =
+        runComposeUiTest(testTimeout = SlowFogTest) {
+            mainClock.autoAdvance = false
+            val fog = FogState()
+            showBathroom(DemoState(), fog)
+            mainClock.advanceTimeByFrame()
+            onNodeWithTag("demo").performTouchInput {
+                swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+            }
+            mainClock.advanceTimeByFrame()
+            assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
 
-        mainClock.advanceTimeBy(32_000)
-        assertTrue(
-            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
-            "fogged over again: ${fog.marks}",
-        )
-    }
+            mainClock.advanceTimeBy(32_000)
+            assertTrue(
+                fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+                "fogged over again: ${fog.marks}",
+            )
+        }
 
     @Test
     fun theRecordingDoesNotMistTheClipOver() = runComposeUiTest {

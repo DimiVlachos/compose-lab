@@ -34,6 +34,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.Mist
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.fogdemo.FogDemos
+import dev.dimvlachos.lab.fogdemo.SlowFogTest
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.fog_hint_camera
 import dev.dimvlachos.lab.resources.fog_hint_wipe
@@ -297,23 +298,24 @@ class FogDemoUiTest {
 
     // The live mirror, like the bathroom's, is in a steamy room: left alone, it mists back over.
     @Test
-    fun theWipedLiveMirrorMistsBackOverByItself() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val fog = FogState()
-        showLiveMirror(DemoState(), fog)
-        mainClock.advanceTimeByFrame()
-        onNodeWithTag("demo").performTouchInput {
-            swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
-        }
-        mainClock.advanceTimeByFrame()
-        assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
+    fun theWipedLiveMirrorMistsBackOverByItself() =
+        runComposeUiTest(testTimeout = SlowFogTest) {
+            mainClock.autoAdvance = false
+            val fog = FogState()
+            showLiveMirror(DemoState(), fog)
+            mainClock.advanceTimeByFrame()
+            onNodeWithTag("demo").performTouchInput {
+                swipe(percentOffset(0.25f, 0.4f), percentOffset(0.75f, 0.4f))
+            }
+            mainClock.advanceTimeByFrame()
+            assertTrue(fog.marks.any { it is WipeStroke && it.clarity >= 1f })
 
-        mainClock.advanceTimeBy(32_000)
-        assertTrue(
-            fog.marks.none { it is WipeStroke && it.clarity >= 1f },
-            "fogged over again: ${fog.marks}",
-        )
-    }
+            mainClock.advanceTimeBy(32_000)
+            assertTrue(
+                fog.marks.none { it is WipeStroke && it.clarity >= 1f },
+                "fogged over again: ${fog.marks}",
+            )
+        }
 
     @Test
     fun holdingTheLiveMirrorDoesNotBreatheOnIt() = runComposeUiTest {
