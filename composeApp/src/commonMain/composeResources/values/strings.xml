@@ -82,4 +82,21 @@
     <string name="pullcord_sounds">Sounds</string>
     <string name="pullcord_previews">Message previews</string>
     <string name="pullcord_hint">Pull the lamp’s cord to switch the light</string>
+    <string name="demo_magnet_filter">Magnet filter</string>
+    <string name="magnet_tag_sunset">Sunset</string>
+    <string name="magnet_tag_sea">Sea</string>
+    <string name="magnet_tag_boats">Boats</string>
+    <string name="magnet_tag_cliffs">Cliffs</string>
+    <string name="magnet_tag_village">Village</string>
+    <string name="magnet_filter">%1$s filter</string>
+    <string name="magnet_apply">Apply %1$s filter</string>
+    <string name="magnet_remove">Remove %1$s filter</string>
+    <string name="magnet_off">Off</string>
+    <string name="magnet_on_one">On the %1$s magnet</string>
+    <string name="magnet_on_both">Between the %1$s and %2$s magnets</string>
+    <string name="magnet_hint">Drag a magnet over the photos to filter them</string>
+    <plurals name="magnet_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
 </resources>
