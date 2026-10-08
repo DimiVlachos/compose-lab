@@ -92,6 +92,11 @@ internal object MagnetDimens {
     const val FanScale = 1.5f
     val FanGap = 12.dp
 
+    // While a magnet is out, the photos no magnet pulls are shaded this much, fading in and out
+    // over DimMs, so what the filter finds stands out.
+    const val DimShade = 0.45f
+    const val DimMs = 250
+
     // A held magnet lifts a little; its label sits under it, and its count badge above.
     const val HeldLift = 1.08f
     val LabelGap = 4.dp

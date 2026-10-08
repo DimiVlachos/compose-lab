@@ -96,7 +96,14 @@ internal class MagnetPainter {
                 if (body.layer() != layer) continue
                 // Drawn by the grid instead, over its scrim.
                 if (fanning && shown in body.stuckTo) continue
-                drawCard(thumbs[i], body.at * density, body.tilt, 1f, colors)
+                // Shaded while a magnet is out that doesn't pull it, so the matches stand out.
+                val shade =
+                    if (layer == 0 && state.dim > 0f && !body.feelsAny(state.magnets)) {
+                        MagnetDimens.DimShade * state.dim
+                    } else {
+                        0f
+                    }
+                drawCard(thumbs[i], body.at * density, body.tilt, 1f, colors, shade)
             }
         }
     }
@@ -190,6 +197,7 @@ internal class MagnetPainter {
         tilt: Float,
         scale: Float,
         colors: AppColors,
+        shade: Float = 0f,
     ) {
         val w = MagnetDimens.CardWidth.toPx() * scale
         val h = MagnetDimens.CardHeight.toPx() * scale
@@ -213,6 +221,15 @@ internal class MagnetPainter {
                         IntSize((w - border * 2f).roundToInt(), (h - border * 2f).roundToInt()),
                     filterQuality = FilterQuality.Medium,
                 )
+                if (shade > 0f) {
+                    drawRoundRect(
+                        colors.fanScrim,
+                        Offset(-w / 2f, -h / 2f),
+                        Size(w, h),
+                        corner,
+                        alpha = shade,
+                    )
+                }
                 // The clip across the top edge, with a line of light along it.
                 val clipW = MagnetDimens.ClipWidth.toPx() * scale
                 val clipH = MagnetDimens.ClipHeight.toPx() * scale

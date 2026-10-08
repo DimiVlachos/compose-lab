@@ -121,6 +121,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     private var calmTime = MagnetDimens.CalmSeconds
 
+    /** How far the photos no magnet pulls are shaded, 0 with every magnet away to 1. */
+    internal var dim = 0f
+        private set
+
     /** How far the grid has fanned out, 0 folded to 1 out. */
     internal var fan = 0f
         private set
@@ -302,6 +306,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             if (bodies.step(MagnetDimens.StepSeconds, pulling)) changed = true
             stepFan(MagnetDimens.StepSeconds)
             stepCalm(MagnetDimens.StepSeconds)
+            stepDim(MagnetDimens.StepSeconds)
             sinceTick++
         }
         if (changed) updateResults()
@@ -466,6 +471,12 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         fieldVersion++
     }
 
+    private fun stepDim(dt: Float) {
+        val target = if (magnets.any { it.out }) 1f else 0f
+        val step = dt * 1_000f / MagnetDimens.DimMs
+        dim = if (dim < target) min(target, dim + step) else max(target, dim - step)
+    }
+
     private fun stepFan(dt: Float) {
         val target = if (fannedOut != null) 1f else 0f
         val step = dt * 1_000f / MagnetDimens.FanMs
@@ -479,6 +490,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             magnets.all { it.out || it.at == it.slot } &&
             bodies.atRest &&
             (calm == 1f || magnets.any { it.out }) &&
+            dim == (if (magnets.any { it.out }) 1f else 0f) &&
             fan == (if (fannedOut != null) 1f else 0f)
 
     // Results are made again only when a card sticks or comes off, or a magnet goes out or back,

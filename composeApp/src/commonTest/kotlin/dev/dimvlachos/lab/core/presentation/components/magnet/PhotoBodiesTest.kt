@@ -181,6 +181,38 @@ class PhotoBodiesTest {
     }
 
     @Test
+    fun aClusterSlidesOverPhotosItDoesNotPullAndLeavesThemWhereTheyLay() {
+        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
+        val other = PhotoBody("other", mapOf("b" to 1f), Offset.Zero)
+        val m = magnet("a", Offset(300f, 500f))
+        val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
+        table.run(1f, listOf(m))
+        assertEquals(setOf("a"), match.stuckTo)
+        // Carried right over the other photo and on past it.
+        repeat(240) {
+            m.at = Offset(300f + it * 2f, 500f)
+            table.step(step, listOf(m))
+            assertEquals(Offset(520f, 500f), other.at, "the other photo was pushed at step $it")
+        }
+        assertEquals(setOf("a"), match.stuckTo)
+    }
+
+    @Test
+    fun aPhotoFeelsOnlyMagnetsItMatchesAndHasNotRefused() {
+        val photo = PhotoBody("p", mapOf("a" to 0.3f), Offset.Zero)
+        val a = magnet("a", Offset.Zero)
+        val b = magnet("b", Offset.Zero)
+        assertTrue(photo.feelsAny(listOf(a, b)))
+        assertFalse(photo.feelsAny(listOf(b)))
+        photo.refused += "a"
+        assertFalse(photo.feelsAny(listOf(a, b)))
+        // A magnet in the strip pulls nothing.
+        photo.refused.clear()
+        a.onTable = false
+        assertFalse(photo.feelsAny(listOf(a)))
+    }
+
+    @Test
     fun cardsAreKeptOnTheTable() {
         val photo = PhotoBody("p", emptyMap(), Offset.Zero)
         val table = bodies(photo to Offset(500f, 500f))

@@ -46,6 +46,15 @@ internal class PhotoBody(
     fun strength(tag: String): Float = (strengths[tag] ?: 0f).coerceIn(0f, 1f)
 
     fun matches(tag: String): Boolean = strength(tag) >= MagnetDimens.StickThreshold
+
+    /** Whether [magnet] pulls it at all: it matches the tag, and hasn't been pulled off it. */
+    fun feels(magnet: Magnet): Boolean = magnet.tag !in refused && strength(magnet.tag) > 0f
+
+    /** Whether any of [magnets] out of the strip pulls it. */
+    fun feelsAny(magnets: List<Magnet>): Boolean {
+        for (magnet in magnets) if (magnet.out && feels(magnet)) return true
+        return false
+    }
 }
 
 /** Which layer a card is drawn and touched in: loose at the bottom, then stuck, then held. */
@@ -138,7 +147,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
         for (body in bodies) if (stick(body, magnets)) changed = true
         repeat(MagnetDimens.SeparationPasses) {
-            separate()
+            separate(magnets)
             keepOffMagnets(magnets)
         }
         keepOnTable()
@@ -337,13 +346,17 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     }
 
     // Pushes overlapping cards apart, each half the overlap, or a card a finger holds not at all.
-    private fun separate() {
+    // A cluster slides over a loose card that no magnet out pulls, as a magnet glides over the
+    // prints on a table, rather than pushing it along.
+    private fun separate(magnets: List<Magnet>) {
         val span = MagnetDimens.CardSpan.value
         for (i in bodies.indices) {
             for (j in i + 1 until bodies.size) {
                 val p = bodies[i]
                 val q = bodies[j]
                 if (p.held && q.held) continue
+                if (p.stuckTo.isNotEmpty() && q.stuckTo.isEmpty() && !q.feelsAny(magnets)) continue
+                if (q.stuckTo.isNotEmpty() && p.stuckTo.isEmpty() && !p.feelsAny(magnets)) continue
                 val apart = q.at - p.at
                 val distance = apart.getDistance()
                 if (distance >= span) continue
@@ -361,12 +374,14 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
     }
 
-    // A card keeps out of a magnet's ring unless it is stuck to it, and then out of its middle.
+    // A card a magnet pulls keeps out of its ring unless it is stuck to it, and then out of its
+    // middle; a magnet slides over a card it doesn't pull.
     private fun keepOffMagnets(magnets: List<Magnet>) {
         for (i in bodies.indices) {
             val body = bodies[i]
             if (body.held) continue
             for (magnet in magnets) {
+                if (magnet.tag !in body.stuckTo && !body.feels(magnet)) continue
                 val inner =
                     if (magnet.tag in body.stuckTo) MagnetDimens.ClusterInner.value
                     else MagnetDimens.ContactRing.value

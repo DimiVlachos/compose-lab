@@ -205,6 +205,18 @@ class MagnetStateTest {
     }
 
     @Test
+    fun whileAMagnetIsOutWhatItDoesNotPullDims() {
+        val table = table()
+        assertEquals(0f, table.dim)
+        table.apply("a")
+        table.run(0.5f)
+        assertEquals(1f, table.dim)
+        table.remove("a")
+        table.run(0.5f)
+        assertEquals(0f, table.dim)
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")
