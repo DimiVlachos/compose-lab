@@ -30,6 +30,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // The bead's switch, as a screen reader reads it.
 private const val CordLabel = "Lamp cord"
@@ -145,5 +148,30 @@ class PullCordDemoUiTest {
         recreation.saveAndRestore()
         onNodeWithText("Sounds").assertIsOn()
         onNodeWithContentDescription(CordLabel).assertIsOn()
+    }
+
+    @Test
+    fun aPullStartedAsTheLastOnesFingertipFadesStillPulls() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        var lamp: PullCordState? = null
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    val lampState = rememberPullCordState()
+                    lamp = lampState
+                    PullCordDemo(state, lampState)
+                }
+                LaunchedEffect(Unit) {
+                    launch { state.pullCord(PullCordDemos.Pull, 500.milliseconds) }
+                    // The first finger has let go and is fading out as the second comes down.
+                    delay(820)
+                    launch { state.pullCord(PullCordDemos.Pull, 500.milliseconds) }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(4_000)
+        // On with the first pull and off again with the second.
+        assertFalse(lamp!!.lit, "the second pull was lost")
     }
 }
