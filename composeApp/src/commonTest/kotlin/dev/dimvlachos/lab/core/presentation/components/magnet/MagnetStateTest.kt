@@ -217,6 +217,45 @@ class MagnetStateTest {
     }
 
     @Test
+    fun aMagnetPutAwayWhileFannedOutFoldsItsPhotosBackRatherThanDroppingThem() {
+        val table = table()
+        table.apply("a")
+        table.run(2f)
+        table.fanOut("a")
+        table.run(0.5f)
+        val inGrid = table.photoCentre(0)
+        table.remove("a")
+        table.run(0.1f)
+        // Still folding: the photo it held is on its way from the grid, not gone from it.
+        assertEquals("a", table.fanShown)
+        assertTrue(table.fan in 0.01f..0.99f, "fan ${table.fan}")
+        val folding = table.photoCentre(0)
+        val home = table.bodies.bodies[0].at
+        assertTrue((folding - home).getDistance() > 1f && (folding - inGrid).getDistance() > 1f)
+        table.run(1f)
+        assertNull(table.fanShown)
+        assertEquals(table.bodies.bodies[0].at, table.photoCentre(0))
+    }
+
+    @Test
+    fun anotherMagnetTappedWhileAGridFoldsFansOutOnceItHasFolded() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.fanOut(null)
+        table.run(0.1f)
+        table.fanOut("b")
+        assertEquals("a", table.fanShown, "the folding grid keeps its photos")
+        table.run(1f)
+        assertEquals("b", table.fannedOut)
+        assertEquals("b", table.fanShown)
+        assertEquals(1f, table.fan)
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")

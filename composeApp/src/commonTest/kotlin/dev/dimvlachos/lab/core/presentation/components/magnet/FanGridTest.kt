@@ -29,4 +29,25 @@ class FanGridTest {
             }
         }
     }
+
+    @Test
+    fun theGridLeavesRoomForItsHeaderAndATitleUnderEachCard() {
+        for ((width, height) in listOf(300f to 508f, 400f to 700f, 700f to 300f)) {
+            for (count in 1..12) {
+                val grid = FanGrid(count, width, height, 76f, 56f, 12f, caption = 20f, header = 40f)
+                val h = 56f * grid.scale
+                for (k in 0 until count) {
+                    val c = grid.cell(k)
+                    assertTrue(c.y - h / 2f >= 40f, "$count on $height: card $k under the header")
+                    assertTrue(c.y + h / 2f + 20f <= height, "$count on $height: title $k off")
+                }
+                for (k in 0 until count - 1) {
+                    val a = grid.cell(k)
+                    val b = grid.cell(k + 1)
+                    if (b.y > a.y)
+                        assertTrue(b.y - a.y >= h + 20f, "$count: title $k under the next row")
+                }
+            }
+        }
+    }
 }

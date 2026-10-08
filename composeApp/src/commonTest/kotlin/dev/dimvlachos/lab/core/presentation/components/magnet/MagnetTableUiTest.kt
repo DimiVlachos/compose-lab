@@ -255,4 +255,17 @@ class MagnetTableUiTest {
         // A tag without a colour of its own wears the theme's red.
         assertEquals(AppColors().magnetRed, faceOf("b"))
     }
+
+    @Test
+    fun aFannedOutPhotoIsFoundOnItsCardInTheGrid() = runComposeUiTest {
+        val table = table()
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        runOnUiThread { table.state.fanOut("a") }
+        mainClock.advanceTimeBy(1_000)
+        val bounds = onNodeWithContentDescription("Strong").fetchSemanticsNode().boundsInRoot
+        val card = table.state.photoCentre(0) * density.density
+        assertEquals(card.x, bounds.center.x, 2f)
+        assertEquals(card.y, bounds.center.y, 2f)
+    }
 }

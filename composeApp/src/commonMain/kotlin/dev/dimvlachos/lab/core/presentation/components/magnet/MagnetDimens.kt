@@ -92,6 +92,11 @@ internal object MagnetDimens {
     const val FanScale = 1.5f
     val FanGap = 12.dp
 
+    // Room over the grid for its header, and under each card for its title, just below it.
+    val FanHeader = 48.dp
+    val FanCaption = 22.dp
+    val FanCaptionGap = 4.dp
+
     // While a magnet is out, the photos no magnet pulls are shaded this much, fading in and out
     // over DimMs, so what the filter finds stands out.
     const val DimShade = 0.45f

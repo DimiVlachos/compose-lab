@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -119,6 +120,21 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         remember(counts, measurer, badgeStyle) {
             counts.map { count -> count?.let { measurer.measure(it, badgeStyle) } }
         }
+    val titleStyle = LabTheme.typography.label.copy(color = colors.textPrimary)
+    val titles =
+        remember(state.photos, measurer, titleStyle) {
+            state.photos.map { measurer.measure(it.title, titleStyle) }
+        }
+    // Over the fanned-out grid: the magnet's name and its count, "Sunset · 3 photos". It stays
+    // drawn as the grid folds after its magnet has been let go.
+    val fanned = state.tags.indexOfFirst { it.id == state.fannedOut }
+    val header =
+        remember(fanned, counts, measurer, badgeStyle) {
+            if (fanned < 0) null
+            else measurer.measure("${state.tags[fanned].label} · ${counts[fanned]}", badgeStyle)
+        }
+    val lastHeader = remember(state) { HeaderHolder() }
+    if (header != null) lastHeader.value = header
     val photos = state.photos.map { imageResource(it.image) }
     val thumbs =
         remember(photos, density) {
@@ -157,7 +173,7 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                 with(painter) {
                     drawCards(state, thumbs, colors)
                     drawMagnets(state, labels, badges, colors)
-                    drawFan(state, thumbs, colors)
+                    drawFan(state, thumbs, titles, lastHeader.value, colors)
                 }
             }
         )
@@ -195,6 +211,10 @@ private fun Announcer(state: MagnetState, counts: List<String?>) {
             if (text.isNotEmpty()) contentDescription = text
         }
     )
+}
+
+private class HeaderHolder {
+    var value: TextLayoutResult? = null
 }
 
 private class LastAnnounced(var counts: List<String?>) {

@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.max
@@ -135,6 +136,13 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     internal var dim = 0f
         private set
 
+    // The photos the grid shows, by index, taken as it fans out: as it folds back, even after their
+    // magnet has gone, they fold from the grid to where they are rather than vanish.
+    private var fanPhotos = IntArray(0)
+
+    // A magnet asked to fan out while another's grid folds: it fans out once that has folded.
+    private var nextFan: String? = null
+
     /** How far the grid has fanned out, 0 folded to 1 out. */
     internal var fan = 0f
         private set
@@ -213,9 +221,61 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
      */
     public fun fanOut(tag: String?) {
         if (tag != null && results[tag].isNullOrEmpty()) return
-        fannedOut = tag
-        if (tag != null) fanShown = tag
         awake = true
+        val shown = fanShown
+        if (tag != null && shown != null && shown != tag && fan > 0f) {
+            // Another magnet's grid is out or folding: it folds first, then this one fans out.
+            nextFan = tag
+            fannedOut = null
+            return
+        }
+        nextFan = null
+        fannedOut = tag
+        if (tag != null) {
+            fanShown = tag
+            takeFanPhotos(tag)
+        }
+    }
+
+    private fun takeFanPhotos(tag: String) {
+        val bodies = bodies.bodies
+        fanPhotos = IntArray(bodies.count { tag in it.stuckTo })
+        var k = 0
+        for (i in bodies.indices) if (tag in bodies[i].stuckTo) fanPhotos[k++] = i
+    }
+
+    /** Whether the [index]th photo is one the grid shows, out or folding. */
+    internal fun inFan(index: Int): Boolean = fanShown != null && index in fanPhotos
+
+    /** How much the grid's cards grow, in the grid's own layout. */
+    internal fun fanScale(): Float = fanGrid()?.scale ?: 1f
+
+    private fun fanGrid(): FanGrid? {
+        if (fanPhotos.isEmpty() || width <= 0f) return null
+        return FanGrid(
+            fanPhotos.size,
+            width,
+            tableHeight,
+            MagnetDimens.CardWidth.value,
+            MagnetDimens.CardHeight.value,
+            MagnetDimens.FanGap.value,
+            caption = MagnetDimens.FanCaption.value,
+            header = MagnetDimens.FanHeader.value,
+        )
+    }
+
+    /**
+     * Where the [index]th photo is drawn, in dp: on the table, or, fanned out, on its way to or in
+     * its cell in the grid. Read in layout or drawing.
+     */
+    internal fun photoCentre(index: Int): Offset {
+        frame
+        val at = bodies.bodies[index].at
+        if (fanShown == null || fan <= 0f) return at
+        val k = fanPhotos.indexOf(index)
+        if (k < 0) return at
+        val grid = fanGrid() ?: return at
+        return lerp(at, grid.cell(k), smooth(fan))
     }
 
     /**
@@ -364,8 +424,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     /** The top left of the [index]th photo's card, in px, for its semantics node. */
     internal fun photoTopLeft(index: Int): IntOffset {
-        frame
-        val at = bodies.bodies[index].at
+        val at = photoCentre(index)
         return IntOffset(
             ((at.x - MagnetDimens.CardWidth.value / 2f) * density).roundToInt(),
             ((at.y - MagnetDimens.CardHeight.value / 2f) * density).roundToInt(),
@@ -445,6 +504,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         magnet.onTable = false
         bodies.releaseAll(magnet.tag)
         if (fannedOut == magnet.tag || fanShown == magnet.tag) fannedOut = null
+        if (nextFan == magnet.tag) nextFan = null
         fieldVersion++
     }
 
@@ -491,7 +551,13 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         val target = if (fannedOut != null) 1f else 0f
         val step = dt * 1_000f / MagnetDimens.FanMs
         fan = if (fan < target) min(target, fan + step) else max(target, fan - step)
-        if (fan == 0f && fannedOut == null) fanShown = null
+        if (fan == 0f && fannedOut == null) {
+            fanShown = null
+            fanPhotos = IntArray(0)
+            val next = nextFan
+            nextFan = null
+            if (next != null) fanOut(next)
+        }
     }
 
     private fun atRest(): Boolean =
@@ -501,7 +567,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             bodies.atRest &&
             (calm == 1f || magnets.any { it.out }) &&
             dim == (if (magnets.any { it.out }) 1f else 0f) &&
-            fan == (if (fannedOut != null) 1f else 0f)
+            fan == (if (fannedOut != null) 1f else 0f) &&
+            nextFan == null
 
     // Results are made again only when a card sticks or comes off, or a magnet goes out or back,
     // and set only if they differ: moving cards never change them.
@@ -516,6 +583,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         if (next != results) results = next
         val shown = fannedOut
         if (shown != null && results[shown].isNullOrEmpty()) fannedOut = null
+        val waiting = nextFan
+        if (waiting != null && results[waiting].isNullOrEmpty()) nextFan = null
     }
 
     private companion object {

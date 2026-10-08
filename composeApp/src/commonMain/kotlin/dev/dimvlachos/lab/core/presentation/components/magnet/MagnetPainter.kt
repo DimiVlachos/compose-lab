@@ -27,8 +27,9 @@ import kotlin.math.roundToInt
 
 /**
  * Where a magnet's [count] photos go when they fan out: a grid of up to three columns, centred on a
- * [width] × [height] table, its last row centred too. The cards grow to at most FanScale times
- * their size, less if that wouldn't fit, and keep [gap] apart and from the edges.
+ * [width] × [height] table under a [header], its last row centred too, with room for a [caption]
+ * under each card. The cards grow to at most FanScale times their size, less if that wouldn't fit,
+ * and keep [gap] apart and from the edges.
  */
 internal class FanGrid(
     private val count: Int,
@@ -37,6 +38,8 @@ internal class FanGrid(
     private val cardWidth: Float,
     private val cardHeight: Float,
     private val gap: Float,
+    private val caption: Float = 0f,
+    private val header: Float = 0f,
 ) {
     private val columns = count.coerceIn(1, MagnetDimens.FanColumns)
     private val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
@@ -46,7 +49,7 @@ internal class FanGrid(
                 MagnetDimens.FanScale,
                 min(
                     (width - gap * (columns + 1)) / (columns * cardWidth),
-                    (height - gap * (rows + 1)) / (rows * cardHeight),
+                    (height - header - gap * (rows + 1) - rows * caption) / (rows * cardHeight),
                 ),
             )
             .coerceAtLeast(0.1f)
@@ -59,10 +62,12 @@ internal class FanGrid(
         val column = index % columns
         val inRow = if (row == rows - 1) count - row * columns else columns
         val rowWidth = inRow * w + (inRow - 1) * gap
-        val gridHeight = rows * h + (rows - 1) * gap
+        val rowHeight = h + caption
+        val gridHeight = rows * rowHeight + (rows - 1) * gap
+        val top = header + (height - header - gridHeight) / 2f
         return Offset(
             (width - rowWidth) / 2f + w / 2f + column * (w + gap),
-            (height - gridHeight) / 2f + h / 2f + row * (h + gap),
+            top + h / 2f + row * (rowHeight + gap),
         )
     }
 }
@@ -89,15 +94,14 @@ internal class MagnetPainter {
     /** The cards: loose ones first, then the stuck, then a held one, each layer over the last. */
     fun DrawScope.drawCards(state: MagnetState, thumbs: List<ImageBitmap>, colors: AppColors) {
         state.frame
-        val shown = state.fanShown
-        val fanning = shown != null && state.fan > 0f
+        val fanning = state.fanShown != null && state.fan > 0f
         val bodies = state.bodies.bodies
         for (layer in 0..2) {
             for (i in bodies.indices) {
                 val body = bodies[i]
                 if (body.layer() != layer) continue
                 // Drawn by the grid instead, over its scrim.
-                if (fanning && shown in body.stuckTo) continue
+                if (fanning && state.inFan(i)) continue
                 // Shaded while a magnet is out that doesn't pull it, so the matches stand out.
                 val shade =
                     if (layer == 0 && state.dim > 0f && !body.feelsAny(state.magnets)) {
@@ -174,31 +178,51 @@ internal class MagnetPainter {
     }
 
     /** A magnet's photos, fanned out of its cluster into a grid over a scrim, or folding back. */
-    fun DrawScope.drawFan(state: MagnetState, thumbs: List<ImageBitmap>, colors: AppColors) {
+    fun DrawScope.drawFan(
+        state: MagnetState,
+        thumbs: List<ImageBitmap>,
+        titles: List<TextLayoutResult>,
+        header: TextLayoutResult?,
+        colors: AppColors,
+    ) {
         state.frame
         val tag = state.fanShown ?: return
         val t = smooth(state.fan)
         if (t <= 0f) return
         val tableBottom = state.tableHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.7f * t)
-        val bodies = state.bodies.bodies
-        val count = bodies.count { tag in it.stuckTo }
-        if (count == 0) return
-        val grid =
-            FanGrid(
-                count,
-                size.width,
-                tableBottom,
-                MagnetDimens.CardWidth.toPx(),
-                MagnetDimens.CardHeight.toPx(),
-                MagnetDimens.FanGap.toPx(),
+        val scale = lerp(1f, state.fanScale(), t)
+        val captionGap = MagnetDimens.FanCaptionGap.toPx()
+        for (i in state.bodies.bodies.indices) {
+            if (!state.inFan(i)) continue
+            val body = state.bodies.bodies[i]
+            val centre = state.photoCentre(i) * density
+            drawCard(thumbs[i], centre, lerp(body.tilt, 0f, t), scale, colors)
+            // Its title under it, coming in with the grid.
+            val title = titles[i]
+            val below = centre.y + MagnetDimens.CardHeight.toPx() * scale / 2f + captionGap
+            drawText(title, topLeft = Offset(centre.x - title.size.width / 2f, below), alpha = t)
+        }
+        // Over the grid, whose photos these are and how many: the magnet's badge is under it.
+        if (header != null) {
+            val face =
+                state.tags.firstOrNull { it.id == tag }?.color?.takeOrElse { colors.magnetRed }
+                    ?: colors.magnetRed
+            val padX = MagnetDimens.BadgePadX.toPx()
+            val padY = MagnetDimens.BadgePadY.toPx()
+            val w = header.size.width + padX * 2f
+            val h = header.size.height + padY * 2f
+            val top = Offset((size.width - w) / 2f, (MagnetDimens.FanHeader.toPx() - h) / 2f)
+            drawRoundRect(colors.badge, top, Size(w, h), CornerRadius(h / 2f), alpha = t)
+            drawRoundRect(
+                face,
+                top,
+                Size(w, h),
+                CornerRadius(h / 2f),
+                alpha = t,
+                style = Stroke(MagnetDimens.BadgeRing.toPx()),
             )
-        var k = 0
-        for (i in bodies.indices) {
-            val body = bodies[i]
-            if (tag !in body.stuckTo) continue
-            val centre = lerp(body.at * density, grid.cell(k++), t)
-            drawCard(thumbs[i], centre, lerp(body.tilt, 0f, t), lerp(1f, grid.scale, t), colors)
+            drawText(header, topLeft = top + Offset(padX, padY), alpha = t)
         }
     }
 
@@ -284,7 +308,7 @@ internal fun thumbnail(source: ImageBitmap, width: Int, height: Int): ImageBitma
 }
 
 // Eased in and out, so the grid starts and lands softly.
-private fun smooth(t: Float): Float = t * t * (3f - 2f * t)
+internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
 
 // The share of a magnet that is its red face, inside the steel rim.
 private const val FaceShare = 0.78f
