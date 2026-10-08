@@ -75,4 +75,12 @@ public data class AppColors(
     val badge: Color = Color(0xFFF4F1EA),
     val onBadge: Color = Color(0xFF1B1D21),
     val fanScrim: Color = Color(0xFF0E1013),
+    // The magnet filter demo's tags, one colour each for its magnets and count badges: a warm
+    // dusk for Sunset, the Aegean for Sea, a harbour teal for Boats, warm stone for Cliffs and
+    // bougainvillea for Village. Deep enough that the white glint and the steel rim read on them.
+    val tagSunset: Color = Color(0xFFE0712C),
+    val tagSea: Color = Color(0xFF2B7BC4),
+    val tagBoats: Color = Color(0xFF23998A),
+    val tagCliffs: Color = Color(0xFFA27A5C),
+    val tagVillage: Color = Color(0xFFC4426E),
 )

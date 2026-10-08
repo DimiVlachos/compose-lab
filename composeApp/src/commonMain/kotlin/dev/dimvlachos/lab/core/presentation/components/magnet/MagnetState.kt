@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.max
 import kotlin.math.min
@@ -29,8 +30,17 @@ public data class MagnetPhoto(
     val strengths: Map<String, Float>,
 )
 
-/** A tag with a magnet of its own, waiting in the strip: its [id] and the [label] it shows. */
-@Immutable public data class MagnetTag(val id: String, val label: String)
+/**
+ * A tag with a magnet of its own, waiting in the strip: its [id], the [label] it shows, and the
+ * [color] its magnet's face and count badge wear, so two magnets out tell apart at a glance. A tag
+ * without a colour of its own wears the theme's magnet red.
+ */
+@Immutable
+public data class MagnetTag(
+    val id: String,
+    val label: String,
+    val color: Color = Color.Unspecified,
+)
 
 /**
  * A steel table of photos and a strip of tag magnets. A finger takes a magnet with [place], moves

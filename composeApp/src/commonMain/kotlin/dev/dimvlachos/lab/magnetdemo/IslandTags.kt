@@ -6,6 +6,7 @@ import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetPhoto
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetState
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetTag
 import dev.dimvlachos.lab.core.presentation.components.magnet.rememberMagnetState
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.magnet_tag_boats
 import dev.dimvlachos.lab.resources.magnet_tag_cliffs
@@ -152,6 +153,15 @@ internal object IslandTags {
 internal fun rememberIslandMagnetState(): MagnetState {
     val titles = IslandTags.photos.map { stringResource(it.title) }
     val labels = IslandTags.tags.map { stringResource(it.label) }
+    val colors = LabTheme.colors
+    val tints =
+        mapOf(
+            IslandTags.Sunset to colors.tagSunset,
+            IslandTags.Sea to colors.tagSea,
+            IslandTags.Boats to colors.tagBoats,
+            IslandTags.Cliffs to colors.tagCliffs,
+            IslandTags.Village to colors.tagVillage,
+        )
     val photos =
         remember(titles) {
             IslandTags.photos.mapIndexed { i, p ->
@@ -159,6 +169,8 @@ internal fun rememberIslandMagnetState(): MagnetState {
             }
         }
     val tags =
-        remember(labels) { IslandTags.tags.mapIndexed { i, t -> MagnetTag(t.id, labels[i]) } }
+        remember(labels, tints) {
+            IslandTags.tags.mapIndexed { i, t -> MagnetTag(t.id, labels[i], tints.getValue(t.id)) }
+        }
     return rememberMagnetState(photos, tags)
 }

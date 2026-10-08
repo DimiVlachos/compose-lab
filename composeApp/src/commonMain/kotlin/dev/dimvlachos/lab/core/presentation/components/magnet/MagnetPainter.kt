@@ -10,8 +10,10 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.IntOffset
@@ -123,8 +125,9 @@ internal class MagnetPainter {
             val r = if (magnet.held) radius * MagnetDimens.HeldLift else radius
             val drop = (if (magnet.held) 6.dp else 3.dp).toPx()
             drawCircle(colors.cardShadow, r, centre + Offset(drop / 2f, drop))
+            val face = state.tags[i].color.takeOrElse { colors.magnetRed }
             drawCircle(colors.magnetSteel, r, centre)
-            drawCircle(colors.magnetRed, r * FaceShare, centre)
+            drawCircle(face, r * FaceShare, centre)
             drawCircle(
                 colors.magnetSheen,
                 r * 0.3f,
@@ -158,6 +161,14 @@ internal class MagnetPainter {
             val topLeft =
                 Offset(centre.x - w / 2f, max(0f, centre.y - r - MagnetDimens.BadgeGap.toPx() - h))
             drawRoundRect(colors.badge, topLeft, Size(w, h), CornerRadius(h / 2f))
+            // Ringed in its magnet's colour, so the count reads as that magnet's.
+            drawRoundRect(
+                face,
+                topLeft,
+                Size(w, h),
+                CornerRadius(h / 2f),
+                style = Stroke(MagnetDimens.BadgeRing.toPx()),
+            )
             drawText(badge, topLeft = topLeft + Offset(padX, padY))
         }
     }

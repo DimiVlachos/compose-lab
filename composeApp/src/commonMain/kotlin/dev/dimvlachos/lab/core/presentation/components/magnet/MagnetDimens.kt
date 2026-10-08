@@ -103,4 +103,5 @@ internal object MagnetDimens {
     val BadgeGap = 6.dp
     val BadgePadX = 8.dp
     val BadgePadY = 3.dp
+    val BadgeRing = 2.dp
 }

@@ -5,6 +5,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -22,6 +25,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -227,5 +231,28 @@ class MagnetTableUiTest {
         var handled = true
         runOnUiThread { handled = click.action!!.invoke() }
         assertTrue(!handled, "a third magnet is refused, and the click must say so")
+    }
+
+    @Test
+    fun eachMagnetWearsItsTagsColour() = runComposeUiTest {
+        var state: MagnetState? = null
+        val tags = listOf(MagnetTag("a", "Alpha", Color.Blue), MagnetTag("b", "Beta"))
+        setContent {
+            LabTheme {
+                val table = rememberMagnetState(TestPhotos, tags)
+                state = table
+                MagnetTable(table, Modifier.size(360.dp, 720.dp).testTag("table"))
+            }
+        }
+        waitForIdle()
+        val pixels = onNodeWithTag("table").captureToImage().toPixelMap()
+        // Just right of the middle of each face, clear of its glint.
+        fun faceOf(tag: String): Color {
+            val at = state!!.magnetPosition(tag)!! + Offset(8.dp.value * density.density, 0f)
+            return pixels[at.x.toInt(), at.y.toInt()]
+        }
+        assertEquals(Color.Blue, faceOf("a"))
+        // A tag without a colour of its own wears the theme's red.
+        assertEquals(AppColors().magnetRed, faceOf("b"))
     }
 }
