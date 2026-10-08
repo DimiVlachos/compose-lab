@@ -128,11 +128,11 @@ class PhotoBodiesTest {
     fun aPhotoMatchingTwoNearbyMagnetsHangsBetweenThemOnBoth() {
         val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.9f), Offset.Zero)
         val a = magnet("a", Offset(400f, 500f))
-        val b = magnet("b", Offset(600f, 500f))
-        val table = bodies(photo to Offset(500f, 620f))
+        val b = magnet("b", Offset(520f, 500f))
+        val table = bodies(photo to Offset(460f, 620f))
         table.run(3f, listOf(a, b))
         assertEquals(setOf("a", "b"), photo.stuckTo)
-        assertTrue((photo.at - Offset(500f, 500f)).getDistance() < 5f, "at ${photo.at}")
+        assertTrue((photo.at - Offset(460f, 500f)).getDistance() < 5f, "at ${photo.at}")
     }
 
     @Test
@@ -142,10 +142,10 @@ class PhotoBodiesTest {
         val table = bodies(photo to Offset(470f, 500f))
         table.run(1f, listOf(a))
         assertEquals(setOf("a"), photo.stuckTo)
-        val b = magnet("b", Offset(620f, 500f))
+        val b = magnet("b", Offset(520f, 500f))
         table.run(1.5f, listOf(a, b))
         assertEquals(setOf("a", "b"), photo.stuckTo)
-        assertTrue((photo.at - Offset(510f, 500f)).getDistance() < 5f, "between, at ${photo.at}")
+        assertTrue((photo.at - Offset(460f, 500f)).getDistance() < 5f, "between, at ${photo.at}")
     }
 
     // A photo on both of two magnets, A 0.9 and B 0.6, and the magnet [moved] taken away to the
@@ -153,8 +153,8 @@ class PhotoBodiesTest {
     private fun pullApart(moved: String, speed: Float): Set<String> {
         val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.6f), Offset.Zero)
         val a = magnet("a", Offset(400f, 500f))
-        val b = magnet("b", Offset(600f, 500f))
-        val table = bodies(photo to Offset(500f, 560f))
+        val b = magnet("b", Offset(520f, 500f))
+        val table = bodies(photo to Offset(460f, 560f))
         table.run(2f, listOf(a, b))
         assertEquals(setOf("a", "b"), photo.stuckTo)
         // The other magnet stays put; this one goes right, or left for A, out of sharing range.
@@ -180,6 +180,29 @@ class PhotoBodiesTest {
         // better.
         assertEquals(setOf("a"), pullApart("b", speed = 1_200f))
         assertEquals(setOf("b"), pullApart("a", speed = 1_200f))
+    }
+
+    @Test
+    fun aWeakMatchLeansInButStaysClearOfTheCluster() {
+        val photo = PhotoBody("p", mapOf("a" to 0.4f), Offset.Zero)
+        val m = magnet("a", Offset(500f, 500f))
+        val table = bodies(photo to Offset(500f + 120f, 500f))
+        table.run(3f, listOf(m))
+        val lean = (photo.at - photo.home).getDistance()
+        assertTrue(lean > 5f, "it should lean in: $lean")
+        assertTrue(lean <= MagnetDimens.MostLean.value + 1f, "it ran in $lean dp")
+        assertTrue(photo.stuckTo.isEmpty())
+    }
+
+    @Test
+    fun aPhotoTwoMagnetsShareHangsTouchingBothClusters() {
+        // At the furthest two magnets still share it, the middle between them is no further from
+        // either than a card on its first ring, and a card's width beyond: it reaches both.
+        val furthest = MagnetDimens.BridgeSpan.value * MagnetDimens.BridgeLetGo
+        assertTrue(
+            furthest / 2f <= 46f + MagnetDimens.CardSpan.value,
+            "it hangs ${furthest / 2f} dp off",
+        )
     }
 
     @Test

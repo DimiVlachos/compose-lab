@@ -149,7 +149,8 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                             body.velocity * MagnetDimens.Friction
                     for (magnet in magnets) {
                         if (magnet.tag in body.refused) continue
-                        pull += MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
+                        val toward = MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
+                        pull += if (body.matches(magnet.tag)) toward else leanOnly(toward)
                     }
                     pull
                 }
@@ -348,6 +349,14 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
         body.slot = best
         return best
+    }
+
+    // A weak match's pull, no stronger than its leash can hold MostLean from home: it leans in,
+    // and stops short of the cluster rather than running in against it.
+    private fun leanOnly(pull: Offset): Offset {
+        val most = MagnetDimens.Leash * MagnetDimens.MostLean.value
+        val size = pull.getDistance()
+        return if (size <= most) pull else pull * (most / size)
     }
 
     // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.

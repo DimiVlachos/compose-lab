@@ -72,6 +72,10 @@ internal object MagnetDimens {
     // its middle, so the cluster rings the puck.
     val ContactRing = 58.dp
     const val StickThreshold = 0.5f
+
+    // A match too weak to stick leans towards a magnet no further than this from where it lay:
+    // pulled the whole way in, it would press against the cluster and look like one of it.
+    val MostLean = 28.dp
     val ClusterInner = 30.dp
 
     // Every loose card is tied to where it lay by a spring this stiff (1/s²) and loses this share
@@ -82,9 +86,10 @@ internal object MagnetDimens {
     const val Friction = 7f
     const val Cling = 260f
 
-    // Two magnets within BridgeSpan share what matches both, which hangs between them; pulled
-    // apart past BridgeSpan × BridgeLetGo, such a photo keeps only its stronger tag.
-    val BridgeSpan = 260.dp
+    // Two magnets within BridgeSpan share what matches both, which hangs between them, close
+    // enough to touch both clusters; pulled apart past BridgeSpan × BridgeLetGo, such a photo goes
+    // with the one pulling it harder.
+    val BridgeSpan = 150.dp
     const val BridgeLetGo = 1.25f
 
     // Let go, a magnet lands where its speed would carry it in this many seconds: in the strip, it
