@@ -99,17 +99,23 @@ class MagnetTableUiTest {
 
     @Test
     fun nothingRecomposesWhileThePhotosMove() = runComposeUiTest {
-        mainClock.autoAdvance = false
         val table = table()
-        // Only the weak photo matches Gamma, under the threshold: it leans towards the magnet
-        // but never sticks, so nothing composition reads changes.
-        runOnUiThread { table.state.apply("c") }
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        mainClock.autoAdvance = false
+        // The magnet carried about with its photo on it: the photo moves, but nothing that
+        // composition reads changes.
+        val at = table.state.magnetPosition("a")!!
+        runOnUiThread { table.state.place("a", at) }
         repeat(3) { mainClock.advanceTimeByFrame() }
         val before = table.compositions()
-        val start = table.state.photoPosition("weak")!!
-        repeat(60) { mainClock.advanceTimeByFrame() }
-        val moved = (table.state.photoPosition("weak")!! - start).getDistance()
-        assertTrue(moved > 5f, "the weak photo moved only $moved px")
+        val start = table.state.photoPosition("strong")!!
+        repeat(60) {
+            runOnUiThread { table.state.drag("a", at + Offset(it * 2f, it * 1f)) }
+            mainClock.advanceTimeByFrame()
+        }
+        val moved = (table.state.photoPosition("strong")!! - start).getDistance()
+        assertTrue(moved > 5f, "the photo moved only $moved px")
         assertEquals(before, table.compositions(), "moving photos must not recompose")
     }
 

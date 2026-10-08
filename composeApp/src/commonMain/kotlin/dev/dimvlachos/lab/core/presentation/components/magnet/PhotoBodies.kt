@@ -53,6 +53,18 @@ internal class PhotoBody(
     /** Whether [magnet] pulls it at all: it matches the tag, and hasn't been pulled off it. */
     fun feels(magnet: Magnet): Boolean = magnet.tag !in refused && strength(magnet.tag) > 0f
 
+    /**
+     * Whether [magnet] draws it in: it matches well enough to stick, and hasn't been pulled off it.
+     * Only what a magnet will hold moves for it; a weaker match stays where it lies.
+     */
+    fun drawnTo(magnet: Magnet): Boolean = magnet.tag !in refused && matches(magnet.tag)
+
+    /** Whether any of [magnets] out of the strip draws it in. */
+    fun drawnToAny(magnets: List<Magnet>): Boolean {
+        for (magnet in magnets) if (magnet.out && drawnTo(magnet)) return true
+        return false
+    }
+
     /** Whether any of [magnets] out of the strip pulls it. */
     fun feelsAny(magnets: List<Magnet>): Boolean {
         for (magnet in magnets) if (magnet.out && feels(magnet)) return true
@@ -148,9 +160,8 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                         (body.home - body.at) * MagnetDimens.Leash -
                             body.velocity * MagnetDimens.Friction
                     for (magnet in magnets) {
-                        if (magnet.tag in body.refused) continue
-                        val toward = MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
-                        pull += if (body.matches(magnet.tag)) toward else leanOnly(toward)
+                        if (!body.drawnTo(magnet)) continue
+                        pull += MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
                     }
                     pull
                 }
@@ -351,14 +362,6 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return best
     }
 
-    // A weak match's pull, no stronger than its leash can hold MostLean from home: it leans in,
-    // and stops short of the cluster rather than running in against it.
-    private fun leanOnly(pull: Offset): Offset {
-        val most = MagnetDimens.Leash * MagnetDimens.MostLean.value
-        val size = pull.getDistance()
-        return if (size <= most) pull else pull * (most / size)
-    }
-
     // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.
     private fun grip(body: PhotoBody, magnet: Magnet): Float {
         val apart = body.at - magnet.at
@@ -379,7 +382,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     }
 
     // Pushes overlapping cards apart, each half the overlap, or a card a finger holds not at all.
-    // A cluster slides over a loose card that no magnet out pulls, as a magnet glides over the
+    // A cluster slides over a loose card no magnet out draws in, as a magnet glides over the
     // prints on a table, rather than pushing it along.
     private fun separate(magnets: List<Magnet>) {
         val span = MagnetDimens.CardSpan.value
@@ -388,8 +391,10 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 val p = bodies[i]
                 val q = bodies[j]
                 if (p.held && q.held) continue
-                if (p.stuckTo.isNotEmpty() && q.stuckTo.isEmpty() && !q.feelsAny(magnets)) continue
-                if (q.stuckTo.isNotEmpty() && p.stuckTo.isEmpty() && !p.feelsAny(magnets)) continue
+                if (p.stuckTo.isNotEmpty() && q.stuckTo.isEmpty() && !q.drawnToAny(magnets))
+                    continue
+                if (q.stuckTo.isNotEmpty() && p.stuckTo.isEmpty() && !p.drawnToAny(magnets))
+                    continue
                 val apart = q.at - p.at
                 val distance = apart.getDistance()
                 if (distance >= span) continue
@@ -414,7 +419,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             val body = bodies[i]
             if (body.held) continue
             for (magnet in magnets) {
-                if (magnet.tag !in body.stuckTo && !body.feels(magnet)) continue
+                if (magnet.tag !in body.stuckTo && !body.drawnTo(magnet)) continue
                 val inner =
                     if (magnet.tag in body.stuckTo) MagnetDimens.ClusterInner.value
                     else MagnetDimens.ContactRing.value

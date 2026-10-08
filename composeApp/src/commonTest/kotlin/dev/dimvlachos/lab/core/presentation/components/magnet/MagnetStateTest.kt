@@ -467,7 +467,8 @@ class MagnetStateTest {
         table.release("a", Offset.Zero)
         table.run(1f)
         assertEquals(1f, table.shadeOf(0), "out of reach")
-        // Brought close: it leans in, and is only lightly shaded, being partly what was asked for.
+        // Brought close: it stays where it lies, but is only lightly shaded, being partly what was
+        // asked for.
         table.place("a", table.magnetPosition("a")!!)
         table.drag("a", middle - Offset(0f, 150f * D))
         table.release("a", Offset.Zero)

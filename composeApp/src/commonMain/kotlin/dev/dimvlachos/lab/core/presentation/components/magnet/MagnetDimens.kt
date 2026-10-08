@@ -72,10 +72,6 @@ internal object MagnetDimens {
     // its middle, so the cluster rings the puck.
     val ContactRing = 58.dp
     const val StickThreshold = 0.5f
-
-    // A match too weak to stick leans towards a magnet no further than this from where it lay:
-    // pulled the whole way in, it would press against the cluster and look like one of it.
-    val MostLean = 28.dp
     val ClusterInner = 30.dp
 
     // Every loose card is tied to where it lay by a spring this stiff (1/s²) and loses this share

@@ -50,14 +50,14 @@ class PhotoBodiesTest {
     }
 
     @Test
-    fun aMatchUnderTheThresholdDriftsButNeverSticks() {
+    fun aMatchUnderTheThresholdNeitherMovesNorSticks() {
+        // Only what will be counted moves: a weak match stays where it lies.
         val photo = PhotoBody("p", mapOf("a" to 0.4f), Offset.Zero)
         val m = magnet("a", Offset(300f + ring + card, 500f))
         val table = bodies(photo to Offset(300f, 500f))
         table.run(3f, listOf(m))
         assertTrue(photo.stuckTo.isEmpty())
-        assertTrue((photo.at - photo.home).getDistance() > 5f, "it should lean towards the magnet")
-        assertTrue((photo.at - m.at).getDistance() >= ring - 0.5f, "it stays outside the ring")
+        assertEquals(photo.home, photo.at)
     }
 
     @Test
@@ -183,15 +183,17 @@ class PhotoBodiesTest {
     }
 
     @Test
-    fun aWeakMatchLeansInButStaysClearOfTheCluster() {
-        val photo = PhotoBody("p", mapOf("a" to 0.4f), Offset.Zero)
-        val m = magnet("a", Offset(500f, 500f))
-        val table = bodies(photo to Offset(500f + 120f, 500f))
-        table.run(3f, listOf(m))
-        val lean = (photo.at - photo.home).getDistance()
-        assertTrue(lean > 5f, "it should lean in: $lean")
-        assertTrue(lean <= MagnetDimens.MostLean.value + 1f, "it ran in $lean dp")
-        assertTrue(photo.stuckTo.isEmpty())
+    fun aMagnetAndItsClusterSlideOverAWeakMatchTooAndLeaveItWhereItLay() {
+        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
+        val weak = PhotoBody("weak", mapOf("a" to 0.3f), Offset.Zero)
+        val m = magnet("a", Offset(300f, 500f))
+        val table = bodies(match to Offset(300f, 560f), weak to Offset(520f, 500f))
+        table.run(1f, listOf(m))
+        repeat(240) {
+            m.at = Offset(300f + it * 2f, 500f)
+            table.step(step, listOf(m))
+            assertEquals(Offset(520f, 500f), weak.at, "the weak match was moved at step $it")
+        }
     }
 
     @Test
