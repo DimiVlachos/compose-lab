@@ -100,23 +100,9 @@ internal class MagnetPainter {
             Offset(0f, tableBottom),
             Size(size.width, size.height - tableBottom),
         )
-        // A socket the shape of the horseshoe that rests in it, a little bigger all round.
-        val thickness = MagnetDimens.HorseshoeThickness.toPx()
-        val socket = Stroke(thickness + 6.dp.toPx())
+        // A nail for each magnet to hang from, driven into the rail.
         for (magnet in state.magnets) {
-            val slot = magnet.slot * density
-            val legEnd = shapeHorseshoe(slot)
-            drawPath(leftHalf, colors.stripWell, style = socket)
-            drawPath(rightHalf, colors.stripWell, style = socket)
-            val bend = MagnetDimens.HorseshoeWidth.toPx() / 2f - thickness / 2f
-            val tip = MagnetDimens.HorseshoeTip.toPx() + 3.dp.toPx()
-            for (x in floatArrayOf(slot.x - bend, slot.x + bend)) {
-                drawRect(
-                    colors.stripWell,
-                    Offset(x - socket.width / 2f, legEnd),
-                    Size(socket.width, tip),
-                )
-            }
+            drawNailHead(magnet.slot * density - Offset(0f, MagnetDimens.NailDrop.toPx()), colors)
         }
     }
 
@@ -156,7 +142,19 @@ internal class MagnetPainter {
             val centre = magnet.at * density
             val lift = if (magnet.held) MagnetDimens.HeldLift else 1f
             val face = state.tags[i].color.takeOrElse { colors.magnetRed }
-            drawHorseshoe(centre, lift, face, colors, if (magnet.held) 6.dp.toPx() else 3.dp.toPx())
+            val nail = centre - Offset(0f, MagnetDimens.NailDrop.toPx())
+            // Hanging from its nail, it swings about it; the nail's head sits over the arch.
+            rotate(if (magnet.out) 0f else magnet.hang.angle * DegreesPerRadian, pivot = nail) {
+                drawHorseshoe(
+                    centre,
+                    lift,
+                    face,
+                    colors,
+                    if (magnet.held) 6.dp.toPx() else 3.dp.toPx(),
+                )
+            }
+            if (!magnet.out && (magnet.slot - magnet.at).getDistance() < 1f)
+                drawNailHead(nail, colors)
             val above = MagnetDimens.HorseshoeTop.toPx() * lift
             val below = (MagnetDimens.HorseshoeLegEnd + MagnetDimens.HorseshoeTip).toPx() * lift
             val label = labels[i]
@@ -204,6 +202,14 @@ internal class MagnetPainter {
     // The two halves of a horseshoe, made again for each magnet drawn.
     private val leftHalf = Path()
     private val rightHalf = Path()
+
+    // A nail's head at [at], with its shadow on the rail and a glint on its dome.
+    private fun DrawScope.drawNailHead(at: Offset, colors: AppColors) {
+        val r = MagnetDimens.NailRadius.toPx()
+        drawCircle(colors.cardShadow, r, at + Offset(r * 0.4f, r * 0.6f))
+        drawCircle(colors.magnetSteel, r, at)
+        drawCircle(colors.clipSheen, r * 0.4f, at - Offset(r * 0.3f, r * 0.3f))
+    }
 
     // Lays the two halves of a horseshoe over [centre] into the paths, along the middle of its
     // bar, and says where its legs end and its tips begin.

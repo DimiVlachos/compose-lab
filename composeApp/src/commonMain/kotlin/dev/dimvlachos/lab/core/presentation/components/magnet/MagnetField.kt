@@ -1,11 +1,13 @@
 package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.presentation.components.physics.Pendulum
 import kotlin.math.sqrt
 
 /**
- * A tag's magnet, in dp from the table's top left: waiting in its [slot] in the strip, [held] by a
- * finger, or put down [onTable]. Held or down, it is [out] and pulls.
+ * A tag's magnet, in dp from the table's top left: hanging from its nail at its [slot] in the
+ * strip, [held] by a finger, or put down [onTable]. Held or down, it is [out] and pulls. In the
+ * strip it [hang]s from the nail by its arch and swings there.
  */
 internal class Magnet(val tag: String) {
     var at = Offset.Zero
@@ -13,6 +15,12 @@ internal class Magnet(val tag: String) {
     var velocity = Offset.Zero
     var held = false
     var onTable = false
+
+    /** How it swings on its nail. */
+    val hang = Pendulum(MagnetDimens.HangHz, MagnetDimens.HangDamping, MagnetDimens.MostHang)
+
+    /** Whether, on its way home, it has caught on its nail yet. */
+    var hooked = true
 
     val out: Boolean
         get() = held || onTable

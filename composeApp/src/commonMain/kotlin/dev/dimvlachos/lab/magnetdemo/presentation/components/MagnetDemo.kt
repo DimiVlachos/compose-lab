@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +75,10 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
             state.setMagnetTapHandler(null)
         }
     }
+    // Opened, the room's air comes in with the screen and the magnets on their nails are already
+    // swaying, as the pull cord's lamp is. Not for the script, which starts from them hanging
+    // still.
+    LaunchedEffect(table) { if (!state.replay && !state.recording) table.stir() }
     val colors = LabTheme.colors
     // Clear of the navigation bar and the sides' cutouts; the screen it is shown in keeps it clear
     // of the status bar already.

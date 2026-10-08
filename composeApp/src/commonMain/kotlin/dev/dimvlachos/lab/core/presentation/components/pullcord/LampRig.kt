@@ -3,7 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.pullcord
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.geometry.lerp
-import kotlin.math.PI
+import dev.dimvlachos.lab.core.presentation.components.physics.Pendulum
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -27,11 +27,14 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
             hang(attachment(0f))
         }
 
-    /** How far the shade has turned about the pivot, in radians: clockwise is positive. */
-    var tilt = 0f
-        private set
+    // The shade, a damped pendulum from the ceiling.
+    private val shade =
+        Pendulum(PullCordDimens.ShadeSwingHz, PullCordDimens.ShadeDamping, PullCordDimens.MostTilt)
 
-    private var swing = 0f
+    /** How far the shade has turned about the pivot, in radians: clockwise is positive. */
+    val tilt: Float
+        get() = shade.angle
+
     private var carried = 0f
     private var quiet = 0
 
@@ -143,7 +146,7 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     fun stir(speed: Float) {
         if (finger.isSpecified) return
         rope.push(speed, PullCordDimens.StepSeconds)
-        swing += speed * PullCordDimens.ShadeStir
+        shade.swing += speed * PullCordDimens.ShadeStir
         atRest = false
         quiet = 0
     }
@@ -168,8 +171,7 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
                 !finger.isSpecified &&
                     rope.still &&
                     rope.stretch == 1f &&
-                    abs(tilt) < PullCordDimens.LevelTilt &&
-                    abs(swing) < PullCordDimens.LevelSwing
+                    shade.isStill(PullCordDimens.LevelTilt, PullCordDimens.LevelSwing)
             quiet = if (level) quiet + 1 else 0
         }
         if (steps > 0 && finger.isSpecified) {
@@ -206,7 +208,6 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
     // The shade as a damped pendulum, turned by the cord's pull on its side: the more the cord is
     // stretched, the harder it pulls, along its first segment.
     private fun swingShade(dt: Float) {
-        val omega = 2f * PI.toFloat() * PullCordDimens.ShadeSwingHz
         val lever = rope[0] - pivot
         val along = rope[1] - rope[0]
         val reach = along.getDistance()
@@ -217,15 +218,7 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
             } else {
                 0f
             }
-        val accel =
-            turn - omega * omega * sin(tilt) - 2f * PullCordDimens.ShadeDamping * omega * swing
-        swing += accel * dt
-        tilt += swing * dt
-        val most = PullCordDimens.MostTilt
-        if (abs(tilt) > most) {
-            tilt = tilt.coerceIn(-most, most)
-            swing = 0f
-        }
+        shade.step(dt, turn)
     }
 
     // Where the cord hangs from the shade turned by [angle].

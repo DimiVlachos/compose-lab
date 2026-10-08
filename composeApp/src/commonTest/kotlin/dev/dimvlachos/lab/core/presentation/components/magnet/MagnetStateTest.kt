@@ -301,8 +301,9 @@ class MagnetStateTest {
         table.open("strong")
         table.remove("a")
         assertNull(table.opened)
-        // Long enough for the photo to close, the cards to slide home and the filings to settle.
-        table.run(2.5f)
+        // Long enough for the photo to close, the cards to slide home, the filings to settle and
+        // the magnet to stop swinging on its nail.
+        table.run(6f)
         assertEquals(-1, table.openIndex)
         assertFalse(table.awake)
     }
@@ -339,6 +340,50 @@ class MagnetStateTest {
         table.layOut((360 * D).toInt(), (720 * D).toInt(), D, stripHeight = 140f)
         assertEquals(720f - 140f, table.tableHeight)
         assertEquals(720f - 70f, table.slotPosition("a")!!.y / D)
+    }
+
+    @Test
+    fun aMagnetFlickedHomeHooksOntoItsNailSwingsAndComesToRest() {
+        val table = table()
+        table.apply("a")
+        table.run(1f)
+        val at = table.magnetPosition("a")!!
+        table.place("a", at)
+        table.release("a", Offset(3_000f, 6_000f))
+        var widest = 0f
+        repeat(240) {
+            table.advance(1f / 60f)
+            widest = maxOf(widest, kotlin.math.abs(table.hangAngle("a")))
+        }
+        assertTrue(widest > 0.05f, "it hooked on without a swing: $widest")
+        assertTrue(widest <= MagnetDimens.MostHang, "it swung up to $widest")
+        table.run(6f)
+        assertEquals(0f, table.hangAngle("a"), 0.002f)
+        assertFalse(table.awake)
+    }
+
+    @Test
+    fun aBreathOfAirSetsTheHangingMagnetsSwayingAndTheySettle() {
+        val table = table()
+        table.run(2f)
+        assertFalse(table.awake)
+        table.stir()
+        assertTrue(table.awake)
+        // A quarter of a swing on: each is at its widest.
+        table.run(0.15f)
+        assertTrue(listOf("a", "b", "c").all { kotlin.math.abs(table.hangAngle(it)) > 0.01f })
+        table.run(8f)
+        assertTrue(listOf("a", "b", "c").all { kotlin.math.abs(table.hangAngle(it)) < 0.002f })
+        assertFalse(table.awake)
+    }
+
+    @Test
+    fun aMagnetOutOfTheStripHangsFromNothing() {
+        val table = table()
+        table.stir()
+        table.run(0.2f)
+        table.apply("a")
+        assertEquals(0f, table.hangAngle("a"))
     }
 
     @Test

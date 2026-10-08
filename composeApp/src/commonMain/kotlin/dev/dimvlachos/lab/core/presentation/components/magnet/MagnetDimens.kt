@@ -30,6 +30,24 @@ internal object MagnetDimens {
     val HorseshoeTop = 26.dp
     val HorseshoeLegEnd = 12.dp
     val HorseshoeTip = 9.dp
+
+    // In the strip a magnet hangs by the inside of its arch from a nail this far above its point,
+    // and swings there as the lamp's shade swings from the ceiling: this many times a second,
+    // losing this share of its swing, never past MostHang. Coming home, it catches on the nail
+    // within HookReach of its slot and swings from the way it came: its sideways speed over the
+    // nail's drop, times HookShare, and never less than LeastHook either way. A breath of air as
+    // the screen opens sets each swinging by about StirSwing.
+    val NailDrop = 14.dp
+    val NailRadius = 3.5.dp
+    const val HangHz = 1.6f
+    const val HangDamping = 0.14f
+    const val MostHang = 0.6f
+    val HookReach = 8.dp
+    const val HookShare = 0.35f
+    const val LeastHook = 1.2f
+    const val StirSwing = 1.4f
+    const val LevelHang = 0.002f
+    const val StillHang = 0.01f
     val GrabRadius = 32.dp
     const val MostMagnets = 2
     val MagnetGap = 72.dp

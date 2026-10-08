@@ -184,6 +184,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         val magnet = magnet(tag) ?: return false
         if (width <= 0f) return false
         if (!magnet.out && magnets.count { it.out } >= MagnetDimens.MostMagnets) return false
+        // Off its nail: it no longer swings there, and on its way home it catches on it again.
+        magnet.hang.stop()
+        magnet.hooked = false
         magnet.held = true
         magnet.velocity = Offset.Zero
         moveMagnet(magnet, at / density)
@@ -359,6 +362,22 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         release(tag, Offset.Zero)
         return true
     }
+
+    /**
+     * Sets the magnets hanging in the strip swaying, as a breath of air would when a door opens:
+     * call it as the screen opens, for a table already alive when it is first seen.
+     */
+    public fun stir() {
+        for ((i, magnet) in magnets.withIndex()) {
+            if (magnet.out || !magnet.hooked) continue
+            // Neighbours sway a little out of step, as loose things on a rail do.
+            magnet.hang.swing += MagnetDimens.StirSwing * (if (i % 2 == 0) 1f else -0.8f)
+        }
+        awake = true
+    }
+
+    /** How far the [tag] magnet hangs from straight down on its nail, in radians. */
+    internal fun hangAngle(tag: String): Float = magnet(tag)?.hang?.angle ?: 0f
 
     /** Puts the [tag] magnet back in the strip: what is on it falls off and slides home. */
     public fun remove(tag: String) {
@@ -593,8 +612,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     // A magnet back in the strip slides into its slot on the same stiff spring a stuck card
     // clings with.
     private fun stepMagnets(dt: Float) {
-        for (magnet in magnets) {
-            if (magnet.out || magnet.at == magnet.slot) continue
+        for ((i, magnet) in magnets.withIndex()) {
+            if (magnet.out) continue
+            swingOnNail(magnet, i, dt)
+            if (magnet.at == magnet.slot) continue
             magnet.velocity +=
                 ((magnet.slot - magnet.at) * MagnetDimens.Cling - magnet.velocity * SlotDamping) *
                     dt
@@ -608,6 +629,23 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
                 onSlot?.invoke()
             }
         }
+    }
+
+    // A magnet coming home catches on its nail as it nears its slot, and swings from the way it
+    // came; on the nail, it swings on and settles, as the lamp's shade does.
+    private fun swingOnNail(magnet: Magnet, index: Int, dt: Float) {
+        if (
+            !magnet.hooked && (magnet.slot - magnet.at).getDistance() < MagnetDimens.HookReach.value
+        ) {
+            magnet.hooked = true
+            val kick = magnet.velocity.x / MagnetDimens.NailDrop.value * MagnetDimens.HookShare
+            // However straight it came down, catching on the nail jolts it a little.
+            val least = if (index % 2 == 0) MagnetDimens.LeastHook else -MagnetDimens.LeastHook
+            magnet.hang.swing += if (abs(kick) < MagnetDimens.LeastHook) least else kick
+        }
+        if (!magnet.hooked) return
+        magnet.hang.step(dt)
+        if (magnet.hang.isStill(MagnetDimens.LevelHang, MagnetDimens.StillHang)) magnet.hang.stop()
     }
 
     // The filings settle only once every magnet is away, and are drawn again as they do.
@@ -654,7 +692,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     private fun atRest(): Boolean =
         heldPhoto == null &&
             magnets.none { it.held } &&
-            magnets.all { it.out || it.at == it.slot } &&
+            magnets.all {
+                it.out || (it.at == it.slot && it.hang.angle == 0f && it.hang.swing == 0f)
+            } &&
             bodies.atRest &&
             (calm == 1f || magnets.any { it.out }) &&
             dim == (if (magnets.any { it.out }) 1f else 0f) &&
