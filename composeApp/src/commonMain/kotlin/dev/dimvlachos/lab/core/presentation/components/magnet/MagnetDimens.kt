@@ -46,6 +46,9 @@ internal object MagnetDimens {
     const val HookShare = 0.35f
     const val LeastHook = 1.2f
     const val StirSwing = 1.4f
+
+    // A third magnet tugged at while two are out jiggles on its nail this hard, and stays.
+    const val RefuseSwing = 2.4f
     const val LevelHang = 0.002f
     const val StillHang = 0.01f
     val GrabRadius = 32.dp
@@ -140,6 +143,11 @@ internal object MagnetDimens {
     // While a magnet is out, the photos no magnet pulls are shaded this much, fading in and out
     // over DimMs, so what the filter finds stands out.
     const val DimShade = 0.45f
+
+    // A photo a magnet out pulls without holding, leaning in within its reach, is shaded only
+    // this share as much: partly what was asked for. One out of every magnet's reach is shaded
+    // fully, as it isn't being pulled at all.
+    const val LeanShade = 0.4f
     const val DimMs = 250
 
     // A held magnet lifts a little; its label sits under it, and its count badge above.

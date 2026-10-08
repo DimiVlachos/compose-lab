@@ -101,11 +101,15 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             )
         }
         val slot: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+        // A third magnet, refused, buzzes no: two at a time is the most.
+        val refuse: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.Reject) }
         state.onStick = stick
         state.onSlot = slot
+        state.onRefuse = refuse
         onDispose {
             if (state.onStick === stick) state.onStick = null
             if (state.onSlot === slot) state.onSlot = null
+            if (state.onRefuse === refuse) state.onRefuse = null
         }
     }
     // The table steps on a frame at a time while anything moves or is held, and the loop sleeps

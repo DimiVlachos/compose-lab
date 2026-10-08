@@ -178,6 +178,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     /** Called after a step in which a photo stuck, at most every few steps: a tick of haptics. */
     internal var onStick: ((strength: Float) -> Unit)? = null
 
+    /** Called when a magnet can't come off its nail, two being out already: a refusal's buzz. */
+    internal var onRefuse: (() -> Unit)? = null
+
     /** Called as a magnet put away comes to rest in its slot: a soft tick of haptics. */
     internal var onSlot: (() -> Unit)? = null
 
@@ -192,7 +195,13 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     public fun place(tag: String, at: Offset): Boolean {
         val magnet = magnet(tag) ?: return false
         if (width <= 0f) return false
-        if (!magnet.out && magnets.count { it.out } >= MagnetDimens.MostMagnets) return false
+        if (!magnet.out && magnets.count { it.out } >= MagnetDimens.MostMagnets) {
+            // Two are out already: it stays on its nail, and jiggles there, so the hand feels why.
+            magnet.hang.swing += MagnetDimens.RefuseSwing
+            awake = true
+            onRefuse?.invoke()
+            return false
+        }
         // Off its nail: it no longer swings there, and on its way home it catches on it again.
         magnet.hang.stop()
         magnet.hooked = false
@@ -682,17 +691,29 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         val step = dt * 1_000f / MagnetDimens.DimMs
         dim = if (dim < target) min(target, dim + step) else max(target, dim - step)
         for (body in bodies.bodies) {
-            val goal = if (anyOut && body.layer() == 0 && !body.feelsAny(magnets)) 1f else 0f
+            val goal = shadeGoal(body, anyOut)
             body.shade =
                 if (body.shade < goal) min(goal, body.shade + step)
                 else max(goal, body.shade - step)
         }
     }
 
+    // How shaded a photo should be: not at all on a magnet or with every magnet away; lightly while
+    // a magnet out pulls it from within reach, leaning in; fully when nothing out is pulling it.
+    private fun shadeGoal(body: PhotoBody, anyOut: Boolean): Float {
+        if (!anyOut || body.layer() != 0) return 0f
+        val reach = MagnetDimens.Reach.value
+        for (magnet in magnets) {
+            if (!magnet.out || !body.feels(magnet)) continue
+            if ((body.at - magnet.at).getDistance() <= reach) return MagnetDimens.LeanShade
+        }
+        return 1f
+    }
+
     private fun shadesSettled(): Boolean {
         val anyOut = magnets.any { it.out }
         for (body in bodies.bodies) {
-            val goal = if (anyOut && body.layer() == 0 && !body.feelsAny(magnets)) 1f else 0f
+            val goal = shadeGoal(body, anyOut)
             if (body.shade != goal) return false
         }
         return true

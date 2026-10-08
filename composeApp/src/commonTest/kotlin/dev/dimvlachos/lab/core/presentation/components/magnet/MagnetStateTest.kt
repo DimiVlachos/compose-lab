@@ -441,14 +441,58 @@ class MagnetStateTest {
         // Gamma doesn't pull it: shaded.
         assertEquals(1f, table.shadeOf(strong))
         val weak = table.bodies.bodies.indexOfFirst { it.id == "weak" }
-        assertEquals(0f, table.shadeOf(weak), "a photo Gamma pulls stays bright")
+        assertEquals(MagnetDimens.LeanShade, table.shadeOf(weak), 0.01f, "Gamma pulls it a little")
         table.remove("c")
         table.advance(1f / 60f)
         // The weak one, no longer pulled, mustn't jump to fully shaded as the shade lifts.
-        assertTrue(table.shadeOf(weak) < 0.2f, "it flashed to ${table.shadeOf(weak)}")
+        assertTrue(
+            table.shadeOf(weak) < MagnetDimens.LeanShade,
+            "it flashed to ${table.shadeOf(weak)}",
+        )
         table.run(1f)
         assertEquals(0f, table.shadeOf(strong))
         assertEquals(0f, table.shadeOf(weak))
+    }
+
+    @Test
+    fun aWeakMatchIsShadedUnlessTheMagnetIsCloseEnoughToPullIt() {
+        // One weak match in the middle of a long table.
+        val photos = listOf(MagnetPhoto("w", TestPhotos[0].image, "W", mapOf("a" to 0.3f)))
+        val table =
+            MagnetState(photos, TestTags).apply { layOut((360 * D).toInt(), (1600 * D).toInt(), D) }
+        val middle = table.photoPosition("w")!!
+        // Out at the far end of the table, well beyond its reach: it can't pull it, so it shades.
+        table.place("a", table.magnetPosition("a")!!)
+        table.drag("a", Offset(middle.x, 40f * D))
+        table.release("a", Offset.Zero)
+        table.run(1f)
+        assertEquals(1f, table.shadeOf(0), "out of reach")
+        // Brought close: it leans in, and is only lightly shaded, being partly what was asked for.
+        table.place("a", table.magnetPosition("a")!!)
+        table.drag("a", middle - Offset(0f, 150f * D))
+        table.release("a", Offset.Zero)
+        table.run(1f)
+        assertEquals(MagnetDimens.LeanShade, table.shadeOf(0), 0.01f)
+    }
+
+    @Test
+    fun aThirdMagnetRefusedJigglesOnItsNail() {
+        val table = table()
+        var refused = 0
+        table.onRefuse = { refused++ }
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        assertFalse(table.place("c", table.magnetPosition("c")!!))
+        assertEquals(1, refused)
+        assertTrue(table.awake)
+        var widest = 0f
+        repeat(60) {
+            table.advance(1f / 60f)
+            widest = maxOf(widest, kotlin.math.abs(table.hangAngle("c")))
+        }
+        assertTrue(widest > 0.05f, "it hardly moved: $widest")
+        assertFalse(table.isOut("c"))
     }
 
     @Test
