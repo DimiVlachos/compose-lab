@@ -303,12 +303,18 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             return true
         }
         if (bridged(a, b, MagnetDimens.BridgeLetGo)) return false
-        val first = body.stuckTo.first()
+        // Too far apart to share it, it goes with the one pulling it harder as they part: how well
+        // it matches each, over how far it is from each. Drawn apart slowly it hangs near the
+        // middle
+        // and the better match keeps it; yanked apart, it lags behind towards the magnet that
+        // stayed, and that one keeps it.
+        val pullA = grip(body, a)
+        val pullB = grip(body, b)
         val keep =
             when {
-                body.strength(a.tag) > body.strength(b.tag) -> a.tag
-                body.strength(b.tag) > body.strength(a.tag) -> b.tag
-                else -> first
+                pullA > pullB -> a.tag
+                pullB > pullA -> b.tag
+                else -> body.stuckTo.first()
             }
         body.stuckTo.clear()
         body.stuckTo += keep
@@ -342,6 +348,13 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
         body.slot = best
         return best
+    }
+
+    // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.
+    private fun grip(body: PhotoBody, magnet: Magnet): Float {
+        val apart = body.at - magnet.at
+        return body.strength(magnet.tag) /
+            (apart.x * apart.x + apart.y * apart.y + MagnetDimens.Softening)
     }
 
     // Where a stuck card clings to: its magnet, or halfway between its two.

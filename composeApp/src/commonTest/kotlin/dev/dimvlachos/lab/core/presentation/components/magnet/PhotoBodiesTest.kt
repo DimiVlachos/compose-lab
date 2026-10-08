@@ -148,17 +148,38 @@ class PhotoBodiesTest {
         assertTrue((photo.at - Offset(510f, 500f)).getDistance() < 5f, "between, at ${photo.at}")
     }
 
-    @Test
-    fun pulledFarApartAPhotoOnBothKeepsItsStrongerTag() {
-        val photo = PhotoBody("p", mapOf("a" to 0.6f, "b" to 0.9f), Offset.Zero)
+    // A photo on both of two magnets, A 0.9 and B 0.6, and the magnet [moved] taken away to the
+    // right at [speed] dp a second, until they are too far apart to share it.
+    private fun pullApart(moved: String, speed: Float): Set<String> {
+        val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.6f), Offset.Zero)
         val a = magnet("a", Offset(400f, 500f))
         val b = magnet("b", Offset(600f, 500f))
         val table = bodies(photo to Offset(500f, 560f))
         table.run(2f, listOf(a, b))
         assertEquals(setOf("a", "b"), photo.stuckTo)
-        b.at = Offset(400f + MagnetDimens.BridgeSpan.value * MagnetDimens.BridgeLetGo + 20f, 500f)
-        table.run(0.1f, listOf(a, b))
-        assertEquals(setOf("b"), photo.stuckTo)
+        // The other magnet stays put; this one goes right, or left for A, out of sharing range.
+        val going = if (moved == "a") a else b
+        val away = if (moved == "a") -1f else 1f
+        repeat(600) {
+            if (photo.stuckTo.size == 1) return photo.stuckTo
+            going.at += Offset(away * speed * step, 0f)
+            table.step(step, listOf(a, b))
+        }
+        return photo.stuckTo
+    }
+
+    @Test
+    fun pulledSlowlyApartAPhotoOnBothGoesWithTheTagItMatchesBetter() {
+        assertEquals(setOf("a"), pullApart("b", speed = 40f))
+        assertEquals(setOf("a"), pullApart("a", speed = 40f))
+    }
+
+    @Test
+    fun yankedApartAPhotoOnBothStaysWithTheMagnetLeftBehind() {
+        // Left nearer the magnet that stayed, it is pulled harder by it, whichever it matches
+        // better.
+        assertEquals(setOf("a"), pullApart("b", speed = 1_200f))
+        assertEquals(setOf("b"), pullApart("a", speed = 1_200f))
     }
 
     @Test
