@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Brush
@@ -9,8 +10,10 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.takeOrElse
@@ -314,3 +317,86 @@ internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
 private const val FaceShare = 0.78f
 
 private const val DegreesPerRadian = 57.29578f
+
+/**
+ * Draws a photo opened from the grid: grown out of its cell into a large rounded photo, the whole
+ * picture rather than the card's crop, over a deeper scrim, with its [title] and [caption] under
+ * it. Drawn in the table's own layer, as the grid is.
+ */
+internal class OpenPainter {
+    private val clip = Path()
+
+    fun DrawScope.drawOpen(
+        state: MagnetState,
+        images: List<ImageBitmap>,
+        title: TextLayoutResult?,
+        caption: TextLayoutResult?,
+        colors: AppColors,
+    ) {
+        state.frame
+        val index = state.openIndex
+        if (index < 0) return
+        val t = smooth(state.openness)
+        if (t <= 0f) return
+        val image = images[index]
+        val tableBottom = state.tableHeight * density
+        drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.85f * t)
+        // From its card in the grid...
+        val scale = state.fanScale()
+        val from = state.photoCentre(index) * density
+        val fromW = MagnetDimens.CardWidth.toPx() * scale
+        val fromH = MagnetDimens.CardHeight.toPx() * scale
+        // ...to the whole photo, as wide as the table allows and as tall as its shape asks, with
+        // room under it for its words.
+        val words =
+            (title?.size?.height ?: 0) +
+                (caption?.size?.height ?: 0) +
+                MagnetDimens.OpenTextGap.toPx() * 2f
+        val margin = MagnetDimens.OpenMargin.toPx()
+        val aspect = image.height.toFloat() / max(1, image.width)
+        var toW = size.width - margin * 2f
+        var toH = toW * aspect
+        val room = tableBottom - margin * 2f - words
+        if (toH > room) {
+            toH = max(1f, room)
+            toW = toH / aspect
+        }
+        val toTop = (tableBottom - toH - words) / 2f
+        val to = Offset(size.width / 2f, toTop + toH / 2f)
+        val centre = lerp(from, to, t)
+        val w = lerp(fromW, toW, t)
+        val h = lerp(fromH, toH, t)
+        val corner = lerp(MagnetDimens.CardCorner.toPx() * scale, MagnetDimens.OpenCorner.toPx(), t)
+        val topLeft = Offset(centre.x - w / 2f, centre.y - h / 2f)
+        clip.rewind()
+        clip.addRoundRect(
+            RoundRect(topLeft.x, topLeft.y, topLeft.x + w, topLeft.y + h, CornerRadius(corner))
+        )
+        clipPath(clip) {
+            // Cropped to the shape it has on its way, so it never stretches.
+            val cropScale = max(w / image.width, h / image.height)
+            val cropW = (w / cropScale).roundToInt().coerceIn(1, image.width)
+            val cropH = (h / cropScale).roundToInt().coerceIn(1, image.height)
+            drawImage(
+                image,
+                srcOffset = IntOffset((image.width - cropW) / 2, (image.height - cropH) / 2),
+                srcSize = IntSize(cropW, cropH),
+                dstOffset = IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()),
+                dstSize = IntSize(w.roundToInt().coerceAtLeast(1), h.roundToInt().coerceAtLeast(1)),
+                filterQuality = FilterQuality.Medium,
+            )
+        }
+        // Its words fade in under it once it has nearly arrived.
+        val words01 = ((t - 0.6f) / 0.4f).coerceIn(0f, 1f)
+        var y = toTop + toH + MagnetDimens.OpenTextGap.toPx()
+        for (text in listOf(title, caption)) {
+            if (text == null) continue
+            drawText(
+                text,
+                topLeft = Offset((size.width - text.size.width) / 2f, y),
+                alpha = words01,
+            )
+            y += text.size.height + MagnetDimens.OpenTextGap.toPx() / 2f
+        }
+    }
+}

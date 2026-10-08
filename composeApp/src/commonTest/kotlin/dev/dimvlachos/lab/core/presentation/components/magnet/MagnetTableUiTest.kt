@@ -325,4 +325,22 @@ class MagnetTableUiTest {
         mainClock.advanceTimeBy(2_000)
         assertEquals(listOf(HapticFeedbackType.GestureEnd), ticks.types)
     }
+
+    @Test
+    fun aTapOnAPhotoInTheGridOpensItAndATapClosesIt() = runComposeUiTest {
+        val table = table()
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        runOnUiThread { table.state.fanOut("a") }
+        mainClock.advanceTimeBy(1_000)
+        val card = table.state.photoCentre(0) * density.density
+        onNodeWithTag("table").performTouchInput { click(card) }
+        assertEquals("strong", table.state.opened)
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithContentDescription("Strong, A strong match").assertExists()
+        onNodeWithTag("table").performTouchInput { click(Offset(20f, 20f)) }
+        assertNull(table.state.opened)
+        mainClock.advanceTimeBy(1_000)
+        assertEquals("a", table.state.fannedOut, "a tap closes the photo, not the grid")
+    }
 }

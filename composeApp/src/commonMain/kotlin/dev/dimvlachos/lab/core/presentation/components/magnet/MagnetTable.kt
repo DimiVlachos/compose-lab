@@ -49,11 +49,13 @@ import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.magnet_apply
+import dev.dimvlachos.lab.resources.magnet_close
 import dev.dimvlachos.lab.resources.magnet_count
 import dev.dimvlachos.lab.resources.magnet_filter
 import dev.dimvlachos.lab.resources.magnet_off
 import dev.dimvlachos.lab.resources.magnet_on_both
 import dev.dimvlachos.lab.resources.magnet_on_one
+import dev.dimvlachos.lab.resources.magnet_open
 import dev.dimvlachos.lab.resources.magnet_remove
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.imageResource
@@ -147,6 +149,22 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         }
     val lastHeader = remember(state) { HeaderHolder() }
     if (header != null) lastHeader.value = header
+    // The opened photo's title and caption, measured as it opens, and kept as it closes.
+    val openStyle = LabTheme.typography.subtitle.copy(color = colors.textPrimary)
+    val captionStyle = LabTheme.typography.body.copy(color = colors.textMuted)
+    val openPhoto = state.photos.firstOrNull { it.id == state.opened }
+    val lastOpen = remember(state) { OpenWords() }
+    if (openPhoto != null) {
+        lastOpen.title =
+            remember(openPhoto, measurer, openStyle) {
+                measurer.measure(openPhoto.title, openStyle)
+            }
+        lastOpen.caption =
+            remember(openPhoto, measurer, captionStyle) {
+                if (openPhoto.caption.isEmpty()) null
+                else measurer.measure(openPhoto.caption, captionStyle)
+            }
+    }
     val photos = state.photos.map { imageResource(it.image) }
     val thumbs =
         remember(photos, density) {
@@ -159,6 +177,7 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             }
         }
     val painter = remember { MagnetPainter() }
+    val openPainter = remember { OpenPainter() }
     val filings = remember { FilingsPainter() }
     val slop = LocalViewConfiguration.current.touchSlop
     Box(
@@ -187,6 +206,9 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                     drawMagnets(state, labels, badges, colors)
                     drawFan(state, thumbs, titles, lastHeader.value, colors)
                 }
+                with(openPainter) {
+                    drawOpen(state, photos, lastOpen.title, lastOpen.caption, colors)
+                }
             }
         )
         state.photos.forEachIndexed { index, photo ->
@@ -197,10 +219,11 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                     1 -> stringResource(Res.string.magnet_on_one, on[0].label)
                     else -> stringResource(Res.string.magnet_on_both, on[0].label, on[1].label)
                 }
-            PhotoNode(state, index, photo.title, where)
+            PhotoNode(state, index, photo, where, inGrid = state.fannedOut != null)
         }
         for ((i, tag) in state.tags.withIndex()) MagnetNode(state, tag, counts[i])
         Announcer(state, counts)
+        if (openPhoto != null) OpenNode(state, openPhoto)
     }
 }
 
@@ -236,15 +259,52 @@ private class LastAnnounced(var counts: List<String?>) {
 // A photo for a screen reader, over its card: placed in layout, so it follows the card without
 // recomposing.
 @Composable
-private fun PhotoNode(state: MagnetState, index: Int, title: String, where: String?) {
+private fun PhotoNode(
+    state: MagnetState,
+    index: Int,
+    photo: MagnetPhoto,
+    where: String?,
+    inGrid: Boolean,
+) {
+    val open = stringResource(Res.string.magnet_open)
     Spacer(
         Modifier.offset { state.photoTopLeft(index) }
             .size(MagnetDimens.CardWidth, MagnetDimens.CardHeight)
             .semantics {
-                contentDescription = title
+                contentDescription = photo.title
                 if (where != null) stateDescription = where
+                // In the grid, a photo opens, as a tap on it does.
+                if (inGrid && state.inFan(index)) {
+                    onClick(label = open) {
+                        state.open(photo.id)
+                        state.opened == photo.id
+                    }
+                }
             }
     )
+}
+
+// The opened photo for a screen reader: its title and caption over the whole table, closed back
+// into the grid as a tap does.
+@Composable
+private fun OpenNode(state: MagnetState, photo: MagnetPhoto) {
+    val close = stringResource(Res.string.magnet_close)
+    val description =
+        if (photo.caption.isEmpty()) photo.title else "${photo.title}, ${photo.caption}"
+    Spacer(
+        Modifier.fillMaxSize().semantics {
+            contentDescription = description
+            onClick(label = close) {
+                state.close()
+                true
+            }
+        }
+    )
+}
+
+private class OpenWords {
+    var title: TextLayoutResult? = null
+    var caption: TextLayoutResult? = null
 }
 
 // A magnet for a screen reader: a switch that applies its filter or removes it, saying how many
@@ -292,11 +352,17 @@ private fun MagnetNode(state: MagnetState, tag: MagnetTag, count: String?) {
 private suspend fun PointerInputScope.tableGestures(state: MagnetState, slop: Float) {
     awaitEachGesture {
         val down = awaitFirstDown()
-        // Fanned out, a touch anywhere folds the grid back once it lifts.
+        // Fanned out, a tap on a photo opens it; with a photo open, a tap closes it back into
+        // the grid; anywhere else, a tap folds the grid back.
         if (state.fannedOut != null) {
             down.consume()
-            waitForUpOrCancellation()?.consume()
-            state.fanOut(null)
+            waitForUpOrCancellation()?.consume() ?: return@awaitEachGesture
+            val photo = state.fanPhotoAt(down.position)
+            when {
+                state.opened != null -> state.close()
+                photo != null -> state.open(photo)
+                else -> state.fanOut(null)
+            }
             return@awaitEachGesture
         }
         val tag = state.magnetAt(down.position)

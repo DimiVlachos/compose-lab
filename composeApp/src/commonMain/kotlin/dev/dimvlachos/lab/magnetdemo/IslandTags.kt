@@ -14,28 +14,40 @@ import dev.dimvlachos.lab.resources.magnet_tag_sea
 import dev.dimvlachos.lab.resources.magnet_tag_sunset
 import dev.dimvlachos.lab.resources.magnet_tag_village
 import dev.dimvlachos.lab.resources.photo_corfu
+import dev.dimvlachos.lab.resources.photo_corfu_caption
 import dev.dimvlachos.lab.resources.photo_corfu_title
 import dev.dimvlachos.lab.resources.photo_crete
+import dev.dimvlachos.lab.resources.photo_crete_caption
 import dev.dimvlachos.lab.resources.photo_crete_title
 import dev.dimvlachos.lab.resources.photo_folegandros
+import dev.dimvlachos.lab.resources.photo_folegandros_caption
 import dev.dimvlachos.lab.resources.photo_folegandros_title
 import dev.dimvlachos.lab.resources.photo_hydra
+import dev.dimvlachos.lab.resources.photo_hydra_caption
 import dev.dimvlachos.lab.resources.photo_hydra_title
 import dev.dimvlachos.lab.resources.photo_kefalonia
+import dev.dimvlachos.lab.resources.photo_kefalonia_caption
 import dev.dimvlachos.lab.resources.photo_kefalonia_title
 import dev.dimvlachos.lab.resources.photo_milos
+import dev.dimvlachos.lab.resources.photo_milos_caption
 import dev.dimvlachos.lab.resources.photo_milos_title
 import dev.dimvlachos.lab.resources.photo_mykonos
+import dev.dimvlachos.lab.resources.photo_mykonos_caption
 import dev.dimvlachos.lab.resources.photo_mykonos_title
 import dev.dimvlachos.lab.resources.photo_naxos
+import dev.dimvlachos.lab.resources.photo_naxos_caption
 import dev.dimvlachos.lab.resources.photo_naxos_title
 import dev.dimvlachos.lab.resources.photo_paxos
+import dev.dimvlachos.lab.resources.photo_paxos_caption
 import dev.dimvlachos.lab.resources.photo_paxos_title
 import dev.dimvlachos.lab.resources.photo_rhodes
+import dev.dimvlachos.lab.resources.photo_rhodes_caption
 import dev.dimvlachos.lab.resources.photo_rhodes_title
 import dev.dimvlachos.lab.resources.photo_santorini
+import dev.dimvlachos.lab.resources.photo_santorini_caption
 import dev.dimvlachos.lab.resources.photo_santorini_title
 import dev.dimvlachos.lab.resources.photo_zakynthos
+import dev.dimvlachos.lab.resources.photo_zakynthos_caption
 import dev.dimvlachos.lab.resources.photo_zakynthos_title
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -47,6 +59,7 @@ internal class IslandPhoto(
     val id: String,
     val image: DrawableResource,
     val title: StringResource,
+    val caption: StringResource,
     val strengths: Map<String, Float>,
 )
 
@@ -77,72 +90,84 @@ internal object IslandTags {
                 "corfu",
                 Res.drawable.photo_corfu,
                 Res.string.photo_corfu_title,
+                Res.string.photo_corfu_caption,
                 mapOf(Sunset to 0.9f, Sea to 0.6f, Cliffs to 0.3f),
             ),
             IslandPhoto(
                 "paxos",
                 Res.drawable.photo_paxos,
                 Res.string.photo_paxos_title,
+                Res.string.photo_paxos_caption,
                 mapOf(Village to 0.9f, Boats to 0.7f, Sunset to 0.4f, Sea to 0.3f),
             ),
             IslandPhoto(
                 "santorini",
                 Res.drawable.photo_santorini,
                 Res.string.photo_santorini_title,
+                Res.string.photo_santorini_caption,
                 mapOf(Sunset to 0.9f, Village to 0.8f, Cliffs to 0.4f, Sea to 0.3f),
             ),
             IslandPhoto(
                 "milos",
                 Res.drawable.photo_milos,
                 Res.string.photo_milos_title,
+                Res.string.photo_milos_caption,
                 mapOf(Cliffs to 1f, Sea to 0.9f, Boats to 0.7f),
             ),
             IslandPhoto(
                 "naxos",
                 Res.drawable.photo_naxos,
                 Res.string.photo_naxos_title,
+                Res.string.photo_naxos_caption,
                 mapOf(Sunset to 1f, Sea to 0.5f),
             ),
             IslandPhoto(
                 "hydra",
                 Res.drawable.photo_hydra,
                 Res.string.photo_hydra_title,
+                Res.string.photo_hydra_caption,
                 mapOf(Boats to 1f, Village to 0.6f, Sea to 0.4f),
             ),
             IslandPhoto(
                 "mykonos",
                 Res.drawable.photo_mykonos,
                 Res.string.photo_mykonos_title,
+                Res.string.photo_mykonos_caption,
                 mapOf(Village to 0.9f, Sea to 0.4f, Boats to 0.3f, Sunset to 0.3f),
             ),
             IslandPhoto(
                 "crete",
                 Res.drawable.photo_crete,
                 Res.string.photo_crete_title,
+                Res.string.photo_crete_caption,
                 mapOf(Sea to 1f, Boats to 0.8f, Village to 0.2f),
             ),
             IslandPhoto(
                 "rhodes",
                 Res.drawable.photo_rhodes,
                 Res.string.photo_rhodes_title,
+                Res.string.photo_rhodes_caption,
                 mapOf(Sea to 0.9f, Cliffs to 0.8f),
             ),
             IslandPhoto(
                 "zakynthos",
                 Res.drawable.photo_zakynthos,
                 Res.string.photo_zakynthos_title,
+                Res.string.photo_zakynthos_caption,
                 mapOf(Cliffs to 0.9f, Sea to 0.8f, Boats to 0.4f),
             ),
             IslandPhoto(
                 "kefalonia",
                 Res.drawable.photo_kefalonia,
                 Res.string.photo_kefalonia_title,
+                Res.string.photo_kefalonia_caption,
                 mapOf(Village to 0.8f, Sea to 0.4f),
             ),
             IslandPhoto(
                 "folegandros",
                 Res.drawable.photo_folegandros,
                 Res.string.photo_folegandros_title,
+                Res.string.photo_folegandros_caption,
                 mapOf(Sunset to 0.9f, Cliffs to 0.8f, Village to 0.3f),
             ),
         )
@@ -152,6 +177,7 @@ internal object IslandTags {
 @Composable
 internal fun rememberIslandMagnetState(): MagnetState {
     val titles = IslandTags.photos.map { stringResource(it.title) }
+    val captions = IslandTags.photos.map { stringResource(it.caption) }
     val labels = IslandTags.tags.map { stringResource(it.label) }
     val colors = LabTheme.colors
     val tints =
@@ -163,9 +189,9 @@ internal fun rememberIslandMagnetState(): MagnetState {
             IslandTags.Village to colors.tagVillage,
         )
     val photos =
-        remember(titles) {
+        remember(titles, captions) {
             IslandTags.photos.mapIndexed { i, p ->
-                MagnetPhoto(p.id, p.image, titles[i], p.strengths)
+                MagnetPhoto(p.id, p.image, titles[i], p.strengths, captions[i])
             }
         }
     val tags =

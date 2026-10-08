@@ -100,6 +100,13 @@ internal object MagnetDimens {
     val FanCaption = 22.dp
     val FanCaptionGap = 4.dp
 
+    // A photo opened from the grid grows out of its cell in OpenMs into a photo OpenMargin in
+    // from the table's sides, its corners rounding to OpenCorner, its title and caption under it.
+    const val OpenMs = 360
+    val OpenMargin = 20.dp
+    val OpenCorner = 16.dp
+    val OpenTextGap = 12.dp
+
     // While a magnet is out, the photos no magnet pulls are shaded this much, fading in and out
     // over DimMs, so what the filter finds stands out.
     const val DimShade = 0.45f

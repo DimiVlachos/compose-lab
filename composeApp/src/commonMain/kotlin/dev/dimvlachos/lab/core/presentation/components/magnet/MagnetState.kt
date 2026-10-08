@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -20,8 +21,9 @@ import kotlin.random.Random
 import org.jetbrains.compose.resources.DrawableResource
 
 /**
- * A photo on the magnet table: its [image], [title] for a screen reader, and how strongly it
- * matches each tag, 0 to 1, by the tag's id. A tag it doesn't list it doesn't match.
+ * A photo on the magnet table: its [image], [title] for a screen reader and under it in a grid, how
+ * strongly it matches each tag, 0 to 1, by the tag's id, and a [caption] shown with it opened. A
+ * tag it doesn't list it doesn't match.
  */
 @Immutable
 public data class MagnetPhoto(
@@ -29,6 +31,7 @@ public data class MagnetPhoto(
     val image: DrawableResource,
     val title: String,
     val strengths: Map<String, Float>,
+    val caption: String = "",
 )
 
 /**
@@ -75,6 +78,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     /** The magnet whose photos are fanned out into a grid, if any. */
     public var fannedOut: String? by mutableStateOf(null)
+        private set
+
+    /** The photo opened from the grid, if any. */
+    public var opened: String? by mutableStateOf(null)
         private set
 
     internal val magnets: List<Magnet> = tags.map { Magnet(it.id) }
@@ -142,6 +149,14 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     // A magnet asked to fan out while another's grid folds: it fans out once that has folded.
     private var nextFan: String? = null
+
+    /** How far the opened photo has grown out of its cell, 0 in the grid to 1 open. */
+    internal var openness = 0f
+        private set
+
+    /** Which photo is open, or closing back into the grid, by index; -1 for none. */
+    internal var openIndex = -1
+        private set
 
     /** How far the grid has fanned out, 0 folded to 1 out. */
     internal var fan = 0f
@@ -225,6 +240,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     public fun fanOut(tag: String?) {
         if (tag != null && results[tag].isNullOrEmpty()) return
         awake = true
+        if (tag == null) opened = null
         val shown = fanShown
         if (tag != null && shown != null && shown != tag && fan > 0f) {
             // Another magnet's grid is out or folding: it folds first, then this one fans out.
@@ -245,6 +261,40 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         fanPhotos = IntArray(bodies.count { tag in it.stuckTo })
         var k = 0
         for (i in bodies.indices) if (tag in bodies[i].stuckTo) fanPhotos[k++] = i
+    }
+
+    /**
+     * Opens the photo [photoId] from the fanned-out grid: it grows out of its cell into a large
+     * photo with its title and caption. Only a photo the grid shows opens.
+     */
+    public fun open(photoId: String) {
+        if (fannedOut == null) return
+        val index = bodies.bodies.indexOfFirst { it.id == photoId }
+        if (index < 0 || index !in fanPhotos) return
+        opened = photoId
+        openIndex = index
+        awake = true
+    }
+
+    /** Closes the opened photo back into its cell in the grid. */
+    public fun close() {
+        opened = null
+        awake = true
+    }
+
+    /** The photo in the fanned-out grid under [at], in px, if any. */
+    internal fun fanPhotoAt(at: Offset): String? {
+        if (fannedOut == null || fan < 1f) return null
+        val point = at / density
+        val scale = fanScale()
+        val halfWidth = MagnetDimens.CardWidth.value * scale / 2f
+        val halfHeight = MagnetDimens.CardHeight.value * scale / 2f
+        for (index in fanPhotos) {
+            val centre = photoCentre(index)
+            if (abs(point.x - centre.x) <= halfWidth && abs(point.y - centre.y) <= halfHeight)
+                return bodies.bodies[index].id
+        }
+        return null
     }
 
     /** Whether the [index]th photo is one the grid shows, out or folding. */
@@ -378,6 +428,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             for (magnet in magnets) if (magnet.out) pulling += magnet
             if (bodies.step(MagnetDimens.StepSeconds, pulling)) changed = true
             stepFan(MagnetDimens.StepSeconds)
+            stepOpen(MagnetDimens.StepSeconds)
             stepCalm(MagnetDimens.StepSeconds)
             stepDim(MagnetDimens.StepSeconds)
             sinceTick++
@@ -508,7 +559,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         magnet.held = false
         magnet.onTable = false
         bodies.releaseAll(magnet.tag)
-        if (fannedOut == magnet.tag || fanShown == magnet.tag) fannedOut = null
+        if (fannedOut == magnet.tag || fanShown == magnet.tag) {
+            fannedOut = null
+            opened = null
+        }
         if (nextFan == magnet.tag) nextFan = null
         fieldVersion++
     }
@@ -553,6 +607,14 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         dim = if (dim < target) min(target, dim + step) else max(target, dim - step)
     }
 
+    private fun stepOpen(dt: Float) {
+        val target = if (opened != null) 1f else 0f
+        val step = dt * 1_000f / MagnetDimens.OpenMs
+        openness =
+            if (openness < target) min(target, openness + step) else max(target, openness - step)
+        if (openness == 0f && opened == null) openIndex = -1
+    }
+
     private fun stepFan(dt: Float) {
         val target = if (fannedOut != null) 1f else 0f
         val step = dt * 1_000f / MagnetDimens.FanMs
@@ -574,6 +636,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             (calm == 1f || magnets.any { it.out }) &&
             dim == (if (magnets.any { it.out }) 1f else 0f) &&
             fan == (if (fannedOut != null) 1f else 0f) &&
+            openness == (if (opened != null) 1f else 0f) &&
             nextFan == null
 
     // Results are made again only when a card sticks or comes off, or a magnet goes out or back,

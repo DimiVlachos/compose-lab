@@ -95,6 +95,8 @@
     <string name="magnet_on_one">On the %1$s magnet</string>
     <string name="magnet_on_both">Between the %1$s and %2$s magnets</string>
     <string name="magnet_hint">Drag a magnet over the photos to filter them</string>
+    <string name="magnet_open">Open</string>
+    <string name="magnet_close">Close</string>
     <plurals name="magnet_count">
         <item quantity="one">%1$d photo</item>
         <item quantity="other">%1$d photos</item>

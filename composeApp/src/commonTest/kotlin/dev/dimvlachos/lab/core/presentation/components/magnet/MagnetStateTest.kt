@@ -17,7 +17,13 @@ private const val D = 2f
 
 internal val TestPhotos =
     listOf(
-        MagnetPhoto("strong", Res.drawable.photo_corfu, "Strong", mapOf("a" to 1f, "b" to 0.9f)),
+        MagnetPhoto(
+            "strong",
+            Res.drawable.photo_corfu,
+            "Strong",
+            mapOf("a" to 1f, "b" to 0.9f),
+            caption = "A strong match",
+        ),
         MagnetPhoto("weak", Res.drawable.photo_paxos, "Weak", mapOf("a" to 0.3f, "c" to 0.4f)),
         MagnetPhoto("none", Res.drawable.photo_milos, "None", emptyMap()),
     )
@@ -253,6 +259,52 @@ class MagnetStateTest {
         assertEquals("b", table.fannedOut)
         assertEquals("b", table.fanShown)
         assertEquals(1f, table.fan)
+    }
+
+    @Test
+    fun aPhotoInTheGridOpensAndClosesBackIntoIt() {
+        val table = table()
+        table.apply("a")
+        table.run(2f)
+        // Not in a grid yet: nothing to open.
+        table.open("strong")
+        assertNull(table.opened)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.open("none")
+        assertNull(table.opened, "a photo the grid doesn't show doesn't open")
+        table.open("strong")
+        assertEquals("strong", table.opened)
+        table.run(0.6f)
+        assertEquals(1f, table.openness)
+        table.close()
+        assertNull(table.opened)
+        table.run(0.6f)
+        assertEquals(0f, table.openness)
+        assertEquals(-1, table.openIndex)
+        assertEquals("a", table.fannedOut, "closing goes back to the grid")
+    }
+
+    @Test
+    fun foldingTheGridOrPuttingItsMagnetAwayClosesAnOpenPhoto() {
+        val table = table()
+        table.apply("a")
+        table.run(2f)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.open("strong")
+        table.fanOut(null)
+        assertNull(table.opened)
+        table.run(1f)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.open("strong")
+        table.remove("a")
+        assertNull(table.opened)
+        // Long enough for the photo to close, the cards to slide home and the filings to settle.
+        table.run(2.5f)
+        assertEquals(-1, table.openIndex)
+        assertFalse(table.awake)
     }
 
     @Test
