@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class FanGridTest {
@@ -48,6 +49,19 @@ class FanGridTest {
                         assertTrue(b.y - a.y >= h + 20f, "$count: title $k under the next row")
                 }
             }
+        }
+    }
+
+    @Test
+    fun theHeaderSitsJustOverTheGridAndBothAreCentredTogether() {
+        for (count in listOf(1, 3, 7)) {
+            val grid = FanGrid(count, 400f, 700f, 76f, 56f, 12f, caption = 20f, header = 40f)
+            val h = 56f * grid.scale
+            val firstTop = grid.cell(0).y - h / 2f
+            assertEquals(grid.top, firstTop, 0.01f)
+            val bottom = grid.cell(count - 1).y + h / 2f + 20f
+            // As much room over the header as under the last row's titles.
+            assertEquals(700f - bottom, grid.top - 40f, 0.01f)
         }
     }
 }

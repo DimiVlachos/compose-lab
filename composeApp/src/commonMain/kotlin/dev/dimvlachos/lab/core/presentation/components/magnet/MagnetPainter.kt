@@ -57,6 +57,13 @@ internal class FanGrid(
             )
             .coerceAtLeast(0.1f)
 
+    /**
+     * Where the first row's cards begin: the header just over them, and the two centred together on
+     * the table, so a short grid doesn't leave its header stranded at the top.
+     */
+    val top: Float =
+        header + (height - header - (rows * (cardHeight * scale + caption) + (rows - 1) * gap)) / 2f
+
     /** The middle of the [index]th card's cell. */
     fun cell(index: Int): Offset {
         val w = cardWidth * scale
@@ -66,8 +73,6 @@ internal class FanGrid(
         val inRow = if (row == rows - 1) count - row * columns else columns
         val rowWidth = inRow * w + (inRow - 1) * gap
         val rowHeight = h + caption
-        val gridHeight = rows * rowHeight + (rows - 1) * gap
-        val top = header + (height - header - gridHeight) / 2f
         return Offset(
             (width - rowWidth) / 2f + w / 2f + column * (w + gap),
             top + h / 2f + row * (rowHeight + gap),
@@ -215,7 +220,9 @@ internal class MagnetPainter {
             val padY = MagnetDimens.BadgePadY.toPx()
             val w = header.size.width + padX * 2f
             val h = header.size.height + padY * 2f
-            val top = Offset((size.width - w) / 2f, (MagnetDimens.FanHeader.toPx() - h) / 2f)
+            val headerRoom = MagnetDimens.FanHeader.toPx()
+            val gridTop = state.fanTop() * density
+            val top = Offset((size.width - w) / 2f, gridTop - headerRoom + (headerRoom - h) / 2f)
             drawRoundRect(colors.badge, top, Size(w, h), CornerRadius(h / 2f), alpha = t)
             drawRoundRect(
                 face,

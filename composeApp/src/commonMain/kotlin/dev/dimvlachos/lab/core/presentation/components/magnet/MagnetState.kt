@@ -300,6 +300,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     /** Whether the [index]th photo is one the grid shows, out or folding. */
     internal fun inFan(index: Int): Boolean = fanShown != null && index in fanPhotos
 
+    /** Where the grid's first row begins, in dp: its header sits just over it. */
+    internal fun fanTop(): Float = fanGrid()?.top ?: 0f
+
     /** How much the grid's cards grow, in the grid's own layout. */
     internal fun fanScale(): Float = fanGrid()?.scale ?: 1f
 
