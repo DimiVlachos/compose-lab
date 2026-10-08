@@ -52,6 +52,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.magnet_apply
@@ -81,10 +84,10 @@ import org.jetbrains.compose.resources.stringResource
  * Every photo is a node for a screen reader, with its title and the magnet it is on; every magnet
  * is a switch, "Sunset filter, 3 photos", that applies or removes its filter, and a change of count
  * is announced. Tap a photo in the grid to open it, as a screen reader's Open does; with it open,
- * it alone is there for a screen reader. Nothing recomposes while the cards move, the filings turn,
- * the magnets swing on their nails or the grid fans out: only a photo sticking or coming off, a
- * magnet going out or back, or the grid or a photo opening, does. The table fills the space it is
- * given.
+ * it alone is there for a screen reader. System back closes an open photo, then folds the grid,
+ * then is the screen's again. Nothing recomposes while the cards move, the filings turn, the
+ * magnets swing on their nails or the grid fans out: only a photo sticking or coming off, a magnet
+ * going out or back, or the grid or a photo opening, does. The table fills the space it is given.
  */
 @Composable
 public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
@@ -126,6 +129,13 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             }
         }
     }
+    // The system back gesture closes the topmost layer, as a tap does: an open photo first, then
+    // the fanned-out grid. With neither out it is off, so back is the screen's again.
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = state.opened != null || state.fannedOut != null,
+        onBackCompleted = { if (state.opened != null) state.close() else state.fanOut(null) },
+    )
     val colors = LabTheme.colors
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()

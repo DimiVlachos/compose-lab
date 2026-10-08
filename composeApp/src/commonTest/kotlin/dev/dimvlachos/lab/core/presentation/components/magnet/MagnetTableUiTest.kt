@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -33,6 +34,12 @@ import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
@@ -463,5 +470,53 @@ class MagnetTableUiTest {
         assertTrue(widest > 0.05f, "it hardly moved: $widest")
         assertTrue(HapticFeedbackType.Reject in ticks.types, "heard ${ticks.types}")
         assertTrue(!table.isOut("c"))
+    }
+
+    @Test
+    fun systemBackClosesThePhotoThenFoldsTheGridThenLeavesTheTable() = runComposeUiTest {
+        val backInput = DirectNavigationEventInput()
+        var left = 0
+        var state: MagnetState? = null
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(backInput)
+                onDispose { owner.navigationEventDispatcher.removeInput(backInput) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                // The screen it is on: back that the table doesn't take leaves it.
+                NavigationBackHandler(
+                    state = rememberNavigationEventState(NavigationEventInfo.None),
+                    isBackEnabled = true,
+                    onBackCompleted = { left++ },
+                )
+                LabTheme {
+                    val table = rememberMagnetState(TestPhotos, TestTags)
+                    state = table
+                    MagnetTable(table, Modifier.size(360.dp, 720.dp))
+                }
+            }
+        }
+        waitForIdle()
+        val table = state!!
+        fun back() {
+            runOnUiThread { backInput.backCompleted() }
+            mainClock.advanceTimeBy(1_000)
+        }
+        runOnUiThread { table.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        runOnUiThread { table.fanOut("a") }
+        mainClock.advanceTimeBy(1_000)
+        runOnUiThread { table.open("strong") }
+        mainClock.advanceTimeBy(1_000)
+        back()
+        assertNull(table.opened, "back closes the photo")
+        assertEquals("a", table.fannedOut, "and only the photo")
+        back()
+        assertNull(table.fannedOut, "then folds the grid")
+        assertEquals(setOf("strong"), table.results["a"], "folding gives nothing up")
+        assertEquals(0, left)
+        back()
+        assertEquals(1, left, "with nothing open, back is the screen's")
     }
 }
