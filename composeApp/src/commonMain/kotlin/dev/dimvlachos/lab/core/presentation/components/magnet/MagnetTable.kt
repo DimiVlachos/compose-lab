@@ -285,8 +285,15 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             Modifier.fillMaxSize().graphicsLayer().drawBehind {
                 with(painter) {
                     drawCards(state, thumbs, colors)
-                    drawMagnets(state, labels, badges, colors)
-                    drawFan(state, thumbs, titles, lastHeader.value, colors)
+                    drawMagnetsAndFan(
+                        state,
+                        labels,
+                        badges,
+                        thumbs,
+                        titles,
+                        lastHeader.value,
+                        colors,
+                    )
                 }
                 with(openPainter) {
                     drawOpen(state, photos, lastOpen.title, lastOpen.caption, colors)

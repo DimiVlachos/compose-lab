@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -121,6 +123,41 @@ internal class MagnetPainter {
                 val shade = MagnetDimens.DimShade * body.shade
                 drawCard(thumbs[i], body.at * density, body.tilt, 1f, colors, shade)
             }
+        }
+    }
+
+    /**
+     * The magnets and the grid, in the order that keeps them whole: the grid over the magnets as it
+     * fans out and while it is out, but under them as it folds back, so its photos land under the
+     * magnets they return to instead of covering them and then dropping under. Folding, the magnets
+     * are darkened as the scrim fading over the rest is, so they don't flash out from under it.
+     */
+    fun DrawScope.drawMagnetsAndFan(
+        state: MagnetState,
+        labels: List<TextLayoutResult>,
+        badges: List<TextLayoutResult?>,
+        thumbs: List<ImageBitmap>,
+        titles: List<TextLayoutResult>,
+        header: TextLayoutResult?,
+        colors: AppColors,
+    ) {
+        val folding = state.fanShown != null && state.fannedOut == null && state.fan > 0f
+        if (!folding) {
+            drawMagnets(state, labels, badges, colors)
+            drawFan(state, thumbs, titles, header, colors)
+            return
+        }
+        drawFan(state, thumbs, titles, header, colors)
+        val light = 1f - ScrimAlpha * smooth(state.fan)
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(
+                Rect(Offset.Zero, size),
+                Paint().apply {
+                    colorFilter = ColorFilter.lighting(Color(light, light, light), Color.Black)
+                },
+            )
+            drawMagnets(state, labels, badges, colors)
+            canvas.restore()
         }
     }
 
@@ -306,7 +343,7 @@ internal class MagnetPainter {
         val t = smooth(state.fan)
         if (t <= 0f) return
         val tableBottom = state.tableHeight * density
-        drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.7f * t)
+        drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = ScrimAlpha * t)
         val scale = lerp(1f, state.fanScale(), t)
         val captionGap = MagnetDimens.FanCaptionGap.toPx()
         for (i in state.bodies.bodies.indices) {
@@ -333,16 +370,18 @@ internal class MagnetPainter {
             val headerRoom = MagnetDimens.FanHeader.toPx()
             val gridTop = state.fanTop() * density
             val top = Offset((size.width - w) / 2f, gridTop - headerRoom + (headerRoom - h) / 2f)
-            drawRoundRect(colors.badge, top, Size(w, h), CornerRadius(h / 2f), alpha = t)
+            // It comes in last and goes first, so it never lingers over the magnets as they fold.
+            val shown = t * t
+            drawRoundRect(colors.badge, top, Size(w, h), CornerRadius(h / 2f), alpha = shown)
             drawRoundRect(
                 face,
                 top,
                 Size(w, h),
                 CornerRadius(h / 2f),
-                alpha = t,
+                alpha = shown,
                 style = Stroke(MagnetDimens.BadgeRing.toPx()),
             )
-            drawText(header, topLeft = top + Offset(padX, padY), alpha = t)
+            drawText(header, topLeft = top + Offset(padX, padY), alpha = shown)
         }
     }
 
@@ -444,6 +483,9 @@ internal fun leftAcross(centre: Float, width: Float, stage: Float): Float =
 
 // Eased in and out, so the grid starts and lands softly.
 internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
+
+// How dark the scrim behind a fanned-out grid is, fully out.
+private const val ScrimAlpha = 0.7f
 
 // How much deeper the horseshoe's second pole is than its first.
 private const val PoleShade = 0.3f
