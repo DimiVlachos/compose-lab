@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,6 +81,8 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
     // still.
     LaunchedEffect(table) { if (!state.replay && !state.recording) table.stir() }
     val colors = LabTheme.colors
+    // Whether every magnet is in the strip: read as that, so a photo sticking recomposes nothing.
+    val idle by remember(table) { derivedStateOf { table.results.isEmpty() } }
     // Clear of the navigation bar and the sides' cutouts; the screen it is shown in keeps it clear
     // of the status bar already.
     Box(
@@ -103,7 +106,7 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
         // The hint gives way while a magnet is out: by then it has been taken, and a cluster
         // near the top would lie under it.
         AnimatedVisibility(
-            visible = table.results.isEmpty(),
+            visible = idle,
             modifier = Modifier.align(Alignment.TopCenter),
             enter = fadeIn(),
             exit = fadeOut(),

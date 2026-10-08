@@ -77,6 +77,9 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
                 angle[i] = turned[i]
             } else {
                 angle[i] = turned[i] + axisTurn(turned[i], fell[i]) * calm
+                // Settled, it has forgotten the field that turned it: a magnet coming out far off
+                // won't snap it back to that.
+                if (calm >= 1f) turned[i] = fell[i]
             }
             strength[i] = b.coerceAtMost(1f)
         }
@@ -116,8 +119,7 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
             for (b in points.indices) {
                 if (traced[b] == 0) continue
                 val paint = paints[b]
-                paint.color = color
-                paint.alpha = BucketAlpha[b]
+                paint.color = color.copy(alpha = color.alpha * BucketAlpha[b])
                 paint.strokeWidth = lineWidth
                 canvas.drawRawPoints(PointMode.Lines, points[b], paint)
             }

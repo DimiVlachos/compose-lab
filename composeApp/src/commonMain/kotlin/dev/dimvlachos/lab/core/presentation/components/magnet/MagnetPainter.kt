@@ -118,12 +118,7 @@ internal class MagnetPainter {
                 // Drawn by the grid instead, over its scrim.
                 if (fanning && state.inFan(i)) continue
                 // Shaded while a magnet is out that doesn't pull it, so the matches stand out.
-                val shade =
-                    if (layer == 0 && state.dim > 0f && !body.feelsAny(state.magnets)) {
-                        MagnetDimens.DimShade * state.dim
-                    } else {
-                        0f
-                    }
+                val shade = MagnetDimens.DimShade * body.shade
                 drawCard(thumbs[i], body.at * density, body.tilt, 1f, colors, shade)
             }
         }
@@ -306,6 +301,8 @@ internal class MagnetPainter {
         val captionGap = MagnetDimens.FanCaptionGap.toPx()
         for (i in state.bodies.bodies.indices) {
             if (!state.inFan(i)) continue
+            // The photo opened from this card is drawn instead of it.
+            if (i == state.openIndex && state.openness > 0f) continue
             val body = state.bodies.bodies[i]
             val centre = state.photoCentre(i) * density
             drawCard(thumbs[i], centre, lerp(body.tilt, 0f, t), scale, colors)
@@ -369,15 +366,6 @@ internal class MagnetPainter {
                         IntSize((w - border * 2f).roundToInt(), (h - border * 2f).roundToInt()),
                     filterQuality = FilterQuality.Medium,
                 )
-                if (shade > 0f) {
-                    drawRoundRect(
-                        colors.fanScrim,
-                        Offset(-w / 2f, -h / 2f),
-                        Size(w, h),
-                        corner,
-                        alpha = shade,
-                    )
-                }
                 // The clip across the top edge, with a line of light along it.
                 val clipW = MagnetDimens.ClipWidth.toPx() * scale
                 val clipH = MagnetDimens.ClipHeight.toPx() * scale
@@ -394,6 +382,23 @@ internal class MagnetPainter {
                     clipTop + Offset(clipW * 0.8f, clipH * 0.3f),
                     strokeWidth = 1.dp.toPx() * scale,
                 )
+                // Shaded over all of it, its clip too.
+                if (shade > 0f) {
+                    drawRoundRect(
+                        colors.fanScrim,
+                        Offset(-w / 2f, -h / 2f),
+                        Size(w, h),
+                        corner,
+                        alpha = shade,
+                    )
+                    drawRoundRect(
+                        colors.fanScrim,
+                        clipTop,
+                        Size(clipW, clipH),
+                        CornerRadius(clipH / 3f),
+                        alpha = shade,
+                    )
+                }
             }
         }
     }
@@ -452,7 +457,8 @@ internal class OpenPainter {
         val tableBottom = state.tableHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.85f * t)
         // From its card in the grid...
-        val scale = state.fanScale()
+        // The card it grows from is as big as the grid draws it, folding or not.
+        val scale = lerp(1f, state.fanScale(), smooth(state.fan))
         val from = state.photoCentre(index) * density
         val fromW = MagnetDimens.CardWidth.toPx() * scale
         val fromH = MagnetDimens.CardHeight.toPx() * scale

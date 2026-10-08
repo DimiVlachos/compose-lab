@@ -2,6 +2,9 @@ package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
@@ -360,5 +363,68 @@ class MagnetTableUiTest {
         }
         assertEquals(MagnetDimens.StripHeight.value, strips[0])
         assertTrue(strips[1] > strips[0], "at twice the text, the strip is ${strips[1]} dp")
+    }
+
+    @Test
+    fun withAPhotoOpenOnlyThePhotoIsThereForAScreenReader() = runComposeUiTest {
+        val table = table()
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        runOnUiThread {
+            table.state.fanOut("a")
+        }
+        mainClock.advanceTimeBy(1_000)
+        runOnUiThread { table.state.open("strong") }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithContentDescription("Strong, A strong match")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle))
+        onNodeWithContentDescription("Alpha filter").assertDoesNotExist()
+        onNodeWithContentDescription("None").assertDoesNotExist()
+    }
+
+    @Test
+    fun atLargeTextTheGridLeavesRoomForItsTitles() = runComposeUiTest {
+        var state: MagnetState? = null
+        setContent {
+            LabTheme {
+                CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
+                    val table = rememberMagnetState(TestPhotos, TestTags)
+                    state = table
+                    MagnetTable(table, Modifier.size(360.dp, 720.dp))
+                }
+            }
+        }
+        waitForIdle()
+        assertTrue(
+            state!!.fanCaption > MagnetDimens.FanCaption.value,
+            "caption room ${state!!.fanCaption}",
+        )
+    }
+
+    @Test
+    fun aStripThatGrowsWithTheTextIsDrawnTallerToo() = runComposeUiTest {
+        var fontScale by mutableStateOf(1f)
+        var state: MagnetState? = null
+        setContent {
+            LabTheme {
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density.density, fontScale)
+                ) {
+                    val table = rememberMagnetState(TestPhotos, TestTags)
+                    state = table
+                    MagnetTable(table, Modifier.size(360.dp, 720.dp).testTag("table"))
+                }
+            }
+        }
+        waitForIdle()
+        val before = state!!.stripHeight
+        fontScale = 2f
+        waitForIdle()
+        val after = state!!.stripHeight
+        assertTrue(after > before + 10f)
+        // Just under where the rail now begins: rail, not table.
+        val pixels = onNodeWithTag("table").captureToImage().toPixelMap()
+        val y = ((720f - after + 4f) * density.density).toInt()
+        assertEquals(AppColors().stripRail, pixels[4, y], "the rail wasn't drawn again")
     }
 }

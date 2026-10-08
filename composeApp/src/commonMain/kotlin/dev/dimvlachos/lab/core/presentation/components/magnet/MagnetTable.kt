@@ -12,7 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -38,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -45,6 +49,8 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -74,9 +80,11 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Every photo is a node for a screen reader, with its title and the magnet it is on; every magnet
  * is a switch, "Sunset filter, 3 photos", that applies or removes its filter, and a change of count
- * is announced. Nothing recomposes while the cards move, the filings turn or the grid fans out:
- * only a photo sticking or coming off, or a magnet going out or back, does. The table fills the
- * space it is given.
+ * is announced. Tap a photo in the grid to open it, as a screen reader's Open does; with it open,
+ * it alone is there for a screen reader. Nothing recomposes while the cards move, the filings turn,
+ * the magnets swing on their nails or the grid fans out: only a photo sticking or coming off, a
+ * magnet going out or back, or the grid or a photo opening, does. The table fills the space it is
+ * given.
  */
 @Composable
 public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
@@ -131,7 +139,10 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             maxOf(
                 MagnetDimens.StripHeight.value,
                 2f *
-                    ((MagnetDimens.MagnetRadius + MagnetDimens.LabelGap + MagnetDimens.StripPad)
+                    ((MagnetDimens.HorseshoeLegEnd +
+                            MagnetDimens.HorseshoeTip +
+                            MagnetDimens.LabelGap +
+                            MagnetDimens.StripPad)
                         .value + labelHeight.toDp().value),
             )
         }
@@ -149,10 +160,30 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             counts.map { count -> count?.let { measurer.measure(it, badgeStyle) } }
         }
     val titleStyle = LabTheme.typography.label.copy(color = colors.textPrimary)
+    // Each title fits its cell in the grid, on one line, cut short if it must be; the grid leaves
+    // room under its cards for the tallest, at any size of text.
+    val cellWidth = with(density) { (MagnetDimens.CardWidth * MagnetDimens.FanScale).roundToPx() }
     val titles =
-        remember(state.photos, measurer, titleStyle) {
-            state.photos.map { measurer.measure(it.title, titleStyle) }
+        remember(state.photos, measurer, titleStyle, cellWidth) {
+            state.photos.map {
+                measurer.measure(
+                    it.title,
+                    titleStyle,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    constraints = Constraints(maxWidth = cellWidth),
+                )
+            }
         }
+    val caption =
+        with(density) {
+            maxOf(
+                MagnetDimens.FanCaption.value,
+                (titles.maxOfOrNull { it.size.height } ?: 0).toDp().value +
+                    MagnetDimens.FanCaptionGap.value * 2f,
+            )
+        }
+    SideEffect { state.fanCaption = caption }
     // Over the fanned-out grid: the magnet's name and its count, "Sunset · 3 photos". It stays
     // drawn as the grid folds after its magnet has been let go.
     val fanned = state.tags.indexOfFirst { it.id == state.fannedOut }
@@ -168,15 +199,19 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
     val captionStyle = LabTheme.typography.body.copy(color = colors.textMuted)
     val openPhoto = state.photos.firstOrNull { it.id == state.opened }
     val lastOpen = remember(state) { OpenWords() }
+    // As wide as the opened photo, and wrapped onto more lines if they need them.
+    val wordsWidth =
+        with(density) { (size.width - (MagnetDimens.OpenMargin * 2).roundToPx()).coerceAtLeast(1) }
     if (openPhoto != null) {
+        val words = Constraints(maxWidth = wordsWidth)
         lastOpen.title =
-            remember(openPhoto, measurer, openStyle) {
-                measurer.measure(openPhoto.title, openStyle)
+            remember(openPhoto, measurer, openStyle, wordsWidth) {
+                measurer.measure(openPhoto.title, openStyle, constraints = words)
             }
         lastOpen.caption =
-            remember(openPhoto, measurer, captionStyle) {
+            remember(openPhoto, measurer, captionStyle, wordsWidth) {
                 if (openPhoto.caption.isEmpty()) null
-                else measurer.measure(openPhoto.caption, captionStyle)
+                else measurer.measure(openPhoto.caption, captionStyle, constraints = words)
             }
     }
     val photos = state.photos.map { imageResource(it.image) }
@@ -229,6 +264,11 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                 }
             }
         )
+        // With a photo open it alone is there for a screen reader, as it alone is to be seen.
+        if (openPhoto != null) {
+            OpenNode(state, openPhoto)
+            return@Box
+        }
         state.photos.forEachIndexed { index, photo ->
             val on = state.tags.filter { results[it.id]?.contains(photo.id) == true }
             val where =
@@ -241,7 +281,6 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         }
         for ((i, tag) in state.tags.withIndex()) MagnetNode(state, tag, counts[i])
         Announcer(state, counts)
-        if (openPhoto != null) OpenNode(state, openPhoto)
     }
 }
 
@@ -268,8 +307,8 @@ private fun Announcer(state: MagnetState, counts: List<String?>) {
 
 // The table's size as last laid out, in px, so a change of strip lays it out again.
 private class TableSize {
-    var width = 0
-    var height = 0
+    var width by mutableIntStateOf(0)
+    var height by mutableIntStateOf(0)
 }
 
 private class HeaderHolder {
@@ -318,6 +357,8 @@ private fun OpenNode(state: MagnetState, photo: MagnetPhoto) {
         if (photo.caption.isEmpty()) photo.title else "${photo.title}, ${photo.caption}"
     Spacer(
         Modifier.fillMaxSize().semantics {
+            // A pane of its own, so a screen reader says it has opened.
+            paneTitle = photo.title
             contentDescription = description
             onClick(label = close) {
                 state.close()

@@ -387,6 +387,71 @@ class MagnetStateTest {
     }
 
     @Test
+    fun photosThatStickWhileTheGridIsOutJoinIt() {
+        // Three photos Alpha pulls hard, one near the middle and two out at the sides.
+        val photos = List(3) { MagnetPhoto("p$it", TestPhotos[0].image, "P$it", mapOf("a" to 1f)) }
+        val table =
+            MagnetState(photos, TestTags).apply { layOut((360 * D).toInt(), (720 * D).toInt(), D) }
+        table.apply("a")
+        while (table.results["a"].orEmpty().isEmpty()) table.advance(1f / 60f)
+        table.fanOut("a")
+        table.run(2f)
+        val stuck = table.results["a"].orEmpty()
+        assertTrue(stuck.size > 1, "only $stuck stuck")
+        for (i in photos.indices) {
+            if (photos[i].id in stuck)
+                assertTrue(table.inFan(i), "${photos[i].id} is stuck but not in the grid")
+        }
+    }
+
+    @Test
+    fun anOpenPhotoClosesWhenItsGridGoes() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.open("strong")
+        // Pulled off its magnet: nothing left in the grid, which folds, and the photo with it.
+        table.pullOff("strong", table.photoPosition("strong")!! + Offset(0f, 200f * D))
+        assertNull(table.fannedOut)
+        assertNull(table.opened)
+    }
+
+    @Test
+    fun anotherMagnetFannedOutClosesAnOpenPhoto() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        table.fanOut("a")
+        table.run(0.5f)
+        table.open("strong")
+        table.fanOut("b")
+        assertNull(table.opened)
+    }
+
+    @Test
+    fun puttingTheLastMagnetAwayLiftsTheShadeWithoutAFlash() {
+        val table = table()
+        table.apply("c")
+        table.run(1f)
+        val strong = table.bodies.bodies.indexOfFirst { it.id == "strong" }
+        // Gamma doesn't pull it: shaded.
+        assertEquals(1f, table.shadeOf(strong))
+        val weak = table.bodies.bodies.indexOfFirst { it.id == "weak" }
+        assertEquals(0f, table.shadeOf(weak), "a photo Gamma pulls stays bright")
+        table.remove("c")
+        table.advance(1f / 60f)
+        // The weak one, no longer pulled, mustn't jump to fully shaded as the shade lifts.
+        assertTrue(table.shadeOf(weak) < 0.2f, "it flashed to ${table.shadeOf(weak)}")
+        table.run(1f)
+        assertEquals(0f, table.shadeOf(strong))
+        assertEquals(0f, table.shadeOf(weak))
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")

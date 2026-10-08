@@ -143,6 +143,15 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     private var calmTime = MagnetDimens.CalmSeconds
 
+    /** How shaded the [index]th photo is, 0 to 1. */
+    internal fun shadeOf(index: Int): Float = bodies.bodies[index].shade
+
+    /**
+     * How much room the grid leaves under each card for its title, in dp: more for large text, as
+     * the table measures its titles.
+     */
+    internal var fanCaption: Float = MagnetDimens.FanCaption.value
+
     /** How far the photos no magnet pulls are shaded, 0 with every magnet away to 1. */
     internal var dim = 0f
         private set
@@ -255,9 +264,11 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             // Another magnet's grid is out or folding: it folds first, then this one fans out.
             nextFan = tag
             fannedOut = null
+            opened = null
             return
         }
         nextFan = null
+        if (tag != fannedOut) opened = null
         fannedOut = tag
         if (tag != null) {
             fanShown = tag
@@ -293,7 +304,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     /** The photo in the fanned-out grid under [at], in px, if any. */
     internal fun fanPhotoAt(at: Offset): String? {
-        if (fannedOut == null || fan < 1f) return null
+        if (fannedOut == null || fan < LateFan) return null
         val point = at / density
         val scale = fanScale()
         val halfWidth = MagnetDimens.CardWidth.value * scale / 2f
@@ -324,7 +335,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             MagnetDimens.CardWidth.value,
             MagnetDimens.CardHeight.value,
             MagnetDimens.FanGap.value,
-            caption = MagnetDimens.FanCaption.value,
+            caption = fanCaption,
             header = MagnetDimens.FanHeader.value,
         )
     }
@@ -477,10 +488,11 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         }
         if (changed) updateResults()
         if (bodies.sticks > 0) {
-            val strongest = bodies.strongest
-            bodies.sticks = 0
-            bodies.strongest = 0f
+            // A stick too soon after the last tick waits for the next: its strength isn't lost.
             if (sinceTick >= MagnetDimens.TickSteps) {
+                val strongest = bodies.strongest
+                bodies.sticks = 0
+                bodies.strongest = 0f
                 sinceTick = 0
                 onStick?.invoke(strongest)
             }
@@ -662,10 +674,28 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         fieldVersion++
     }
 
+    // Each photo fades its own shade in or out, so one a magnet just dropped, or no longer pulls,
+    // fades rather than flashing over to shaded as the others lift.
     private fun stepDim(dt: Float) {
-        val target = if (magnets.any { it.out }) 1f else 0f
+        val anyOut = magnets.any { it.out }
+        val target = if (anyOut) 1f else 0f
         val step = dt * 1_000f / MagnetDimens.DimMs
         dim = if (dim < target) min(target, dim + step) else max(target, dim - step)
+        for (body in bodies.bodies) {
+            val goal = if (anyOut && body.layer() == 0 && !body.feelsAny(magnets)) 1f else 0f
+            body.shade =
+                if (body.shade < goal) min(goal, body.shade + step)
+                else max(goal, body.shade - step)
+        }
+    }
+
+    private fun shadesSettled(): Boolean {
+        val anyOut = magnets.any { it.out }
+        for (body in bodies.bodies) {
+            val goal = if (anyOut && body.layer() == 0 && !body.feelsAny(magnets)) 1f else 0f
+            if (body.shade != goal) return false
+        }
+        return true
     }
 
     private fun stepOpen(dt: Float) {
@@ -698,6 +728,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             bodies.atRest &&
             (calm == 1f || magnets.any { it.out }) &&
             dim == (if (magnets.any { it.out }) 1f else 0f) &&
+            shadesSettled() &&
             fan == (if (fannedOut != null) 1f else 0f) &&
             openness == (if (opened != null) 1f else 0f) &&
             nextFan == null
@@ -714,7 +745,25 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         }
         if (next != results) results = next
         val shown = fannedOut
-        if (shown != null && results[shown].isNullOrEmpty()) fannedOut = null
+        if (shown != null && results[shown].isNullOrEmpty()) {
+            fannedOut = null
+            opened = null
+        }
+        // Photos that stick while the grid is out join it; those that come off stay until it folds.
+        if (shown != null && shown == fanShown && fannedOut != null) {
+            val more =
+                bodies.bodies.indices.count {
+                    shown in bodies.bodies[it].stuckTo && it !in fanPhotos
+                }
+            if (more > 0) {
+                val grown = fanPhotos.copyOf(fanPhotos.size + more)
+                var k = fanPhotos.size
+                for (i in bodies.bodies.indices) {
+                    if (shown in bodies.bodies[i].stuckTo && i !in fanPhotos) grown[k++] = i
+                }
+                fanPhotos = grown
+            }
+        }
         val waiting = nextFan
         if (waiting != null && results[waiting].isNullOrEmpty()) nextFan = null
     }
@@ -722,6 +771,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     private companion object {
         // The same strewn table every time.
         const val LayoutSeed = 29
+
+        // A tap this far into the fan-out already finds the photo it lands on.
+        const val LateFan = 0.9f
         val SlotDamping = 2f * sqrt(MagnetDimens.Cling)
     }
 }

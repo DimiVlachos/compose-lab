@@ -25,6 +25,9 @@ internal class PhotoBody(
     var at = Offset.Zero
     var velocity = Offset.Zero
 
+    /** How shaded it is, 0 to 1: it fades in and out on its own as magnets come and go. */
+    var shade = 0f
+
     /** Held by a finger: it goes where the finger takes it and feels no magnet. */
     var held = false
 
