@@ -82,6 +82,9 @@ internal object MagnetDimens {
     const val LieFlat = 0.02f
     val FieldUnitDistance = 90.dp
 
+    // With every magnet put away the filings settle back as they fell over this long, eased.
+    const val CalmSeconds = 1f
+
     // Tapped, a magnet's photos fan out into a grid of up to FanColumns columns, the cards up to
     // FanScale times their size, in FanMs; FanGap between them.
     const val FanMs = 320

@@ -112,6 +112,15 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     internal var fanShown: String? = null
         private set
 
+    /**
+     * How settled the filings are with every magnet put away, 0 just put away to 1 lying as they
+     * fell, eased; 0 while any magnet is out.
+     */
+    internal var calm = 1f
+        private set
+
+    private var calmTime = MagnetDimens.CalmSeconds
+
     /** How far the grid has fanned out, 0 folded to 1 out. */
     internal var fan = 0f
         private set
@@ -292,6 +301,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             for (magnet in magnets) if (magnet.out) pulling += magnet
             if (bodies.step(MagnetDimens.StepSeconds, pulling)) changed = true
             stepFan(MagnetDimens.StepSeconds)
+            stepCalm(MagnetDimens.StepSeconds)
             sinceTick++
         }
         if (changed) updateResults()
@@ -442,6 +452,20 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         }
     }
 
+    // The filings settle only once every magnet is away, and are drawn again as they do.
+    private fun stepCalm(dt: Float) {
+        if (magnets.any { it.out }) {
+            calmTime = 0f
+            calm = 0f
+            return
+        }
+        if (calmTime >= MagnetDimens.CalmSeconds) return
+        calmTime = min(MagnetDimens.CalmSeconds, calmTime + dt)
+        val t = calmTime / MagnetDimens.CalmSeconds
+        calm = t * t * (3f - 2f * t)
+        fieldVersion++
+    }
+
     private fun stepFan(dt: Float) {
         val target = if (fannedOut != null) 1f else 0f
         val step = dt * 1_000f / MagnetDimens.FanMs
@@ -454,6 +478,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             magnets.none { it.held } &&
             magnets.all { it.out || it.at == it.slot } &&
             bodies.atRest &&
+            (calm == 1f || magnets.any { it.out }) &&
             fan == (if (fannedOut != null) 1f else 0f)
 
     // Results are made again only when a card sticks or comes off, or a magnet goes out or back,

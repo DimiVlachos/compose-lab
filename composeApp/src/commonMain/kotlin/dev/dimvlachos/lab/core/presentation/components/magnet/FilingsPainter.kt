@@ -27,6 +27,10 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
     private val x = FloatArray(count)
     private val y = FloatArray(count)
     private val angle = FloatArray(count)
+
+    // The angle each filing fell at, and the one the field last turned it to.
+    private val fell = FloatArray(count)
+    private val turned = FloatArray(count)
     private val strength = FloatArray(count)
     private val mx = FloatArray(MagnetDimens.MostMagnets)
     private val my = FloatArray(MagnetDimens.MostMagnets)
@@ -47,14 +51,17 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
             x[i] = random.nextFloat()
             y[i] = random.nextFloat()
             angle[i] = random.nextFloat() * 2f * PI.toFloat()
+            fell[i] = angle[i]
+            turned[i] = angle[i]
         }
     }
 
     /**
      * Turns each filing to the field of [magnets] out of the strip, on a [width] × [height] dp
-     * table.
+     * table. Where the field is too weak to turn it, a filing lies [calm] of the way back from the
+     * last angle the field gave it to the angle it fell at, as filings settle once a magnet goes.
      */
-    fun align(magnets: List<Magnet>, width: Float, height: Float) {
+    fun align(magnets: List<Magnet>, width: Float, height: Float, calm: Float = 1f) {
         var n = 0
         for (magnet in magnets) {
             if (!magnet.out || n == mx.size) continue
@@ -65,7 +72,12 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
         for (i in x.indices) {
             MagnetField.fieldAt(x[i] * width, y[i] * height, mx, my, n, field)
             val b = hypot(field[0], field[1])
-            if (b > MagnetDimens.LieFlat) angle[i] = atan2(field[1], field[0])
+            if (b > MagnetDimens.LieFlat) {
+                turned[i] = atan2(field[1], field[0])
+                angle[i] = turned[i]
+            } else {
+                angle[i] = turned[i] + axisTurn(turned[i], fell[i]) * calm
+            }
             strength[i] = b.coerceAtMost(1f)
         }
     }
@@ -93,7 +105,7 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
         val height = state.tableHeight
         if (width <= 0f || height <= 0f) return
         if (version != tracedVersion || width != tracedWidth || height != tracedHeight) {
-            align(state.magnets, width, height)
+            align(state.magnets, width, height, state.calm)
             trace(width, height, density)
             tracedVersion = version
             tracedWidth = width
@@ -140,6 +152,16 @@ internal class FilingsPainter(count: Int = MagnetDimens.FilingCount, seed: Int =
 private val BucketAlpha = floatArrayOf(0.12f, 0.22f, 0.36f, 0.58f)
 
 private const val FilingsSeed = 41
+
+// The shorter turn from line [from] to line [to]: a filing has no head, so at most a quarter turn
+// either way.
+private fun axisTurn(from: Float, to: Float): Float {
+    val pi = PI.toFloat()
+    var d = (to - from) % pi
+    if (d < -pi / 2f) d += pi
+    if (d > pi / 2f) d -= pi
+    return d
+}
 
 // Where a brightness's spare lines lie: far off the table, where they draw nothing.
 private const val OffTable = -1_000f

@@ -186,6 +186,25 @@ class MagnetStateTest {
     }
 
     @Test
+    fun withEveryMagnetPutAwayTheFilingsCalmOverAboutASecond() {
+        val table = table()
+        table.apply("a")
+        table.run(1f)
+        assertEquals(0f, table.calm)
+        table.remove("a")
+        table.run(0.5f)
+        assertTrue(table.calm in 0.2f..0.8f, "calm ${table.calm}")
+        assertTrue(table.awake, "the filings are still settling")
+        val version = table.fieldVersion
+        table.run(0.1f)
+        assertTrue(table.fieldVersion > version, "settling filings are drawn again")
+        table.run(1.5f)
+        assertEquals(1f, table.calm)
+        table.run(2f)
+        assertFalse(table.awake)
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")

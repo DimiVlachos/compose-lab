@@ -86,4 +86,33 @@ class FilingsPainterTest {
         }
         assertEquals(300, traced)
     }
+
+    @Test
+    fun withTheMagnetsGoneTheFilingsSettleBackAsTheyFell() {
+        val filings = FilingsPainter(count = 200, seed = 5)
+        val fell = List(200) { filings.angleOf(it) }
+        filings.align(listOf(out(Offset(200f, 300f))), width, height)
+        val aligned = List(200) { filings.angleOf(it) }
+        assertTrue((0 until 200).any { axisApart(aligned[it], fell[it]) > 0.3f })
+        // Just put away, they still lie along the field that was.
+        filings.align(emptyList(), width, height, calm = 0f)
+        for (i in 0 until 200) assertEquals(0f, axisApart(aligned[i], filings.angleOf(i)), 1e-4f)
+        // Halfway calm, each lies between, no further from either than they are apart.
+        filings.align(emptyList(), width, height, calm = 0.5f)
+        for (i in 0 until 200) {
+            val apart = axisApart(aligned[i], fell[i])
+            assertTrue(axisApart(filings.angleOf(i), fell[i]) <= apart / 2f + 1e-3f, "filing $i")
+        }
+        // Calm, they lie as they fell.
+        filings.align(emptyList(), width, height, calm = 1f)
+        for (i in 0 until 200) assertEquals(0f, axisApart(fell[i], filings.angleOf(i)), 1e-4f)
+    }
+
+    // How far apart two filings' lines are, in radians: a line has no head, so 0 to π/2.
+    private fun axisApart(a: Float, b: Float): Float {
+        val pi = kotlin.math.PI.toFloat()
+        var d = (a - b) % pi
+        if (d < 0f) d += pi
+        return kotlin.math.min(d, pi - d)
+    }
 }
