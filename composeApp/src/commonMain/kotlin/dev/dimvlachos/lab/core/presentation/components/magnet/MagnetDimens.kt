@@ -78,6 +78,15 @@ internal object MagnetDimens {
     // than this to the magnet's point: about the horseshoe's own half-width.
     val MagnetBody = 30.dp
 
+    // Nudged further than this from where it lay, such a card slips under the magnet and its
+    // cluster instead, and slides home beneath them: touched, it is bumped aside; swept through,
+    // it isn't carried off. Back within HomeAgain of its spot, it can be nudged again.
+    val MostNudge = 36.dp
+    val HomeAgain = 4.dp
+
+    // The most speed, in dp a second, a nudge leaves such a card with: it is moved, not thrown.
+    const val NudgeSpeed = 60f
+
     // Every loose card is tied to where it lay by a spring this stiff (1/s²) and loses this share
     // of its speed a second: a partial match leans towards a magnet, and everything slides home
     // when the magnets go. A stuck card clings to its place with a stiffer, critically damped

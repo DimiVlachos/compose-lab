@@ -28,6 +28,12 @@ internal class PhotoBody(
     /** How shaded it is, 0 to 1: it fades in and out on its own as magnets come and go. */
     var shade = 0f
 
+    /**
+     * Pushed past a nudge by a magnet or its cluster, it has slipped under them, and slides home
+     * beneath them until it is back where it lay.
+     */
+    var slipping = false
+
     /** Held by a finger: it goes where the finger takes it and feels no magnet. */
     var held = false
 
@@ -112,6 +118,9 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     private val startX = FloatArray(bodies.size)
     private val startY = FloatArray(bodies.size)
 
+    // How fast each card was going on its own, before anything pushed it this step.
+    private val ownSpeed = FloatArray(bodies.size)
+
     /** Whether every card has been still for a while, so the frame loop can sleep. */
     val atRest: Boolean
         get() = quiet >= MagnetDimens.QuietSteps
@@ -168,17 +177,26 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             body.velocity += acceleration * dt
             body.at += body.velocity * dt
         }
+        for (i in bodies.indices) ownSpeed[i] = bodies[i].velocity.getDistance()
         for (body in bodies) if (stick(body, magnets)) changed = true
         repeat(MagnetDimens.SeparationPasses) {
             separate()
             keepOffMagnets(magnets)
         }
         keepOnTable()
+        slipUnder(magnets)
         var moving = false
         for (i in bodies.indices) {
             val body = bodies[i]
             if (body.held) continue
             body.velocity = Offset((body.at.x - startX[i]) / dt, (body.at.y - startY[i]) / dt)
+            // A card nudged by a magnet it isn't drawn to is moved, not thrown: the shove leaves
+            // it no faster than it was going on its own, or a slow slide.
+            if (body.stuckTo.isEmpty() && !body.drawnToAny(magnets)) {
+                val speed = body.velocity.getDistance()
+                val most = max(ownSpeed[i], MagnetDimens.NudgeSpeed)
+                if (speed > most) body.velocity *= most / speed
+            }
             if (body.velocity.getDistance() > MagnetDimens.StillSpeed) moving = true
         }
         quiet = if (moving || changed) 0 else quiet + 1
@@ -362,6 +380,22 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return best
     }
 
+    // A loose card no magnet out draws in, pushed further than a nudge from where it lay, slips
+    // under them rather than being carried off; home again, it can be nudged again.
+    private fun slipUnder(magnets: List<Magnet>) {
+        val most = MagnetDimens.MostNudge.value
+        val home = MagnetDimens.HomeAgain.value
+        for (body in bodies) {
+            if (body.held || body.stuckTo.isNotEmpty() || body.drawnToAny(magnets)) {
+                body.slipping = false
+                continue
+            }
+            val away = (body.at - body.home).getDistance()
+            if (!body.slipping && away > most) body.slipping = true
+            else if (body.slipping && away < home) body.slipping = false
+        }
+    }
+
     // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.
     private fun grip(body: PhotoBody, magnet: Magnet): Float {
         val apart = body.at - magnet.at
@@ -390,6 +424,9 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 val p = bodies[i]
                 val q = bodies[j]
                 if (p.held && q.held) continue
+                // A card that has slipped under a cluster passes under its cards too.
+                if (p.slipping && q.stuckTo.isNotEmpty() || q.slipping && p.stuckTo.isNotEmpty())
+                    continue
                 val apart = q.at - p.at
                 val distance = apart.getDistance()
                 if (distance >= span) continue
@@ -418,6 +455,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                     when {
                         magnet.tag in body.stuckTo -> MagnetDimens.ClusterInner.value
                         body.drawnTo(magnet) -> MagnetDimens.ContactRing.value
+                        body.slipping -> continue
                         else -> MagnetDimens.MagnetBody.value
                     }
                 val apart = body.at - magnet.at

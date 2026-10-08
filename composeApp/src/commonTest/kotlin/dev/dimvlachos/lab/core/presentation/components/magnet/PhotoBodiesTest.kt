@@ -249,14 +249,19 @@ class PhotoBodiesTest {
     @Test
     fun aPhotoAMagnetDoesNotPullIsNudgedAsideWhereItTouchesAndSlidesBackHome() {
         val other = PhotoBody("other", mapOf("b" to 1f), Offset.Zero)
-        assertTrue(sweepPast(other) > 10f, "it wasn't nudged")
+        val furthest = sweepPast(other)
+        assertTrue(furthest > 10f, "it wasn't nudged")
+        // Swept straight through, it is bumped, not carried off: past a nudge it slips under.
+        assertTrue(furthest <= MagnetDimens.MostNudge.value * 1.5f, "it was carried $furthest dp")
         assertTrue((other.at - other.home).getDistance() < 1f, "it didn't slide home: ${other.at}")
     }
 
     @Test
     fun aWeakMatchIsNudgedTooButNeverDrawnIn() {
         val weak = PhotoBody("weak", mapOf("a" to 0.3f), Offset.Zero)
-        assertTrue(sweepPast(weak) > 10f, "it wasn't nudged")
+        val furthest = sweepPast(weak)
+        assertTrue(furthest > 10f, "it wasn't nudged")
+        assertTrue(furthest <= MagnetDimens.MostNudge.value * 1.5f, "it was carried $furthest dp")
         assertTrue((weak.at - weak.home).getDistance() < 1f, "it didn't slide home: ${weak.at}")
     }
 
