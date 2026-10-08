@@ -61,4 +61,29 @@ class FilingsPainterTest {
         assertTrue(filings.strengthOf(nearest) > filings.strengthOf(farthest) + 0.5f)
         assertTrue((0 until 800).all { filings.strengthOf(it) in 0f..1f })
     }
+
+    @Test
+    fun everyFilingIsTracedOnceAsALineAndTheRestLieOffTheTable() {
+        val filings = FilingsPainter(count = 300, seed = 4)
+        filings.align(listOf(out(Offset(200f, 300f))), width, height)
+        filings.trace(width, height, density = 2f)
+        var traced = 0
+        for (bucket in 0 until filings.buckets) {
+            val points = filings.pointsOf(bucket)
+            val used = filings.tracedIn(bucket)
+            traced += used
+            // Each filing is a line from one point to the next, four floats.
+            for (k in 0 until used) {
+                val cx = (points[k * 4] + points[k * 4 + 2]) / 2f
+                val cy = (points[k * 4 + 1] + points[k * 4 + 3]) / 2f
+                assertTrue(cx in 0f..width * 2f && cy in 0f..height * 2f, "filing $k at $cx, $cy")
+            }
+            // What the bucket doesn't use is drawn nowhere near the table.
+            for (k in used * 4 until points.size) assertTrue(
+                points[k] < 0f,
+                "spare $k is ${points[k]}",
+            )
+        }
+        assertEquals(300, traced)
+    }
 }
