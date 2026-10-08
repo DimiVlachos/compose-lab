@@ -173,13 +173,23 @@ internal class MagnetPainter {
             }
             drawText(label, topLeft = labelTop)
             val badge = badges[i] ?: continue
+            // Joined, the two are one search with one count, shown once, over the pair.
+            var over = centre
+            if (state.joined) {
+                val partner =
+                    state.magnets.withIndex().firstOrNull { it.index != i && it.value.out }
+                if (partner != null) {
+                    if (partner.index < i) continue
+                    over = (centre + partner.value.at * density) / 2f
+                }
+            }
             val w = badge.size.width + padX * 2f
             val h = badge.size.height + padY * 2f
             // Kept on the table by a magnet at its top edge.
             val topLeft =
                 Offset(
-                    centre.x - w / 2f,
-                    max(0f, centre.y - above - MagnetDimens.BadgeGap.toPx() - h),
+                    over.x - w / 2f,
+                    max(0f, over.y - above - MagnetDimens.BadgeGap.toPx() - h),
                 )
             drawRoundRect(colors.badge, topLeft, Size(w, h), CornerRadius(h / 2f))
             // Ringed in its magnet's colour, so the count reads as that magnet's.

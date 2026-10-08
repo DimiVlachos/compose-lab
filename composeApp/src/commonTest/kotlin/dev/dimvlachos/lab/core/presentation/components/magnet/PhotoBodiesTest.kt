@@ -125,72 +125,46 @@ class PhotoBodiesTest {
     }
 
     @Test
-    fun aPhotoMatchingTwoNearbyMagnetsHangsBetweenThemOnBoth() {
+    fun twoSeparateMagnetsNeverShareOrHandOverAPhoto() {
+        // It matches both well; nearer A, it reaches A first.
         val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.9f), Offset.Zero)
-        val a = magnet("a", Offset(400f, 500f))
-        val b = magnet("b", Offset(520f, 500f))
-        val table = bodies(photo to Offset(460f, 620f))
-        table.run(3f, listOf(a, b))
-        assertEquals(setOf("a", "b"), photo.stuckTo)
-        assertTrue((photo.at - Offset(460f, 500f)).getDistance() < 5f, "at ${photo.at}")
-    }
-
-    @Test
-    fun broughtNearAPhotoAlreadyStuckToOneMagnetTheSecondSharesIt() {
-        val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.7f), Offset.Zero)
-        val a = magnet("a", Offset(400f, 500f))
-        val table = bodies(photo to Offset(470f, 500f))
-        table.run(1f, listOf(a))
-        assertEquals(setOf("a"), photo.stuckTo)
-        val b = magnet("b", Offset(520f, 500f))
-        table.run(1.5f, listOf(a, b))
-        assertEquals(setOf("a", "b"), photo.stuckTo)
-        assertTrue((photo.at - Offset(460f, 500f)).getDistance() < 5f, "between, at ${photo.at}")
-    }
-
-    // A photo on both of two magnets, A 0.9 and B 0.6, and the magnet [moved] taken away to the
-    // right at [speed] dp a second, until they are too far apart to share it.
-    private fun pullApart(moved: String, speed: Float): Set<String> {
-        val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.6f), Offset.Zero)
-        val a = magnet("a", Offset(400f, 500f))
-        val b = magnet("b", Offset(520f, 500f))
-        val table = bodies(photo to Offset(460f, 560f))
+        val a = magnet("a", Offset(300f, 500f))
+        val b = magnet("b", Offset(700f, 500f))
+        val table = bodies(photo to Offset(420f, 500f))
         table.run(2f, listOf(a, b))
-        assertEquals(setOf("a", "b"), photo.stuckTo)
-        // The other magnet stays put; this one goes right, or left for A, out of sharing range.
-        val going = if (moved == "a") a else b
-        val away = if (moved == "a") -1f else 1f
-        repeat(600) {
-            if (photo.stuckTo.size == 1) return photo.stuckTo
-            going.at += Offset(away * speed * step, 0f)
-            table.step(step, listOf(a, b))
-        }
-        return photo.stuckTo
+        assertEquals(setOf("a"), photo.stuckTo)
+        // B brought up close beside it, but not joined to A: it stays A's.
+        b.at = Offset(photo.at.x + 70f, 500f)
+        table.run(2f, listOf(a, b))
+        assertEquals(setOf("a"), photo.stuckTo)
     }
 
     @Test
-    fun pulledSlowlyApartAPhotoOnBothGoesWithTheTagItMatchesBetter() {
-        assertEquals(setOf("a"), pullApart("b", speed = 40f))
-        assertEquals(setOf("a"), pullApart("a", speed = 40f))
+    fun twoMagnetsJoinedHoldOnlyWhatMatchesBothAtTheirMiddle() {
+        val both = PhotoBody("both", mapOf("a" to 0.9f, "b" to 0.8f), Offset.Zero)
+        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f), Offset.Zero)
+        val a = magnet("a", Offset(400f, 500f))
+        val b = magnet("b", Offset(400f + MagnetDimens.Dock.value, 500f))
+        val table = bodies(both to Offset(426f, 640f), onlyA to Offset(300f, 500f))
+        repeat(360) { table.step(step, listOf(a, b), joined = true) }
+        assertEquals(setOf("a", "b"), both.stuckTo)
+        assertTrue(onlyA.stuckTo.isEmpty(), "a photo matching only A doesn't stick to the pair")
+        assertEquals(onlyA.home, onlyA.at, "nor is it drawn in")
     }
 
     @Test
-    fun yankedApartAPhotoOnBothStaysWithTheMagnetLeftBehind() {
-        // Left nearer the magnet that stayed, it is pulled harder by it, whichever it matches
-        // better.
-        assertEquals(setOf("a"), pullApart("b", speed = 1_200f))
-        assertEquals(setOf("b"), pullApart("a", speed = 1_200f))
-    }
-
-    @Test
-    fun aPhotoTwoMagnetsShareHangsTouchingBothClusters() {
-        // At the furthest two magnets still share it, the middle between them is no further from
-        // either than a card on its first ring, and a card's width beyond: it reaches both.
-        val furthest = MagnetDimens.BridgeSpan.value * MagnetDimens.BridgeLetGo
-        assertTrue(
-            furthest / 2f <= 46f + MagnetDimens.CardSpan.value,
-            "it hangs ${furthest / 2f} dp off",
-        )
+    fun joiningTwoMagnetsDropsWhatMatchesOnlyOneOfThem() {
+        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f), Offset.Zero)
+        val a = magnet("a", Offset(400f, 500f))
+        val b = magnet("b", Offset(700f, 500f))
+        val table = bodies(onlyA to Offset(470f, 500f))
+        table.run(1f, listOf(a, b))
+        assertEquals(setOf("a"), onlyA.stuckTo)
+        b.at = Offset(400f + MagnetDimens.Dock.value, 500f)
+        table.step(step, listOf(a, b), joined = true)
+        assertTrue(onlyA.stuckTo.isEmpty())
+        repeat(480) { table.step(step, listOf(a, b), joined = true) }
+        assertTrue((onlyA.at - onlyA.home).getDistance() < 1f, "it slid home: ${onlyA.at}")
     }
 
     @Test

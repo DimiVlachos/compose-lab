@@ -76,10 +76,10 @@ import org.jetbrains.compose.resources.stringResource
  * waiting in a strip along its foot. Drag a magnet over the table: the filings rise along its
  * field, matching photos are pulled towards it, harder the better they match, and strong matches
  * snap and stick, with a tick of haptics. What sticks is the filter's result, counted on a badge
- * over the magnet. A second magnet combines filters: a photo matching both hangs between them, one
- * matching one clings to its own. Flick a magnet back into the strip and its photos fall off and
- * slide home; pull a photo off by hand and it leaves the results. Tap a magnet to fan its photos
- * out into a grid, and tap anywhere to fold them back.
+ * over the magnet. A second magnet is a second search; let go beside the first, it snaps to it with
+ * a click, and the two are one search, holding only what matches both. Flick a magnet back into the
+ * strip and its photos fall off and slide home; pull a photo off by hand and it leaves the results.
+ * Tap a magnet to fan its photos out into a grid, and tap anywhere to fold them back.
  *
  * Every photo is a node for a screen reader, with its title and the magnet it is on; every magnet
  * is a switch, "Sunset filter, 3 photos", that applies or removes its filter, and a change of count
@@ -109,7 +109,11 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         state.onStick = stick
         state.onSlot = slot
         state.onRefuse = refuse
+        // Two magnets snapping together click as they meet, firmly: a search has changed.
+        val join: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.Confirm) }
+        state.onJoin = join
         onDispose {
+            if (state.onJoin === join) state.onJoin = null
             if (state.onStick === stick) state.onStick = null
             if (state.onSlot === slot) state.onSlot = null
             if (state.onRefuse === refuse) state.onRefuse = null
@@ -201,10 +205,21 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
     // Over the fanned-out grid: the magnet's name and its count, "Sunset · 3 photos". It stays
     // drawn as the grid folds after its magnet has been let go.
     val fanned = state.tags.indexOfFirst { it.id == state.fannedOut }
+    // Two magnets joined are one search, named for both: "Sunset + Sea".
+    val joinedNames =
+        if (state.joined) {
+            state.tags.filter { results.containsKey(it.id) }.joinToString(" + ") { it.label }
+        } else {
+            null
+        }
     val header =
-        remember(fanned, counts, measurer, badgeStyle) {
+        remember(fanned, counts, joinedNames, measurer, badgeStyle) {
             if (fanned < 0) null
-            else measurer.measure("${state.tags[fanned].label} · ${counts[fanned]}", badgeStyle)
+            else
+                measurer.measure(
+                    "${joinedNames ?: state.tags[fanned].label} · ${counts[fanned]}",
+                    badgeStyle,
+                )
         }
     val lastHeader = remember(state) { HeaderHolder() }
     if (header != null) lastHeader.value = header

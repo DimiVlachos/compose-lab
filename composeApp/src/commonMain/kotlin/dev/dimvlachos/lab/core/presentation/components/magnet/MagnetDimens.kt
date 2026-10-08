@@ -95,11 +95,11 @@ internal object MagnetDimens {
     const val Friction = 7f
     const val Cling = 260f
 
-    // Two magnets within BridgeSpan share what matches both, which hangs between them, close
-    // enough to touch both clusters; pulled apart past BridgeSpan × BridgeLetGo, such a photo goes
-    // with the one pulling it harder.
-    val BridgeSpan = 150.dp
-    const val BridgeLetGo = 1.25f
+    // Let go within SnapRange of the other magnet out, a magnet snaps to its side, Dock apart,
+    // touching: the two are joined, one search that holds only what matches both. Apart, they are
+    // two searches, each holding its own.
+    val SnapRange = 110.dp
+    val Dock = 52.dp
 
     // Let go, a magnet lands where its speed would carry it in this many seconds: in the strip, it
     // goes back to its slot and drops what is on it.

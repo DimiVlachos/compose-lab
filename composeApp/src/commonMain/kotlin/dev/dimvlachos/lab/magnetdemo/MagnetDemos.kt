@@ -10,16 +10,16 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object MagnetDemos {
-    // Sunset swept up from its slot over the left of the table; Sea brought in from the right to
-    // stop beside it, close enough that the two share what matches both.
+    // Sunset swept up from its slot over the left of the table; Sea brought in from the right and
+    // let go close enough to snap to its side.
     val SunsetPath = listOf(Offset(0.2f, 0.62f), Offset(0.28f, 0.46f), Offset(0.34f, 0.36f))
-    val SeaPath = listOf(Offset(0.8f, 0.6f), Offset(0.7f, 0.46f), Offset(0.64f, 0.4f))
+    val SeaPath = listOf(Offset(0.8f, 0.6f), Offset(0.68f, 0.46f), Offset(0.58f, 0.38f))
 
     // Each step lasts as long as its fingertip is on the stage, fading in and out included, so
     // the clip's length is the script's.
-    // Sunset onto the table, and its photos snap; Sea beside it, and the photos of both slide
-    // between them; Sunset's photos fanned out and folded back; then Sea flicked home, and
-    // Sunset. The end holds long enough for every photo to slide home, so the clip loops.
+    // Sunset onto the table, and its photos snap; Sea snapped to its side, the two one search,
+    // and only the photos of both stay; their photos fanned out and folded back; then Sea flicked
+    // home, and Sunset. The end holds long enough for every photo to slide home, so the clip loops.
     private val filter =
         demoScript(holdEnd = 2.6.seconds) {
             at(0.seconds, lasts = 2.4.seconds) {

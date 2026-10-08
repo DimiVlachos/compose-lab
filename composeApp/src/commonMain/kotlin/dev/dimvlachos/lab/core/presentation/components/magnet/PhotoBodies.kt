@@ -5,6 +5,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -147,7 +148,8 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
      * Steps every card on by [dt] seconds among [magnets], the ones out of the strip, and says
      * whether any card stuck to or came off a magnet.
      */
-    fun step(dt: Float, magnets: List<Magnet>): Boolean {
+    fun step(dt: Float, magnets: List<Magnet>, joined: Boolean = false): Boolean {
+        this.joined = joined && magnets.size == 2
         var changed = false
         for (i in bodies.indices) {
             startX[i] = bodies[i].at.x
@@ -158,7 +160,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 body.velocity = Offset.Zero
                 continue
             }
-            if (rebridge(body, magnets)) changed = true
+            if (regroup(body, magnets)) changed = true
             val acceleration =
                 if (body.stuckTo.isNotEmpty()) {
                     val anchor = anchor(body, magnets)
@@ -169,7 +171,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                         (body.home - body.at) * MagnetDimens.Leash -
                             body.velocity * MagnetDimens.Friction
                     for (magnet in magnets) {
-                        if (!body.drawnTo(magnet)) continue
+                        if (!draws(body, magnet, magnets)) continue
                         pull += MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
                     }
                     pull
@@ -192,7 +194,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             body.velocity = Offset((body.at.x - startX[i]) / dt, (body.at.y - startY[i]) / dt)
             // A card nudged by a magnet it isn't drawn to is moved, not thrown: the shove leaves
             // it no faster than it was going on its own, or a slow slide.
-            if (body.stuckTo.isEmpty() && !body.drawnToAny(magnets)) {
+            if (body.stuckTo.isEmpty() && !drawsAny(body, magnets)) {
                 val speed = body.velocity.getDistance()
                 val most = max(ownSpeed[i], MagnetDimens.NudgeSpeed)
                 if (speed > most) body.velocity *= most / speed
@@ -265,41 +267,51 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
     }
 
+    // Two magnets joined are one search: they draw in, and hold, only what matches both.
+    private var joined = false
+
+    private fun draws(body: PhotoBody, magnet: Magnet, magnets: List<Magnet>): Boolean =
+        if (joined) magnets.all { body.drawnTo(it) } else body.drawnTo(magnet)
+
+    private fun drawsAny(body: PhotoBody, magnets: List<Magnet>): Boolean =
+        if (joined) magnets.all { body.drawnTo(it) } else body.drawnToAny(magnets)
+
     private fun canStick(body: PhotoBody, magnet: Magnet): Boolean =
         magnet.tag !in body.stuckTo && magnet.tag !in body.refused && body.matches(magnet.tag)
-
-    private fun bridged(a: Magnet, b: Magnet, stretch: Float = 1f): Boolean =
-        (a.at - b.at).getDistance() <= MagnetDimens.BridgeSpan.value * stretch
 
     private fun stick(body: PhotoBody, magnets: List<Magnet>): Boolean {
         if (body.held) return false
         val ring = MagnetDimens.ContactRing.value
-        // Matching both of two magnets close together, it comes to rest between them, out of
-        // reach of either's ring: touching the point between them, it sticks to both.
-        if (magnets.size == 2 && body.stuckTo.isEmpty()) {
+        // Joined, the pair holds what matches both, touching either magnet, the point between
+        // them, or the cards already on them.
+        if (joined) {
             val a = magnets[0]
             val b = magnets[1]
-            if (canStick(body, a) && canStick(body, b) && bridged(a, b)) {
-                if ((body.at - (a.at + b.at) / 2f).getDistance() <= ring) {
-                    body.stuckTo += a.tag
-                    body.stuckTo += b.tag
-                    body.slot = null
-                    noteStick(max(body.strength(a.tag), body.strength(b.tag)))
-                    return true
-                }
-            }
+            if (body.stuckTo.isNotEmpty() || !canStick(body, a) || !canStick(body, b)) return false
+            val middle = (a.at + b.at) / 2f
+            val touching =
+                (body.at - a.at).getDistance() <= ring ||
+                    (body.at - b.at).getDistance() <= ring ||
+                    (body.at - middle).getDistance() <= ring ||
+                    touchesCluster(body, a.tag)
+            if (!touching) return false
+            body.stuckTo += a.tag
+            body.stuckTo += b.tag
+            body.slot = null
+            noteStick(min(body.strength(a.tag), body.strength(b.tag)))
+            return true
         }
-        var changed = false
         for (magnet in magnets) {
-            if (!canStick(body, magnet)) continue
+            if (body.stuckTo.isNotEmpty() || !canStick(body, magnet)) continue
             if ((body.at - magnet.at).getDistance() > ring && !touchesCluster(body, magnet.tag))
                 continue
             body.stuckTo += magnet.tag
             body.slot = null
             noteStick(body.strength(magnet.tag))
-            changed = true
+            // Apart, the magnets are two searches: it is the first one's, and no one else's.
+            return true
         }
-        return changed
+        return false
     }
 
     // As pins chain on a magnet: a card that matches, kept from the magnet by the cards already
@@ -313,41 +325,18 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return false
     }
 
-    // Stuck to one of two bridged magnets and matching the other, it is shared; on both and
-    // pulled far apart, it keeps the one it matches better, or the first it reached.
-    private fun rebridge(body: PhotoBody, magnets: List<Magnet>): Boolean {
-        if (body.stuckTo.isEmpty() || magnets.size < 2) return false
+    // As two magnets join, what is on either joins the pair if it matches both, and falls off
+    // to slide home if it doesn't: the pair is one search, for both tags.
+    private fun regroup(body: PhotoBody, magnets: List<Magnet>): Boolean {
+        if (!joined || body.stuckTo.isEmpty() || body.stuckTo.size == 2) return false
         val a = magnets[0]
         val b = magnets[1]
-        if (body.stuckTo.size == 1) {
-            val other =
-                when (body.stuckTo.first()) {
-                    a.tag -> b
-                    b.tag -> a
-                    else -> return false
-                }
-            if (!canStick(body, other) || !bridged(a, b)) return false
-            body.stuckTo += other.tag
-            body.slot = null
-            noteStick(body.strength(other.tag))
-            return true
+        if (body.drawnTo(a) && body.drawnTo(b)) {
+            body.stuckTo += a.tag
+            body.stuckTo += b.tag
+        } else {
+            body.stuckTo.clear()
         }
-        if (bridged(a, b, MagnetDimens.BridgeLetGo)) return false
-        // Too far apart to share it, it goes with the one pulling it harder as they part: how well
-        // it matches each, over how far it is from each. Drawn apart slowly it hangs near the
-        // middle
-        // and the better match keeps it; yanked apart, it lags behind towards the magnet that
-        // stayed, and that one keeps it.
-        val pullA = grip(body, a)
-        val pullB = grip(body, b)
-        val keep =
-            when {
-                pullA > pullB -> a.tag
-                pullB > pullA -> b.tag
-                else -> body.stuckTo.first()
-            }
-        body.stuckTo.clear()
-        body.stuckTo += keep
         body.slot = null
         return true
     }
@@ -386,7 +375,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         val most = MagnetDimens.MostNudge.value
         val home = MagnetDimens.HomeAgain.value
         for (body in bodies) {
-            if (body.held || body.stuckTo.isNotEmpty() || body.drawnToAny(magnets)) {
+            if (body.held || body.stuckTo.isNotEmpty() || drawsAny(body, magnets)) {
                 body.slipping = false
                 continue
             }
@@ -410,13 +399,6 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             if (magnet.out && (magnet.at - body.at).getDistance() < reach) return false
         }
         return true
-    }
-
-    // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.
-    private fun grip(body: PhotoBody, magnet: Magnet): Float {
-        val apart = body.at - magnet.at
-        return body.strength(magnet.tag) /
-            (apart.x * apart.x + apart.y * apart.y + MagnetDimens.Softening)
     }
 
     // Where a stuck card clings to: its magnet, or halfway between its two.
@@ -470,7 +452,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 val inner =
                     when {
                         magnet.tag in body.stuckTo -> MagnetDimens.ClusterInner.value
-                        body.drawnTo(magnet) -> MagnetDimens.ContactRing.value
+                        draws(body, magnet, magnets) -> MagnetDimens.ContactRing.value
                         body.slipping -> continue
                         else -> MagnetDimens.MagnetBody.value
                     }

@@ -50,10 +50,11 @@ public data class MagnetTag(
  * A steel table of photos and a strip of tag magnets. A finger takes a magnet with [place], moves
  * it with [drag] and lets it go with [release], at points in the table's own pixels, as a pointer
  * reports them. Matching photos are pulled towards a magnet out on the table, and the strong
- * matches stick: what sticks is the filter's result, [results]. Two magnets out combine: a photo
- * that matches both hangs between them, on both. Flicked back into the strip, a magnet drops what
- * is on it, and the photos slide home. [apply] and [remove] do the same without a finger, as a
- * screen reader does.
+ * matches stick: what sticks is the filter's result, [results]. Two magnets out apart are two
+ * searches, each holding its own; let go close to the other, a magnet snaps to its side, and the
+ * two are joined, one search holding only what matches both, on both. Flicked back into the strip,
+ * a magnet drops what is on it, and the photos slide home. [apply] and [remove] do the same without
+ * a finger, as a screen reader does.
  *
  * Only [results] is read in composition, and it changes only when a photo sticks or comes off, or a
  * magnet goes out or back: the cards, the magnets, the filings and the fanned-out grid are read
@@ -79,6 +80,16 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     /** The magnet whose photos are fanned out into a grid, if any. */
     public var fannedOut: String? by mutableStateOf(null)
         private set
+
+    /**
+     * Whether the two magnets out are joined: snapped together side by side into one search that
+     * holds only what matches both.
+     */
+    internal var joined by mutableStateOf(false)
+        private set
+
+    /** Called as two magnets snap together: a click of haptics. */
+    internal var onJoin: (() -> Unit)? = null
 
     /** The photo opened from the grid, if any. */
     public var opened: String? by mutableStateOf(null)
@@ -217,9 +228,23 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     public fun drag(tag: String, to: Offset) {
         val magnet = magnet(tag) ?: return
         if (!magnet.held) return
-        moveMagnet(magnet, to / density)
+        val partner = partner(magnet)
+        if (partner == null) {
+            moveMagnet(magnet, to / density)
+        } else {
+            // Joined, the two go together, kept whole on the stage.
+            val offset = partner.at - magnet.at
+            val partnerAt = onStage(onStage(to / density) + offset)
+            magnet.at = onStage(partnerAt - offset)
+            partner.at = magnet.at + offset
+            fieldVersion++
+        }
         awake = true
     }
+
+    // The magnet joined to [magnet], if the two are joined.
+    private fun partner(magnet: Magnet): Magnet? =
+        if (joined) magnets.firstOrNull { it !== magnet && it.out } else null
 
     /**
      * Lets go of the held [tag] magnet, moving at [velocity] px a second: flicked or dropped into
@@ -236,12 +261,42 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         } else {
             magnet.onTable = true
             val r = MagnetDimens.MagnetRadius.value
-            magnet.at = Offset(magnet.at.x, min(magnet.at.y, max(r, tableHeight - r)))
-            keepApart(magnet)
+            val partner = partner(magnet)
+            val other = magnets.firstOrNull { it !== magnet && it.out }
+            if (partner != null) {
+                // The pair comes down on the table together, both of them on it.
+                val lift = max(magnet.at.y, partner.at.y) - max(r, tableHeight - r)
+                if (lift > 0f) {
+                    magnet.at -= Offset(0f, lift)
+                    partner.at -= Offset(0f, lift)
+                }
+            } else {
+                magnet.at = Offset(magnet.at.x, min(magnet.at.y, max(r, tableHeight - r)))
+                if (
+                    other != null &&
+                        (other.at - magnet.at).getDistance() <= MagnetDimens.SnapRange.value
+                ) {
+                    dock(magnet, other)
+                } else {
+                    keepApart(magnet)
+                }
+            }
             fieldVersion++
         }
         updateResults()
         awake = true
+    }
+
+    // Snaps [magnet] to [other]'s side, touching it, the side it came from if there is room, and
+    // joins the two into one search.
+    private fun dock(magnet: Magnet, other: Magnet) {
+        val dock = MagnetDimens.Dock.value
+        val r = MagnetDimens.MagnetRadius.value
+        var side = if (magnet.at.x >= other.at.x) 1f else -1f
+        if (other.at.x + side * dock !in r..(width - r)) side = -side
+        magnet.at = Offset(other.at.x + side * dock, other.at.y)
+        joined = true
+        onJoin?.invoke()
     }
 
     /**
@@ -365,7 +420,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     /**
      * Puts the [tag] magnet down in the middle of the table, or, with the other magnet out, beside
-     * it, close enough that the two share what matches both. Says whether it could.
+     * it, where it snaps to it, joining the two into one search. Says whether it could.
      */
     public fun apply(tag: String): Boolean {
         val magnet = magnet(tag) ?: return false
@@ -375,8 +430,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             if (other == null) {
                 Offset(width / 2f, tableHeight / 2f)
             } else {
-                val apart = MagnetDimens.BridgeSpan.value * 0.6f
-                other.at + Offset(if (other.at.x < width / 2f) apart else -apart, 0f)
+                // Beside the other, where it snaps to it: the two search together.
+                val dock = MagnetDimens.Dock.value
+                other.at + Offset(if (other.at.x < width / 2f) dock else -dock, 0f)
             }
         if (!place(tag, spot * density)) return false
         release(tag, Offset.Zero)
@@ -433,7 +489,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         this.stripHeight = stripHeight
         bodies.resize(width, tableHeight)
         // The magnets out move with the table as one, keeping their spacing: scaled apart, two
-        // that share photos could be pulled past sharing, or squeezed into it, by a rotation.
+        // joined could be pulled apart, or two apart squeezed together, by a rotation.
         var middle = Offset.Zero
         var outCount = 0
         for (magnet in magnets) {
@@ -488,7 +544,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             stepMagnets(MagnetDimens.StepSeconds)
             pulling.clear()
             for (magnet in magnets) if (magnet.out) pulling += magnet
-            if (bodies.step(MagnetDimens.StepSeconds, pulling)) changed = true
+            if (bodies.step(MagnetDimens.StepSeconds, pulling, joined)) changed = true
             stepFan(MagnetDimens.StepSeconds)
             stepOpen(MagnetDimens.StepSeconds)
             stepCalm(MagnetDimens.StepSeconds)
@@ -605,6 +661,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     // Two magnets never lie on each other: one put down too close is moved off, away from the
     // other, or towards the middle if right on it.
     private fun keepApart(magnet: Magnet) {
+        if (joined) return
         val gap = MagnetDimens.MagnetGap.value
         for (other in magnets) {
             if (other === magnet || !other.out) continue
@@ -619,6 +676,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     }
 
     private fun toStrip(magnet: Magnet) {
+        // Put away, it leaves the other searching alone.
+        joined = false
         magnet.held = false
         magnet.onTable = false
         bodies.releaseAll(magnet.tag)

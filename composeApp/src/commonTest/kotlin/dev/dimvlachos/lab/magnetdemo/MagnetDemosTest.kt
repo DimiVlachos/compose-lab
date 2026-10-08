@@ -46,12 +46,14 @@ class MagnetDemosTest {
     }
 
     @Test
-    fun theTwoMagnetsEndCloseEnoughToShareWhatMatchesBoth() {
+    fun theTwoMagnetsEndCloseEnoughToJoin() {
         // On the 400 × 800 dp stage the clip is recorded at.
         val a = MagnetDemos.SunsetPath.last()
         val b = MagnetDemos.SeaPath.last()
         val apart = hypot((a.x - b.x) * 400f, (a.y - b.y) * 800f)
-        assertTrue(apart <= MagnetDimens.BridgeSpan.value, "they end $apart dp apart")
-        assertTrue(apart >= MagnetDimens.MagnetGap.value, "they end $apart dp apart")
+        assertTrue(
+            apart <= MagnetDimens.SnapRange.value,
+            "they end $apart dp apart: too far to join",
+        )
     }
 }

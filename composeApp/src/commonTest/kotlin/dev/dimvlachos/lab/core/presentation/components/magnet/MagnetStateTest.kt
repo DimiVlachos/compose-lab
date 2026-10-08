@@ -119,15 +119,19 @@ class MagnetStateTest {
     }
 
     @Test
-    fun twoMagnetsDroppedOnEachOtherAreKeptApart() {
+    fun aMagnetLetGoRightOnAnotherSnapsBesideIt() {
         val table = table()
         table.apply("a")
         val a = table.magnetPosition("a")!!
         table.place("b", table.magnetPosition("b")!!)
         table.drag("b", a)
         table.release("b", Offset.Zero)
-        val b = table.magnetPosition("b")!!
-        assertTrue((a - b).getDistance() >= MagnetDimens.MagnetGap.value * D - 0.5f, "${a - b}")
+        assertTrue(table.joined)
+        assertEquals(
+            MagnetDimens.Dock.value * D,
+            (table.magnetPosition("b")!! - a).getDistance(),
+            0.5f,
+        )
     }
 
     @Test
@@ -537,15 +541,71 @@ class MagnetStateTest {
     }
 
     @Test
-    fun theScreenReadersApplyPutsASecondMagnetCloseEnoughToShare() {
+    fun aScreenReadersApplyOfASecondMagnetJoinsItToTheFirst() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        assertTrue(table.joined)
+        table.run(3f)
+        assertEquals(setOf("strong"), table.results["a"])
+        assertEquals(setOf("strong"), table.results["b"])
+    }
+
+    @Test
+    fun aMagnetLetGoNearAnotherSnapsBesideItAndTheTwoSearchTogether() {
+        val table = table()
+        table.apply("a")
+        table.run(2f)
+        val a = table.magnetPosition("a")!!
+        table.place("b", table.magnetPosition("b")!!)
+        table.drag("b", a + Offset(0f, (MagnetDimens.SnapRange.value - 10f) * D))
+        table.release("b", Offset.Zero)
+        assertTrue(table.joined)
+        assertEquals(
+            MagnetDimens.Dock.value * D,
+            (table.magnetPosition("b")!! - a).getDistance(),
+            0.5f,
+        )
+        table.run(2f)
+        // Only what matches both: Strong (A 1, B 0.9); nothing else matches B.
+        assertEquals(setOf("strong"), table.results["a"])
+        assertEquals(table.results["a"], table.results["b"])
+    }
+
+    @Test
+    fun aMagnetLetGoFarFromTheOtherIsASearchOfItsOwn() {
+        val table = table()
+        table.apply("a")
+        val a = table.magnetPosition("a")!!
+        table.place("b", table.magnetPosition("b")!!)
+        table.drag("b", a + Offset(0f, (MagnetDimens.SnapRange.value + 40f) * D))
+        table.release("b", Offset.Zero)
+        assertFalse(table.joined)
+    }
+
+    @Test
+    fun draggingEitherOfTwoJoinedMagnetsCarriesBoth() {
         val table = table()
         table.apply("a")
         table.apply("b")
         val a = table.magnetPosition("a")!!
         val b = table.magnetPosition("b")!!
-        assertTrue((a - b).getDistance() <= MagnetDimens.BridgeSpan.value * D)
+        table.place("a", a)
+        table.drag("a", a + Offset(40f * D, -30f * D))
+        table.release("a", Offset.Zero)
+        assertEquals(b + Offset(40f * D, -30f * D), table.magnetPosition("b"))
+        assertTrue(table.joined)
+    }
+
+    @Test
+    fun puttingOneOfTwoJoinedMagnetsAwayLeavesTheOtherSearchingAlone() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
         table.run(3f)
-        assertEquals(setOf("strong"), table.results["a"])
-        assertEquals(setOf("strong"), table.results["b"])
+        table.remove("b")
+        assertFalse(table.joined)
+        assertEquals(setOf("strong"), table.results["a"], "what it held matches it, so it stays")
+        assertTrue(table.isOut("a"))
     }
 }
