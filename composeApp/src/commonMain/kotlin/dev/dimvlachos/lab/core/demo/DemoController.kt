@@ -61,4 +61,10 @@ internal interface DemoController {
 
     /** Taps the [tag] magnet: its photos fan out into a grid, or, fanned out, fold back. */
     suspend fun tapMagnet(tag: String)
+
+    /**
+     * Taps the photo [id] in the fanned-out grid, which opens it, or, open, taps it again, which
+     * closes it back into its cell.
+     */
+    suspend fun tapPhoto(id: String)
 }

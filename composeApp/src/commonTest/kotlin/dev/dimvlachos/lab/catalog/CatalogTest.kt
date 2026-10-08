@@ -82,6 +82,7 @@ class CatalogTest {
             assertFalse(controller.lampLit, "${demo.id} must switch the lamp back off")
             assertTrue(controller.magnetsOut.isEmpty(), "${demo.id} must put every magnet back")
             assertNull(controller.fannedOut, "${demo.id} must fold any fanned-out photos")
+            assertNull(controller.openedPhoto, "${demo.id} must close any opened photo")
         }
     }
 

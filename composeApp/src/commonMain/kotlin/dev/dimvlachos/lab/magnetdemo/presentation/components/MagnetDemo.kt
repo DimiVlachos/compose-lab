@@ -70,10 +70,12 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
         }
         state.setMagnetReleaseHandler { tag, duration -> finger.flickHome(table, tag, duration) }
         state.setMagnetTapHandler { tag -> finger.tap(table, tag) }
+        state.setPhotoTapHandler { id -> finger.tapPhoto(table, id) }
         onDispose {
             state.setMagnetDragHandler(null)
             state.setMagnetReleaseHandler(null)
             state.setMagnetTapHandler(null)
+            state.setPhotoTapHandler(null)
         }
     }
     // Opened, the room's air comes in with the screen and the magnets on their nails are already
@@ -185,6 +187,8 @@ private class MagnetFinger {
             alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
             holding = table.place(tag, from)
             if (!holding) return
+            // A flick is a yank: one of a joined pair tears straight off it, leaving the other.
+            if (table.joined) table.tearOff(tag)
             val ms = duration.inWholeMilliseconds.toInt().coerceAtLeast(1)
             animate(0f, 1f, animationSpec = tween(ms, easing = FastOutLinearInEasing)) { t, _ ->
                 at = lerp(from, to, t)
@@ -207,6 +211,28 @@ private class MagnetFinger {
             at = table.magnetPosition(tag) ?: return
             alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
             table.fanOut(if (table.fannedOut == tag) null else tag)
+            delay(ScriptedTouch.TapHoldMs)
+            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
+        } finally {
+            if (mine == gesture) withContext(NonCancellable) { alpha.snapTo(0f) }
+        }
+    }
+
+    /**
+     * Taps the photo [id] where the grid shows it, which opens it, or, open, taps it in the middle
+     * of the table, where it lies large, which closes it.
+     */
+    suspend fun tapPhoto(table: MagnetState, id: String) {
+        val mine = ++gesture
+        try {
+            val index = table.photos.indexOfFirst { it.id == id }
+            if (index < 0) return
+            val open = table.opened == id
+            at =
+                if (open) Offset(table.width / 2f, table.tableHeight / 2f) * table.density
+                else table.photoCentre(index) * table.density
+            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            if (open) table.close() else table.open(id)
             delay(ScriptedTouch.TapHoldMs)
             alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
         } finally {

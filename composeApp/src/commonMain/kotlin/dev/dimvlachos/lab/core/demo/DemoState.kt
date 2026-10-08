@@ -38,6 +38,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var magnetDragHandler: (suspend (String, List<Offset>, Duration) -> Unit)? = null
     private var magnetReleaseHandler: (suspend (String, Duration) -> Unit)? = null
     private var magnetTapHandler: (suspend (String) -> Unit)? = null
+    private var photoTapHandler: (suspend (String) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -87,6 +88,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         magnetTapHandler?.invoke(tag)
     }
 
+    override suspend fun tapPhoto(id: String) {
+        photoTapHandler?.invoke(id)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -129,5 +134,9 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setMagnetTapHandler(handler: (suspend (String) -> Unit)?) {
         magnetTapHandler = handler
+    }
+
+    fun setPhotoTapHandler(handler: (suspend (String) -> Unit)?) {
+        photoTapHandler = handler
     }
 }

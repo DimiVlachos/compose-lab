@@ -41,6 +41,10 @@ internal class FakeController(private val now: () -> Long) : DemoController {
 
     val magnetPaths = mutableListOf<List<Offset>>()
 
+    /** The photo opened from the fanned-out grid, if any. */
+    var openedPhoto: String? = null
+        private set
+
     val calls = mutableListOf<Pair<Long, String>>()
 
     override fun select(index: Int) {
@@ -101,12 +105,27 @@ internal class FakeController(private val now: () -> Long) : DemoController {
 
     override suspend fun releaseMagnet(tag: String, duration: Duration) {
         magnetsOut -= tag
-        if (fannedOut == tag) fannedOut = null
+        if (fannedOut == tag) {
+            fannedOut = null
+            openedPhoto = null
+        }
         calls += now() to "releaseMagnet($tag, $duration)"
     }
 
     override suspend fun tapMagnet(tag: String) {
         if (tag in magnetsOut) fannedOut = if (fannedOut == tag) null else tag
+        if (fannedOut == null) openedPhoto = null
         calls += now() to "tapMagnet($tag)"
+    }
+
+    override suspend fun tapPhoto(id: String) {
+        // As the table does: a photo opens only from the grid, and a tap on it open closes it.
+        openedPhoto =
+            when {
+                openedPhoto == id -> null
+                fannedOut != null && openedPhoto == null -> id
+                else -> openedPhoto
+            }
+        calls += now() to "tapPhoto($id)"
     }
 }

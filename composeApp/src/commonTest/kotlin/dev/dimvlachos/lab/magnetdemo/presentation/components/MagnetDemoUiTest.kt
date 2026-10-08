@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -23,7 +24,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class MagnetDemoUiTest {
     @Test
-    fun theScriptFiltersCombinesFansOutAndPutsEverythingBack() = runComposeUiTest {
+    fun theScriptSearchesApartThenTogetherOpensAPhotoAndPutsEverythingBack() = runComposeUiTest {
         mainClock.autoAdvance = false
         val demo = MagnetDemos.all.single()
         val state = DemoState()
@@ -42,21 +43,51 @@ class MagnetDemoUiTest {
                 }
             }
         }
-        // Sunset is down, with photos on it.
-        mainClock.advanceTimeBy(3_600)
-        assertTrue(table!!.results[IslandTags.Sunset].orEmpty().isNotEmpty(), "${table!!.results}")
-        // Sea beside it: what matches both hangs between them, on both.
-        mainClock.advanceTimeBy(3_000)
-        val sunset = table!!.results[IslandTags.Sunset].orEmpty()
-        val sea = table!!.results[IslandTags.Sea].orEmpty()
-        assertTrue((sunset intersect sea).isNotEmpty(), "sunset $sunset, sea $sea")
-        // Sunset tapped: its photos fan out; tapped again, they fold back.
-        mainClock.advanceTimeBy(800)
+        // The script's clock runs 600 ms behind the screen's, held still at the start.
+        val start = mainClock.currentTime
+        fun at(seconds: Double) =
+            mainClock.advanceTimeBy(
+                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime
+            )
+        fun results(tag: String) = table!!.results[tag].orEmpty()
+        val corfuAndNaxos = setOf("corfu", "naxos")
+        // Sunset and Sea apart, two searches: Sunset has every one of its photos, even those that
+        // lay across the table, and Sea every one of its own that Sunset hadn't taken first.
+        at(7.7)
+        assertEquals(
+            setOf("corfu", "santorini", "naxos", "folegandros"),
+            results(IslandTags.Sunset),
+        )
+        assertEquals(setOf("milos", "crete", "rhodes", "zakynthos"), results(IslandTags.Sea))
+        // Sea snapped to Sunset's side: one search, for the photos of both.
+        at(10.4)
+        assertEquals(corfuAndNaxos, results(IslandTags.Sunset))
+        assertEquals(corfuAndNaxos, results(IslandTags.Sea))
+        // Fanned out, Corfu opened and closed, and folded back.
+        at(11.3)
         assertEquals(IslandTags.Sunset, table!!.fannedOut)
-        mainClock.advanceTimeBy(2_000)
+        at(12.8)
+        assertEquals("corfu", table!!.opened)
+        at(14.9)
+        assertNull(table!!.opened)
+        at(15.9)
         assertNull(table!!.fannedOut)
+        // Sea flicked home: Sunset is a search on its own again, and has all its photos back.
+        at(18.4)
+        assertEquals(
+            setOf("corfu", "santorini", "naxos", "folegandros"),
+            results(IslandTags.Sunset),
+        )
+        assertTrue(IslandTags.Sea !in table!!.results, "${table!!.results}")
+        // Flicked, Sea tore straight off the pair: Sunset was left where the two were joined.
+        val sunsetAt = table!!.magnetPosition(IslandTags.Sunset)!! / table!!.density
+        val joinedAt = MagnetDemos.SunsetPath.last()
+        assertTrue(
+            (sunsetAt - Offset(joinedAt.x * 400f, joinedAt.y * 800f)).getDistance() < 60f,
+            "Sunset was dragged off to $sunsetAt",
+        )
         // Both flicked back by the end: nothing out, everything home, and the table asleep.
-        mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 9_400 + 100)
+        at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
         assertTrue(finished, "the script must have played to its end")
         assertTrue(table!!.results.isEmpty(), "${table!!.results}")
         for (body in table!!.bodies.bodies) {
