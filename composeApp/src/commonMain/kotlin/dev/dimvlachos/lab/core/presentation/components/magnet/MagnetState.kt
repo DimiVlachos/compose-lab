@@ -229,16 +229,37 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         val magnet = magnet(tag) ?: return
         if (!magnet.held) return
         val partner = partner(magnet)
-        if (partner == null) {
-            moveMagnet(magnet, to / density)
+        val target = to / density
+        if (partner != null && target.y >= tableHeight) {
+            // Pulled down into the strip, it tears off the pair.
+            tearOff(tag)
+            moveMagnet(magnet, target)
+        } else if (partner == null) {
+            moveMagnet(magnet, target)
         } else {
-            // Joined, the two go together, kept whole on the stage.
+            // Joined, the two go together, kept whole on the table.
             val offset = partner.at - magnet.at
-            val partnerAt = onStage(onStage(to / density) + offset)
-            magnet.at = onStage(partnerAt - offset)
+            val r = MagnetDimens.MagnetRadius.value
+            val onTable = Offset(target.x, min(target.y, max(r, tableHeight - r)))
+            val partnerAt = onStage(onStage(onTable) + offset)
+            val partnerOnTable = Offset(partnerAt.x, min(partnerAt.y, max(r, tableHeight - r)))
+            magnet.at = onStage(partnerOnTable - offset)
             partner.at = magnet.at + offset
             fieldVersion++
         }
+        awake = true
+    }
+
+    /**
+     * Tears the held [tag] magnet off the pair it is joined in, as a yank does: the other stays
+     * where it is with what the two held, and this one goes on alone.
+     */
+    internal fun tearOff(tag: String) {
+        val magnet = magnet(tag) ?: return
+        if (!magnet.held || partner(magnet) == null) return
+        joined = false
+        bodies.leave(magnet.tag)
+        updateResults()
         awake = true
     }
 

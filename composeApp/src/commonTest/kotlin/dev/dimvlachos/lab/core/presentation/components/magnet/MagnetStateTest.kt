@@ -598,6 +598,40 @@ class MagnetStateTest {
     }
 
     @Test
+    fun aJoinedMagnetDraggedSlowlyIntoTheStripTearsOffThereAndTheOtherStaysOnTheTable() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(2f)
+        val b = table.magnetPosition("b")!!
+        table.place("b", b)
+        for (k in 1..20) table.drag("b", b + Offset(0f, k * 20f * D))
+        table.release("b", Offset(0f, 6_000f))
+        assertFalse(table.isOut("b"))
+        assertFalse(table.joined)
+        assertTrue(table.isOut("a"))
+        assertTrue(table.magnetPosition("a")!!.y / D < table.tableHeight, "A stays on the table")
+    }
+
+    @Test
+    fun aJoinedMagnetYankedOffLeavesTheOtherWhereItWas() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        val a = table.magnetPosition("a")!!
+        val b = table.magnetPosition("b")!!
+        table.place("b", b)
+        table.tearOff("b")
+        assertFalse(table.joined)
+        for (k in 1..20) table.drag("b", b + Offset(0f, k * 20f * D))
+        table.release("b", Offset(0f, 6_000f))
+        assertEquals(a, table.magnetPosition("a"))
+        table.run(1f)
+        assertEquals(setOf("strong"), table.results["a"], "A keeps what the two held")
+    }
+
+    @Test
     fun puttingOneOfTwoJoinedMagnetsAwayLeavesTheOtherSearchingAlone() {
         val table = table()
         table.apply("a")

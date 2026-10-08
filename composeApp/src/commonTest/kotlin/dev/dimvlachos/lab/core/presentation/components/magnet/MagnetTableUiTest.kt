@@ -525,4 +525,25 @@ class MagnetTableUiTest {
         back()
         assertEquals(1, left, "with nothing open, back is the screen's")
     }
+
+    @Test
+    fun aJoinedMagnetFlickedHomeGoesAloneAndTheOtherStaysPut() = runComposeUiTest {
+        val table = table()
+        runOnUiThread {
+            table.state.apply("a")
+            table.state.apply("b")
+        }
+        mainClock.advanceTimeBy(2_000)
+        val a = table.state.magnetPosition("a")!!
+        val b = table.state.magnetPosition("b")!!
+        onNodeWithTag("table").performTouchInput {
+            swipe(b, Offset(b.x, b.y + 320.dp.toPx()), durationMillis = 100)
+        }
+        mainClock.advanceTimeBy(2_000)
+        assertTrue(!table.state.isOut("b"), "B went home")
+        assertTrue(
+            (table.state.magnetPosition("a")!! - a).getDistance() < 8.dp.value * density.density,
+            "A was dragged off",
+        )
+    }
 }

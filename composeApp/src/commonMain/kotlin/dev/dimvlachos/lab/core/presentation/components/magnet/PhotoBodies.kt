@@ -222,6 +222,15 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return changed
     }
 
+    /** Takes [tag] off every card on it and another magnet too: they stay with the other. */
+    fun leave(tag: String) {
+        for (body in bodies) {
+            if (body.stuckTo.size < 2 || !body.stuckTo.remove(tag)) continue
+            body.slot = null
+        }
+        quiet = 0
+    }
+
     /** A finger takes [body]: off whatever magnets it was on, which it now refuses. */
     fun grab(body: PhotoBody) {
         body.held = true

@@ -101,6 +101,10 @@ internal object MagnetDimens {
     val SnapRange = 110.dp
     val Dock = 52.dp
 
+    // Moved faster than this a second, a joined magnet tears off its pair, as a yank or a flick
+    // home does; slower, it carries the pair with it.
+    val TearSpeed = 900.dp
+
     // Let go, a magnet lands where its speed would carry it in this many seconds: in the strip, it
     // goes back to its slot and drops what is on it.
     const val FlickLead = 0.12f

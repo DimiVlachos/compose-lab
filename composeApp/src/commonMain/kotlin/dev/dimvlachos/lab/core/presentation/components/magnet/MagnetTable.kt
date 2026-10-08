@@ -518,6 +518,11 @@ private suspend fun AwaitPointerEventScope.carryMagnet(
             change.consume()
             tracker.addPosition(change.uptimeMillis, change.position)
             if (!moved && (change.position - down.position).getDistance() > slop) moved = true
+            // Yanked, a magnet joined to another tears off it; dragged slowly, it carries the pair.
+            if (moved && state.joined) {
+                val speed = tracker.calculateVelocity().let { Offset(it.x, it.y) }.getDistance()
+                if (speed > MagnetDimens.TearSpeed.toPx()) state.tearOff(tag)
+            }
             if (moved) state.drag(tag, change.position + grip)
             if (!change.pressed) {
                 lifted = true
