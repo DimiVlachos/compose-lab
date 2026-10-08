@@ -148,7 +148,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         private set
 
     /** Called after a step in which a photo stuck, at most every few steps: a tick of haptics. */
-    internal var onStick: (() -> Unit)? = null
+    internal var onStick: ((strength: Float) -> Unit)? = null
+
+    /** Called as a magnet put away comes to rest in its slot: a soft tick of haptics. */
+    internal var onSlot: (() -> Unit)? = null
 
     private var carry = 0f
     private var sinceTick = MagnetDimens.TickSteps
@@ -381,10 +384,12 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         }
         if (changed) updateResults()
         if (bodies.sticks > 0) {
+            val strongest = bodies.strongest
             bodies.sticks = 0
+            bodies.strongest = 0f
             if (sinceTick >= MagnetDimens.TickSteps) {
                 sinceTick = 0
-                onStick?.invoke()
+                onStick?.invoke(strongest)
             }
         }
         frame++
@@ -523,6 +528,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             ) {
                 magnet.at = magnet.slot
                 magnet.velocity = Offset.Zero
+                onSlot?.invoke()
             }
         }
     }

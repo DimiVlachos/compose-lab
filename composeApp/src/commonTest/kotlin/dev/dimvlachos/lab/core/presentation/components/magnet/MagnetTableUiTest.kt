@@ -7,6 +7,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -267,5 +270,59 @@ class MagnetTableUiTest {
         val card = table.state.photoCentre(0) * density.density
         assertEquals(card.x, bounds.center.x, 2f)
         assertEquals(card.y, bounds.center.y, 2f)
+    }
+
+    private class Ticks : HapticFeedback {
+        val types = mutableListOf<HapticFeedbackType>()
+
+        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+            types += hapticFeedbackType
+        }
+    }
+
+    // A table of one photo that matches Alpha [strength] well, with its haptics heard.
+    private fun ComposeUiTest.tableOfOne(strength: Float, ticks: Ticks): MagnetState {
+        var state: MagnetState? = null
+        val photos = listOf(MagnetPhoto("p", TestPhotos[0].image, "P", mapOf("a" to strength)))
+        setContent {
+            LabTheme {
+                CompositionLocalProvider(LocalHapticFeedback provides ticks) {
+                    val table = rememberMagnetState(photos, TestTags)
+                    state = table
+                    MagnetTable(table, Modifier.size(360.dp, 720.dp))
+                }
+            }
+        }
+        waitForIdle()
+        return state!!
+    }
+
+    @Test
+    fun aStrongMatchSnapsWithAClickAndAWeakerOneWithATick() = runComposeUiTest {
+        val ticks = Ticks()
+        val table = tableOfOne(0.95f, ticks)
+        runOnUiThread { table.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        assertEquals(listOf(HapticFeedbackType.VirtualKey), ticks.types)
+    }
+
+    @Test
+    fun aMatchJustOverTheThresholdSnapsWithALightTick() = runComposeUiTest {
+        val ticks = Ticks()
+        val table = tableOfOne(0.6f, ticks)
+        runOnUiThread { table.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        assertEquals(listOf(HapticFeedbackType.SegmentFrequentTick), ticks.types)
+    }
+
+    @Test
+    fun aMagnetLandingBackInItsSlotEndsWithASoftTick() = runComposeUiTest {
+        val ticks = Ticks()
+        val table = tableOfOne(0f, ticks)
+        runOnUiThread { table.apply("a") }
+        mainClock.advanceTimeBy(500)
+        runOnUiThread { table.remove("a") }
+        mainClock.advanceTimeBy(2_000)
+        assertEquals(listOf(HapticFeedbackType.GestureEnd), ticks.types)
     }
 }

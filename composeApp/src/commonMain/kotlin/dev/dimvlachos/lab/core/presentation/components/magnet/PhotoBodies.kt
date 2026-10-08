@@ -82,6 +82,14 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     /** How many times a photo has stuck since this was last zeroed: a tick of haptics a time. */
     var sticks = 0
 
+    /** How well the best match that stuck since [sticks] was zeroed matched its magnet. */
+    var strongest = 0f
+
+    private fun noteStick(strength: Float) {
+        sticks++
+        strongest = max(strongest, strength)
+    }
+
     private var quiet = 0
 
     // Where each card was at the start of a step: once the cards are pushed apart, their speed is
@@ -243,7 +251,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                     body.stuckTo += a.tag
                     body.stuckTo += b.tag
                     body.slot = null
-                    sticks++
+                    noteStick(max(body.strength(a.tag), body.strength(b.tag)))
                     return true
                 }
             }
@@ -255,7 +263,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 continue
             body.stuckTo += magnet.tag
             body.slot = null
-            sticks++
+            noteStick(body.strength(magnet.tag))
             changed = true
         }
         return changed
@@ -288,7 +296,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             if (!canStick(body, other) || !bridged(a, b)) return false
             body.stuckTo += other.tag
             body.slot = null
-            sticks++
+            noteStick(body.strength(other.tag))
             return true
         }
         if (bridged(a, b, MagnetDimens.BridgeLetGo)) return false

@@ -72,6 +72,9 @@ internal object MagnetDimens {
     // At most one haptic tick this many steps apart (about 70 ms), however many cards snap.
     const val TickSteps = 8
 
+    // A match at least this strong snaps with a crisp click; a weaker one with a light tick.
+    const val StrongMatch = 0.8f
+
     // The iron filings: this many, lying this long, rising to RisenLength where the field is
     // full; where it is weaker than LieFlat they keep the angle they fell at. The field is 1 at
     // FieldUnitDistance from a magnet.

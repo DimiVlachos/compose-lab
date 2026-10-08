@@ -81,10 +81,22 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
     ReportComposition()
     val haptics = LocalHapticFeedback.current
     DisposableEffect(state, haptics) {
-        // A key's click on Android and a light impact on iOS, as the pull cord's click.
-        val hook: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.VirtualKey) }
-        state.onStick = hook
-        onDispose { if (state.onStick === hook) state.onStick = null }
+        // A strong match snaps with a key's click, as the pull cord's does; one that only just
+        // matches, with a light tick, so a hand feels how well each matched. A magnet put away
+        // lands in its slot with a soft tick that closes the gesture.
+        val stick: (Float) -> Unit = { strength ->
+            haptics.performHapticFeedback(
+                if (strength >= MagnetDimens.StrongMatch) HapticFeedbackType.VirtualKey
+                else HapticFeedbackType.SegmentFrequentTick
+            )
+        }
+        val slot: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+        state.onStick = stick
+        state.onSlot = slot
+        onDispose {
+            if (state.onStick === stick) state.onStick = null
+            if (state.onSlot === slot) state.onSlot = null
+        }
     }
     // The table steps on a frame at a time while anything moves or is held, and the loop sleeps
     // once it is all still.
