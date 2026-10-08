@@ -8,6 +8,7 @@ import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_magnet_filter
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_paper_plane
@@ -33,6 +34,7 @@ class CatalogTest {
                 "book.turn",
                 "chat.plane",
                 "lamp.cord",
+                "magnet.filter",
             ),
             Catalog.demos.map { it.id },
         )
@@ -45,6 +47,7 @@ class CatalogTest {
                 Res.string.demo_book_turn,
                 Res.string.demo_paper_plane,
                 Res.string.demo_pull_cord,
+                Res.string.demo_magnet_filter,
             ),
             Catalog.demos.map { it.title },
         )
@@ -77,6 +80,8 @@ class CatalogTest {
             assertEquals(0f, controller.netScroll, "${demo.id} must scroll back to the top")
             assertEquals(0, controller.messagesOut, "${demo.id} must take back what it sent")
             assertFalse(controller.lampLit, "${demo.id} must switch the lamp back off")
+            assertTrue(controller.magnetsOut.isEmpty(), "${demo.id} must put every magnet back")
+            assertNull(controller.fannedOut, "${demo.id} must fold any fanned-out photos")
         }
     }
 
@@ -85,7 +90,7 @@ class CatalogTest {
         for (demo in Catalog.demos) {
             val controller = FakeController { testScheduler.currentTime }
             demo.script.play(controller)
-            for (point in controller.wipes.flatten()) {
+            for (point in controller.wipes.flatten() + controller.magnetPaths.flatten()) {
                 assertTrue(point.x in 0f..1f && point.y in 0f..1f, "${demo.id} wipes off at $point")
             }
         }
@@ -98,7 +103,14 @@ class CatalogTest {
         assertEquals(Res.string.demo_fog, group.title)
         assertEquals(listOf("fog.mirror.bathroom", "fog.mirror.camera"), group.demos.map { it.id })
         assertEquals(
-            listOf("navbar.all", "morph.app", "book.turn", "chat.plane", "lamp.cord"),
+            listOf(
+                "navbar.all",
+                "morph.app",
+                "book.turn",
+                "chat.plane",
+                "lamp.cord",
+                "magnet.filter",
+            ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
     }
