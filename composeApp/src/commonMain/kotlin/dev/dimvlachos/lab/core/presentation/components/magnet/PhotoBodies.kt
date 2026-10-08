@@ -122,6 +122,9 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     // How fast each card was going on its own, before anything pushed it this step.
     private val ownSpeed = FloatArray(bodies.size)
 
+    // Which cards are on their way to a magnet this step.
+    private val travelling = BooleanArray(bodies.size)
+
     /** Whether every card has been still for a while, so the frame loop can sleep. */
     val atRest: Boolean
         get() = quiet >= MagnetDimens.QuietSteps
@@ -167,19 +170,13 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                     val slot = body.slot ?: assignSlot(body, anchor, magnets)
                     (anchor + slot - body.at) * MagnetDimens.Cling - body.velocity * ClingDamping
                 } else {
-                    var pull =
-                        (body.home - body.at) * MagnetDimens.Leash -
-                            body.velocity * MagnetDimens.Friction
-                    for (magnet in magnets) {
-                        if (!draws(body, magnet, magnets)) continue
-                        pull += MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
-                    }
-                    pull
+                    gather(body, magnets)
                 }
             body.velocity += acceleration * dt
             body.at += body.velocity * dt
         }
         for (i in bodies.indices) ownSpeed[i] = bodies[i].velocity.getDistance()
+        for (i in bodies.indices) travelling[i] = drawn(bodies[i], magnets)
         for (body in bodies) if (stick(body, magnets)) changed = true
         repeat(MagnetDimens.SeparationPasses) {
             separate()
@@ -278,6 +275,37 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
 
     // Two magnets joined are one search: they draw in, and hold, only what matches both.
     private var joined = false
+
+    // A loose card is tied home by its leash; one a magnet out would hold is let off it and drawn
+    // in, by every such magnet within reach, or from beyond them all by the nearest, so a search
+    // finds every match on the table, near or far.
+    private fun gather(body: PhotoBody, magnets: List<Magnet>): Offset {
+        val friction = body.velocity * MagnetDimens.Friction
+        var pull = Offset.Zero
+        var nearest: Magnet? = null
+        var nearestDistance = Float.MAX_VALUE
+        var inReach = false
+        val reach = MagnetDimens.Reach.value
+        for (magnet in magnets) {
+            if (!draws(body, magnet, magnets)) continue
+            val distance = (magnet.at - body.at).getDistance()
+            if (distance <= reach) {
+                inReach = true
+                pull += MagnetField.pull(body.at, magnet.at, body.strength(magnet.tag))
+            }
+            if (distance < nearestDistance) {
+                nearest = magnet
+                nearestDistance = distance
+            }
+        }
+        if (nearest == null) return (body.home - body.at) * MagnetDimens.Leash - friction
+        if (!inReach) pull = (nearest.at - body.at) / nearestDistance * MagnetDimens.GatherPull
+        return pull - friction
+    }
+
+    /** Whether a magnet out would draw [body] in and hold it: it is on its way to one. */
+    fun drawn(body: PhotoBody, magnets: List<Magnet>): Boolean =
+        body.stuckTo.isEmpty() && !body.held && drawsAny(body, magnets)
 
     private fun draws(body: PhotoBody, magnet: Magnet, magnets: List<Magnet>): Boolean =
         if (joined) magnets.all { body.drawnTo(it) } else body.drawnTo(magnet)
@@ -422,6 +450,8 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return if (count == 0) body.at else sum / count.toFloat()
     }
 
+    private fun under(i: Int): Boolean = bodies[i].slipping || travelling[i]
+
     // Pushes overlapping cards apart, each half the overlap, or a card a finger holds not at all:
     // a cluster carried into a print nudges it aside, and the print slides home once it has gone.
     private fun separate() {
@@ -431,8 +461,9 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 val p = bodies[i]
                 val q = bodies[j]
                 if (p.held && q.held) continue
-                // A card that has slipped under a cluster passes under its cards too.
-                if (p.slipping && q.stuckTo.isNotEmpty() || q.slipping && p.stuckTo.isNotEmpty())
+                // A card that has slipped under a cluster passes under its cards too, as does one
+                // on its way to a magnet, so no cluster in between stops it.
+                if (under(i) && q.stuckTo.isNotEmpty() || under(j) && p.stuckTo.isNotEmpty())
                     continue
                 val apart = q.at - p.at
                 val distance = apart.getDistance()

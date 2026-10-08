@@ -61,11 +61,16 @@ internal object MagnetDimens {
     // Room below a magnet's label in the strip, when large text makes the strip taller.
     val StripPad = 2.dp
 
-    // The pull on a photo: strength × MagnetPull / (distance² + Softening), in dp/s², out to Reach.
+    // The pull on a photo: strength × MagnetPull / (distance² + Softening), in dp/s², within Reach.
     // A strong match a card's width from touching reaches the magnet in about a quarter second.
     const val MagnetPull = 6.0e7f
     const val Softening = 1_600f
     val Reach = 260.dp
+
+    // A magnet is a search, so it finds what matches wherever it lies: a strong match out of every
+    // magnet's reach is drawn to the nearest one that would hold it at least this hard, in dp/s²,
+    // and slides across the table in a second or two.
+    const val GatherPull = 2_400f
 
     // A card whose middle comes within ContactRing of a magnet touches it, and sticks if it
     // matches at least StickThreshold. Stuck, it is held to the magnet but kept ClusterInner from

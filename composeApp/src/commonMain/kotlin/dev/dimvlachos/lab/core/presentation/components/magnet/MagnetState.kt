@@ -778,10 +778,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         }
     }
 
-    // How shaded a photo should be: not at all on a magnet or with every magnet away; lightly while
-    // a magnet out pulls it from within reach, leaning in; fully when nothing out is pulling it.
+    // How shaded a photo should be: not at all on a magnet, on its way to one, or with every
+    // magnet away; lightly while a magnet out it matches weakly is within reach; fully otherwise.
     private fun shadeGoal(body: PhotoBody, anyOut: Boolean): Float {
-        if (!anyOut || body.layer() != 0) return 0f
+        if (!anyOut || body.layer() != 0 || bodies.drawn(body, pulling)) return 0f
         val reach = MagnetDimens.Reach.value
         for (magnet in magnets) {
             if (!magnet.out || !body.feels(magnet)) continue
