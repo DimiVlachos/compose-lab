@@ -392,8 +392,24 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
             }
             val away = (body.at - body.home).getDistance()
             if (!body.slipping && away > most) body.slipping = true
-            else if (body.slipping && away < home) body.slipping = false
+            // Back home, it comes out from under only once nothing lies on it: a cluster resting
+            // over its spot would shove it straight out again, and it would kick for ever.
+            else if (body.slipping && away < home && clearOfClusters(body, magnets))
+                body.slipping = false
         }
+    }
+
+    private fun clearOfClusters(body: PhotoBody, magnets: List<Magnet>): Boolean {
+        val span = MagnetDimens.CardSpan.value
+        for (other in bodies) {
+            if (other.stuckTo.isEmpty()) continue
+            if ((other.at - body.at).getDistance() < span) return false
+        }
+        val reach = MagnetDimens.MagnetBody.value
+        for (magnet in magnets) {
+            if (magnet.out && (magnet.at - body.at).getDistance() < reach) return false
+        }
+        return true
     }
 
     // How hard [magnet] pulls [body] where it is, by the same law as its pull across the table.

@@ -280,6 +280,30 @@ class PhotoBodiesTest {
     }
 
     @Test
+    fun aClusterLeftLyingOverAPhotosSpotLetsItLieStillUnderIt() {
+        // Its spot right where the magnet's cluster comes to rest.
+        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
+        val other = PhotoBody("other", emptyMap(), Offset.Zero)
+        val m = magnet("a", Offset(300f, 500f))
+        val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
+        table.run(1f, listOf(m))
+        repeat(110) {
+            m.at = Offset(300f + it * 2f, 500f)
+            table.step(step, listOf(m))
+        }
+        // The magnet stays put over it; watch it for five seconds.
+        var furthest = 0f
+        var rested = false
+        repeat(600) {
+            table.step(step, listOf(m))
+            if (it > 240) furthest = maxOf(furthest, other.velocity.getDistance())
+            if (table.atRest) rested = true
+        }
+        assertTrue(furthest < MagnetDimens.StillSpeed, "it keeps kicking at up to $furthest dp/s")
+        assertTrue(rested, "the table never comes to rest")
+    }
+
+    @Test
     fun cardsAreKeptOnTheTable() {
         val photo = PhotoBody("p", emptyMap(), Offset.Zero)
         val table = bodies(photo to Offset(500f, 500f))
