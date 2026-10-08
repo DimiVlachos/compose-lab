@@ -1,10 +1,13 @@
 package dev.dimvlachos.lab.magnetdemo.presentation.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -92,12 +95,21 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
                     with(finger) { drawFinger(colors.touch) }
                 },
         )
-        Text(
-            stringResource(Res.string.magnet_hint),
-            style = LabTheme.typography.label,
-            color = colors.textMuted,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = LabTheme.spacing.medium),
-        )
+        // The hint gives way while a magnet is out: by then it has been taken, and a cluster
+        // near the top would lie under it.
+        AnimatedVisibility(
+            visible = table.results.isEmpty(),
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Text(
+                stringResource(Res.string.magnet_hint),
+                style = LabTheme.typography.label,
+                color = colors.textMuted,
+                modifier = Modifier.padding(top = LabTheme.spacing.medium),
+            )
+        }
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -62,5 +63,27 @@ class MagnetDemoUiTest {
             assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
         }
         assertFalse(table!!.awake, "the table must be still by the end")
+    }
+
+    @Test
+    fun theHintGivesWayWhileAMagnetIsOut() = runComposeUiTest {
+        var table: MagnetState? = null
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    val islands = rememberIslandMagnetState()
+                    table = islands
+                    MagnetDemo(DemoState(), islands)
+                }
+            }
+        }
+        val hint = "Drag a magnet over the photos to filter them"
+        onNodeWithText(hint).assertExists()
+        runOnUiThread { table!!.apply(IslandTags.Sunset) }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText(hint).assertDoesNotExist()
+        runOnUiThread { table!!.remove(IslandTags.Sunset) }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText(hint).assertExists()
     }
 }
