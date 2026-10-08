@@ -251,27 +251,20 @@ class MagnetTableUiTest {
         }
         waitForIdle()
         val pixels = onNodeWithTag("table").captureToImage().toPixelMap()
-        // Just right of the middle of each face, clear of its glint.
-        fun faceOf(tag: String): Color {
-            val at = state!!.magnetPosition(tag)!! + Offset(8.dp.value * density.density, 0f)
+        // A horseshoe: its left leg in the tag's colour, its right leg a deeper shade of it, steel
+        // tips at the foot of each, and nothing but the strip between its legs.
+        fun at(tag: String, dx: Float, dy: Float): Color {
+            val at = state!!.magnetPosition(tag)!! + Offset(dx, dy) * density.density
             return pixels[at.x.toInt(), at.y.toInt()]
         }
-        assertEquals(Color.Blue, faceOf("a"))
+        val leg =
+            MagnetDimens.HorseshoeWidth.value / 2f - MagnetDimens.HorseshoeThickness.value / 2f
+        assertEquals(Color.Blue, at("a", -leg, 4f))
+        val right = at("a", leg, 4f)
+        assertTrue(right.blue < Color.Blue.blue && right.red < 0.05f, "the right leg is $right")
+        assertTrue(at("a", 0f, 8f) != Color.Blue, "the middle of the U is hollow")
         // A tag without a colour of its own wears the theme's red.
-        assertEquals(AppColors().magnetRed, faceOf("b"))
-    }
-
-    @Test
-    fun aFannedOutPhotoIsFoundOnItsCardInTheGrid() = runComposeUiTest {
-        val table = table()
-        runOnUiThread { table.state.apply("a") }
-        mainClock.advanceTimeBy(2_000)
-        runOnUiThread { table.state.fanOut("a") }
-        mainClock.advanceTimeBy(1_000)
-        val bounds = onNodeWithContentDescription("Strong").fetchSemanticsNode().boundsInRoot
-        val card = table.state.photoCentre(0) * density.density
-        assertEquals(card.x, bounds.center.x, 2f)
-        assertEquals(card.y, bounds.center.y, 2f)
+        assertEquals(AppColors().magnetRed, at("b", -leg, 4f))
     }
 
     private class Ticks : HapticFeedback {

@@ -21,6 +21,15 @@ internal object MagnetDimens {
     // A magnet is a puck this wide; a finger within GrabRadius of its middle takes it. At most two
     // are out of the strip at once, and two are kept at least MagnetGap apart.
     val MagnetRadius = 22.dp
+
+    // Drawn as a horseshoe standing over its point: this wide, its bar this thick, the top of its
+    // arch this far above the point, its legs reaching down to the point's level and on for their
+    // steel tips. The field comes from the point, between its legs.
+    val HorseshoeWidth = 44.dp
+    val HorseshoeThickness = 12.dp
+    val HorseshoeTop = 26.dp
+    val HorseshoeLegEnd = 12.dp
+    val HorseshoeTip = 9.dp
     val GrabRadius = 32.dp
     const val MostMagnets = 2
     val MagnetGap = 72.dp

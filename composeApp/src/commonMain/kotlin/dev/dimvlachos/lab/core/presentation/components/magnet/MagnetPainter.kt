@@ -2,20 +2,25 @@ package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
@@ -95,8 +100,24 @@ internal class MagnetPainter {
             Offset(0f, tableBottom),
             Size(size.width, size.height - tableBottom),
         )
-        val well = MagnetDimens.MagnetRadius.toPx() + 3.dp.toPx()
-        for (magnet in state.magnets) drawCircle(colors.stripWell, well, magnet.slot * density)
+        // A socket the shape of the horseshoe that rests in it, a little bigger all round.
+        val thickness = MagnetDimens.HorseshoeThickness.toPx()
+        val socket = Stroke(thickness + 6.dp.toPx())
+        for (magnet in state.magnets) {
+            val slot = magnet.slot * density
+            val legEnd = shapeHorseshoe(slot)
+            drawPath(leftHalf, colors.stripWell, style = socket)
+            drawPath(rightHalf, colors.stripWell, style = socket)
+            val bend = MagnetDimens.HorseshoeWidth.toPx() / 2f - thickness / 2f
+            val tip = MagnetDimens.HorseshoeTip.toPx() + 3.dp.toPx()
+            for (x in floatArrayOf(slot.x - bend, slot.x + bend)) {
+                drawRect(
+                    colors.stripWell,
+                    Offset(x - socket.width / 2f, legEnd),
+                    Size(socket.width, tip),
+                )
+            }
+        }
     }
 
     /** The cards: loose ones first, then the stuck, then a held one, each layer over the last. */
@@ -130,29 +151,21 @@ internal class MagnetPainter {
         colors: AppColors,
     ) {
         state.frame
-        val radius = MagnetDimens.MagnetRadius.toPx()
         for (i in state.magnets.indices) {
             val magnet = state.magnets[i]
             val centre = magnet.at * density
-            val r = if (magnet.held) radius * MagnetDimens.HeldLift else radius
-            val drop = (if (magnet.held) 6.dp else 3.dp).toPx()
-            drawCircle(colors.cardShadow, r, centre + Offset(drop / 2f, drop))
+            val lift = if (magnet.held) MagnetDimens.HeldLift else 1f
             val face = state.tags[i].color.takeOrElse { colors.magnetRed }
-            drawCircle(colors.magnetSteel, r, centre)
-            drawCircle(face, r * FaceShare, centre)
-            drawCircle(
-                colors.magnetSheen,
-                r * 0.3f,
-                centre + Offset(-r * 0.32f, -r * 0.32f),
-                alpha = 0.35f,
-            )
+            drawHorseshoe(centre, lift, face, colors, if (magnet.held) 6.dp.toPx() else 3.dp.toPx())
+            val above = MagnetDimens.HorseshoeTop.toPx() * lift
+            val below = (MagnetDimens.HorseshoeLegEnd + MagnetDimens.HorseshoeTip).toPx() * lift
             val label = labels[i]
             val padX = MagnetDimens.BadgePadX.toPx()
             val padY = MagnetDimens.BadgePadY.toPx()
             val labelTop =
                 Offset(
                     centre.x - label.size.width / 2f,
-                    centre.y + r + MagnetDimens.LabelGap.toPx(),
+                    centre.y + below + MagnetDimens.LabelGap.toPx(),
                 )
             // Out on the table the label lies over cards, so it gets the rail's dark behind it.
             if (magnet.out) {
@@ -171,7 +184,10 @@ internal class MagnetPainter {
             val h = badge.size.height + padY * 2f
             // Kept on the table by a magnet at its top edge.
             val topLeft =
-                Offset(centre.x - w / 2f, max(0f, centre.y - r - MagnetDimens.BadgeGap.toPx() - h))
+                Offset(
+                    centre.x - w / 2f,
+                    max(0f, centre.y - above - MagnetDimens.BadgeGap.toPx() - h),
+                )
             drawRoundRect(colors.badge, topLeft, Size(w, h), CornerRadius(h / 2f))
             // Ringed in its magnet's colour, so the count reads as that magnet's.
             drawRoundRect(
@@ -182,6 +198,87 @@ internal class MagnetPainter {
                 style = Stroke(MagnetDimens.BadgeRing.toPx()),
             )
             drawText(badge, topLeft = topLeft + Offset(padX, padY))
+        }
+    }
+
+    // The two halves of a horseshoe, made again for each magnet drawn.
+    private val leftHalf = Path()
+    private val rightHalf = Path()
+
+    // Lays the two halves of a horseshoe over [centre] into the paths, along the middle of its
+    // bar, and says where its legs end and its tips begin.
+    private fun DrawScope.shapeHorseshoe(centre: Offset): Float {
+        val thickness = MagnetDimens.HorseshoeThickness.toPx()
+        val bend = MagnetDimens.HorseshoeWidth.toPx() / 2f - thickness / 2f
+        val archY = centre.y - MagnetDimens.HorseshoeTop.toPx() + thickness / 2f + bend
+        val legEnd = centre.y + MagnetDimens.HorseshoeLegEnd.toPx()
+        val arch = Rect(centre.x - bend, archY - bend, centre.x + bend, archY + bend)
+        leftHalf.rewind()
+        leftHalf.moveTo(centre.x - bend, legEnd)
+        leftHalf.lineTo(centre.x - bend, archY)
+        leftHalf.arcTo(arch, 180f, 90f, false)
+        rightHalf.rewind()
+        rightHalf.moveTo(centre.x, archY - bend)
+        rightHalf.arcTo(arch, 270f, 90f, false)
+        rightHalf.lineTo(centre.x + bend, legEnd)
+        return legEnd
+    }
+
+    // A horseshoe magnet standing over [centre]: a thick U whose left half wears [face] and right
+    // half a deeper shade of it, as the classic magnet's two poles do, with steel tips at the foot
+    // of its legs, a glint along its arch, and its shadow under it, [drop] down. Held, it lifts.
+    private fun DrawScope.drawHorseshoe(
+        centre: Offset,
+        lift: Float,
+        face: Color,
+        colors: AppColors,
+        drop: Float,
+    ) {
+        val thickness = MagnetDimens.HorseshoeThickness.toPx()
+        val bend = MagnetDimens.HorseshoeWidth.toPx() / 2f - thickness / 2f
+        val archY = centre.y - MagnetDimens.HorseshoeTop.toPx() + thickness / 2f + bend
+        val tip = MagnetDimens.HorseshoeTip.toPx()
+        val legEnd = shapeHorseshoe(centre)
+        val bar = Stroke(thickness)
+        scale(lift, pivot = centre) {
+            translate(drop / 2f, drop) {
+                drawPath(leftHalf, colors.cardShadow, style = bar)
+                drawPath(rightHalf, colors.cardShadow, style = bar)
+                for (x in floatArrayOf(centre.x - bend, centre.x + bend)) {
+                    drawRect(
+                        colors.cardShadow,
+                        Offset(x - thickness / 2f, legEnd),
+                        Size(thickness, tip),
+                    )
+                }
+            }
+            drawPath(leftHalf, face, style = bar)
+            drawPath(rightHalf, lerp(face, Color.Black, PoleShade), style = bar)
+            for (x in floatArrayOf(centre.x - bend, centre.x + bend)) {
+                drawRect(
+                    colors.magnetSteel,
+                    Offset(x - thickness / 2f, legEnd),
+                    Size(thickness, tip),
+                )
+                drawLine(
+                    colors.clipSheen,
+                    Offset(x - thickness / 2f, legEnd + 1.dp.toPx()),
+                    Offset(x + thickness / 2f, legEnd + 1.dp.toPx()),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            // Light along the outside of the arch, where it catches the room.
+            val glint = bend + thickness / 2f - 3.dp.toPx()
+            drawArc(
+                colors.magnetSheen,
+                startAngle = 200f,
+                sweepAngle = 60f,
+                useCenter = false,
+                topLeft = Offset(centre.x - glint, archY - glint),
+                size = Size(glint * 2f, glint * 2f),
+                alpha = 0.4f,
+                style = Stroke(2.dp.toPx(), cap = StrokeCap.Round),
+            )
         }
     }
 
@@ -320,8 +417,8 @@ internal fun thumbnail(source: ImageBitmap, width: Int, height: Int): ImageBitma
 // Eased in and out, so the grid starts and lands softly.
 internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
 
-// The share of a magnet that is its red face, inside the steel rim.
-private const val FaceShare = 0.78f
+// How much deeper the horseshoe's second pole is than its first.
+private const val PoleShade = 0.3f
 
 private const val DegreesPerRadian = 57.29578f
 
