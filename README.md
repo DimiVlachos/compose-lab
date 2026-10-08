@@ -275,7 +275,7 @@ The physics is a plain state holder stepped at a fixed 120 Hz, like the pull cor
 ```kotlin
 val table = rememberMagnetState(
     photos = listOf(MagnetPhoto("milos", Res.drawable.photo_milos, "Milos", mapOf("cliffs" to 1f, "sea" to 0.9f))),
-    tags = listOf(MagnetTag("cliffs", "Cliffs", cliffsBrown), MagnetTag("sea", "Sea", seaBlue)),
+    tags = listOf(MagnetTag("cliffs", "Cliffs", LabTheme.colors.tagCliffs), MagnetTag("sea", "Sea", LabTheme.colors.tagSea)),
 )
 
 MagnetTable(table, Modifier.fillMaxSize())
