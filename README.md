@@ -29,6 +29,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Page-turn book](#page-turn-book-corepresentationcomponentspageturn) | `pageturn` | `book.turn` | Pages that curl in 3D under the finger, in plain `DrawScope` |
 | [Paper plane](#paper-plane-corepresentationcomponentspaperplane) | `paperplane` | `chat.plane` | A chat that sends each message as a folded paper dart |
 | [Pull cord](#pull-cord-corepresentationcomponentspullcord) | `pullcord` | `lamp.cord` | Pull a lamp's cord to switch a screen between light and dark |
+| [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet) | `magnet` | `magnet.filter` | Drag tag magnets over photos to filter them; two combine as AND / OR |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -42,6 +43,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Page-turn book](#page-turn-book-corepresentationcomponentspageturn)
 - [Paper plane](#paper-plane-corepresentationcomponentspaperplane)
 - [Pull cord](#pull-cord-corepresentationcomponentspullcord)
+- [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [Project structure](#project-structure)
 - [Run](#run)
@@ -255,6 +257,30 @@ PullCordLamp(
     // spreads, both are composed.
     SettingsScreen(if (lit) nightPalette else dayPalette)
 }
+```
+
+## Magnet filter (`core/presentation/components/magnet/`)
+
+Twelve island photos lie scattered on a steel table dusted with iron filings, with five tag magnets (Sunset, Sea, Boats, Cliffs, Village) waiting in a strip along its foot. Drag a magnet over the table: the filings rise along its field, matching photos are pulled towards it, harder the better they match, and the strong matches snap and stick. What sticks is the filter's result. A real sweep of a magnet turns into filtering search results.
+
+- **A graded pull with a clear threshold.** Each photo has a hand-tuned strength for each tag. A magnet pulls it with `strength × pull / (distance² + softening)` out to its reach, so a match feels weak far off and snaps close up, and a photo sticks only if it matches at least 0.5 and touches the magnet, or the cards already on it, as pins chain. Partial matches lean in and stop at the magnet's edge; the result stays exact. Stuck cards take places on rings round the magnet, so a cluster settles rather than shuffling for room. Every loose card is tied home by a weak spring, so the leaning settles and everything slides back.
+- **Two magnets, AND and OR.** The two magnets' pulls add as vectors. A photo matching both comes to rest between two magnets close together and counts for both; pulled far apart, it goes with the tag it matches better. A photo matching one clings to its own.
+- **The cluster is the result.** A badge over each magnet counts what is on it, "4 photos". Tap a magnet to fan its photos out into a grid, tap anywhere to fold them back, and pull one off by hand to drop it from the results. Flick a magnet back into the strip and its photos fall off and slide home.
+- **Filings that follow the field.** 1,600 short strokes turn to the summed field of the magnets where they lie and rise where it is strong. They are drawn as four batched paths, one for each brightness, traced again only when a magnet moves, in a layer of their own.
+- **For a screen reader.** Every photo is a node with its title and the magnet it is on. Every magnet is a switch, "Sunset filter, 4 photos", with Apply and Remove actions that put it down in the middle of the table or back in the strip. The count is announced politely as it changes.
+
+The physics is a plain state holder stepped at a fixed 120 Hz, like the pull cord's. Cards and magnets are drawn in one layer and read only while drawing, and their screen-reader nodes are placed in layout, so nothing recomposes while they move: only a photo sticking or coming off, or the grid fanning out or folding, recomposes. The frame loop sleeps once everything is still. It is demo state: a table made again starts with every magnet in the strip.
+
+```kotlin
+val table = rememberMagnetState(
+    photos = listOf(MagnetPhoto("milos", Res.drawable.photo_milos, "Milos", mapOf("cliffs" to 1f, "sea" to 0.9f))),
+    tags = listOf(MagnetTag("cliffs", "Cliffs"), MagnetTag("sea", "Sea")),
+)
+
+MagnetTable(table, Modifier.fillMaxSize())
+
+// The filter's results, by tag: they change only when a photo sticks or comes off.
+val cliffs: Set<String> = table.results["cliffs"].orEmpty()
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

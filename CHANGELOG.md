@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Magnet filter** (`magnet`): drag tag magnets over a table of photos to filter them; matches are pulled by how well they match, strong ones stick, and two magnets combine as AND / OR.
+
 ## [0.1.0] - 2026-10-06
 
 The first release: five components, the apps that demo them, and Moodboard.
