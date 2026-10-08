@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -342,5 +344,28 @@ class MagnetTableUiTest {
         assertNull(table.state.opened)
         mainClock.advanceTimeBy(1_000)
         assertEquals("a", table.state.fannedOut, "a tap closes the photo, not the grid")
+    }
+
+    @Test
+    fun atLargeTextTheStripGrowsSoItsLabelsFitUnderTheMagnets() = runComposeUiTest {
+        val strips = mutableListOf<Float>()
+        for (fontScale in listOf(1f, 2f)) {
+            var state: MagnetState? = null
+            setContent {
+                LabTheme {
+                    CompositionLocalProvider(
+                        LocalDensity provides Density(density.density, fontScale)
+                    ) {
+                        val table = rememberMagnetState(TestPhotos, TestTags)
+                        state = table
+                        MagnetTable(table, Modifier.size(360.dp, 720.dp))
+                    }
+                }
+            }
+            waitForIdle()
+            strips += state!!.stripHeight
+        }
+        assertEquals(MagnetDimens.StripHeight.value, strips[0])
+        assertTrue(strips[1] > strips[0], "at twice the text, the strip is ${strips[1]} dp")
     }
 }

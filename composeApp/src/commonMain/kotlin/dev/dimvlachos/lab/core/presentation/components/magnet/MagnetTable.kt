@@ -123,6 +123,20 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         remember(state.tags, measurer, labelStyle) {
             state.tags.map { measurer.measure(it.label, labelStyle) }
         }
+    // The strip is tall enough for a magnet in the middle of it and its label under it, at any
+    // size of text: half of it holds the magnet's lower half, the gap, the label and a little room.
+    val labelHeight = labels.maxOfOrNull { it.size.height } ?: 0
+    val strip =
+        with(density) {
+            maxOf(
+                MagnetDimens.StripHeight.value,
+                2f *
+                    ((MagnetDimens.MagnetRadius + MagnetDimens.LabelGap + MagnetDimens.StripPad)
+                        .value + labelHeight.toDp().value),
+            )
+        }
+    val size = remember(state) { TableSize() }
+    SideEffect { state.layOut(size.width, size.height, density.density, strip) }
     val results = state.results
     val counts =
         state.tags.map { tag ->
@@ -167,7 +181,7 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
     }
     val photos = state.photos.map { imageResource(it.image) }
     val thumbs =
-        remember(photos, density) {
+        remember(photos, density.density) {
             with(density) {
                 // As big as the cards grow in the grid, so they stay sharp there too.
                 val inset = MagnetDimens.CardBorder * 2
@@ -176,13 +190,17 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                 photos.map { thumbnail(it, width, height) }
             }
         }
-    val painter = remember { MagnetPainter() }
-    val openPainter = remember { OpenPainter() }
-    val filings = remember { FilingsPainter() }
+    val painter = remember(state) { MagnetPainter() }
+    val openPainter = remember(state) { OpenPainter() }
+    val filings = remember(state) { FilingsPainter() }
     val slop = LocalViewConfiguration.current.touchSlop
     Box(
         modifier
-            .onSizeChanged { state.layOut(it.width, it.height, density.density) }
+            .onSizeChanged {
+                size.width = it.width
+                size.height = it.height
+                state.layOut(it.width, it.height, density.density, strip)
+            }
             .pointerInput(state, slop) { tableGestures(state, slop) }
     ) {
         // The steel and the strip, drawn again only when the table changes size.
@@ -248,6 +266,12 @@ private fun Announcer(state: MagnetState, counts: List<String?>) {
     )
 }
 
+// The table's size as last laid out, in px, so a change of strip lays it out again.
+private class TableSize {
+    var width = 0
+    var height = 0
+}
+
 private class HeaderHolder {
     var value: TextLayoutResult? = null
 }
@@ -266,6 +290,7 @@ private fun PhotoNode(
     where: String?,
     inGrid: Boolean,
 ) {
+    ReportComposition()
     val open = stringResource(Res.string.magnet_open)
     Spacer(
         Modifier.offset { state.photoTopLeft(index) }
@@ -312,6 +337,7 @@ private class OpenWords {
 // stays still instead.
 @Composable
 private fun MagnetNode(state: MagnetState, tag: MagnetTag, count: String?) {
+    ReportComposition()
     val name = stringResource(Res.string.magnet_filter, tag.label)
     val off = stringResource(Res.string.magnet_off)
     val apply = stringResource(Res.string.magnet_apply, tag.label)

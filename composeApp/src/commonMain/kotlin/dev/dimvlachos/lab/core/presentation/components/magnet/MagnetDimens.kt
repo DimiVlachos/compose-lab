@@ -28,6 +28,9 @@ internal object MagnetDimens {
     // The strip the magnets wait in, along the bottom; the table is everything above it.
     val StripHeight = 92.dp
 
+    // Room below a magnet's label in the strip, when large text makes the strip taller.
+    val StripPad = 2.dp
+
     // The pull on a photo: strength × MagnetPull / (distance² + Softening), in dp/s², out to Reach.
     // A strong match a card's width from touching reaches the magnet in about a quarter second.
     const val MagnetPull = 6.0e7f

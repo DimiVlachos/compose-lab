@@ -112,7 +112,11 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         private set
 
     internal val tableHeight: Float
-        get() = (height - MagnetDimens.StripHeight.value).coerceAtLeast(0f)
+        get() = (height - stripHeight).coerceAtLeast(0f)
+
+    /** How tall the strip along the foot is, in dp: taller for large text, so its labels fit. */
+    internal var stripHeight = MagnetDimens.StripHeight.value
+        private set
 
     /** Bumped every step, so whatever draws the cards and magnets draws them again. */
     internal var frame by mutableIntStateOf(0)
@@ -225,6 +229,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
      */
     public fun pullOff(photoId: String, to: Offset) {
         val body = bodies.bodies.firstOrNull { it.id == photoId } ?: return
+        // A finger has it: it stays the finger's.
+        if (body === heldPhoto) return
         bodies.grab(body)
         body.at = to / density
         bodies.keepOnTable()
@@ -364,15 +370,28 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     }
 
     /** Lays the table out at [widthPx] × [heightPx] and [density]; the strip is its bottom. */
-    internal fun layOut(widthPx: Int, heightPx: Int, density: Float) {
+    internal fun layOut(
+        widthPx: Int,
+        heightPx: Int,
+        density: Float,
+        stripHeight: Float = MagnetDimens.StripHeight.value,
+    ) {
+        if (widthPx <= 0 || heightPx <= 0) return
         val width = widthPx / density
         val height = heightPx / density
-        if (width == this.width && height == this.height && density == this.density) return
+        if (
+            width == this.width &&
+                height == this.height &&
+                density == this.density &&
+                stripHeight == this.stripHeight
+        )
+            return
         val oldWidth = this.width
         val oldTable = tableHeight
         this.density = density
         this.width = width
         this.height = height
+        this.stripHeight = stripHeight
         bodies.resize(width, tableHeight)
         // The magnets out move with the table as one, keeping their spacing: scaled apart, two
         // that share photos could be pulled past sharing, or squeezed into it, by a rotation.
@@ -394,7 +413,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             magnet.slot =
                 Offset(
                     width * (i + 0.5f) / magnets.size,
-                    height - MagnetDimens.StripHeight.value / 2f,
+                    height - stripHeight / 2f,
                 )
             if (!magnet.out) {
                 magnet.at = magnet.slot
@@ -403,8 +422,9 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
                 magnet.at += shift
             }
         }
+        // With no table to keep them on, for a moment, the magnets out keep their places.
         for (magnet in magnets) {
-            if (!magnet.out) continue
+            if (!magnet.out || tableHeight <= 0f) continue
             moveMagnet(magnet, magnet.at)
             if (magnet.onTable) {
                 val r = MagnetDimens.MagnetRadius.value

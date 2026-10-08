@@ -308,6 +308,40 @@ class MagnetStateTest {
     }
 
     @Test
+    fun pullingOffACardAFingerHoldsLeavesItInTheFinger() {
+        val table = table()
+        val card = table.photoPosition("none")!!
+        assertTrue(table.grabPhoto(card) != null)
+        table.pullOff("none", card + Offset(100f, 100f))
+        assertTrue(table.bodies.bodies.first { it.id == "none" }.held, "the finger still has it")
+        // Moved inwards, clear of the table's edge.
+        val to = card + Offset(if (card.x > 360f) -40f else 40f, 0f)
+        table.dragPhoto(to)
+        assertEquals(to, table.photoPosition("none"))
+        table.dropPhoto()
+    }
+
+    @Test
+    fun squeezedToNoTableAndBackTheMagnetsKeepTheirPlaces() {
+        val table = table()
+        table.apply("a")
+        table.run(1f)
+        val at = table.magnetPosition("a")!!
+        // A sliver no taller than the strip: no table at all for a moment.
+        table.layOut((360 * D).toInt(), (80 * D).toInt(), D)
+        table.layOut((360 * D).toInt(), (720 * D).toInt(), D)
+        assertEquals(at, table.magnetPosition("a"))
+    }
+
+    @Test
+    fun aTallerStripLeavesLessTable() {
+        val table = MagnetState(TestPhotos, TestTags)
+        table.layOut((360 * D).toInt(), (720 * D).toInt(), D, stripHeight = 140f)
+        assertEquals(720f - 140f, table.tableHeight)
+        assertEquals(720f - 70f, table.slotPosition("a")!!.y / D)
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")
