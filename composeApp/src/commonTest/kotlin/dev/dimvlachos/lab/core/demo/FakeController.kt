@@ -33,6 +33,14 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     /** Whether the lamp was lit after each pull, in order. */
     val litAfterPulls = mutableListOf<Boolean>()
 
+    /** The magnets out on the table, and the one whose photos are fanned out, if any. */
+    val magnetsOut = linkedSetOf<String>()
+
+    var fannedOut: String? = null
+        private set
+
+    val magnetPaths = mutableListOf<List<Offset>>()
+
     val calls = mutableListOf<Pair<Long, String>>()
 
     override fun select(index: Int) {
@@ -82,5 +90,23 @@ internal class FakeController(private val now: () -> Long) : DemoController {
         }
         litAfterPulls += lampLit
         calls += now() to "pullCord($down, $duration, $across)"
+    }
+
+    override suspend fun dragMagnet(tag: String, path: List<Offset>, duration: Duration) {
+        magnetPaths += path
+        // As the table does: a third magnet stays in the strip.
+        if (tag in magnetsOut || magnetsOut.size < 2) magnetsOut += tag
+        calls += now() to "dragMagnet($tag, ${path.size} points, $duration)"
+    }
+
+    override suspend fun releaseMagnet(tag: String, duration: Duration) {
+        magnetsOut -= tag
+        if (fannedOut == tag) fannedOut = null
+        calls += now() to "releaseMagnet($tag, $duration)"
+    }
+
+    override suspend fun tapMagnet(tag: String) {
+        if (tag in magnetsOut) fannedOut = if (fannedOut == tag) null else tag
+        calls += now() to "tapMagnet($tag)"
     }
 }

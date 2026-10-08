@@ -45,4 +45,20 @@ internal interface DemoController {
      * switches. Returns once the finger has let go; the cord sways on by itself.
      */
     suspend fun pullCord(down: Dp, duration: Duration, across: Dp = 0.dp)
+
+    /**
+     * Takes the [tag] magnet with a fingertip wherever it is, the strip or the table, carries it
+     * through [path] over [duration] (points as fractions of the stage, at even time steps) and
+     * puts it down where the path ends. Returns once the finger has lifted.
+     */
+    suspend fun dragMagnet(tag: String, path: List<Offset>, duration: Duration)
+
+    /**
+     * Flicks the [tag] magnet back into its slot in the strip over [duration]: what is on it falls
+     * off and slides home.
+     */
+    suspend fun releaseMagnet(tag: String, duration: Duration)
+
+    /** Taps the [tag] magnet: its photos fan out into a grid, or, fanned out, fold back. */
+    suspend fun tapMagnet(tag: String)
 }
