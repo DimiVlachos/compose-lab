@@ -157,7 +157,7 @@ internal class MagnetPainter {
             val padY = MagnetDimens.BadgePadY.toPx()
             val labelTop =
                 Offset(
-                    centre.x - label.size.width / 2f,
+                    leftAcross(centre.x, label.size.width.toFloat(), size.width),
                     centre.y + below + MagnetDimens.LabelGap.toPx(),
                 )
             // Out on the table the label lies over cards, so it gets the rail's dark behind it.
@@ -188,7 +188,7 @@ internal class MagnetPainter {
             // Kept on the table by a magnet at its top edge.
             val topLeft =
                 Offset(
-                    over.x - w / 2f,
+                    leftAcross(over.x, w, size.width),
                     max(0f, over.y - above - MagnetDimens.BadgeGap.toPx() - h),
                 )
             drawRoundRect(colors.badge, topLeft, Size(w, h), CornerRadius(h / 2f))
@@ -434,6 +434,13 @@ internal fun thumbnail(source: ImageBitmap, width: Int, height: Int): ImageBitma
         )
     return image
 }
+
+/**
+ * Where the left edge of something [width] wide goes to be centred on [centre], kept on a stage
+ * [stage] wide: a magnet's label and badge, in a corner, stay whole on the screen.
+ */
+internal fun leftAcross(centre: Float, width: Float, stage: Float): Float =
+    (centre - width / 2f).coerceIn(0f, max(0f, stage - width))
 
 // Eased in and out, so the grid starts and lands softly.
 internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
