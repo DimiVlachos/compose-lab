@@ -427,4 +427,41 @@ class MagnetTableUiTest {
         val y = ((720f - after + 4f) * density.density).toInt()
         assertEquals(AppColors().stripRail, pixels[4, y], "the rail wasn't drawn again")
     }
+
+    @Test
+    fun aThirdMagnetDraggedWhileTwoAreOutJigglesOnItsNailAndStays() = runComposeUiTest {
+        val ticks = Ticks()
+        var state: MagnetState? = null
+        setContent {
+            LabTheme {
+                CompositionLocalProvider(LocalHapticFeedback provides ticks) {
+                    val table = rememberMagnetState(TestPhotos, TestTags)
+                    state = table
+                    MagnetTable(table, Modifier.size(360.dp, 720.dp).testTag("table"))
+                }
+            }
+        }
+        waitForIdle()
+        val table = state!!
+        runOnUiThread {
+            table.apply("a")
+            table.apply("b")
+        }
+        mainClock.advanceTimeBy(3_000)
+        mainClock.autoAdvance = false
+        val slot = table.magnetPosition("c")!!
+        onNodeWithTag("table").performTouchInput {
+            down(slot)
+            moveBy(Offset(0f, -120.dp.toPx()))
+            up()
+        }
+        var widest = 0f
+        repeat(30) {
+            mainClock.advanceTimeByFrame()
+            widest = maxOf(widest, kotlin.math.abs(table.hangAngle("c")))
+        }
+        assertTrue(widest > 0.05f, "it hardly moved: $widest")
+        assertTrue(HapticFeedbackType.Reject in ticks.types, "heard ${ticks.types}")
+        assertTrue(!table.isOut("c"))
+    }
 }
