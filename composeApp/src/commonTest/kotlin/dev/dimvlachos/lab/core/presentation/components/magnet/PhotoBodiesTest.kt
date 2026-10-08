@@ -183,20 +183,6 @@ class PhotoBodiesTest {
     }
 
     @Test
-    fun aMagnetAndItsClusterSlideOverAWeakMatchTooAndLeaveItWhereItLay() {
-        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
-        val weak = PhotoBody("weak", mapOf("a" to 0.3f), Offset.Zero)
-        val m = magnet("a", Offset(300f, 500f))
-        val table = bodies(match to Offset(300f, 560f), weak to Offset(520f, 500f))
-        table.run(1f, listOf(m))
-        repeat(240) {
-            m.at = Offset(300f + it * 2f, 500f)
-            table.step(step, listOf(m))
-            assertEquals(Offset(520f, 500f), weak.at, "the weak match was moved at step $it")
-        }
-    }
-
-    @Test
     fun aPhotoTwoMagnetsShareHangsTouchingBothClusters() {
         // At the furthest two magnets still share it, the middle between them is no further from
         // either than a card on its first ring, and a card's width beyond: it reaches both.
@@ -227,23 +213,6 @@ class PhotoBodiesTest {
     }
 
     @Test
-    fun aClusterSlidesOverPhotosItDoesNotPullAndLeavesThemWhereTheyLay() {
-        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
-        val other = PhotoBody("other", mapOf("b" to 1f), Offset.Zero)
-        val m = magnet("a", Offset(300f, 500f))
-        val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
-        table.run(1f, listOf(m))
-        assertEquals(setOf("a"), match.stuckTo)
-        // Carried right over the other photo and on past it.
-        repeat(240) {
-            m.at = Offset(300f + it * 2f, 500f)
-            table.step(step, listOf(m))
-            assertEquals(Offset(520f, 500f), other.at, "the other photo was pushed at step $it")
-        }
-        assertEquals(setOf("a"), match.stuckTo)
-    }
-
-    @Test
     fun aPhotoFeelsOnlyMagnetsItMatchesAndHasNotRefused() {
         val photo = PhotoBody("p", mapOf("a" to 0.3f), Offset.Zero)
         val a = magnet("a", Offset.Zero)
@@ -256,6 +225,53 @@ class PhotoBodiesTest {
         photo.refused.clear()
         a.onTable = false
         assertFalse(photo.feelsAny(listOf(a)))
+    }
+
+    // A magnet carrying one photo it holds swept right across [other], lying in its way, and on
+    // past it; then left for three seconds. Returns how far [other] was pushed at most.
+    private fun sweepPast(other: PhotoBody): Float {
+        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
+        val m = magnet("a", Offset(300f, 500f))
+        val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
+        table.run(1f, listOf(m))
+        assertEquals(setOf("a"), match.stuckTo)
+        var furthest = 0f
+        repeat(300) {
+            m.at = Offset(300f + it * 2f, 500f)
+            table.step(step, listOf(m))
+            furthest = maxOf(furthest, (other.at - other.home).getDistance())
+            assertTrue(other.stuckTo.isEmpty(), "it stuck at step $it")
+        }
+        table.run(3f, listOf(m))
+        return furthest
+    }
+
+    @Test
+    fun aPhotoAMagnetDoesNotPullIsNudgedAsideWhereItTouchesAndSlidesBackHome() {
+        val other = PhotoBody("other", mapOf("b" to 1f), Offset.Zero)
+        assertTrue(sweepPast(other) > 10f, "it wasn't nudged")
+        assertTrue((other.at - other.home).getDistance() < 1f, "it didn't slide home: ${other.at}")
+    }
+
+    @Test
+    fun aWeakMatchIsNudgedTooButNeverDrawnIn() {
+        val weak = PhotoBody("weak", mapOf("a" to 0.3f), Offset.Zero)
+        assertTrue(sweepPast(weak) > 10f, "it wasn't nudged")
+        assertTrue((weak.at - weak.home).getDistance() < 1f, "it didn't slide home: ${weak.at}")
+    }
+
+    @Test
+    fun aMagnetSetDownRightBesideAPhotoItDoesNotPullPushesItJustClearOfItself() {
+        val other = PhotoBody("other", emptyMap(), Offset.Zero)
+        val m = magnet("a", Offset(500f, 500f))
+        val table = bodies(other to Offset(500f + 20f, 500f))
+        table.run(1f, listOf(m))
+        val apart = (other.at - m.at).getDistance()
+        assertTrue(
+            apart >= MagnetDimens.MagnetBody.value - 0.5f,
+            "it lies under the magnet: $apart",
+        )
+        assertTrue(apart < MagnetDimens.ContactRing.value, "it was shoved out to the ring: $apart")
     }
 
     @Test

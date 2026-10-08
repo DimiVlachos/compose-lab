@@ -170,7 +170,7 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
         for (body in bodies) if (stick(body, magnets)) changed = true
         repeat(MagnetDimens.SeparationPasses) {
-            separate(magnets)
+            separate()
             keepOffMagnets(magnets)
         }
         keepOnTable()
@@ -381,20 +381,15 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         return if (count == 0) body.at else sum / count.toFloat()
     }
 
-    // Pushes overlapping cards apart, each half the overlap, or a card a finger holds not at all.
-    // A cluster slides over a loose card no magnet out draws in, as a magnet glides over the
-    // prints on a table, rather than pushing it along.
-    private fun separate(magnets: List<Magnet>) {
+    // Pushes overlapping cards apart, each half the overlap, or a card a finger holds not at all:
+    // a cluster carried into a print nudges it aside, and the print slides home once it has gone.
+    private fun separate() {
         val span = MagnetDimens.CardSpan.value
         for (i in bodies.indices) {
             for (j in i + 1 until bodies.size) {
                 val p = bodies[i]
                 val q = bodies[j]
                 if (p.held && q.held) continue
-                if (p.stuckTo.isNotEmpty() && q.stuckTo.isEmpty() && !q.drawnToAny(magnets))
-                    continue
-                if (q.stuckTo.isNotEmpty() && p.stuckTo.isEmpty() && !p.drawnToAny(magnets))
-                    continue
                 val apart = q.at - p.at
                 val distance = apart.getDistance()
                 if (distance >= span) continue
@@ -412,17 +407,19 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
         }
     }
 
-    // A card a magnet pulls keeps out of its ring unless it is stuck to it, and then out of its
-    // middle; a magnet slides over a card it doesn't pull.
+    // A card a magnet draws in keeps out of its ring unless it is stuck to it, and then out of its
+    // middle; any other card is only nudged aside by the magnet's body, where it touches it.
     private fun keepOffMagnets(magnets: List<Magnet>) {
         for (i in bodies.indices) {
             val body = bodies[i]
             if (body.held) continue
             for (magnet in magnets) {
-                if (magnet.tag !in body.stuckTo && !body.drawnTo(magnet)) continue
                 val inner =
-                    if (magnet.tag in body.stuckTo) MagnetDimens.ClusterInner.value
-                    else MagnetDimens.ContactRing.value
+                    when {
+                        magnet.tag in body.stuckTo -> MagnetDimens.ClusterInner.value
+                        body.drawnTo(magnet) -> MagnetDimens.ContactRing.value
+                        else -> MagnetDimens.MagnetBody.value
+                    }
                 val apart = body.at - magnet.at
                 val distance = apart.getDistance()
                 if (distance >= inner) continue

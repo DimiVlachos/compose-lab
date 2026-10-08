@@ -74,6 +74,10 @@ internal object MagnetDimens {
     const val StickThreshold = 0.5f
     val ClusterInner = 30.dp
 
+    // A card a magnet doesn't draw in is nudged aside by its body where it touches, no closer
+    // than this to the magnet's point: about the horseshoe's own half-width.
+    val MagnetBody = 30.dp
+
     // Every loose card is tied to where it lay by a spring this stiff (1/s²) and loses this share
     // of its speed a second: a partial match leans towards a magnet, and everything slides home
     // when the magnets go. A stuck card clings to its place with a stiffer, critically damped
