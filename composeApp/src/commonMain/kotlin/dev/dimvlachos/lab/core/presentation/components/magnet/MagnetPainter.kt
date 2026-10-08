@@ -125,20 +125,31 @@ internal class MagnetPainter {
                 alpha = 0.35f,
             )
             val label = labels[i]
-            drawText(
-                label,
-                topLeft =
-                    Offset(
-                        centre.x - label.size.width / 2f,
-                        centre.y + r + MagnetDimens.LabelGap.toPx(),
-                    ),
-            )
-            val badge = badges[i] ?: continue
             val padX = MagnetDimens.BadgePadX.toPx()
             val padY = MagnetDimens.BadgePadY.toPx()
+            val labelTop =
+                Offset(
+                    centre.x - label.size.width / 2f,
+                    centre.y + r + MagnetDimens.LabelGap.toPx(),
+                )
+            // Out on the table the label lies over cards, so it gets the rail's dark behind it.
+            if (magnet.out) {
+                val labelHeight = label.size.height + padY * 2f
+                drawRoundRect(
+                    colors.stripRail,
+                    labelTop - Offset(padX, padY),
+                    Size(label.size.width + padX * 2f, labelHeight),
+                    CornerRadius(labelHeight / 2f),
+                    alpha = 0.8f,
+                )
+            }
+            drawText(label, topLeft = labelTop)
+            val badge = badges[i] ?: continue
             val w = badge.size.width + padX * 2f
             val h = badge.size.height + padY * 2f
-            val topLeft = Offset(centre.x - w / 2f, centre.y - r - MagnetDimens.BadgeGap.toPx() - h)
+            // Kept on the table by a magnet at its top edge.
+            val topLeft =
+                Offset(centre.x - w / 2f, max(0f, centre.y - r - MagnetDimens.BadgeGap.toPx() - h))
             drawRoundRect(colors.badge, topLeft, Size(w, h), CornerRadius(h / 2f))
             drawText(badge, topLeft = topLeft + Offset(padX, padY))
         }

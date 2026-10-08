@@ -269,7 +269,7 @@ Twelve island photos lie scattered on a steel table dusted with iron filings, wi
 - **Filings that follow the field.** 1,600 short strokes turn to the summed field of the magnets where they lie and rise where it is strong. They are drawn as four batched paths, one for each brightness, traced again only when a magnet moves, in a layer of their own.
 - **For a screen reader.** Every photo is a node with its title and the magnet it is on. Every magnet is a switch, "Sunset filter, 4 photos", with Apply and Remove actions that put it down in the middle of the table or back in the strip. The count is announced politely as it changes.
 
-The physics is a plain state holder stepped at a fixed 120 Hz, like the pull cord's. Cards and magnets are drawn in one layer and read only while drawing, and their screen-reader nodes are placed in layout, so nothing recomposes while they move: only a photo sticking or coming off, or the grid fanning out or folding, recomposes. The frame loop sleeps once everything is still. It is demo state: a table made again starts with every magnet in the strip.
+The physics is a plain state holder stepped at a fixed 120 Hz, like the pull cord's. Cards and magnets are drawn in one layer and read only while drawing, and their screen-reader nodes are placed in layout, so nothing recomposes while they move: only a photo sticking or coming off, or a magnet going out or back, recomposes. A change of count is announced from a node that stays still, so a sliding magnet isn't read out again at every step. The frame loop sleeps once everything is still. It is demo state: a table made again starts with every magnet in the strip.
 
 ```kotlin
 val table = rememberMagnetState(

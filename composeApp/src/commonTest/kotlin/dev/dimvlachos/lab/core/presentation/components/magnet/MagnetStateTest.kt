@@ -172,6 +172,20 @@ class MagnetStateTest {
     }
 
     @Test
+    fun turnedWithTwoMagnetsOutThePhotosTheyShareStayShared() {
+        val table = table()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        val shared = table.results
+        assertEquals(setOf("strong"), shared["b"])
+        // A much wider table: scaled along with it, the two would be pulled apart past sharing.
+        table.layOut((860 * D).toInt(), (400 * D).toInt(), D)
+        table.run(1f)
+        assertEquals(shared, table.results)
+    }
+
+    @Test
     fun takingAwayTheFannedOutMagnetFoldsItsGrid() {
         val table = table()
         table.apply("a")

@@ -41,9 +41,9 @@ public data class MagnetPhoto(
  * is on it, and the photos slide home. [apply] and [remove] do the same without a finger, as a
  * screen reader does.
  *
- * Only [results] and [fannedOut] are read in composition, and they change only when a photo sticks
- * or comes off, or a grid fans out or folds: the cards, the magnets and the filings are read while
- * drawing, so nothing recomposes while they move. It is demo state: nothing is saved when the
+ * Only [results] is read in composition, and it changes only when a photo sticks or comes off, or a
+ * magnet goes out or back: the cards, the magnets, the filings and the fanned-out grid are read
+ * while drawing, so nothing recomposes while they move. It is demo state: nothing is saved when the
  * screen is made again.
  */
 @Stable
@@ -56,8 +56,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     }
 
     /**
-     * The photos stuck to each magnet out of the strip, by tag, each in the order it stuck: the
-     * filter's results. A magnet just put down has an empty set.
+     * The photos stuck to each magnet out of the strip, by tag, each in the order the photos were
+     * given: the filter's results. A magnet just put down has an empty set.
      */
     public var results: Map<String, Set<String>> by mutableStateOf(emptyMap())
         private set
@@ -235,6 +235,22 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         this.width = width
         this.height = height
         bodies.resize(width, tableHeight)
+        // The magnets out move with the table as one, keeping their spacing: scaled apart, two
+        // that share photos could be pulled past sharing, or squeezed into it, by a rotation.
+        var middle = Offset.Zero
+        var outCount = 0
+        for (magnet in magnets) {
+            if (!magnet.out) continue
+            middle += magnet.at
+            outCount++
+        }
+        val shift =
+            if (outCount > 0 && oldWidth > 0f && oldTable > 0f && tableHeight > 0f) {
+                middle /= outCount.toFloat()
+                Offset(middle.x * width / oldWidth, middle.y * tableHeight / oldTable) - middle
+            } else {
+                Offset.Zero
+            }
         magnets.forEachIndexed { i, magnet ->
             magnet.slot =
                 Offset(
@@ -244,9 +260,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             if (!magnet.out) {
                 magnet.at = magnet.slot
                 magnet.velocity = Offset.Zero
-            } else if (oldWidth > 0f && oldTable > 0f) {
-                magnet.at =
-                    Offset(magnet.at.x * width / oldWidth, magnet.at.y * tableHeight / oldTable)
+            } else {
+                magnet.at += shift
             }
         }
         for (magnet in magnets) {
@@ -307,6 +322,10 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
     }
 
     internal fun isOut(tag: String): Boolean = magnet(tag)?.out == true
+
+    /** Whether a finger at [at], in px, would take a card: there is one, and no grid is out. */
+    internal fun photoUnder(at: Offset): Boolean =
+        fanShown == null && heldPhoto == null && bodies.at(at / density) != null
 
     /** Where the [tag] magnet is, in px. Read in layout or drawing. */
     internal fun magnetPosition(tag: String): Offset? = magnet(tag)?.at?.times(density)

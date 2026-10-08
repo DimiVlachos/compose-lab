@@ -8,7 +8,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -70,10 +72,16 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
         }
     }
     val colors = LabTheme.colors
+    // Clear of the navigation bar and the sides' cutouts; the screen it is shown in keeps it clear
+    // of the status bar already.
     Box(
         Modifier.fillMaxSize()
             .background(colors.stripRail)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                )
+            )
     ) {
         MagnetTable(
             table,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -43,6 +44,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.magnet_apply
@@ -68,9 +70,10 @@ import org.jetbrains.compose.resources.stringResource
  * out into a grid, and tap anywhere to fold them back.
  *
  * Every photo is a node for a screen reader, with its title and the magnet it is on; every magnet
- * is a switch, "Sunset filter, 3 photos", that applies or removes its filter. Nothing recomposes
- * while the cards move or the filings turn: only a photo sticking or coming off, or the grid
- * fanning out or folding, does. The table fills the space it is given.
+ * is a switch, "Sunset filter, 3 photos", that applies or removes its filter, and a change of count
+ * is announced. Nothing recomposes while the cards move, the filings turn or the grid fans out:
+ * only a photo sticking or coming off, or a magnet going out or back, does. The table fills the
+ * space it is given.
  */
 @Composable
 public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
@@ -169,7 +172,33 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
             PhotoNode(state, index, photo.title, where)
         }
         for ((i, tag) in state.tags.withIndex()) MagnetNode(state, tag, counts[i])
+        Announcer(state, counts)
     }
+}
+
+// Says, politely, which magnet's count just changed, "Sunset filter, 3 photos", from a node that
+// never moves: on a magnet's own node, every step of its slide would be announced again.
+@Composable
+private fun Announcer(state: MagnetState, counts: List<String?>) {
+    val names = state.tags.map { stringResource(Res.string.magnet_filter, it.label) }
+    val off = stringResource(Res.string.magnet_off)
+    val last = remember(state) { LastAnnounced(counts) }
+    val changed = counts.indices.firstOrNull { counts[it] != last.counts.getOrNull(it) }
+    val text = if (changed == null) last.text else "${names[changed]}, ${counts[changed] ?: off}"
+    SideEffect {
+        last.counts = counts
+        last.text = text
+    }
+    Spacer(
+        Modifier.size(1.dp).semantics {
+            liveRegion = LiveRegionMode.Polite
+            if (text.isNotEmpty()) contentDescription = text
+        }
+    )
+}
+
+private class LastAnnounced(var counts: List<String?>) {
+    var text = ""
 }
 
 // A photo for a screen reader, over its card: placed in layout, so it follows the card without
@@ -187,7 +216,8 @@ private fun PhotoNode(state: MagnetState, index: Int, title: String, where: Stri
 }
 
 // A magnet for a screen reader: a switch that applies its filter or removes it, saying how many
-// photos it holds, and saying so again, politely, as the count changes.
+// photos it holds. It moves with its magnet, so the count's changes are announced from a node that
+// stays still instead.
 @Composable
 private fun MagnetNode(state: MagnetState, tag: MagnetTag, count: String?) {
     val name = stringResource(Res.string.magnet_filter, tag.label)
@@ -203,10 +233,14 @@ private fun MagnetNode(state: MagnetState, tag: MagnetTag, count: String?) {
                 role = Role.Switch
                 toggleableState = ToggleableState(on)
                 stateDescription = count ?: off
-                liveRegion = LiveRegionMode.Polite
+                // A third magnet out is refused, and the click says so.
                 onClick {
-                    if (on) state.remove(tag.id) else state.apply(tag.id)
-                    true
+                    if (on) {
+                        state.remove(tag.id)
+                        true
+                    } else {
+                        state.apply(tag.id)
+                    }
                 }
                 customActions =
                     listOf(
@@ -238,8 +272,12 @@ private suspend fun PointerInputScope.tableGestures(state: MagnetState, slop: Fl
             carryMagnet(state, tag, down, slop)
             return@awaitEachGesture
         }
-        val centre = state.grabPhoto(down.position) ?: return@awaitEachGesture
+        if (!state.photoUnder(down.position)) return@awaitEachGesture
         down.consume()
+        // Taken off its magnet only once the finger moves: a tap, or a tap that just missed a
+        // magnet, leaves the card where it is.
+        if (awaitSlop(down, slop) == null) return@awaitEachGesture
+        val centre = state.grabPhoto(down.position) ?: return@awaitEachGesture
         // Carried by where it was taken, not by its middle.
         val grip = centre - down.position
         try {
@@ -266,11 +304,19 @@ private suspend fun AwaitPointerEventScope.carryMagnet(
 ) {
     val wasOut = state.isOut(tag)
     val grip = (state.magnetPosition(tag) ?: down.position) - down.position
-    if (!state.place(tag, down.position + grip)) return
-    down.consume()
+    // A magnet in the strip is taken out only once the finger moves: a tap there changes nothing.
+    if (!wasOut) {
+        down.consume()
+        val moving = awaitSlop(down, slop) ?: return
+        if (!state.place(tag, down.position + grip)) return
+        state.drag(tag, moving.position + grip)
+    } else {
+        if (!state.place(tag, down.position + grip)) return
+        down.consume()
+    }
     val tracker = VelocityTracker()
     tracker.addPosition(down.uptimeMillis, down.position)
-    var moved = false
+    var moved = !wasOut
     var lifted = false
     try {
         while (true) {
@@ -289,4 +335,18 @@ private suspend fun AwaitPointerEventScope.carryMagnet(
         state.release(tag, if (moved) Offset(velocity.x, velocity.y) else Offset.Zero)
     }
     if (lifted && !moved && wasOut) state.fanOut(tag)
+}
+
+// Waits for the finger that came [down] to move past the touch [slop], and returns that move;
+// null if it lifts, or the gesture ends, first.
+private suspend fun AwaitPointerEventScope.awaitSlop(
+    down: PointerInputChange,
+    slop: Float,
+): PointerInputChange? {
+    while (true) {
+        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return null
+        change.consume()
+        if (!change.pressed) return null
+        if ((change.position - down.position).getDistance() > slop) return change
+    }
 }

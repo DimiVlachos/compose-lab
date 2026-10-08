@@ -154,4 +154,78 @@ class MagnetTableUiTest {
         mainClock.advanceTimeBy(1_000)
         assertEquals(emptySet(), table.state.results["a"])
     }
+
+    @Test
+    fun aTapOnAStuckCardLeavesItOnItsMagnet() = runComposeUiTest {
+        val table = table()
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        val magnet = table.state.magnetPosition("a")!!
+        val card = table.state.photoPosition("strong")!!
+        onNodeWithTag("table").performTouchInput {
+            val away = card - magnet
+            click(card + away / away.getDistance() * 20.dp.toPx())
+        }
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(setOf("strong"), table.state.results["a"])
+    }
+
+    @Test
+    fun aTapOnAMagnetInTheStripChangesNothing() = runComposeUiTest {
+        val table = table()
+        val before = table.compositions()
+        val slot = table.state.magnetPosition("b")!!
+        onNodeWithTag("table").performTouchInput { click(slot) }
+        mainClock.advanceTimeBy(1_000)
+        assertTrue(table.state.results.isEmpty())
+        assertEquals(
+            before,
+            table.compositions(),
+            "a tap in the strip must not flicker the results",
+        )
+    }
+
+    @Test
+    fun aNewCountIsAnnouncedFromANodeThatStaysStill() = runComposeUiTest {
+        val table = table()
+        runOnUiThread { table.state.apply("a") }
+        mainClock.advanceTimeBy(2_000)
+        onNodeWithContentDescription("Alpha filter")
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+        onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ContentDescription,
+                    listOf("Alpha filter, 1 photo"),
+                )
+            )
+        val before =
+            onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+                .fetchSemanticsNode()
+                .boundsInRoot
+        runOnUiThread { table.state.remove("a") }
+        mainClock.advanceTimeBy(1_000)
+        val after =
+            onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+                .fetchSemanticsNode()
+                .boundsInRoot
+        assertEquals(before, after)
+    }
+
+    @Test
+    fun aRefusedApplyTellsTheScreenReaderItFailed() = runComposeUiTest {
+        val table = table()
+        runOnUiThread {
+            table.state.apply("a")
+            table.state.apply("b")
+        }
+        waitForIdle()
+        val click =
+            onNodeWithContentDescription("Gamma filter")
+                .fetchSemanticsNode()
+                .config[SemanticsActions.OnClick]
+        var handled = true
+        runOnUiThread { handled = click.action!!.invoke() }
+        assertTrue(!handled, "a third magnet is refused, and the click must say so")
+    }
 }
