@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.fishing
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -28,6 +31,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -332,17 +336,89 @@ class FishingRefreshUiTest {
         mainClock.autoAdvance = false
         refreshAndLand(host, FishingOutcome.Caught(2))
         var waited = 0
-        while (host.state.rig.phase != FishingPhase.Rising && waited < 5_000) {
+        while (host.state.rig.phase != FishingPhase.Reeling && waited < 5_000) {
             mainClock.advanceTimeBy(20)
             waited += 20
         }
         mainClock.advanceTimeByFrame()
         val refresh = host.compositions
         val items = rows
-        mainClock.advanceTimeBy(600)
-        assertEquals(FishingPhase.Rising, host.state.rig.phase)
+        mainClock.advanceTimeBy(900)
+        assertEquals(FishingPhase.Reeling, host.state.rig.phase)
         assertEquals(refresh, host.compositions, "a rising catch must not recompose the refresh")
         assertEquals(items, rows, "a rising catch must not recompose the list's items")
+    }
+
+    @Test
+    fun aCatchIsHauledUpFromTheDeepGrowingAsItComes() = runComposeUiTest {
+        val host = Host()
+        setContent {
+            CompositionLocalProvider(LocalHapticFeedback provides host.ticks) {
+                val state = rememberFishingRefreshState()
+                host.state = state
+                FishingRefresh(
+                    host.status,
+                    onRefresh = {},
+                    Modifier.size(360.dp, 640.dp).testTag("fishing"),
+                    state = state,
+                ) {
+                    LazyColumn(Modifier.fillMaxSize().testTag("list")) {
+                        items(30) { i ->
+                            // Only the catch is green, so where it is drawn can be told.
+                            Box(
+                                Modifier.testTag("row$i")
+                                    .fillMaxWidth()
+                                    .risingFromWater(state, i)
+                                    .height(80.dp)
+                                    .background(if (i == 0) Color.Green else Color.White)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        refreshAndLand(host, FishingOutcome.Caught(1))
+        var waited = 0
+        while (host.state.rig.phase != FishingPhase.Reeling && waited < 5_000) {
+            mainClock.advanceTimeBy(20)
+            waited += 20
+        }
+        mainClock.advanceTimeBy(300)
+        val early = green()
+        mainClock.advanceTimeBy(700)
+        val late = green()
+        assertEquals(FishingPhase.Reeling, host.state.rig.phase)
+        assertTrue(early.count > 40, "no catch drawn as it is hauled up (${early.count} px)")
+        assertTrue(late.y < early.y - 20f, "it must come up: from ${early.y} to ${late.y} px")
+        assertTrue(
+            late.count > early.count,
+            "it must grow as it comes: ${early.count}, ${late.count}",
+        )
+        // Once in, it is the list's own item in its place.
+        mainClock.advanceTimeBy(SettleMs)
+        assertEquals(80.dp, rowTop(1))
+    }
+
+    private class Green(val count: Int, val y: Float)
+
+    // How many greenish pixels the screen shows, and how far down they are on average.
+    private fun ComposeUiTest.green(): Green {
+        val pixels = onNodeWithTag("fishing").captureToImage().toPixelMap()
+        var count = 0
+        var ys = 0f
+        for (y in 0 until pixels.height) {
+            for (x in 0 until pixels.width) {
+                val c = pixels[x, y]
+                // Green, however faint: clearly greener than it is red or blue.
+                if (c.green - maxOf(c.red, c.blue) > 0.2f) {
+                    count++
+                    ys += y
+                }
+            }
+        }
+        return Green(count, if (count == 0) 0f else ys / count)
     }
 
     // How far row [i] starts below the list's own top.
@@ -385,14 +461,14 @@ class FishingRefreshUiTest {
         val host = fishing(rising = true)
         refreshAndLand(host, FishingOutcome.Caught(3))
         var waited = 0
-        while (host.state.rig.phase != FishingPhase.Rising && waited < 5_000) {
+        while (host.state.rig.phase != FishingPhase.Reeling && waited < 5_000) {
             mainClock.advanceTimeBy(20)
             waited += 20
         }
-        assertEquals(FishingPhase.Rising, host.state.rig.phase)
-        // Pulled and let go well inside the rise: it isn't taken.
+        assertTrue(host.state.rig.carrying)
+        // Pulled and let go well inside the haul: it isn't taken.
         pullList(by = 320.dp)
-        assertEquals(FishingPhase.Rising, host.state.rig.phase, "the pull outlasted the rise")
+        assertTrue(host.state.rig.carrying, "the pull outlasted the haul")
         mainClock.advanceTimeBy(SettleMs)
         assertEquals(0, host.refreshes)
         assertEquals(FishingPhase.Idle, host.state.rig.phase)

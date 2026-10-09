@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LayoutCoordinates
 
 /**
  * The water, the rod and the line of a [FishingRefresh], and how far its list is pulled. Make one
@@ -48,6 +49,15 @@ public class FishingRefreshState internal constructor() {
     /** The last outcome that started to play, to announce; [FishingStatus.Idle] until one has. */
     internal var announced: FishingStatus by mutableStateOf(FishingStatus.Idle)
         private set
+
+    /**
+     * The list's items that can be caught, by their place in the list, each with a recording of its
+     * drawing: the ones on a catch's line are drawn hanging from the hook from these.
+     */
+    internal val caught = mutableMapOf<Int, CaughtCard>()
+
+    /** Where the fishing refresh is laid out: items' places are found against it. */
+    internal var box: LayoutCoordinates? = null
 
     // What the rig heard, passed on to haptics.
     internal var onThreshold: () -> Unit = {}
@@ -142,11 +152,11 @@ public class FishingRefreshState internal constructor() {
     /** Steps the rig on by [seconds]; at rest, out of sight, the frame loop sleeps. */
     internal fun advance(seconds: Float) {
         rig.pullTo(pull.distanceFraction)
-        val wasRising = rig.phase == FishingPhase.Rising
+        val wasRising = rig.phase == FishingPhase.Rising || rig.carrying
         rig.advance(seconds)
         catchUp()
         frame++
-        if (wasRising || rig.phase == FishingPhase.Rising) rising++
+        if (wasRising || rig.phase == FishingPhase.Rising || rig.carrying) rising++
         busy = rig.busy
         if (rig.atRest && pull.distanceFraction == 0f) awake = false
     }
@@ -160,6 +170,12 @@ public class FishingRefreshState internal constructor() {
         rising
         return rig.riseFor(index)
     }
+
+    /**
+     * Whether list item [index] is on a catch's line, not yet in its place: drawn on the hook by
+     * the fishing refresh, not in the list. Read in layout or drawing.
+     */
+    internal fun hooked(index: Int): Boolean = riseFor(index) < 1f
 
     /** Where [at], a point of the rig in dp, is in px. Read in drawing, after [frame]. */
     internal fun px(at: Offset): Offset = at * density

@@ -3,8 +3,6 @@ package dev.dimvlachos.lab.core.presentation.components.fishing
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.runtime.Composable
@@ -20,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -121,6 +120,7 @@ public fun FishingRefresh(
     Box(
         modifier
             .onSizeChanged { state.place(it.width, density) }
+            .onPlaced { state.box = it }
             .pullToRefresh(
                 isRefreshing = status == FishingStatus.Refreshing || busy,
                 state = state.pull,
@@ -138,8 +138,10 @@ public fun FishingRefresh(
         ) {
             content()
         }
+        // The band's layer covers the whole of the fishing refresh, not just the band: a catch is
+        // hauled up from deep in the list, and a layer draws nothing outside its own bounds.
         Spacer(
-            Modifier.fillMaxWidth().height(FishingDimens.Band).graphicsLayer().drawBehind {
+            Modifier.fillMaxSize().graphicsLayer().drawBehind {
                 with(painter) { draw(state, colors) }
             }
         )

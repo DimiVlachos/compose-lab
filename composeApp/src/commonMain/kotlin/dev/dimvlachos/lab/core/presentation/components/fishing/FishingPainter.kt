@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import kotlin.math.cos
@@ -35,6 +37,11 @@ internal class FishingPainter {
     private var shade: Brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
     private var shaft: Brush = shade
 
+    // The deep sea over the list while a catch comes up, made for the height it was last drawn at.
+    private var deepFor = -1f
+    private var deepColors: AppColors? = null
+    private var deep: Brush = shade
+
     // The strokes, made for the density they were last drawn at.
     private var strokesFor = -1f
     private var rodStroke = Stroke()
@@ -53,8 +60,12 @@ internal class FishingPainter {
         // The band opens as far as the pull, and its water always meets the top of the list, which
         // moves down by the air above the water as it opens: the rod comes down into the gap from
         // above rather than lying over the list.
+        val shift = -(1f - open) * FishingDimens.WaterLevel.toPx()
+        // A catch on the line first, under the water and the line, and not kept to the band: it
+        // goes on down into the list.
+        drawCatch(state, colors, shift)
         clipRect(bottom = band * open) {
-            translate(top = -(1f - open) * FishingDimens.WaterLevel.toPx()) {
+            translate(top = shift) {
                 drawRod(state, colors)
                 drawLine(state, colors)
                 drawBobber(state, colors)
@@ -96,6 +107,68 @@ internal class FishingPainter {
         drawCircle(colors.background, ReelRadius.toPx() * 0.4f, reel)
     }
 
+    // The caught cards hauled up from the deep on the line: small and faint far down, growing to
+    // their full size and clearing as they come up, one hung under another, until each reaches its
+    // place at the top of the list just as the list makes room for it.
+    private fun DrawScope.drawCatch(state: FishingRefreshState, colors: AppColors, shift: Float) {
+        val rig = state.rig
+        if (!rig.carrying) return
+        val box = state.box ?: return
+        if (!box.isAttached) return
+        // The list under the water darkens into the deep the catch comes up from.
+        val level = FishingDimens.WaterLevel.toPx() + shift
+        if (size.height != deepFor || colors !== deepColors) {
+            deepFor = size.height
+            deepColors = colors
+            deep =
+                Brush.verticalGradient(
+                    0f to colors.waterDeep.copy(alpha = DeepTop),
+                    1f to colors.waterDeep.copy(alpha = DeepFoot),
+                    startY = FishingDimens.WaterLevel.toPx(),
+                    endY = size.height,
+                )
+        }
+        drawRect(
+            deep,
+            topLeft = Offset(0f, level),
+            size = Size(size.width, size.height - level),
+            alpha = rig.depth,
+        )
+        val hauled = rig.hauled
+        val scale = DeepScale + (1f - DeepScale) * hauled
+        val clear = DeepClear + (1f - DeepClear) * hauled
+        val sway = CatchSway * sin(rig.clock * SwayPace) * (1f - hauled)
+        val gap = ChainGap.toPx()
+        // Where the line's leader comes down from: the bobber, or the card above.
+        var from = state.px(rig.bobber) + Offset(0f, shift + BobberRadius.toPx())
+        // The first card's top comes up along the rig's own path; each next hangs under the last.
+        var top = state.px(rig.catchTop) + Offset(0f, shift)
+        for (i in 0 until rig.catchCount) {
+            if (!state.hooked(i)) break
+            val card = state.caught[i] ?: break
+            val where = card.coordinates ?: break
+            if (!where.isAttached) break
+            val width = card.size.width.toFloat()
+            val height = card.size.height.toFloat()
+            if (width <= 0f) break
+            // Where it goes in the list, by the time it is all the way up.
+            val placed = box.localPositionOf(where, Offset.Zero) + Offset(width / 2f, 0f)
+            val at = top + (placed - top) * hauled
+            drawLine(colors.fishingLine, from, at, LineWidth.toPx(), alpha = clear)
+            card.layer.alpha = clear
+            withTransform({
+                translate(at.x, at.y)
+                rotate(sway * (i + 1), pivot = Offset.Zero)
+                scale(scale, scale, pivot = Offset.Zero)
+                translate(-width / 2f, 0f)
+            }) {
+                drawLayer(card.layer)
+            }
+            from = at + Offset(0f, height * scale)
+            top = from + Offset(0f, gap)
+        }
+    }
+
     private fun DrawScope.drawLine(state: FishingRefreshState, colors: AppColors) {
         val rope = state.rig.line
         line.rewind()
@@ -120,7 +193,8 @@ internal class FishingPainter {
         val radius = BobberRadius.toPx()
         // Out of the water, an empty hook hangs under it.
         val out = rig.bobber.y < FishingDimens.WaterLevel.value - HookShows
-        if (out) {
+        // With a catch on it, the leader runs down to the catch instead, drawn with it.
+        if (out && !(rig.carrying && state.caught.isNotEmpty())) {
             val hook = at + Offset(0f, radius + HookDrop.toPx())
             drawLine(colors.fishingLine, at, hook, LineWidth.toPx(), alpha = alpha)
             drawArc(
@@ -309,6 +383,18 @@ internal class FishingPainter {
 
         // How far down the water it is at its deepest colour, as a share of its depth.
         const val DeepestAt = 0.55f
+
+        // A catch comes up from the deep this small and this clear, swaying this many degrees at
+        // this pace as it comes, each card hung this far under the one above.
+        // The deep over the list is this see-through at the water's foot and this much at the
+        // bottom of the list.
+        const val DeepTop = 0.55f
+        const val DeepFoot = 0.85f
+        const val DeepScale = 0.45f
+        const val DeepClear = 0.3f
+        const val CatchSway = 5f
+        const val SwayPace = 3f
+        val ChainGap = 10.dp
 
         // The hook shows once the bobber is this many dp above the water.
         const val HookShows = 8f

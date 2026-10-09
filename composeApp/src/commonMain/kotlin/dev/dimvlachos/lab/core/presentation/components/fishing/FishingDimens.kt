@@ -110,12 +110,18 @@ internal object FishingDimens {
     val BiteSpread = 18.dp
     const val BiteJerk = 5f
 
-    // Reeled in, the line comes back to the tip in this long.
+    // Reeled in, the line comes back to the tip in this long; a catch is hauled up into its place
+    // in this long, and the bobber then hangs a moment before the water closes. The hook has
+    // surfaced once it is this far above the water.
     const val ReelSeconds = 0.75f
+    const val CatchReelSeconds = 1.4f
+    const val HangSeconds = 0.25f
+    val SurfacedAbove = 2.dp
 
-    // A catch's cards rise out of the water in this long each, one this much after another.
-    const val RiseSeconds = 0.8f
-    const val RiseStagger = 0.15f
+    // A catch is hauled up from this deep under the surface, on a leader this long below the
+    // bobber, to its place at the top of the list.
+    val CatchDepth = 220.dp
+    val Leader = 18.dp
 
     // A snapped line's bobber drifts off this fast, fading out over this long; the rod springs up.
     const val DriftSeconds = 1.6f

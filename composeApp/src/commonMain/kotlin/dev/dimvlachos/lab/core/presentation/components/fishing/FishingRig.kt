@@ -102,6 +102,21 @@ internal class FishingRig(width: Float) {
     val splashing: Boolean
         get() = splashAge < FishingDimens.SplashSeconds
 
+    // Whether the hook has come up out of the water on this reel.
+    private var surfaced = false
+
+    /** Whether the line is bringing in a catch: the caught cards hang on its hook as it comes. */
+    val carrying: Boolean
+        get() = (phase == Biting || phase == Reeling) && catchCount > 0 && !risen
+
+    // A catch is reeled in more slowly than an empty hook: it is heavy, and worth watching.
+    private val reelSeconds: Float
+        get() = if (carrying) FishingDimens.CatchReelSeconds else FishingDimens.ReelSeconds
+
+    /** How far the line is wound in, 0 as the reel starts to 1 in. Read while drawing. */
+    val reeled: Float
+        get() = if (phase == Reeling) (t / reelSeconds).coerceAtMost(1f) else 1f
+
     // Whether the line has snapped, so its end hangs free until the next cast.
     private var broken = false
 
@@ -322,15 +337,46 @@ internal class FishingRig(width: Float) {
     fun riseFor(index: Int): Float {
         if (index < 0 || index >= catchCount) return 1f
         return when {
-            phase == Rising ->
-                ((t - index * FishingDimens.RiseStagger) / FishingDimens.RiseSeconds).coerceIn(
-                    0f,
-                    1f,
-                )
-            risen -> 1f
+            phase == Reeling && carrying -> hauled
+            phase == Rising || risen -> 1f
             else -> 0f
         }
     }
+
+    /**
+     * How far a catch has been hauled up from the deep, 0 as the reel starts to 1 with it at the
+     * surface, in its place: smooth to start and to stop, as a reel winds. 1 when nothing is.
+     */
+    val hauled: Float
+        get() {
+            if (phase == Biting && carrying) return 0f
+            if (!(phase == Reeling && carrying)) return 1f
+            val p = (t / FishingDimens.CatchReelSeconds).coerceAtMost(1f)
+            return p * p * (3f - 2f * p)
+        }
+
+    /**
+     * How deep the sea shows over the list as a catch is brought in, 0 to 1: it darkens as the
+     * bobber is pulled under, and clears as the catch comes up into its place.
+     */
+    val depth: Float
+        get() =
+            when {
+                !carrying -> 0f
+                phase == Biting -> (t / FishingDimens.BiteSeconds).coerceAtMost(1f)
+                else -> 1f - hauled
+            }
+
+    /**
+     * Where the top of the first caught card is as it is hauled up, in dp: from deep under where
+     * the bobber bit, up to the surface over the middle of the list, where its place is.
+     */
+    val catchTop: Offset
+        get() {
+            val deep = Offset(castTo.x, waterLevel + FishingDimens.CatchDepth.value)
+            val placed = Offset(width / 2f, waterLevel)
+            return deep + (placed - deep) * hauled
+        }
 
     /** Steps it all on by [seconds]: at a fixed rate, however long the frame was. */
     fun advance(seconds: Float) {
@@ -373,7 +419,7 @@ internal class FishingRig(width: Float) {
     // Whether the bobber hangs from the line rather than being held somewhere: as it is reeled in,
     // and dangling from the tip until a pull takes the line again.
     private val hanging: Boolean
-        get() = phase == Reeling || phase == Rising || phase == Idle
+        get() = (phase == Reeling && !carrying) || phase == Rising || phase == Idle
 
     // Pulled, the rod is bent by the pull itself and the line is taken from wherever the bobber
     // hangs, then drawn back and down below the tip; otherwise the rod springs straight and the
@@ -456,6 +502,7 @@ internal class FishingRig(width: Float) {
     }
 
     private fun reelIn() {
+        surfaced = bobber.y < waterLevel - FishingDimens.SurfacedAbove.value
         from = bobber
         // Taut from the start: it is wound in from exactly as far out as the bobber lies.
         fromStretch = (bobber - tip).getDistance() / longest
@@ -465,10 +512,16 @@ internal class FishingRig(width: Float) {
         enter(Reeling)
     }
 
-    // The line is wound in, and it pulls the bobber up out of the water by itself.
+    // The line is wound in, and it pulls the bobber up out of the water by itself, with the catch
+    // on its hook, which then hangs there a moment before it goes into the list.
     private fun reel() {
-        val p = (t / FishingDimens.ReelSeconds).coerceAtMost(1f)
-        if (p < 1f) return
+        // Drips as the hook breaks the surface on its way up.
+        if (!surfaced && bobber.y < waterLevel - FishingDimens.SurfacedAbove.value) {
+            surfaced = true
+            splash(bobber)
+        }
+        if (carrying) haul()
+        if (t < reelSeconds) return
         if (landing is Landing.Outcome && catchCount > 0 && !risen) {
             enter(Rising)
         } else {
@@ -476,9 +529,18 @@ internal class FishingRig(width: Float) {
         }
     }
 
+    // With a catch on the hook, the bobber is held on the line above it: at the surface while the
+    // catch is still deep, lifted out with it as it comes up under it.
+    private fun haul() {
+        val top = catchTop
+        val afloat = waterLevel + surfaceAt(top.x)
+        bobber = Offset(top.x, minOf(afloat, top.y - FishingDimens.Leader.value))
+    }
+
+    // The catch is in its place; the bobber, let go, hangs from the line a moment before the water
+    // closes.
     private fun rise() {
-        val lasts = FishingDimens.RiseSeconds + (catchCount - 1) * FishingDimens.RiseStagger
-        if (t < lasts) return
+        if (t < FishingDimens.HangSeconds) return
         risen = true
         finish()
     }
@@ -522,9 +584,10 @@ internal class FishingRig(width: Float) {
             Idle,
             Pulling,
             Rising -> FishingDimens.DangleLength.value / longest
+            Reeling if carrying -> lineFor(bobber)
             Reeling -> {
                 // Wound in smoothly: slow to take up, quickest midway, slowing as it comes in.
-                val p = (t / FishingDimens.ReelSeconds).coerceAtMost(1f)
+                val p = (t / reelSeconds).coerceAtMost(1f)
                 val wound = p * p * (3f - 2f * p)
                 val short = FishingDimens.DangleLength.value / longest
                 fromStretch + (short - fromStretch) * wound

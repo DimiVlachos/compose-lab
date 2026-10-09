@@ -174,17 +174,35 @@ class FishingRigTest {
     }
 
     @Test
-    fun aCatchsCardsRiseOneAfterAnother() {
+    fun aCatchIsHauledUpFromTheDeepOnTheLineIntoItsPlace() {
         val rig = rig()
         rig.floatAtOnce()
         rig.land(FishingOutcome.Caught(2))
         rig.runWhile(Waiting)
         rig.runWhile(Biting)
-        rig.runWhile(Reeling)
+        assertEquals(Reeling, rig.phase)
+        val level = FishingDimens.WaterLevel.value
+        assertTrue(rig.catchTop.y > level + 100f, "it starts deep: ${rig.catchTop.y}")
+        var lastTop = Float.MAX_VALUE
+        var lastRise = -1f
+        while (rig.phase == Reeling) {
+            rig.advance(1f / 60f)
+            if (rig.phase != Reeling) break
+            // Coming up all the time, the list's places opening with it, both cards together.
+            assertTrue(rig.catchTop.y <= lastTop + 1e-3f, "it sank back")
+            assertTrue(rig.riseFor(0) >= lastRise)
+            assertEquals(rig.riseFor(0), rig.riseFor(1))
+            // The bobber rides above it on the line, never below the leader's length over it.
+            val leader = rig.catchTop.y - rig.bobber.y
+            assertTrue(leader >= FishingDimens.Leader.value - 0.5f, "the leader is $leader dp")
+            lastTop = rig.catchTop.y
+            lastRise = rig.riseFor(0)
+        }
+        // In: at the surface, in the middle, where the first place is.
+        assertEquals(level, lastTop, 1f)
         assertEquals(Rising, rig.phase)
-        rig.run(FishingDimens.RiseSeconds / 2f)
-        assertTrue(rig.riseFor(0) > rig.riseFor(1), "the first card leads")
-        assertTrue(rig.riseFor(1) in 0f..1f)
+        assertEquals(1f, rig.riseFor(0))
+        assertEquals(1f, rig.riseFor(1))
     }
 
     @Test
