@@ -34,15 +34,17 @@ public fun Modifier.risingFromWater(state: FishingRefreshState, index: Int): Mod
             if (grow >= 1f) {
                 placeable.place(0, 0)
             } else {
-                // It comes up from under its own place, clear as it surfaces.
+                // It comes up into its place from no deeper than the water reaches over the top of
+                // the list, so the room it leaves above it while it rises is under the water, not
+                // a gap; and it clears as it surfaces.
+                val deep = (FishingDimens.Band - FishingDimens.WaterLevel).toPx()
                 placeable.placeWithLayer(0, 0) {
-                    translationY = (1f - grow) * placeable.height * SunkShare
+                    translationY = (1f - grow) * minOf(deep, placeable.height.toFloat())
                     alpha = SunkAlpha + (1f - SunkAlpha) * grow
                 }
             }
         }
     }
 
-// Under the water, an item sits this share of its own height lower than its place, this clear.
-private const val SunkShare = 0.5f
+// Under the water, an item is this clear.
 private const val SunkAlpha = 0.35f
