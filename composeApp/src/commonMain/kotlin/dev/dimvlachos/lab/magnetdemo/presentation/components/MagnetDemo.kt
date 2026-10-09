@@ -1,18 +1,17 @@
 package dev.dimvlachos.lab.magnetdemo.presentation.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -34,7 +33,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetState
@@ -55,7 +56,7 @@ import org.jetbrains.compose.resources.stringResource
 private const val HoldMs = 120L
 
 /**
- * The twelve island photos on a magnet table, with a hint over it. The script's drags, flicks and
+ * The twelve island photos on a magnet table, with a hint above it. The script's drags, flicks and
  * taps are played by a fingertip drawn on the magnet, through the table's own place, drag and
  * release.
  */
@@ -85,9 +86,10 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
     val colors = LabTheme.colors
     // Whether every magnet is in the strip: read as that, so a photo sticking recomposes nothing.
     val idle by remember(table) { derivedStateOf { table.results.isEmpty() } }
+    val hintAlpha by animateFloatAsState(if (idle) 1f else 0f)
     // Clear of the navigation bar and the sides' cutouts; the screen it is shown in keeps it clear
     // of the status bar already.
-    Box(
+    Column(
         Modifier.fillMaxSize()
             .background(colors.stripRail)
             .windowInsetsPadding(
@@ -96,30 +98,29 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
                 )
             )
     ) {
+        // The hint has a line of its own over the table, so no card ever lies under it. It gives
+        // way while a magnet is out, as by then it has been taken, but keeps its line, so the
+        // table doesn't jump.
+        Text(
+            stringResource(Res.string.magnet_hint),
+            style = LabTheme.typography.label,
+            color = colors.textMuted,
+            modifier =
+                Modifier.align(Alignment.CenterHorizontally)
+                    .padding(vertical = LabTheme.spacing.smallMedium)
+                    .graphicsLayer { alpha = hintAlpha }
+                    .then(if (idle) Modifier else Modifier.clearAndSetSemantics {}),
+        )
         MagnetTable(
             table,
-            Modifier.fillMaxSize()
+            Modifier.fillMaxWidth()
+                .weight(1f)
                 .onSizeChanged { stage.size = it }
                 .drawWithContent {
                     drawContent()
                     with(finger) { drawFinger(colors.touch) }
                 },
         )
-        // The hint gives way while a magnet is out: by then it has been taken, and a cluster
-        // near the top would lie under it.
-        AnimatedVisibility(
-            visible = idle,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Text(
-                stringResource(Res.string.magnet_hint),
-                style = LabTheme.typography.label,
-                color = colors.textMuted,
-                modifier = Modifier.padding(top = LabTheme.spacing.medium),
-            )
-        }
     }
 }
 

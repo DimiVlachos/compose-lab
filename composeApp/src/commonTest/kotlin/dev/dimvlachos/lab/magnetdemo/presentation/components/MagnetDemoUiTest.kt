@@ -6,10 +6,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetDimens
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.magnetdemo.IslandTags
@@ -116,5 +119,28 @@ class MagnetDemoUiTest {
         runOnUiThread { table!!.remove(IslandTags.Sunset) }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText(hint).assertExists()
+    }
+
+    @Test
+    fun theHintLiesAboveTheTableSoNoPhotoCanLieUnderIt() = runComposeUiTest {
+        var table: MagnetState? = null
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    val islands = rememberIslandMagnetState()
+                    table = islands
+                    MagnetDemo(DemoState(), islands)
+                }
+            }
+        }
+        val hint = onNodeWithText("Drag a magnet over the photos to filter them")
+        val hintBottom = hint.getUnclippedBoundsInRoot().bottom
+        // A card can lie anywhere on the table, its top edge right at the table's, so the table's
+        // top, worked out from where a card lies on it, must be below the hint.
+        val photo = table!!.photos.first()
+        val cardTop = onNodeWithContentDescription(photo.title).getUnclippedBoundsInRoot().top
+        val onTable = table!!.photoCentre(0).y - MagnetDimens.CardHeight.value / 2f
+        val tableTop = cardTop - onTable.dp
+        assertTrue(tableTop >= hintBottom, "the table starts at $tableTop, under the hint")
     }
 }
