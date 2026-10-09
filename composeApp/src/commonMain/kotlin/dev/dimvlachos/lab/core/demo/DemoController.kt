@@ -67,4 +67,18 @@ internal interface DemoController {
      * closes it back into its cell.
      */
     suspend fun tapPhoto(id: String)
+
+    /**
+     * Pulls the list of a pull-to-refresh down with a fingertip near its top, [distance] over
+     * [duration], holds it a moment and lets go, through the same nested scroll a finger's drag
+     * sends from the top of a list. Pulled far enough, it asks for a refresh. Returns once the
+     * finger has lifted; the refresh plays out by itself.
+     */
+    suspend fun pullToRefresh(distance: Dp, duration: Duration)
+
+    /**
+     * Puts a refreshing feed back as it began, with only the items it started with, so a script
+     * that refreshed it ends where it started and loops.
+     */
+    suspend fun resetFeed()
 }

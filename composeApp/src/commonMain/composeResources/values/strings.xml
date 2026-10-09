@@ -101,4 +101,14 @@
         <item quantity="one">%1$d photo</item>
         <item quantity="other">%1$d photos</item>
     </plurals>
+    <string name="fishing_refresh">Refresh</string>
+    <plurals name="fishing_caught">
+        <item quantity="one">%1$d new item</item>
+        <item quantity="other">%1$d new items</item>
+    </plurals>
+    <string name="fishing_nothing_new">Nothing new</string>
+    <string name="fishing_failed">Couldn’t refresh</string>
+    <string name="demo_fishing">Fishing refresh</string>
+    <string name="fishing_feed_title">Islands</string>
+    <string name="fishing_feed_hint">Pull down to fish for new islands</string>
 </resources>

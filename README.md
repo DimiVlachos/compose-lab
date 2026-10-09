@@ -30,6 +30,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Paper plane](#paper-plane-corepresentationcomponentspaperplane) | `paperplane` | `chat.plane` | A chat that sends each message as a folded paper dart |
 | [Pull cord](#pull-cord-corepresentationcomponentspullcord) | `pullcord` | `lamp.cord` | Pull a lamp's cord to switch a screen between light and dark |
 | [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet) | `magnet` | `magnet.filter` | Drag tag magnets over photos to filter them; snap two together to search for both |
+| [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | A pull-to-refresh that isn't a boring spinner: cast a line, haul new cards up from the deep, reel in an empty hook, or snap the line |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -44,6 +45,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Paper plane](#paper-plane-corepresentationcomponentspaperplane)
 - [Pull cord](#pull-cord-corepresentationcomponentspullcord)
 - [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet)
+- [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [Project structure](#project-structure)
 - [Run](#run)
@@ -285,6 +287,63 @@ MagnetTable(table, Modifier.fillMaxSize())
 
 // The filter's results, by tag: they change only when a photo sticks or comes off.
 val cliffs: Set<String> = table.results["cliffs"].orEmpty()
+```
+
+## Fishing refresh (`core/presentation/components/fishing/`)
+
+Pull-to-refresh doesn't have to be a boring spinner going round while you wait. Here refreshing is fishing, and the wait is part of the fun. Pull a list down from its top and a rod bends over it, its line tightening, more the further you pull, with a tick of haptics at the threshold. Let go past it and the line is cast: a bobber flies out in an arc and lands in a band of water over the top of the list with a splash, and floats there, bobbing and sending out ripples, for as long as the refresh takes. Then the outcome plays out on the water:
+
+- **A catch.** The bobber is pulled under with a jolt of haptics and the list darkens into the deep. Down there, small and faint on the line, hang the new cards, one under another; the reel hauls them up, growing and clearing as they come, until they reach their places at the top of the list just as it moves down to make room, and the sea clears.
+- **Nothing new.** The line is reeled in to an empty hook.
+- **A failure.** The line snaps: its slack falls from the rod, the bobber drifts off and fades, and the rod springs up. Pulling again retries.
+
+Then the water closes and everything comes to rest, and the frame loop sleeps.
+
+- **Material's gesture, its own drawing.** The pull is Material 3's `Modifier.pullToRefresh` and `PullToRefreshState`, so nested scroll, overscroll and flings are the library's; the component reads `distanceFraction` and draws only the band. While an outcome plays out, a new pull isn't taken.
+- **A real line on real water.** The line is a Verlet rope, the same one the pull cord's cord is made of, now shared in `physics/`: pinned at the rod's tip, held at the bobber, paid out as it flies and wound back as it is reeled in. The water is a height field of 48 spring-coupled columns, a wave equation stepped at a fixed 120 Hz, disturbed by the splash, each bob and the bite. Both live in plain arrays, and the band is drawn with reused paths and strokes, so stepping and drawing it allocate nothing.
+- **However long the wait.** The bobber bobs on the water's swell at its own pace, so a wait of a moment and a wait of ten seconds both look like fishing. However quickly a refresh lands, the bobber floats at least 0.6 s first, so a fast answer never skips the bite.
+- **The loading is the caller's.** The component knows nothing about loading. The caller hoists a sealed `FishingStatus`, `Idle`, `Refreshing` or `Landed(outcome)`, from a ViewModel, with a new `Landed` for each refresh, and each plays once, so the same outcome twice in a row plays twice. Nothing the caller says is lost: a refresh answered within a frame still casts and plays, and one started while the last still plays out is cast as soon as it has. A `Caught` must catch at least one item, and a `Failed` carries its cause for the caller to log.
+- **The catch comes up the line.** `Modifier.risingFromWater` on the list's items records each caught card into a `GraphicsLayer`, so the fishing refresh can draw it hauled up from the deep on the line while its place in the list opens under it, read in layout. Once it is in, it is the list's own item again.
+- **For a screen reader.** A Refresh button only a screen reader sees, at the top where the pull starts, refreshes without the gesture, and each outcome is announced politely, every time: "2 new items", "Nothing new" or "Couldn’t refresh".
+
+Nothing recomposes while the line, the water or a hauled card moves: the band is drawn in a layer of its own over the list, the list moves down in a layer of its own, and the rise is read while laying out. Only a refresh starting, its outcome landing and the band closing recompose, and the composition probe in its tests holds it to that. Nothing is saved: the status that says where a refresh stands is the caller's, so a screen made again mid-refresh floats the bobber at once instead of casting again, and an outcome that has already landed isn't played twice.
+
+The demo, `feed.fishing`, is an island photo feed whose source is scripted for the clip: the first refresh catches two islands, the second finds nothing new, the third fails and the line snaps, and the fourth catches one more. Its scripted fingertip pulls through the same nested scroll a finger's drag sends from the top of a list.
+
+```kotlin
+// In the ViewModel: Idle, then Refreshing on a pull, then a new Landed with how it came out.
+var items: List<Item> by mutableStateOf(emptyList())
+var status: FishingStatus by mutableStateOf(FishingStatus.Idle)
+
+fun refresh() = viewModelScope.launch {
+    status = FishingStatus.Refreshing
+    val outcome = try {
+        val new = repository.fetchNew()
+        items = new + items // the catch goes on top as it lands
+        if (new.isEmpty()) FishingOutcome.NothingNew else FishingOutcome.Caught(new.size)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        FishingOutcome.Failed(e)
+    }
+    status = FishingStatus.Landed(outcome)
+}
+
+// On screen: keep the list at its top as a catch comes in, so it rises into view.
+val fishing = rememberFishingRefreshState()
+val listState = rememberLazyListState()
+LaunchedEffect(viewModel.status) {
+    if ((viewModel.status as? FishingStatus.Landed)?.outcome is FishingOutcome.Caught) {
+        listState.requestScrollToItem(0)
+    }
+}
+FishingRefresh(status = viewModel.status, onRefresh = viewModel::refresh, state = fishing) {
+    LazyColumn(state = listState) {
+        itemsIndexed(viewModel.items, key = { _, it -> it.id }) { index, item ->
+            Card(item, Modifier.risingFromWater(fishing, index))
+        }
+    }
+}
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

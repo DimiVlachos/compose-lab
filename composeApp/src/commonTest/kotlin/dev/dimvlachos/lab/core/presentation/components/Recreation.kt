@@ -28,17 +28,27 @@ internal class Recreation(private val test: ComposeUiTest) {
         }
     }
 
-    /** Saves what the screen saves, throws the screen away, and makes it again from that. */
+    /**
+     * Saves what the screen saves, throws the screen away, and makes it again from that. With the
+     * test's clock held, it steps a frame for each, so a screen that never stops moving, and so is
+     * never idle, can be made again too.
+     */
     fun saveAndRestore() {
         var saved: Map<String, List<Any?>> = emptyMap()
         test.runOnIdle {
             saved = registry.performSave()
             shown = false
         }
+        frame()
         test.runOnIdle {
             registry = SaveableStateRegistry(saved) { true }
             shown = true
         }
+        frame()
         test.waitForIdle()
+    }
+
+    private fun frame() {
+        if (!test.mainClock.autoAdvance) test.mainClock.advanceTimeByFrame()
     }
 }
