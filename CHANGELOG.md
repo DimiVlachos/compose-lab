@@ -6,7 +6,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- **Fishing refresh** (`fishing`): pull-to-refresh where refreshing is fishing: the pull bends a rod, release casts a bobber into a band of water where it floats while the refresh loads, and the outcome plays out on the water, a catch rising out of it into the list, an empty hook, or a snapped line. Built on Material's `pullToRefresh`; the caller hoists a sealed `FishingStatus`.
 - **Magnet filter** (`magnet`): drag horseshoe tag magnets over a table of photos to filter them; a magnet finds every match on the table, pulled in by how well it matches, strong ones stick, two snapped together search for both, and a magnet's photos fan out into a grid where each one opens.
+
+### Changed
+
+- **Pull cord** (`pullcord`): its Verlet rope moved into `physics/` as `VerletRope`, shared with the fishing refresh's line.
 
 ### Fixed
 
