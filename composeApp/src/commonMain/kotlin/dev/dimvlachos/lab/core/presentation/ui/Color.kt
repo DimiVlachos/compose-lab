@@ -83,12 +83,14 @@ public data class AppColors(
     val tagBoats: Color = Color(0xFF23998A),
     val tagCliffs: Color = Color(0xFFA27A5C),
     val tagVillage: Color = Color(0xFFC4426E),
-    // The fishing refresh: a band of clear Aegean water, light at its top and deeper below, see-
-    // through so the list under it shows, tinted; a pale crest where it meets the air. A cork
+    // The fishing refresh: a band of clear Aegean water, turquoise at its top and deep blue below,
+    // see-through so the list under it shows, tinted; a pale crest where it meets the air, and the
+    // sunlight that glints on it and slants down into it. A cork
     // handle on a pale, glossy rod that reads on the dark screen, a pale line, and a red-and-white
     // bobber.
-    val waterTop: Color = Color(0x8C3FA7D6),
-    val waterDeep: Color = Color(0xD9145A8C),
+    val waterTop: Color = Color(0xB32FB3CB),
+    val waterDeep: Color = Color(0xE60B4A75),
+    val waterLight: Color = Color(0xFFE6FBFF),
     val waterCrest: Color = Color(0xFFDDF3FF),
     val rodCork: Color = Color(0xFFB98B5E),
     val rodBlank: Color = Color(0xFFB9C3CC),

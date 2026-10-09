@@ -22,6 +22,15 @@ internal object FishingDimens {
     // stable however close its columns sit.
     const val StableShare = 0.9f
 
+    // The sea is never quite still: a long swell this high and this long rolls across it at this
+    // many radians a second, and a shorter chop the other way, so the surface always breathes.
+    val SwellHeight = 1.2.dp
+    val SwellLength = 150.dp
+    const val SwellSpeed = 1.1f
+    val ChopHeight = 0.55.dp
+    val ChopLength = 47.dp
+    const val ChopSpeed = 1.9f
+
     // Water whose every column sits within this many dp of rest, moving slower than this many dp
     // a second, is still.
     const val StillHeight = 0.02f

@@ -128,6 +128,31 @@ internal class FishingRig(width: Float) {
     // Time not yet stepped: the rig steps at a fixed rate, whatever the frame rate.
     private var owed = 0f
 
+    /** How long the rig has been stepped, in seconds: the sea's swell and light move with it. */
+    var clock = 0f
+        private set
+
+    /**
+     * How far below rest the sea's top is at [x], in dp: a gentle swell always running across it,
+     * two long waves the wind keeps up, with the ripples of splashes and bites on top.
+     */
+    fun surfaceAt(x: Float): Float = water.heightAt(x) + swell(x)
+
+    /**
+     * The sea's swell alone at [x], in dp: what rocks the water even when nothing has touched it.
+     */
+    fun swell(x: Float): Float {
+        val tau = 2f * PI.toFloat()
+        return FishingDimens.SwellHeight.value *
+            sin(tau * (x / FishingDimens.SwellLength.value) - FishingDimens.SwellSpeed * clock) +
+            FishingDimens.ChopHeight.value *
+                sin(
+                    tau * (x / FishingDimens.ChopLength.value) +
+                        FishingDimens.ChopSpeed * clock +
+                        1.3f
+                )
+    }
+
     init {
         line.hang(tip)
         bobber = dangle()
@@ -318,6 +343,7 @@ internal class FishingRig(width: Float) {
 
     private fun step(dt: Float) {
         t += dt
+        clock += dt
         if (splashing) splashAge += dt
         when (phase) {
             Idle,
@@ -418,7 +444,10 @@ internal class FishingRig(width: Float) {
     }
 
     private fun floating(dip: Float): Offset =
-        Offset(castTo.x, waterLevel + water.heightAt(castTo.x) * FishingDimens.RideSwell + dip)
+        Offset(
+            castTo.x,
+            waterLevel + water.heightAt(castTo.x) * FishingDimens.RideSwell + swell(castTo.x) + dip,
+        )
 
     private fun bite() {
         val p = (t / FishingDimens.BiteSeconds).coerceAtMost(1f)
@@ -457,7 +486,7 @@ internal class FishingRig(width: Float) {
     private fun drift(dt: Float) {
         val p = (t / FishingDimens.DriftSeconds).coerceAtMost(1f)
         val x = from.x + FishingDimens.DriftSpeed * t
-        bobber = Offset(x, waterLevel + water.heightAt(x) * FishingDimens.RideSwell)
+        bobber = Offset(x, waterLevel + water.heightAt(x) * FishingDimens.RideSwell + swell(x))
         bobberAlpha = 1f - p
         if (p >= 1f) finish()
     }

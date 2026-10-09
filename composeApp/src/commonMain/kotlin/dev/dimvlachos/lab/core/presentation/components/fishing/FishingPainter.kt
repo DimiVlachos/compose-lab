@@ -9,7 +9,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
@@ -26,16 +28,19 @@ internal class FishingPainter {
     private val rod = Path()
     private val line = Path()
     private val water = Path()
+    private val surface = Path()
 
     private var shadeFor = -1f
     private var shadeColors: AppColors? = null
     private var shade: Brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+    private var shaft: Brush = shade
 
     // The strokes, made for the density they were last drawn at.
     private var strokesFor = -1f
     private var rodStroke = Stroke()
     private var lineStroke = Stroke()
     private var crestStroke = Stroke()
+    private var sheenStroke = Stroke()
     private var hookStroke = Stroke()
 
     /** Draws the band, open as far as the pull has opened it, over whatever is under it. */
@@ -64,6 +69,7 @@ internal class FishingPainter {
         rodStroke = Stroke(RodWidth.toPx(), cap = StrokeCap.Round)
         lineStroke = Stroke(LineWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         crestStroke = Stroke(CrestWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        sheenStroke = Stroke(SheenWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         hookStroke = Stroke(LineWidth.toPx() * HookWeight, cap = StrokeCap.Round)
     }
 
@@ -149,25 +155,35 @@ internal class FishingPainter {
     }
 
     private fun DrawScope.drawWater(state: FishingRefreshState, colors: AppColors, band: Float) {
-        val surface = state.rig.water
+        val rig = state.rig
         val level = FishingDimens.WaterLevel.toPx()
-        val heights = surface.heights
-        val gap = size.width / (heights.size - 1)
+        val columns = rig.water.heights.size
+        val gap = size.width / (columns - 1)
+        val dp = state.density
+        // The surface through every column, ripples and swell together, curving smoothly through
+        // the midpoints between them rather than in straight runs from one to the next.
         water.rewind()
-        water.moveTo(0f, level + heights[0] * state.density)
-        for (i in 1 until heights.size) {
-            water.lineTo(i * gap, level + heights[i] * state.density)
+        var lastX = 0f
+        var lastY = level + rig.surfaceAt(0f) * dp
+        water.moveTo(lastX, lastY)
+        for (i in 1 until columns) {
+            val x = i * gap
+            val y = level + rig.surfaceAt(x / dp) * dp
+            water.quadraticTo(lastX, lastY, (lastX + x) / 2f, (lastY + y) / 2f)
+            lastX = x
+            lastY = y
         }
-        // The crest along the top, then the body under it down to the band's foot.
-        drawPath(water, colors.waterCrest, style = crestStroke)
+        water.lineTo(lastX, lastY)
+        surface.rewind()
+        surface.addPath(water)
         water.lineTo(size.width, band)
         water.lineTo(0f, band)
         water.close()
         if (band != shadeFor || colors !== shadeColors) {
             shadeFor = band
             shadeColors = colors
-            // Clear at the top, deeper below, then fading out at its foot, so the water melts into
-            // the list under it rather than ending in a hard edge across it.
+            // Clear and bright at the top, deepening below, then fading out at its foot, so the
+            // water melts into the list under it rather than ending in a hard edge across it.
             shade =
                 Brush.verticalGradient(
                     0f to colors.waterTop,
@@ -176,8 +192,51 @@ internal class FishingPainter {
                     startY = level,
                     endY = band,
                 )
+            shaft =
+                Brush.verticalGradient(
+                    0f to colors.waterLight,
+                    1f to colors.waterLight.copy(alpha = 0f),
+                    startY = level,
+                    endY = band,
+                )
         }
         drawPath(water, shade)
+        // Sunlight reaching down into the water in slanting shafts that sway with the swell.
+        clipPath(water) {
+            val wide = ShaftWidth.toPx()
+            for (i in ShaftAt.indices) {
+                val sway = ShaftSway.toPx() * sin(rig.clock * ShaftPace + i * 1.7f)
+                val x = size.width * ShaftAt[i] + sway
+                val glow = ShaftGlow * (0.6f + 0.4f * sin(rig.clock * ShaftFlicker + i * 2.3f))
+                rotate(ShaftLean, pivot = Offset(x, level)) {
+                    // Three widths laid over each other: brightest down the middle, fading out to
+                    // the sides, so a shaft has soft edges rather than a pane of glass's.
+                    for (share in ShaftLayers) {
+                        val layer = wide * share
+                        drawRect(
+                            shaft,
+                            topLeft = Offset(x - layer / 2f, level - wide),
+                            size = Size(layer, band - level + wide * 2f),
+                            alpha = glow / ShaftLayers.size,
+                        )
+                    }
+                }
+            }
+        }
+        // Light caught just under the surface, then the crest where water meets air.
+        translate(top = SheenDepth.toPx()) {
+            drawPath(surface, colors.waterLight, alpha = SheenGlow, style = sheenStroke)
+        }
+        drawPath(surface, colors.waterCrest, style = crestStroke)
+        // Sun glints on the crest, each twinkling on and off on its own beat as the swell rolls.
+        for (i in 0 until Glints) {
+            val beat = sin(rig.clock * GlintPace * (1f + i * 0.13f) + i * 2.1f)
+            if (beat <= 0f) continue
+            val twinkle = beat * beat * beat * beat * beat * beat
+            val x = size.width * (i + 0.5f) / Glints + GlintDrift.toPx() * sin(rig.clock * 0.4f + i)
+            val y = level + rig.surfaceAt(x / dp) * dp
+            drawCircle(colors.waterCrest, GlintRadius.toPx(), Offset(x, y), alpha = twinkle)
+        }
     }
 
     // A splash's drops: thrown up and out from where it landed, falling back as they fade.
@@ -214,7 +273,29 @@ internal class FishingPainter {
         val StemWidth = 1.5.dp
         val HookDrop = 6.dp
         val HookRadius = 3.dp
-        val CrestWidth = 1.5.dp
+        val CrestWidth = 1.2.dp
+
+        // A soft band of light this wide, this far under the surface, this bright.
+        val SheenWidth = 5.dp
+        val SheenDepth = 4.dp
+        const val SheenGlow = 0.22f
+
+        // Shafts of sunlight: where across the band they fall, this wide, leaning this many
+        // degrees, swaying this far at this pace, flickering at this pace, at most this bright.
+        val ShaftAt = floatArrayOf(0.12f, 0.37f, 0.6f, 0.85f)
+        val ShaftWidth = 22.dp
+        val ShaftLayers = floatArrayOf(1f, 0.6f, 0.3f)
+        const val ShaftLean = -14f
+        val ShaftSway = 10.dp
+        const val ShaftPace = 0.5f
+        const val ShaftFlicker = 0.8f
+        const val ShaftGlow = 0.2f
+
+        // Glints on the crest: this many, this small, drifting this far, twinkling at this pace.
+        const val Glints = 7
+        val GlintRadius = 1.4.dp
+        val GlintDrift = 18.dp
+        const val GlintPace = 1.6f
 
         // The hook's wire, this many times the line's width.
         const val HookWeight = 1.4f
