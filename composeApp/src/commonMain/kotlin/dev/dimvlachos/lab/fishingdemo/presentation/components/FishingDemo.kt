@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -95,7 +94,7 @@ internal fun FishingDemo(
     val dispatcher = remember { NestedScrollDispatcher() }
     val finger = remember { FeedFinger() }
     val density = LocalDensity.current
-    DisposableEffect(state, density) {
+    DisposableEffect(state, feed, density) {
         state.setRefreshPullHandler { distance, duration ->
             finger.pull(
                 dispatcher,
@@ -103,10 +102,12 @@ internal fun FishingDemo(
                 duration.inWholeMilliseconds.toInt(),
             )
         }
-        onDispose { state.setRefreshPullHandler(null) }
+        state.setFeedResetHandler { feed.reset() }
+        onDispose {
+            state.setRefreshPullHandler(null)
+            state.setFeedResetHandler(null)
+        }
     }
-    // A replay or a recording starts from the feed as it began.
-    LaunchedEffect(feed) { if (state.replay || state.recording) feed.reset() }
     // A catch goes on top: the list stays at its top, so the catch rises into view.
     SideEffect { feed.onCatch = { list.requestScrollToItem(0) } }
     val colors = LabTheme.colors

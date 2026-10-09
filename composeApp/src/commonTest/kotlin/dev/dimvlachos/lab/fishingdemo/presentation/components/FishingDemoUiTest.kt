@@ -6,6 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -30,57 +31,85 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class FishingDemoUiTest {
+    // Steps the clock a frame at a time until [done], failing after [most] ms with [what].
+    private fun ComposeUiTest.advanceUntil(what: String, most: Long = 8_000, done: () -> Boolean) {
+        var waited = 0L
+        while (!done()) {
+            assertTrue(waited < most, "waited $most ms for $what")
+            mainClock.advanceTimeByFrame()
+            waited += 16
+        }
+    }
+
     @Test
-    fun theScriptCatchesTwoFindsNothingSnapsThenCatchesOne() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val demo = FishingDemos.all.single()
-        val state = DemoState(replay = true)
-        var finished = false
-        var compositions = 0
-        var fishing: FishingRefreshState? = null
-        var feed: IslandFeed? = null
-        setContent {
-            LabTheme {
-                CompositionLocalProvider(LocalFishingCompositionProbe provides { compositions++ }) {
-                    Box(Modifier.size(400.dp, 800.dp)) {
-                        val f = rememberFishingRefreshState()
-                        val islands = rememberIslandFeed()
-                        fishing = f
-                        feed = islands
-                        FishingDemo(state, islands, f)
+    fun theScriptCatchesTwoFindsNothingSnapsThenCatchesOneAndPlaysTheSameAgain() =
+        runComposeUiTest {
+            mainClock.autoAdvance = false
+            val demo = FishingDemos.all.single()
+            val state = DemoState(replay = true)
+            var runs = 0
+            var compositions = 0
+            var fishing: FishingRefreshState? = null
+            var feed: IslandFeed? = null
+            setContent {
+                LabTheme {
+                    CompositionLocalProvider(
+                        LocalFishingCompositionProbe provides { compositions++ }
+                    ) {
+                        Box(Modifier.size(400.dp, 800.dp)) {
+                            val f = rememberFishingRefreshState()
+                            val islands = rememberIslandFeed()
+                            fishing = f
+                            feed = islands
+                            FishingDemo(state, islands, f)
+                        }
+                    }
+                    // Twice in one composition, as the recorder plays it and a Replay loops it.
+                    LaunchedEffect(Unit) {
+                        repeat(2) {
+                            demo.script.play(state)
+                            runs++
+                        }
                     }
                 }
-                LaunchedEffect(Unit) {
-                    demo.script.play(state)
-                    finished = true
+            }
+            mainClock.advanceTimeBy(100)
+            val islands = feed!!
+            repeat(2) { run ->
+                assertEquals(9, islands.items.size, "run ${run + 1} must start from the same feed")
+                onNodeWithText("Mykonos").assertDoesNotExist()
+                // The first pull catches two islands, which rise in at the top.
+                advanceUntil("the first catch") { islands.items.size == 11 }
+                advanceUntil("the first catch to rise") { !fishing!!.busy }
+                onNodeWithText("Mykonos").assertExists()
+                onNodeWithText("Crete").assertExists()
+                // The second finds nothing new, faster than the bobber's shortest float: it floats
+                // on after the answer is in, and nothing recomposes while it does.
+                advanceUntil("nothing new") {
+                    islands.status == FishingStatus.Landed(FishingOutcome.NothingNew)
                 }
+                val floating = compositions
+                mainClock.advanceTimeBy(400)
+                assertEquals(floating, compositions, "the floating bobber must not recompose")
+                assertEquals(11, islands.items.size)
+                // The third fails, and says so.
+                advanceUntil("the failure") { islands.status.isFailure() }
+                advanceUntil("the snap to be announced") {
+                    onAllNodes(hasContentDescription("Couldn’t refresh"))
+                        .fetchSemanticsNodes()
+                        .isNotEmpty()
+                }
+                // The fourth catches Folegandros.
+                advanceUntil("the last catch") { islands.items.size == 12 }
+                onNodeWithText("Folegandros").assertExists()
+                // By the end everything is at rest and the feed is back as it began.
+                advanceUntil("the run's end", most = 12_000) { runs == run + 1 }
+                assertFalse(fishing!!.awake, "everything must be at rest by the end")
             }
         }
-        mainClock.advanceTimeBy(100)
-        onNodeWithText("Mykonos").assertDoesNotExist()
-        // The first pull catches two islands, which rise in at the top.
-        mainClock.advanceTimeBy(6_200)
-        onNodeWithText("Mykonos").assertExists()
-        onNodeWithText("Crete").assertExists()
-        assertEquals(11, feed!!.items.size)
-        // The second finds nothing new, faster than the bobber's shortest float: it floats on
-        // after the answer is in, and nothing recomposes while it does.
-        mainClock.advanceTimeBy(2_200)
-        assertEquals(FishingStatus.Landed(FishingOutcome.NothingNew), feed.status)
-        val floating = compositions
-        mainClock.advanceTimeBy(600)
-        assertEquals(floating, compositions, "the floating bobber must not recompose the refresh")
-        assertEquals(11, feed.items.size)
-        // The third fails, and says so.
-        mainClock.advanceTimeBy(5_900)
-        onNode(hasContentDescription("Couldn’t refresh")).assertExists()
-        // The fourth catches Folegandros, and by the end everything is at rest.
-        mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 15_000 + 100)
-        assertTrue(finished)
-        onNodeWithText("Folegandros").assertExists()
-        assertEquals(12, feed.items.size)
-        assertFalse(fishing!!.awake, "everything must be at rest by the end")
-    }
+
+    private fun FishingStatus.isFailure(): Boolean =
+        this is FishingStatus.Landed && outcome is FishingOutcome.Failed
 
     @Test
     fun aRealPullRefreshesTheFeed() = runComposeUiTest {

@@ -4,6 +4,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * The top of a band of water [width] dp wide, as [columns] columns of water side by side, each
@@ -48,7 +49,10 @@ internal class WaterSurface(columns: Int = FishingDimens.WaterColumns, width: Fl
     /** Steps the water on by [dt] seconds. */
     fun step(dt: Float) {
         val last = heights.size - 1
-        val tension = FishingDimens.WaveSpeed * FishingDimens.WaveSpeed / (gap * gap)
+        // A ripple can't run further than a column in a step, or the steps outrun it and it grows
+        // without end: on narrow water, where the columns sit close, it runs slower instead.
+        val speed = min(FishingDimens.WaveSpeed, FishingDimens.StableShare * gap / dt)
+        val tension = speed * speed / (gap * gap)
         for (i in heights.indices) {
             val left = heights[if (i == 0) 0 else i - 1]
             val right = heights[if (i == last) last else i + 1]

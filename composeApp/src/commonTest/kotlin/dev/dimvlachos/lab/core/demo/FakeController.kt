@@ -132,6 +132,15 @@ internal class FakeController(private val now: () -> Long) : DemoController {
         calls += now() to "tapPhoto($id)"
     }
 
+    /** How many times the feed was put back as it began. */
+    var feedResets = 0
+        private set
+
+    override suspend fun resetFeed() {
+        feedResets++
+        calls += now() to "resetFeed()"
+    }
+
     override suspend fun pullToRefresh(distance: Dp, duration: Duration) {
         refreshPulls += distance
         calls += now() to "pullToRefresh($distance, $duration)"

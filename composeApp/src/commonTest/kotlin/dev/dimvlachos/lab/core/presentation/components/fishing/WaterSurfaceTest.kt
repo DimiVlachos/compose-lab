@@ -43,7 +43,7 @@ class WaterSurfaceTest {
         assertTrue(left > 0.01f, "nothing reached the left: $left")
         assertTrue(right > 0.01f, "nothing reached the right: $right")
         assertEquals(left, right, 1e-3f, "a splash in the middle spreads evenly")
-        assertTrue(abs(water.heightAt(0f)) < left, "the far end moved first")
+        assertTrue(abs(water.heightAt(0f)) < left, "the far end moved more than the middle")
     }
 
     @Test
@@ -92,5 +92,17 @@ class WaterSurfaceTest {
         water.heights[24] = 3f
         water.resize(720f)
         assertEquals(3f, water.heightAt(24 * 720f / 47), 1e-4f)
+    }
+
+    @Test
+    fun aNarrowSurfaceStaysCalmAfterASplash() {
+        // Its columns sit closer than a ripple runs in a step: it must still settle, not blow up.
+        for (width in listOf(60f, 120f, 160f)) {
+            val water = WaterSurface(columns = 48, width = width)
+            water.disturb(x = width / 2f, push = 400f, spread = 22f)
+            water.run(8f)
+            assertTrue(water.still, "a $width dp surface never settled")
+            assertTrue(water.heights.all { it.isFinite() && abs(it) < 0.05f }, "at $width dp")
+        }
     }
 }

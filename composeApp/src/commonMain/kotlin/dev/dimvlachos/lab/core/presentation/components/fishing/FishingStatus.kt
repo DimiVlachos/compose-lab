@@ -35,8 +35,11 @@ public sealed interface FishingOutcome {
  * A refresh goes [Idle] → [Refreshing] → [Landed] and back to [Idle] whenever the caller likes. A
  * pull past the threshold asks for a refresh through `onRefresh`; the caller sets [Refreshing] and
  * the line is cast. Once its loading is done it sets [Landed] with the outcome, and that plays out.
- * Each change from [Refreshing] to [Landed] plays once, so the same outcome twice in a row plays
- * twice, as long as a [Refreshing] came between them.
+ *
+ * Each refresh's [Landed] is its own: make a new one for every refresh, and each plays once, even
+ * with the same outcome as the last. A refresh answered so fast that only its [Landed] is ever seen
+ * still casts and plays; one started while the last still plays out is cast as soon as that has;
+ * and going back to [Idle] before an outcome lands reels the line in without one.
  */
 public sealed interface FishingStatus {
     /** No refresh is under way: the water is out of sight. */

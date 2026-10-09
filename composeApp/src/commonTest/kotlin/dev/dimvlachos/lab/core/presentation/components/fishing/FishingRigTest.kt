@@ -309,4 +309,29 @@ class FishingRigTest {
         assertEquals(a.bobber, b.bobber)
         assertEquals(a.line[5], b.line[5])
     }
+
+    @Test
+    fun aRefreshCalledOffOnceItsOutcomeHasLandedStillPlaysIt() {
+        val heard = Heard()
+        val rig = rig(heard)
+        rig.floatAtOnce()
+        rig.land(FishingOutcome.Caught(2))
+        rig.cancel()
+        rig.closeAndSettle()
+        assertEquals(listOf<FishingOutcome>(FishingOutcome.Caught(2)), heard.landed)
+        assertEquals(1f, rig.riseFor(0), "a landed catch must not be left under water")
+    }
+
+    @Test
+    fun outOfSightTheWaterAndTheRodAreStilledAtOnce() {
+        val rig = rig()
+        rig.floatAtOnce()
+        rig.land(FishingOutcome.NothingNew)
+        while (rig.busy) rig.advance(1f / 60f)
+        // The band closes: once it is shut, nothing out of sight keeps the frames going.
+        rig.pullTo(0f)
+        rig.advance(1f / 60f)
+        rig.run(1.5f)
+        assertTrue(rig.atRest, "the water and the rod must still as soon as the band is shut")
+    }
 }

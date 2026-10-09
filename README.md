@@ -300,35 +300,46 @@ Pull-to-refresh where refreshing is fishing. Pull a list down from its top and a
 Then the water closes and everything comes to rest, and the frame loop sleeps.
 
 - **Material's gesture, its own drawing.** The pull is Material 3's `Modifier.pullToRefresh` and `PullToRefreshState`, so nested scroll, overscroll and flings are the library's; the component reads `distanceFraction` and draws only the band. While an outcome plays out, a new pull isn't taken.
-- **A real line on real water.** The line is a Verlet rope, the same one the pull cord's cord is made of, now shared in `physics/`: pinned at the rod's tip, held at the bobber, paid out as it flies and wound back as it is reeled in. The water is a height field of 48 spring-coupled columns, a wave equation stepped at a fixed 120 Hz, disturbed by the splash, each bob and the bite. Both live in plain arrays and reused paths, so a frame allocates nothing.
+- **A real line on real water.** The line is a Verlet rope, the same one the pull cord's cord is made of, now shared in `physics/`: pinned at the rod's tip, held at the bobber, paid out as it flies and wound back as it is reeled in. The water is a height field of 48 spring-coupled columns, a wave equation stepped at a fixed 120 Hz, disturbed by the splash, each bob and the bite. Both live in plain arrays, and the band is drawn with reused paths and strokes, so stepping and drawing it allocate nothing.
 - **However long the wait.** The bobber bobs on the water's swell at its own pace, so a wait of a moment and a wait of ten seconds both look like fishing. However quickly a refresh lands, the bobber floats at least 0.6 s first, so a fast answer never skips the bite.
-- **The loading is the caller's.** The component knows nothing about loading. The caller hoists a sealed `FishingStatus`, `Idle`, `Refreshing` or `Landed(outcome)`, from a ViewModel, and each change from `Refreshing` to `Landed` plays once, so the same outcome twice in a row plays twice. A `Caught` must catch at least one item, and a `Failed` carries its cause for the caller to log.
+- **The loading is the caller's.** The component knows nothing about loading. The caller hoists a sealed `FishingStatus`, `Idle`, `Refreshing` or `Landed(outcome)`, from a ViewModel, with a new `Landed` for each refresh, and each plays once, so the same outcome twice in a row plays twice. Nothing the caller says is lost: a refresh answered within a frame still casts and plays, and one started while the last still plays out is cast as soon as it has. A `Caught` must catch at least one item, and a `Failed` carries its cause for the caller to log.
 - **The catch rises with the list.** `Modifier.risingFromWater` on the list's items keeps a catch under the water from the frame it lands until the line is in, then grows each card from nothing to its full height as it comes up, read in layout, so the list makes room as it rises.
-- **For a screen reader.** A custom action refreshes without the gesture, and each outcome is announced politely: "2 new items", "Nothing new" or "Couldn’t refresh".
+- **For a screen reader.** A Refresh button only a screen reader sees, at the top where the pull starts, refreshes without the gesture, and each outcome is announced politely, every time: "2 new items", "Nothing new" or "Couldn’t refresh".
 
 Nothing recomposes while the line, the water or a rising card moves: the band is drawn in a layer of its own over the list, the list moves down in a layer of its own, and the rise is read while laying out. Only a refresh starting, its outcome landing and the band closing recompose, and the composition probe in its tests holds it to that. Nothing is saved: the status that says where a refresh stands is the caller's, so a screen made again mid-refresh floats the bobber at once instead of casting again, and an outcome that has already landed isn't played twice.
 
 The demo, `feed.fishing`, is an island photo feed whose source is scripted for the clip: the first refresh catches two islands, the second finds nothing new, the third fails and the line snaps, and the fourth catches one more. Its scripted fingertip pulls through the same nested scroll a finger's drag sends from the top of a list.
 
 ```kotlin
-// In the ViewModel: Idle, then Refreshing on a pull, then Landed with how it came out.
+// In the ViewModel: Idle, then Refreshing on a pull, then a new Landed with how it came out.
+var items: List<Item> by mutableStateOf(emptyList())
 var status: FishingStatus by mutableStateOf(FishingStatus.Idle)
 
 fun refresh() = viewModelScope.launch {
     status = FishingStatus.Refreshing
-    status = FishingStatus.Landed(
-        runCatching { repository.fetchNew() }.fold(
-            onSuccess = { new -> if (new.isEmpty()) FishingOutcome.NothingNew else FishingOutcome.Caught(new.size) },
-            onFailure = { FishingOutcome.Failed(it) },
-        )
-    )
+    val outcome = try {
+        val new = repository.fetchNew()
+        items = new + items // the catch goes on top as it lands
+        if (new.isEmpty()) FishingOutcome.NothingNew else FishingOutcome.Caught(new.size)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        FishingOutcome.Failed(e)
+    }
+    status = FishingStatus.Landed(outcome)
 }
 
-// On screen: put the catch on top as it lands, and keep the list at its top.
+// On screen: keep the list at its top as a catch comes in, so it rises into view.
 val fishing = rememberFishingRefreshState()
+val listState = rememberLazyListState()
+LaunchedEffect(viewModel.status) {
+    if ((viewModel.status as? FishingStatus.Landed)?.outcome is FishingOutcome.Caught) {
+        listState.requestScrollToItem(0)
+    }
+}
 FishingRefresh(status = viewModel.status, onRefresh = viewModel::refresh, state = fishing) {
     LazyColumn(state = listState) {
-        itemsIndexed(items, key = { _, it -> it.id }) { index, item ->
+        itemsIndexed(viewModel.items, key = { _, it -> it.id }) { index, item ->
             Card(item, Modifier.risingFromWater(fishing, index))
         }
     }

@@ -11,7 +11,6 @@ import dev.dimvlachos.lab.core.presentation.components.fishing.FishingPhase.Snap
 import dev.dimvlachos.lab.core.presentation.components.fishing.FishingPhase.Waiting
 import dev.dimvlachos.lab.core.presentation.components.physics.VerletRope
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
@@ -74,6 +73,9 @@ internal class FishingRig(width: Float) {
     // after an outcome: then a falling pull isn't a new pull, and doesn't load the rod.
     private var ticked = false
     private var closing = false
+
+    // Whether the band is shut with nothing playing: out of sight, nothing needs stepping.
+    private var shut = true
 
     /** How far the rod is bent, in thresholds of pull, and how fast that is changing. */
     var bend = 0f
@@ -157,14 +159,7 @@ internal class FishingRig(width: Float) {
 
     /** Whether everything has come to rest, out of sight: the frame loop can sleep. */
     val atRest: Boolean
-        get() =
-            phase == Idle &&
-                pull == 0f &&
-                water.still &&
-                !splashing &&
-                line.still &&
-                abs(bend) < FishingDimens.StraightBend &&
-                abs(bendSpeed) < FishingDimens.StraightSpeed
+        get() = phase == Idle && pull == 0f && shut
 
     /** Where the rod's tip is, bent as it is. */
     val tip: Offset
@@ -198,8 +193,10 @@ internal class FishingRig(width: Float) {
             closing = false
             ticked = false
             if (phase == Pulling) phase = Idle
+            if (phase == Idle) shutAway()
             return
         }
+        shut = false
         if (busy || closing) return
         if (phase == Idle) {
             phase = Pulling
@@ -211,6 +208,23 @@ internal class FishingRig(width: Float) {
             onThreshold()
         }
     }
+
+    // The band has shut with nothing playing: whatever still moves in it is out of sight, so it is
+    // stilled at once, the water calm, the rod straight and the line hanging, and the frames stop.
+    // Opened again, it starts from still water.
+    private fun shutAway() {
+        if (shut) return
+        shut = true
+        water.calm()
+        splashAge = Float.MAX_VALUE
+        bend = 0f
+        bendSpeed = 0f
+        if (!broken) bobber = dangle()
+    }
+
+    /** Whether an outcome can be taken now: the line is out and none has landed yet. */
+    val canLand: Boolean
+        get() = (phase == Casting || phase == Waiting) && landing == Landing.None
 
     /** A refresh starts: the line is cast from wherever the bobber is, out onto the water. */
     fun cast() {
@@ -235,6 +249,7 @@ internal class FishingRig(width: Float) {
     }
 
     private fun startOver() {
+        shut = false
         broken = false
         bobberAlpha = 1f
         closing = false
@@ -260,9 +275,13 @@ internal class FishingRig(width: Float) {
         }
     }
 
-    /** The refresh was called off: the line is reeled in, with no outcome to tell. */
+    /**
+     * The refresh was called off: the line is reeled in, with no outcome to tell. One whose outcome
+     * has already landed plays it out instead: what the caller has already shown must surface.
+     */
     fun cancel() {
         if (phase != Casting && phase != Waiting) return
+        if (landing != Landing.None) return
         landing = Landing.None
         reelIn()
     }

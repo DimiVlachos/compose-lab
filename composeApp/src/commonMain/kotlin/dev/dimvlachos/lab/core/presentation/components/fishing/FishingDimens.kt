@@ -18,6 +18,10 @@ internal object FishingDimens {
     const val WaterSpring = 30f
     const val WaterDamping = 2.4f
 
+    // At most this share of a column a step is as far as a ripple may run, so the water stays
+    // stable however close its columns sit.
+    const val StableShare = 0.9f
+
     // Water whose every column sits within this many dp of rest, moving slower than this many dp
     // a second, is still.
     const val StillHeight = 0.02f
@@ -105,8 +109,4 @@ internal object FishingDimens {
     const val DriftSeconds = 1.6f
     const val DriftSpeed = 70f
     const val SnapFlick = -4f
-
-    // A rod swinging less than this, at less than this a second, is straight.
-    const val StraightBend = 0.002f
-    const val StraightSpeed = 0.01f
 }

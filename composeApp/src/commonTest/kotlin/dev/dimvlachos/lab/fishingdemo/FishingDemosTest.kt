@@ -31,6 +31,16 @@ class FishingDemosTest {
     }
 
     @Test
+    fun theClipEndsWithTheFeedPutBackSoItLoops() = runTest {
+        val controller = FakeController { testScheduler.currentTime }
+        demo.script.play(controller)
+        val last = controller.calls.last()
+        assertEquals("resetFeed()", last.second)
+        // After the last refresh has played out and the water has closed.
+        assertTrue(last.first >= 23_000, "reset at ${last.first} ms")
+    }
+
+    @Test
     fun theClipFitsInTwentySixSeconds() {
         assertTrue(demo.script.nominalDuration <= 26.seconds, "${demo.script.nominalDuration}")
     }

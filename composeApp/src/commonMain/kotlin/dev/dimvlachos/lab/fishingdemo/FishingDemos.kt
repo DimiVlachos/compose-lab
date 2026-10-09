@@ -19,15 +19,16 @@ internal object FishingDemos {
     private val PullLasts = 1.4.seconds
 
     // Four refreshes, each pulled once the last has played out and the water has closed: two
-    // islands caught, nothing new, a snapped line, and one more island. The end holds long enough
-    // for the line and the water to come to rest, so the next run starts from still water.
-    private val feed =
-        demoScript(holdEnd = 7.seconds) {
-            at(0.6.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
-            at(6.4.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
-            at(10.6.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
-            at(16.2.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
-        }
+    // islands caught, nothing new, a snapped line, and one more island. Once the last has played
+    // out and the water is still, the feed is put back as it began, so the clip loops, and the
+    // recorder's second run, and every Replay after the first, play the same refreshes again.
+    private val feed = demoScript {
+        at(0.6.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
+        at(6.4.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
+        at(10.6.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
+        at(16.2.seconds, lasts = PullLasts) { pullToRefresh(Pull, PullTime) }
+        at(24.seconds) { resetFeed() }
+    }
 
     // A feed is to pull: the script would pull it out of the hand, so on the phone it waits for
     // Replay.

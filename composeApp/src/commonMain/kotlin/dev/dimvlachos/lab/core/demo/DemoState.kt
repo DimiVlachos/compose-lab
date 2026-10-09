@@ -40,6 +40,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var magnetTapHandler: (suspend (String) -> Unit)? = null
     private var photoTapHandler: (suspend (String) -> Unit)? = null
     private var refreshPullHandler: (suspend (Dp, Duration) -> Unit)? = null
+    private var feedResetHandler: (suspend () -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -97,6 +98,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         refreshPullHandler?.invoke(distance, duration)
     }
 
+    override suspend fun resetFeed() {
+        feedResetHandler?.invoke()
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -147,5 +152,9 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setRefreshPullHandler(handler: (suspend (Dp, Duration) -> Unit)?) {
         refreshPullHandler = handler
+    }
+
+    fun setFeedResetHandler(handler: (suspend () -> Unit)?) {
+        feedResetHandler = handler
     }
 }

@@ -23,11 +23,13 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -77,7 +79,6 @@ public fun FishingRefresh(
 ) {
     ReportComposition()
     val haptics = LocalHapticFeedback.current
-    val currentStatus by rememberUpdatedState(status)
     val currentOnRefresh by rememberUpdatedState(onRefresh)
     DisposableEffect(state, haptics) {
         // A key's click at the threshold, as the pull cord's switch: the gesture haptics would say
@@ -115,11 +116,8 @@ public fun FishingRefresh(
     val density = LocalDensity.current.density
     val refreshLabel = stringResource(Res.string.fishing_refresh)
     val busy = state.busy
-    // A refresh asked for while none is under way: the screen reader's way in, as the pull is.
-    val refresh = {
-        if (!state.busy && currentStatus != FishingStatus.Refreshing) currentOnRefresh()
-        true
-    }
+    // Whether a refresh can be asked for: not while one is under way or still playing out.
+    val canRefresh = !busy && status != FishingStatus.Refreshing
     Box(
         modifier
             .onSizeChanged { state.place(it.width, density) }
@@ -130,7 +128,6 @@ public fun FishingRefresh(
                 threshold = FishingDimens.Band,
                 onRefresh = onRefresh,
             )
-            .semantics { customActions = listOf(CustomAccessibilityAction(refreshLabel, refresh)) }
     ) {
         // The list moves down under the band by the air above the water, in a layer, so it moves
         // without being laid out again; the water lies over its top.
@@ -146,9 +143,25 @@ public fun FishingRefresh(
                 with(painter) { draw(state, colors) }
             }
         )
+        // The screen reader's way in, as the pull is: a button only it sees, at the top, where the
+        // pull starts. It takes no touches, so the list under it gets them all.
+        Spacer(
+            Modifier.size(RefreshTarget).semantics {
+                contentDescription = refreshLabel
+                role = Role.Button
+                if (!canRefresh) disabled()
+                onClick(label = refreshLabel) {
+                    if (canRefresh) currentOnRefresh()
+                    canRefresh
+                }
+            }
+        )
         Announcer(state)
     }
 }
+
+// The screen reader's refresh button: the smallest target it is comfortable to find by touch.
+private val RefreshTarget = 48.dp
 
 // Says, politely, how the last refresh came out, from a node of its own that only this changes:
 // the band above it redraws every frame without touching it.

@@ -103,4 +103,20 @@ class DemoStateTest {
     fun aPullToRefreshWithNoHandlerIsIgnored() = runTest {
         DemoState().pullToRefresh(260.dp, 900.milliseconds)
     }
+
+    @Test
+    fun aFeedResetGoesToTheDemosHandler() = runTest {
+        val state = DemoState()
+        var resets = 0
+        state.setFeedResetHandler { resets++ }
+
+        state.resetFeed()
+
+        assertEquals(1, resets)
+    }
+
+    @Test
+    fun aFeedResetWithNoHandlerIsIgnored() = runTest {
+        DemoState().resetFeed()
+    }
 }

@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import kotlin.math.cos
@@ -17,9 +18,9 @@ import kotlin.math.sin
 
 /**
  * Draws a [FishingRefreshState]'s band: the rod, its line and the bobber in the air, the water over
- * the top of the list, and a splash's drops. Its paths are kept and drawn again each frame, so a
- * frame allocates nothing; only the water's shading is made again, and only when the band's height
- * or its colours change.
+ * the top of the list, and a splash's drops. Its paths and strokes are kept and drawn again each
+ * frame, so a frame allocates nothing; only the water's shading and the strokes are made again, and
+ * only when the band's height, the density or the colours change.
  */
 internal class FishingPainter {
     private val rod = Path()
@@ -30,20 +31,40 @@ internal class FishingPainter {
     private var shadeColors: AppColors? = null
     private var shade: Brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
 
+    // The strokes, made for the density they were last drawn at.
+    private var strokesFor = -1f
+    private var rodStroke = Stroke()
+    private var lineStroke = Stroke()
+    private var crestStroke = Stroke()
+    private var hookStroke = Stroke()
+
     /** Draws the band, open as far as the pull has opened it, over whatever is under it. */
     fun DrawScope.draw(state: FishingRefreshState, colors: AppColors) {
         state.frame
         val open = state.open
         if (open <= 0f) return
+        if (density != strokesFor) makeStrokes()
         val band = FishingDimens.Band.toPx()
-        // The band opens from the top: the rod shows first, then the water as it opens further.
+        // The band opens as far as the pull, and its water always meets the top of the list, which
+        // moves down by the air above the water as it opens: the rod comes down into the gap from
+        // above rather than lying over the list.
         clipRect(bottom = band * open) {
-            drawRod(state, colors)
-            drawLine(state, colors)
-            drawBobber(state, colors)
-            drawWater(state, colors, band)
-            drawSplash(state, colors)
+            translate(top = -(1f - open) * FishingDimens.WaterLevel.toPx()) {
+                drawRod(state, colors)
+                drawLine(state, colors)
+                drawBobber(state, colors)
+                drawWater(state, colors, band)
+                drawSplash(state, colors)
+            }
         }
+    }
+
+    private fun DrawScope.makeStrokes() {
+        strokesFor = density
+        rodStroke = Stroke(RodWidth.toPx(), cap = StrokeCap.Round)
+        lineStroke = Stroke(LineWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        crestStroke = Stroke(CrestWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        hookStroke = Stroke(LineWidth.toPx() * HookWeight, cap = StrokeCap.Round)
     }
 
     private fun DrawScope.drawRod(state: FishingRefreshState, colors: AppColors) {
@@ -59,7 +80,7 @@ internal class FishingPainter {
         rod.rewind()
         rod.moveTo(butt.x, butt.y)
         rod.quadraticTo(ahead.x, ahead.y, tip.x, tip.y)
-        drawPath(rod, colors.rodBlank, style = Stroke(RodWidth.toPx(), cap = StrokeCap.Round))
+        drawPath(rod, colors.rodBlank, style = rodStroke)
         // The cork handle and the reel, near the butt.
         val along = (ahead - butt) / (reach * RodStiff)
         val handleEnd = butt + along * HandleLength.toPx()
@@ -82,11 +103,7 @@ internal class FishingPainter {
         }
         val last = state.px(rope[rope.size - 1])
         line.lineTo(last.x, last.y)
-        drawPath(
-            line,
-            colors.fishingLine,
-            style = Stroke(LineWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-        )
+        drawPath(line, colors.fishingLine, style = lineStroke)
     }
 
     private fun DrawScope.drawBobber(state: FishingRefreshState, colors: AppColors) {
@@ -108,7 +125,7 @@ internal class FishingPainter {
                 topLeft = hook - Offset(HookRadius.toPx() * 2f, HookRadius.toPx()),
                 size = Size(HookRadius.toPx() * 2f, HookRadius.toPx() * 2f),
                 alpha = alpha,
-                style = Stroke(LineWidth.toPx() * 1.4f, cap = StrokeCap.Round),
+                style = hookStroke,
             )
         }
         drawCircle(colors.bobberWhite, radius, at, alpha = alpha)
@@ -142,11 +159,7 @@ internal class FishingPainter {
             water.lineTo(i * gap, level + heights[i] * state.density)
         }
         // The crest along the top, then the body under it down to the band's foot.
-        drawPath(
-            water,
-            colors.waterCrest,
-            style = Stroke(CrestWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-        )
+        drawPath(water, colors.waterCrest, style = crestStroke)
         water.lineTo(size.width, band)
         water.lineTo(0f, band)
         water.close()
@@ -202,6 +215,9 @@ internal class FishingPainter {
         val HookDrop = 6.dp
         val HookRadius = 3.dp
         val CrestWidth = 1.5.dp
+
+        // The hook's wire, this many times the line's width.
+        const val HookWeight = 1.4f
         val DropRadius = 2.dp
 
         // Where a splash's drops lean, from far left (-1) to far right (1), and how high each

@@ -75,4 +75,10 @@ internal interface DemoController {
      * finger has lifted; the refresh plays out by itself.
      */
     suspend fun pullToRefresh(distance: Dp, duration: Duration)
+
+    /**
+     * Puts a refreshing feed back as it began, with only the items it started with, so a script
+     * that refreshed it ends where it started and loops.
+     */
+    suspend fun resetFeed()
 }

@@ -57,6 +57,12 @@ public class FishingRefreshState internal constructor() {
     // The status as it was last followed; null until the first one is seen.
     private var followed: FishingStatus? = null
 
+    // Whether the refresh under way has had its line cast, and the landing last played, or seen
+    // already when the state was made: a landing is told apart from the last by identity, so each
+    // refresh's own Landed plays, even with the same outcome as the one before.
+    private var castFor = false
+    private var played: FishingStatus? = null
+
     init {
         rig.onThreshold = { onThreshold() }
         rig.onBite = { onBite() }
@@ -69,23 +75,61 @@ public class FishingRefreshState internal constructor() {
      * outcome, and one called off reels the line in. The first status seen is where things stand: a
      * refresh already under way floats the bobber at once, and an outcome already landed has been
      * seen before, as when the screen is made again, so it doesn't play a second time.
+     *
+     * Nothing the caller says is lost. A refresh that lands within a frame of starting, so that
+     * only its landing is ever seen, is still cast and played; and a refresh started while the last
+     * one still plays out is cast as soon as it has, and its outcome played after that.
      */
     internal fun follow(status: FishingStatus) {
-        if (status == followed) return
+        if (status === followed) return
         val was = followed
         followed = status
         if (was == null) {
-            if (status == FishingStatus.Refreshing) rig.floatAtOnce()
+            when (status) {
+                FishingStatus.Refreshing -> {
+                    rig.floatAtOnce()
+                    castFor = true
+                }
+                is FishingStatus.Landed -> played = status
+                FishingStatus.Idle -> Unit
+            }
         } else if (status == FishingStatus.Refreshing && was != FishingStatus.Refreshing) {
-            rig.cast()
-        } else if (status is FishingStatus.Landed && was == FishingStatus.Refreshing) {
-            rig.land(status.outcome)
-            rising++
-        } else if (status == FishingStatus.Idle && was == FishingStatus.Refreshing) {
+            castFor = false
+        } else if (status == FishingStatus.Idle && was == FishingStatus.Refreshing && castFor) {
             rig.cancel()
+            castFor = false
         }
+        catchUp()
         busy = rig.busy
         awake = true
+    }
+
+    // Does whatever the status still asks for that the rig can take now: casts a refresh that
+    // hasn't been, and lands an outcome that hasn't played, casting first for one that came in
+    // without its refresh ever being seen. What the rig can't take yet waits for the next frame.
+    private fun catchUp() {
+        when (val status = followed) {
+            FishingStatus.Refreshing -> if (!castFor && !rig.busy) cast()
+            is FishingStatus.Landed -> {
+                if (status === played) return
+                if (!castFor && !rig.busy) cast()
+                if (castFor && rig.canLand) {
+                    rig.land(status.outcome)
+                    played = status
+                    castFor = false
+                    rising++
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun cast() {
+        rig.cast()
+        castFor = true
+        // The last outcome is old news: the next one, even the same, is announced afresh.
+        announced = FishingStatus.Idle
+        rising++
     }
 
     /** Lays the band out [width] px wide at [density]. */
@@ -100,6 +144,7 @@ public class FishingRefreshState internal constructor() {
         rig.pullTo(pull.distanceFraction)
         val wasRising = rig.phase == FishingPhase.Rising
         rig.advance(seconds)
+        catchUp()
         frame++
         if (wasRising || rig.phase == FishingPhase.Rising) rising++
         busy = rig.busy

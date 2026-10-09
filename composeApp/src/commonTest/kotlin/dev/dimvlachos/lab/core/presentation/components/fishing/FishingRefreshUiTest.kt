@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,15 +19,20 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Dp
@@ -159,15 +165,17 @@ class FishingRefreshUiTest {
     }
 
     @Test
-    fun theRefreshActionCastsWithoutAGesture() = runComposeUiTest {
+    fun aScreenReaderCanRefreshWithAButtonThatIsOffWhileBusy() = runComposeUiTest {
         val host = fishing()
-        val actions =
-            onNodeWithTag("fishing").fetchSemanticsNode().config[SemanticsActions.CustomActions]
-        val refresh = actions.single { it.label == "Refresh" }
-        runOnIdle { refresh.action() }
+        val button = onNode(hasContentDescription("Refresh") and hasClickAction())
+        button.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        button.assertIsEnabled()
+        button.performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(1, host.refreshes)
         mainClock.advanceTimeBy(300)
         assertTrue(host.state.rig.busy, "the line is cast")
+        // Mid-refresh it can't ask again.
+        onNode(hasContentDescription("Refresh")).assertIsNotEnabled()
     }
 
     @Test
@@ -229,6 +237,112 @@ class FishingRefreshUiTest {
         runOnIdle { host.status = FishingStatus.Landed(FishingOutcome.Caught(1)) }
         mainClock.advanceTimeByFrame()
         assertTrue(rowTop(1) <= 1.dp, "the catch showed ${rowTop(1)} tall as it landed")
+    }
+
+    @Test
+    fun theSameOutcomeTwiceIsAnnouncedTwice() = runComposeUiTest {
+        val host = fishing()
+        repeat(2) { round ->
+            refreshAndLand(host, FishingOutcome.NothingNew)
+            mainClock.advanceTimeBy(1_000)
+            onNode(hasContentDescription("Nothing new")).assertExists()
+            runOnIdle { host.status = FishingStatus.Idle }
+            mainClock.advanceTimeBy(SettleMs)
+            if (round == 0) {
+                // Before the next outcome the old one is gone, so the next one is news again.
+                runOnIdle { host.status = FishingStatus.Refreshing }
+                mainClock.advanceTimeBy(300)
+                onNode(hasContentDescription("Nothing new")).assertDoesNotExist()
+                runOnIdle { host.status = FishingStatus.Idle }
+                mainClock.advanceTimeBy(SettleMs)
+            }
+        }
+    }
+
+    @Test
+    fun aRefreshAnsweredWithinAFrameStillPlaysOut() = runComposeUiTest {
+        val host = fishing()
+        // Refreshing and Landed in the same frame: composition only ever sees Landed.
+        runOnIdle {
+            host.status = FishingStatus.Refreshing
+            host.status = FishingStatus.Landed(FishingOutcome.Caught(1))
+        }
+        mainClock.advanceTimeByFrame()
+        assertEquals(FishingPhase.Casting, host.state.rig.phase, "the line must still be cast")
+        mainClock.advanceTimeBy(3_000)
+        onNode(hasContentDescription("1 new item")).assertExists()
+    }
+
+    @Test
+    fun aRefreshAskedForWhileACatchPlaysIsCastOnceItHasRisen() = runComposeUiTest {
+        val host = fishing(rising = true)
+        refreshAndLand(host, FishingOutcome.Caught(1))
+        mainClock.advanceTimeBy(1_000)
+        assertTrue(host.state.rig.busy)
+        // The caller starts another refresh while the catch is still playing out.
+        runOnIdle { host.status = FishingStatus.Refreshing }
+        var waited = 0
+        while (host.state.rig.phase != FishingPhase.Waiting && waited < 6_000) {
+            mainClock.advanceTimeBy(50)
+            waited += 50
+        }
+        assertEquals(FishingPhase.Waiting, host.state.rig.phase, "the new refresh was never cast")
+        runOnIdle { host.status = FishingStatus.Landed(FishingOutcome.NothingNew) }
+        mainClock.advanceTimeBy(1_500)
+        onNode(hasContentDescription("Nothing new")).assertExists()
+    }
+
+    @Test
+    fun aCatchCalledOffBeforeItPlaysIsNotLeftUnderWater() = runComposeUiTest {
+        val host = fishing(rising = true)
+        refreshAndLand(host, FishingOutcome.Caught(1))
+        runOnIdle { host.status = FishingStatus.Refreshing }
+        mainClock.advanceTimeByFrame()
+        runOnIdle { host.status = FishingStatus.Idle }
+        mainClock.advanceTimeBy(SettleMs)
+        assertEquals(80.dp, rowTop(1), "the catch was left under water")
+    }
+
+    @Test
+    fun nothingRecomposesWhileACatchRises() = runComposeUiTest {
+        var rows = 0
+        val host = Host()
+        setContent {
+            CompositionLocalProvider(
+                LocalFishingCompositionProbe provides { host.compositions++ }
+            ) {
+                val state = rememberFishingRefreshState()
+                host.state = state
+                FishingRefresh(
+                    host.status,
+                    onRefresh = {},
+                    Modifier.size(360.dp, 640.dp),
+                    state = state,
+                ) {
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        items(30) { i ->
+                            SideEffect { rows++ }
+                            Box(Modifier.fillMaxWidth().risingFromWater(state, i).height(80.dp))
+                        }
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        refreshAndLand(host, FishingOutcome.Caught(2))
+        var waited = 0
+        while (host.state.rig.phase != FishingPhase.Rising && waited < 5_000) {
+            mainClock.advanceTimeBy(20)
+            waited += 20
+        }
+        mainClock.advanceTimeByFrame()
+        val refresh = host.compositions
+        val items = rows
+        mainClock.advanceTimeBy(600)
+        assertEquals(FishingPhase.Rising, host.state.rig.phase)
+        assertEquals(refresh, host.compositions, "a rising catch must not recompose the refresh")
+        assertEquals(items, rows, "a rising catch must not recompose the list's items")
     }
 
     // How far row [i] starts below the list's own top.
