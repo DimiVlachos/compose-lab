@@ -6,8 +6,8 @@ import kotlin.math.sqrt
 
 /**
  * A tag's magnet, in dp from the table's top left: hanging from its nail at its [slot] in the
- * strip, [held] by a finger, or put down [onTable]. Held or down, it is [out] and pulls. In the
- * strip it [hang]s from the nail by its arch and swings there.
+ * strip, [held] by a finger, or put down [onTable]. Held or down, it is [out] and pulls, unless it
+ * is [parting]. In the strip it [hang]s from the nail by its arch and swings there.
  */
 internal class Magnet(val tag: String) {
     var at = Offset.Zero
@@ -21,6 +21,12 @@ internal class Magnet(val tag: String) {
 
     /** Whether, on its way home, it has caught on its nail yet. */
     var hooked = true
+
+    /**
+     * Whether it has been torn off a pair and is still in the hand: on its way somewhere, not a
+     * search yet, so nothing comes to it until it is put down.
+     */
+    var parting = false
 
     val out: Boolean
         get() = held || onTable

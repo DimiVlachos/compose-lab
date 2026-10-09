@@ -216,6 +216,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         // Off its nail: it no longer swings there, and on its way home it catches on it again.
         magnet.hang.stop()
         magnet.hooked = false
+        magnet.parting = false
         magnet.held = true
         magnet.velocity = Offset.Zero
         moveMagnet(magnet, at / density)
@@ -259,6 +260,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         if (!magnet.held || partner(magnet) == null) return
         joined = false
         bodies.leave(magnet.tag)
+        magnet.parting = true
         updateResults()
         awake = true
     }
@@ -276,6 +278,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         val magnet = magnet(tag) ?: return
         if (!magnet.held) return
         magnet.held = false
+        magnet.parting = false
         val landing = magnet.at + velocity / density * MagnetDimens.FlickLead
         if (landing.y >= tableHeight) {
             toStrip(magnet)
@@ -564,7 +567,8 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             carry -= MagnetDimens.StepSeconds
             stepMagnets(MagnetDimens.StepSeconds)
             pulling.clear()
-            for (magnet in magnets) if (magnet.out) pulling += magnet
+            // One torn off a pair and still in the hand pulls nothing until it is put down.
+            for (magnet in magnets) if (magnet.out && !magnet.parting) pulling += magnet
             if (bodies.step(MagnetDimens.StepSeconds, pulling, joined)) changed = true
             stepFan(MagnetDimens.StepSeconds)
             stepOpen(MagnetDimens.StepSeconds)
@@ -701,6 +705,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         joined = false
         magnet.held = false
         magnet.onTable = false
+        magnet.parting = false
         bodies.releaseAll(magnet.tag)
         if (fannedOut == magnet.tag || fanShown == magnet.tag) {
             fannedOut = null
@@ -784,7 +789,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         if (!anyOut || body.layer() != 0 || bodies.drawn(body, pulling)) return 0f
         val reach = MagnetDimens.Reach.value
         for (magnet in magnets) {
-            if (!magnet.out || !body.feels(magnet)) continue
+            if (!magnet.out || magnet.parting || !body.feels(magnet)) continue
             if ((body.at - magnet.at).getDistance() <= reach) return MagnetDimens.LeanShade
         }
         return 1f

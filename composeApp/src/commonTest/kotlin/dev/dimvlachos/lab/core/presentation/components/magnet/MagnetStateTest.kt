@@ -642,4 +642,55 @@ class MagnetStateTest {
         assertEquals(setOf("strong"), table.results["a"], "what it held matches it, so it stays")
         assertTrue(table.isOut("a"))
     }
+
+    // The test photos, and one that only B draws in, for a magnet that has something of its own
+    // to find once it is torn off the pair.
+    private fun tableWithBOnly() =
+        MagnetState(
+                TestPhotos +
+                    MagnetPhoto("bOnly", Res.drawable.photo_milos, "B only", mapOf("b" to 1f)),
+                TestTags,
+            )
+            .apply { layOut((360 * D).toInt(), (720 * D).toInt(), D) }
+
+    @Test
+    fun aMagnetTornOffThePairPicksNothingUpOnItsWayHome() {
+        val table = tableWithBOnly()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        val b = table.magnetPosition("b")!!
+        table.place("b", b)
+        table.tearOff("b")
+        // Taken home slowly, as a flick that starts gently is, with the table running all the way,
+        // through a photo of its own lying in its path, as Sea's do in the clip.
+        val home = table.slotPosition("b")!!
+        table.body("bOnly").at = (b + (home - b) * 0.5f) / D
+        for (k in 1..24) {
+            table.drag("b", b + (home - b) * (k / 24f))
+            table.run(1f / 30f)
+            assertEquals(emptySet(), table.results["b"], "nothing sticks to it on the way, step $k")
+        }
+        table.release("b", (home - b) * 2f)
+        assertFalse(table.isOut("b"))
+        table.run(2f)
+        assertTrue(table.body("bOnly").stuckTo.isEmpty())
+    }
+
+    @Test
+    fun aMagnetTornOffThePairAndPutDownOnTheTableSearchesAgain() {
+        val table = tableWithBOnly()
+        table.apply("a")
+        table.apply("b")
+        table.run(3f)
+        val b = table.magnetPosition("b")!!
+        table.place("b", b)
+        table.tearOff("b")
+        val apart = Offset(b.x, (table.tableHeight - 80f) * D)
+        table.drag("b", apart)
+        table.release("b", Offset.Zero)
+        assertFalse(table.joined)
+        table.run(3f)
+        assertEquals(setOf("bOnly"), table.results["b"])
+    }
 }
