@@ -30,7 +30,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Paper plane](#paper-plane-corepresentationcomponentspaperplane) | `paperplane` | `chat.plane` | A chat that sends each message as a folded paper dart |
 | [Pull cord](#pull-cord-corepresentationcomponentspullcord) | `pullcord` | `lamp.cord` | Pull a lamp's cord to switch a screen between light and dark |
 | [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet) | `magnet` | `magnet.filter` | Drag tag magnets over photos to filter them; snap two together to search for both |
-| [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | Pull to refresh by casting a line: a catch rises out of the water, nothing new reels in an empty hook, a failure snaps the line |
+| [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | A pull-to-refresh that isn't a boring spinner: cast a line, haul new cards up from the deep, reel in an empty hook, or snap the line |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -291,7 +291,7 @@ val cliffs: Set<String> = table.results["cliffs"].orEmpty()
 
 ## Fishing refresh (`core/presentation/components/fishing/`)
 
-Pull-to-refresh where refreshing is fishing. Pull a list down from its top and a rod bends over it, its line tightening, more the further you pull, with a tick of haptics at the threshold. Let go past it and the line is cast: a bobber flies out in an arc and lands in a band of water over the top of the list with a splash, and floats there, bobbing and sending out ripples, for as long as the refresh takes. Then the outcome plays out on the water:
+Pull-to-refresh doesn't have to be a boring spinner going round while you wait. Here refreshing is fishing, and the wait is part of the fun. Pull a list down from its top and a rod bends over it, its line tightening, more the further you pull, with a tick of haptics at the threshold. Let go past it and the line is cast: a bobber flies out in an arc and lands in a band of water over the top of the list with a splash, and floats there, bobbing and sending out ripples, for as long as the refresh takes. Then the outcome plays out on the water:
 
 - **A catch.** The bobber is pulled under with a jolt of haptics and the list darkens into the deep. Down there, small and faint on the line, hang the new cards, one under another; the reel hauls them up, growing and clearing as they come, until they reach their places at the top of the list just as it moves down to make room, and the sea clears.
 - **Nothing new.** The line is reeled in to an empty hook.
