@@ -30,6 +30,9 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     var lampLit = false
         private set
 
+    /** How far each pull to refresh went, in order. */
+    val refreshPulls = mutableListOf<Dp>()
+
     /** Whether the lamp was lit after each pull, in order. */
     val litAfterPulls = mutableListOf<Boolean>()
 
@@ -127,5 +130,10 @@ internal class FakeController(private val now: () -> Long) : DemoController {
                 else -> openedPhoto
             }
         calls += now() to "tapPhoto($id)"
+    }
+
+    override suspend fun pullToRefresh(distance: Dp, duration: Duration) {
+        refreshPulls += distance
+        calls += now() to "pullToRefresh($distance, $duration)"
     }
 }

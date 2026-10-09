@@ -5,6 +5,7 @@ package dev.dimvlachos.lab.catalog
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_book_turn
+import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
@@ -35,6 +36,7 @@ class CatalogTest {
                 "chat.plane",
                 "lamp.cord",
                 "magnet.filter",
+                "feed.fishing",
             ),
             Catalog.demos.map { it.id },
         )
@@ -48,6 +50,7 @@ class CatalogTest {
                 Res.string.demo_paper_plane,
                 Res.string.demo_pull_cord,
                 Res.string.demo_magnet_filter,
+                Res.string.demo_fishing,
             ),
             Catalog.demos.map { it.title },
         )
@@ -111,6 +114,7 @@ class CatalogTest {
                 "chat.plane",
                 "lamp.cord",
                 "magnet.filter",
+                "feed.fishing",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

@@ -87,4 +87,20 @@ class DemoStateTest {
     fun aPullWithNoHandlerIsIgnored() = runTest {
         DemoState().pullCord(72.dp, 500.milliseconds)
     }
+
+    @Test
+    fun aPullToRefreshGoesToTheDemosHandler() = runTest {
+        val state = DemoState()
+        val pulls = mutableListOf<String>()
+        state.setRefreshPullHandler { distance, duration -> pulls += "$distance $duration" }
+
+        state.pullToRefresh(260.dp, 900.milliseconds)
+
+        assertEquals(listOf("260.0.dp 900ms"), pulls)
+    }
+
+    @Test
+    fun aPullToRefreshWithNoHandlerIsIgnored() = runTest {
+        DemoState().pullToRefresh(260.dp, 900.milliseconds)
+    }
 }

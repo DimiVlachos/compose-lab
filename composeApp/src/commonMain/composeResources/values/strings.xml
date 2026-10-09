@@ -108,4 +108,7 @@
     </plurals>
     <string name="fishing_nothing_new">Nothing new</string>
     <string name="fishing_failed">Couldn’t refresh</string>
+    <string name="demo_fishing">Fishing refresh</string>
+    <string name="fishing_feed_title">Islands</string>
+    <string name="fishing_feed_hint">Pull down to fish for new islands</string>
 </resources>
