@@ -433,6 +433,7 @@ scripts/record.py android navbar.all --label && scripts/record.py ios navbar.all
 scripts/side-by-side.sh navbar.all                 # out/navbar.all-both.mp4
 scripts/gif.sh navbar.all                          # docs/media/navbar.all.gif
 scripts/record.py android book.turn --landscape    # a landscape demo: 1920×1080 (Android only)
+scripts/record.py android feed.fishing --tall      # a tall demo: 1080×1920
 ```
 
 Needs Python 3 and ffmpeg.

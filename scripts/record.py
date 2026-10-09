@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Record one compose-lab demo and encode a social-ready clip: 4:5, or 16:9 for a landscape demo.
+"""Record one compose-lab demo and encode a social-ready clip: 4:5, 9:16 for a tall demo, or 16:9 for a landscape demo.
 
-Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape]
+Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape | --tall]
 
 The app logs LAB_DEMO_START / LAB_DEMO_DONE (via Kermit, tag LabRecorder) when
 the demo starts and ends, and the clip is cut between those two moments (timed
@@ -189,8 +189,8 @@ def record_ios(demo_id, label, raw):
     return start, done
 
 
-def encode(raw, start, done, dest, landscape):
-    """Cut [start, done], crop the centred stage (4:5, or 16:9 in landscape) and raise the CRF until the clip fits in MAX_BYTES.
+def encode(raw, start, done, dest, landscape, tall):
+    """Cut [start, done], crop the centred stage (4:5, 9:16 for a tall demo, or 16:9 in landscape) and raise the CRF until the clip fits in MAX_BYTES.
 
     Recorders only write a frame when the screen changes, so still holds are gaps in the raw file.
     fps=60 runs over the whole stream first to fill those gaps with the frame on screen, then the
@@ -199,6 +199,8 @@ def encode(raw, start, done, dest, landscape):
     frame = (
         "crop=ih*16/9:ih:(iw-ih*16/9)/2:0,scale=1920:1080"
         if landscape
+        else "crop=iw:iw*16/9:0:(ih-iw*16/9)/2,scale=1080:1920"
+        if tall
         else "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350"
     )
     crf = 18
@@ -226,7 +228,9 @@ def main():
     parser.add_argument("platform", choices=["android", "ios"])
     parser.add_argument("demo_id")
     parser.add_argument("--label", action="store_true", help="draw the platform name on the stage (for side-by-side clips)")
-    parser.add_argument("--landscape", action="store_true", help="the demo runs in landscape: a 16:9 clip (Android only)")
+    frame = parser.add_mutually_exclusive_group()
+    frame.add_argument("--landscape", action="store_true", help="the demo runs in landscape: a 16:9 clip (Android only)")
+    frame.add_argument("--tall", action="store_true", help="the demo has a tall stage: a 9:16 clip")
     args = parser.parse_args()
     if args.landscape and args.platform == "ios":
         sys.exit("--landscape records on Android only; the simulator can't be turned from here")
@@ -243,7 +247,7 @@ def main():
     except SystemExit:
         raw.unlink(missing_ok=True)
         raise
-    size = encode(raw, start, done, dest, args.landscape)
+    size = encode(raw, start, done, dest, args.landscape, args.tall)
     raw.unlink()
     print(f"{dest.relative_to(ROOT)}  {done - start:.1f}s  {size / 1e6:.1f} MB")
 

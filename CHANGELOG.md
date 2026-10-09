@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- **Recording**: a demo can ask for a tall stage (`tall = true`), recorded as a 9:16 clip with `scripts/record.py --tall`. The fishing refresh's feed uses it, so its clip shows more of the list.
 - **Pull cord** (`pullcord`): its Verlet rope moved into `physics/` as `VerletRope`, shared with the fishing refresh's line.
 
 ### Fixed

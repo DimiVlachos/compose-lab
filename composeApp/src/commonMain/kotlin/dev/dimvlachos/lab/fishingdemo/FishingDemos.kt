@@ -34,7 +34,7 @@ internal object FishingDemos {
     // Replay.
     val all =
         listOf(
-            Demo("feed.fishing", Res.string.demo_fishing, feed, autoplay = false) {
+            Demo("feed.fishing", Res.string.demo_fishing, feed, tall = true, autoplay = false) {
                 FishingDemo(it)
             }
         )
