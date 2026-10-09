@@ -88,13 +88,13 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
     }
     Box(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
         if (record) {
-            // The clip's frame, centred; the recorder crops to it: 4:5, or 16:9 for a demo that
-            // runs in landscape.
+            // The clip's frame, centred; the recorder crops to it: 4:5, 9:16 for a tall demo, or
+            // 16:9 for a demo that runs in landscape.
             val frame =
-                if (demo.landscape) {
-                    Modifier.fillMaxHeight().aspectRatio(16f / 9f)
-                } else {
-                    Modifier.fillMaxWidth().aspectRatio(4f / 5f)
+                when {
+                    demo.landscape -> Modifier.fillMaxHeight().aspectRatio(16f / 9f)
+                    demo.tall -> Modifier.fillMaxWidth().aspectRatio(9f / 16f)
+                    else -> Modifier.fillMaxWidth().aspectRatio(4f / 5f)
                 }
             stage(Modifier.align(Alignment.Center).then(frame))
         } else {
