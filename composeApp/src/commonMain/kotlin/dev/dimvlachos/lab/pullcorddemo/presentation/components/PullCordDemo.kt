@@ -313,6 +313,10 @@ private class CordFinger {
     // Where the finger let go, or null while it holds the bead and is drawn on it.
     private var letGo by mutableStateOf<Offset?>(null)
 
+    // Which pull has the fingertip. A pull that starts as the last one fades out takes it over,
+    // and the last one, cancelled mid-fade, must not then hide the new one's fingertip.
+    private var pulling = 0
+
     /**
      * Takes [lamp]'s bead, then shows the fingertip on it, pulls it [by] px over [durationMs] as a
      * hand does, quick to start and easing in, holds it a moment and lets go. A bead it can't take,
@@ -320,6 +324,7 @@ private class CordFinger {
      * mid-pull still lets go.
      */
     suspend fun pull(lamp: PullCordState, by: Offset, durationMs: Int) {
+        val mine = ++pulling
         letGo = null
         var holding = false
         try {
@@ -341,7 +346,7 @@ private class CordFinger {
             alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
         } finally {
             if (holding) lamp.release()
-            withContext(NonCancellable) { alpha.snapTo(0f) }
+            if (mine == pulling) withContext(NonCancellable) { alpha.snapTo(0f) }
         }
     }
 

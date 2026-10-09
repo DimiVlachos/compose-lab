@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Magnet filter** (`magnet`): drag horseshoe tag magnets over a table of photos to filter them; a magnet finds every match on the table, pulled in by how well it matches, strong ones stick, two snapped together search for both, and a magnet's photos fan out into a grid where each one opens.
+
+### Fixed
+
+- **Pull cord** (`pullcord`): a scripted pull that started as the last one's fingertip faded out was cancelled by it.
+
 ## [0.1.0] - 2026-10-06
 
 The first release: five components, the apps that demo them, and Moodboard.

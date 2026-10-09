@@ -4,6 +4,7 @@ import dev.dimvlachos.lab.bookdemo.BookDemos
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
+import dev.dimvlachos.lab.magnetdemo.MagnetDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
@@ -15,7 +16,9 @@ internal object Catalog {
     val entries: List<CatalogEntry> =
         (NavBarDemos.all + GalleryDemos.all).map { CatalogEntry.Single(it) } +
             CatalogEntry.Group("fog.mirror", Res.string.demo_fog, FogDemos.all) +
-            (BookDemos.all + PlaneDemos.all + PullCordDemos.all).map { CatalogEntry.Single(it) }
+            (BookDemos.all + PlaneDemos.all + PullCordDemos.all + MagnetDemos.all).map {
+                CatalogEntry.Single(it)
+            }
 
     /** Every demo, in or out of a folder: what an id finds, and what a recording plays. */
     val demos: List<Demo> = entries.flatMap {

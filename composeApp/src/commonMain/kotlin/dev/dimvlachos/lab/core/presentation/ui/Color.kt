@@ -56,4 +56,31 @@ public data class AppColors(
     val bulbOff: Color = Color(0xFFD9D3C4),
     val bulbLit: Color = Color(0xFFFFF6DC),
     val lampLight: Color = Color(0xFFFFD592),
+    // The magnet filter: a steel table, deeper towards its foot, and the dark rail the magnets
+    // wait on with a well for each; the iron filings dusted over it; the photo prints, their
+    // shadows and the metal clips across their tops; the magnets' red faces, steel rims and glint;
+    // the count badge over a magnet, and the scrim behind a fanned-out cluster.
+    val tableSteel: Color = Color(0xFF3B4048),
+    val tableSteelDeep: Color = Color(0xFF22262C),
+    val stripRail: Color = Color(0xFF15181C),
+    val stripWell: Color = Color(0xFF2A2E35),
+    val filing: Color = Color(0xFFC9CED6),
+    val cardPaper: Color = Color(0xFFF4F1EA),
+    val cardShadow: Color = Color(0x66000000),
+    val clipMetal: Color = Color(0xFF9AA1AB),
+    val clipSheen: Color = Color(0xFFE3E7EC),
+    val magnetRed: Color = Color(0xFFC8372D),
+    val magnetSteel: Color = Color(0xFF8B929C),
+    val magnetSheen: Color = Color(0xFFFFFFFF),
+    val badge: Color = Color(0xFFF4F1EA),
+    val onBadge: Color = Color(0xFF1B1D21),
+    val fanScrim: Color = Color(0xFF0E1013),
+    // The magnet filter demo's tags, one colour each for its magnets and count badges: a warm
+    // dusk for Sunset, the Aegean for Sea, a harbour teal for Boats, warm stone for Cliffs and
+    // bougainvillea for Village. Deep enough that the white glint and the steel rim read on them.
+    val tagSunset: Color = Color(0xFFE0712C),
+    val tagSea: Color = Color(0xFF2B7BC4),
+    val tagBoats: Color = Color(0xFF23998A),
+    val tagCliffs: Color = Color(0xFFA27A5C),
+    val tagVillage: Color = Color(0xFFC4426E),
 )

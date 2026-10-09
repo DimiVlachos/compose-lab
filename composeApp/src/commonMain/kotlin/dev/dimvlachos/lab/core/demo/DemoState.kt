@@ -35,6 +35,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var sendHandler: (suspend (StringResource, Duration) -> Unit)? = null
     private var clearHandler: (suspend () -> Unit)? = null
     private var cordHandler: (suspend (Dp, Duration, Dp) -> Unit)? = null
+    private var magnetDragHandler: (suspend (String, List<Offset>, Duration) -> Unit)? = null
+    private var magnetReleaseHandler: (suspend (String, Duration) -> Unit)? = null
+    private var magnetTapHandler: (suspend (String) -> Unit)? = null
+    private var photoTapHandler: (suspend (String) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -72,6 +76,22 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         cordHandler?.invoke(down, duration, across)
     }
 
+    override suspend fun dragMagnet(tag: String, path: List<Offset>, duration: Duration) {
+        magnetDragHandler?.invoke(tag, path, duration)
+    }
+
+    override suspend fun releaseMagnet(tag: String, duration: Duration) {
+        magnetReleaseHandler?.invoke(tag, duration)
+    }
+
+    override suspend fun tapMagnet(tag: String) {
+        magnetTapHandler?.invoke(tag)
+    }
+
+    override suspend fun tapPhoto(id: String) {
+        photoTapHandler?.invoke(id)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -102,5 +122,21 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setCordHandler(handler: (suspend (Dp, Duration, Dp) -> Unit)?) {
         cordHandler = handler
+    }
+
+    fun setMagnetDragHandler(handler: (suspend (String, List<Offset>, Duration) -> Unit)?) {
+        magnetDragHandler = handler
+    }
+
+    fun setMagnetReleaseHandler(handler: (suspend (String, Duration) -> Unit)?) {
+        magnetReleaseHandler = handler
+    }
+
+    fun setMagnetTapHandler(handler: (suspend (String) -> Unit)?) {
+        magnetTapHandler = handler
+    }
+
+    fun setPhotoTapHandler(handler: (suspend (String) -> Unit)?) {
+        photoTapHandler = handler
     }
 }
