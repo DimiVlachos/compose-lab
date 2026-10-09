@@ -334,4 +334,42 @@ class FishingRigTest {
         rig.run(1.5f)
         assertTrue(rig.atRest, "the water and the rod must still as soon as the band is shut")
     }
+
+    // How long the line is along its points, against the straight way from the tip to its end:
+    // 1 when it runs taut, more the more it sags or loops.
+    private fun FishingRig.slack(): Float {
+        var along = 0f
+        for (i in 1 until line.size) along += (line[i] - line[i - 1]).getDistance()
+        return along / (line[line.size - 1] - line[0]).getDistance()
+    }
+
+    @Test
+    fun reeledInTheBobberHangsOnTheLineThatPullsItUp() {
+        val rig = rig()
+        rig.floatAtOnce()
+        rig.land(FishingOutcome.NothingNew)
+        rig.runWhile(Waiting)
+        assertEquals(Reeling, rig.phase)
+        val start = rig.bobber
+        var t = 0f
+        while (rig.phase == Reeling) {
+            rig.advance(1f / 60f)
+            t += 1f / 60f
+            val end = rig.line[rig.line.size - 1]
+            assertTrue(
+                (rig.bobber - end).getDistance() < 0.5f,
+                "at $t s the bobber is ${(rig.bobber - end).getDistance()} dp off the line's end",
+            )
+            // Once it is coming up, the line runs taut from the tip to it, not in a loop beside it.
+            if (t > FishingDimens.ReelSeconds * 0.3f) {
+                assertTrue(rig.slack() < 1.15f, "at $t s the line is slack: ${rig.slack()}")
+            }
+        }
+        assertTrue(rig.bobber.y < start.y - 10f, "it came up out of the water")
+        // And once in, it hangs below the tip on its short line, swinging, not held in the air.
+        rig.run(0.2f)
+        val below = rig.bobber - rig.tip
+        assertTrue(below.y > 0f, "it hangs below the tip")
+        assertTrue(below.getDistance() <= FishingDimens.DangleLength.value + 1f)
+    }
 }

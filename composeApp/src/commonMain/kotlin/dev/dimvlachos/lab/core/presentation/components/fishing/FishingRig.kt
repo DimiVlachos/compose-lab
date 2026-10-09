@@ -200,6 +200,10 @@ internal class FishingRig(width: Float) {
         if (busy || closing) return
         if (phase == Idle) {
             phase = Pulling
+            t = 0f
+            // A snapped line is whole again for the new pull, its bobber back at its end.
+            if (broken) bobber = line[line.size - 1]
+            from = bobber
             broken = false
             bobberAlpha = 1f
         }
@@ -219,7 +223,6 @@ internal class FishingRig(width: Float) {
         splashAge = Float.MAX_VALUE
         bend = 0f
         bendSpeed = 0f
-        if (!broken) bobber = dangle()
     }
 
     /** Whether an outcome can be taken now: the line is out and none has landed yet. */
@@ -328,24 +331,39 @@ internal class FishingRig(width: Float) {
         }
         if (phase != Pulling) springRod(dt)
         line.pin(tip)
-        if (!broken) line.hold(bobber, lineStretch())
+        if (broken || hanging) {
+            // Out of the water and not held, the bobber hangs on the line's free end: the line
+            // pulls it up as it is reeled in, and it swings there.
+            line.letGo()
+            line.stretch = lineStretch()
+        } else {
+            line.hold(bobber, lineStretch())
+        }
         line.step(dt)
+        if (hanging && !broken) bobber = line[line.size - 1]
         water.step(dt)
     }
 
-    // Pulled, the rod is bent by the pull itself and the bobber is drawn back and down below its
-    // tip; otherwise the rod springs straight and the bobber dangles.
+    // Whether the bobber hangs from the line rather than being held somewhere: as it is reeled in,
+    // and dangling from the tip until a pull takes the line again.
+    private val hanging: Boolean
+        get() = phase == Reeling || phase == Rising || phase == Idle
+
+    // Pulled, the rod is bent by the pull itself and the line is taken from wherever the bobber
+    // hangs, then drawn back and down below the tip; otherwise the rod springs straight and the
+    // bobber hangs on the line.
     private fun holdStill(dt: Float) {
-        if (phase == Pulling) {
-            bend = pull
-            bendSpeed = 0f
-        }
-        if (!broken) bobber = dangle()
+        if (phase != Pulling) return
+        bend = pull
+        bendSpeed = 0f
+        if (broken) return
+        val taken = (t / FishingDimens.TakeSeconds).coerceAtMost(1f)
+        bobber = from + (dangle() - from) * taken
     }
 
     private fun dangle(): Offset {
         val drawn = if (phase == Pulling) pull.coerceAtMost(1f) else 0f
-        val hang = FishingDimens.DangleLength.value * 0.9f
+        val hang = FishingDimens.DangleLength.value
         return tip +
             Offset(
                 -FishingDimens.DangleBack.value * drawn,
@@ -410,19 +428,17 @@ internal class FishingRig(width: Float) {
 
     private fun reelIn() {
         from = bobber
-        fromStretch = lineFor(bobber)
+        // Taut from the start: it is wound in from exactly as far out as the bobber lies.
+        fromStretch = (bobber - tip).getDistance() / longest
         if (bobber.y >= waterLevel - 1f) {
             water.disturb(bobber.x, FishingDimens.BobPush, FishingDimens.BobSpread.value)
         }
         enter(Reeling)
     }
 
+    // The line is wound in, and it pulls the bobber up out of the water by itself.
     private fun reel() {
         val p = (t / FishingDimens.ReelSeconds).coerceAtMost(1f)
-        // Quick out of the water, slowing as it comes up to the tip.
-        val eased = 1f - (1f - p) * (1f - p) * (1f - p)
-        val to = dangle()
-        bobber = from + (to - from) * eased
         if (p < 1f) return
         if (landing is Landing.Outcome && catchCount > 0 && !risen) {
             enter(Rising)
@@ -432,7 +448,6 @@ internal class FishingRig(width: Float) {
     }
 
     private fun rise() {
-        bobber = dangle()
         val lasts = FishingDimens.RiseSeconds + (catchCount - 1) * FishingDimens.RiseStagger
         if (t < lasts) return
         risen = true
@@ -479,9 +494,11 @@ internal class FishingRig(width: Float) {
             Pulling,
             Rising -> FishingDimens.DangleLength.value / longest
             Reeling -> {
+                // Wound in smoothly: slow to take up, quickest midway, slowing as it comes in.
                 val p = (t / FishingDimens.ReelSeconds).coerceAtMost(1f)
+                val wound = p * p * (3f - 2f * p)
                 val short = FishingDimens.DangleLength.value / longest
-                fromStretch + (short - fromStretch) * p
+                fromStretch + (short - fromStretch) * wound
             }
             else -> lineFor(bobber)
         }

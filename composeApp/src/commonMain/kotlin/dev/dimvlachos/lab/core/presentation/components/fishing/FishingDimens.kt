@@ -63,6 +63,9 @@ internal object FishingDimens {
     val DangleBack = 14.dp
     val DangleDrop = 40.dp
 
+    // A pull takes the line from wherever the bobber hangs over this long, so it doesn't jump.
+    const val TakeSeconds = 0.12f
+
     // Cast, it flies this long in an arc this high, out to this share of the stage's width, with
     // the line paid out this much longer than the way to it, so it sags a little into the water.
     const val CastSeconds = 0.6f
