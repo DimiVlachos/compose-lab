@@ -1,4 +1,4 @@
-package dev.dimvlachos.lab.core.presentation.components.pullcord
+package dev.dimvlachos.lab.core.presentation.components.physics
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
@@ -7,20 +7,29 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
- * A cord as a Verlet rope: [points] points [segment] apart, the first pinned where the lamp holds
- * it, the rest falling under gravity. Each point keeps where it was a step ago as well as where it
- * is, so its speed is the difference: put a point somewhere and it carries on from there. A rope
- * only pulls: a segment longer than its length is drawn back to it, a shorter one is left slack, so
- * the cord crumples when it is thrown up. Positions are in dp.
+ * A rope as Verlet points: [points] points [segment] apart, the first pinned where something holds
+ * it, as a lamp holds its cord or a rod its line, the rest falling under [gravity]. Each point
+ * keeps where it was a step ago as well as where it is, so its speed is the difference: put a point
+ * somewhere and it carries on from there. A rope only pulls: a segment longer than its length is
+ * drawn back to it, a shorter one is left slack, so the rope crumples when it is thrown up. It
+ * loses [damping] of its speed each second, its lengths are put right [passes] times a step, and
+ * moving less than [stillStep] a step it is still. Positions are in dp.
  */
-internal class CordRope(points: Int = PullCordDimens.CordPoints, private val segment: Float) {
+internal class VerletRope(
+    points: Int,
+    private val segment: Float,
+    private val gravity: Float,
+    private val damping: Float,
+    private val passes: Int,
+    private val stillStep: Float,
+) {
     private val x = FloatArray(points)
     private val y = FloatArray(points)
     private val lastX = FloatArray(points)
     private val lastY = FloatArray(points)
 
     // Where a finger holds the end, or unspecified while nothing does: a plain value, so stepping
-    // a held cord boxes nothing.
+    // a held rope boxes nothing.
     private var held: Offset = Offset.Unspecified
 
     /** How far each segment is stretched, 1 at its own length. */
@@ -35,7 +44,7 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
 
     operator fun get(i: Int): Offset = Offset(x[i], y[i])
 
-    /** Hangs the cord at rest straight down from [top]. */
+    /** Hangs the rope at rest straight down from [top]. */
     fun hang(top: Offset) {
         for (i in 0 until size) {
             x[i] = top.x
@@ -69,7 +78,7 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
     }
 
     /**
-     * Sets the cord moving sideways at [speed] dp a second at its end, less towards the top where
+     * Sets the rope moving sideways at [speed] dp a second at its end, less towards the top where
      * it hangs from, as a breath of air would: steps of [dt] then carry it on.
      */
     fun push(speed: Float, dt: Float) {
@@ -80,7 +89,7 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
         still = false
     }
 
-    /** Moves every point by [by], as it is, speed and all: the lamp has been moved. */
+    /** Moves every point by [by], as it is, speed and all: what holds it has been moved. */
     fun shift(by: Offset) {
         for (i in 0 until size) {
             x[i] += by.x
@@ -91,8 +100,8 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
     }
 
     fun step(dt: Float) {
-        val keep = 1f - PullCordDimens.CordDamping * dt
-        val fall = PullCordDimens.Gravity * dt * dt
+        val keep = 1f - damping * dt
+        val fall = gravity * dt * dt
         var moved = 0f
         val end = size - 1
         for (i in 1 until size) {
@@ -109,7 +118,7 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
             y[end] = held.y
         }
         val length = segment * stretch
-        repeat(PullCordDimens.ConstraintPasses) { pass ->
+        repeat(passes) { pass ->
             for (k in 1 until size) {
                 val i = if (pass % 2 == 0) k else size - k
                 val dx = x[i] - x[i - 1]
@@ -132,6 +141,6 @@ internal class CordRope(points: Int = PullCordDimens.CordPoints, private val seg
         for (i in 1 until size) {
             moved = max(moved, max(abs(x[i] - lastX[i]), abs(y[i] - lastY[i])))
         }
-        still = moved < PullCordDimens.StillStep
+        still = moved < stillStep
     }
 }

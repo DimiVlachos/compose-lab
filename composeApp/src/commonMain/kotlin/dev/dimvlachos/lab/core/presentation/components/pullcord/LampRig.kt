@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.geometry.lerp
 import dev.dimvlachos.lab.core.presentation.components.physics.Pendulum
+import dev.dimvlachos.lab.core.presentation.components.physics.VerletRope
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -23,9 +24,15 @@ internal class LampRig(pivot: Offset, private val onClick: () -> Unit) {
 
     private val length = PullCordDimens.CordLength.value
     private val rope =
-        CordRope(PullCordDimens.CordPoints, length / (PullCordDimens.CordPoints - 1)).apply {
-            hang(attachment(0f))
-        }
+        VerletRope(
+                points = PullCordDimens.CordPoints,
+                segment = length / (PullCordDimens.CordPoints - 1),
+                gravity = PullCordDimens.Gravity,
+                damping = PullCordDimens.CordDamping,
+                passes = PullCordDimens.ConstraintPasses,
+                stillStep = PullCordDimens.StillStep,
+            )
+            .apply { hang(attachment(0f)) }
 
     // The shade, a damped pendulum from the ceiling.
     private val shade =

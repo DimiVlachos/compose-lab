@@ -1,6 +1,7 @@
-package dev.dimvlachos.lab.core.presentation.components.pullcord
+package dev.dimvlachos.lab.core.presentation.components.physics
 
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordDimens
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -8,12 +9,22 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CordRopeTest {
+class VerletRopeTest {
     private val top = Offset(100f, 50f)
 
-    private fun rope() = CordRope(points = 12, segment = 10f).apply { hang(top) }
+    // The pull cord's rope: the constants it was tuned with.
+    private fun rope() =
+        VerletRope(
+                points = 12,
+                segment = 10f,
+                gravity = PullCordDimens.Gravity,
+                damping = PullCordDimens.CordDamping,
+                passes = PullCordDimens.ConstraintPasses,
+                stillStep = PullCordDimens.StillStep,
+            )
+            .apply { hang(top) }
 
-    private fun CordRope.run(seconds: Float) {
+    private fun VerletRope.run(seconds: Float) {
         repeat((seconds / PullCordDimens.StepSeconds).toInt()) {
             pin(top)
             step(PullCordDimens.StepSeconds)
@@ -22,7 +33,7 @@ class CordRopeTest {
 
     // Held out at its full length, [angle] radians anticlockwise of straight down, until it hangs
     // there, and let go: as a hand would swing it out.
-    private fun CordRope.swingOut(angle: Float) {
+    private fun VerletRope.swingOut(angle: Float) {
         val end = top + Offset(sin(angle), cos(angle)) * (10f * (size - 1))
         repeat(120) {
             pin(top)
