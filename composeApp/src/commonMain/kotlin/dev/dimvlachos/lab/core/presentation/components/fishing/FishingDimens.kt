@@ -1,5 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.fishing
 
+import androidx.compose.ui.unit.dp
+
 /** The fishing refresh's sizes, timings and physics, in dp, seconds and milliseconds. */
 internal object FishingDimens {
     // The line and the water are stepped at a fixed rate, whatever the frame rate, so they move
@@ -20,4 +22,86 @@ internal object FishingDimens {
     // a second, is still.
     const val StillHeight = 0.02f
     const val StillSpeed = 0.2f
+
+    // The band of water and air the line is fished in: this tall once fully open, which is also
+    // how far the list must be pulled (after the pull's own give) to ask for a refresh. The water's
+    // top lies this far down it.
+    val Band = 96.dp
+    val WaterLevel = 60.dp
+
+    // The rod reaches in from the left edge, its butt just off the screen, rising gently to its
+    // tip. A pull bends it: the tip dips this far, and draws back this far, for each full
+    // threshold of pull, up to twice the threshold. Let go, it springs back at this many swings
+    // a second, losing this share of its swing as it goes; a cast flicks it forward at this speed.
+    val RodButtX = (-6).dp
+    val RodButtY = 36.dp
+    val RodLength = 136.dp
+    const val RodRise = 0.2f
+    val RodDip = 26.dp
+    val RodBack = 8.dp
+    const val MostBend = 2f
+    const val RodHz = 2.6f
+    const val RodDamping = 0.3f
+    const val CastFlick = -6f
+
+    // The line: this many points, at most as long as the stage is wide. A light line, falling
+    // quicker than a real one would at this size, losing this share of its speed each second, its
+    // lengths put right this many times a step, and still once it moves less than this a step.
+    const val LinePoints = 20
+    const val LineGravity = 900f
+    const val LineDamping = 3f
+    const val LinePasses = 20
+    const val LineStill = 0.004f
+
+    // Out of the water the bobber dangles this far below the tip on a short line. Pulled, it is
+    // drawn back and down, so the line goes from slack to taut as the pull reaches the threshold.
+    val DangleLength = 34.dp
+    val DangleBack = 14.dp
+    val DangleDrop = 40.dp
+
+    // Cast, it flies this long in an arc this high, out to this share of the stage's width, with
+    // the line paid out this much longer than the way to it, so it sags a little into the water.
+    const val CastSeconds = 0.6f
+    val ArcHeight = 34.dp
+    const val CastAt = 0.64f
+    const val LineSlack = 1.06f
+
+    // Landing, the bobber pushes the water down this fast across this wide a patch. It rides the
+    // water's swell by this share, so a splash rocks it without tossing it out of the band.
+    const val SplashPush = 120f
+    val SplashSpread = 22.dp
+    const val RideSwell = 0.6f
+
+    // Floating, it bobs this deep this many times a second, each bob sending out a small ripple.
+    const val BobHz = 0.6f
+    val BobDepth = 2.2.dp
+    const val BobPush = 30f
+    val BobSpread = 14.dp
+
+    // However quickly a refresh lands, the bobber floats at least this long first.
+    const val MinWaitSeconds = 0.6f
+
+    // A bite pulls it under this deep, and back, in this long, with a swirl on the water and a
+    // jerk at the rod's tip.
+    const val BiteSeconds = 0.4f
+    val BiteDepth = 9.dp
+    const val BitePush = 220f
+    val BiteSpread = 18.dp
+    const val BiteJerk = 5f
+
+    // Reeled in, the line comes back to the tip in this long.
+    const val ReelSeconds = 0.75f
+
+    // A catch's cards rise out of the water in this long each, one this much after another.
+    const val RiseSeconds = 0.8f
+    const val RiseStagger = 0.15f
+
+    // A snapped line's bobber drifts off this fast, fading out over this long; the rod springs up.
+    const val DriftSeconds = 1.6f
+    const val DriftSpeed = 70f
+    const val SnapFlick = -4f
+
+    // A rod swinging less than this, at less than this a second, is straight.
+    const val StraightBend = 0.002f
+    const val StraightSpeed = 0.01f
 }
