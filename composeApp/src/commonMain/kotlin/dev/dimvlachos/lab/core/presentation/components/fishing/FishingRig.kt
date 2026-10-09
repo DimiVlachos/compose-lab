@@ -89,6 +89,17 @@ internal class FishingRig(width: Float) {
     var bobberAlpha = 1f
         private set
 
+    /** Where the latest splash was, and how long ago, in seconds: its drops fly briefly. */
+    var splashAt = Offset.Zero
+        private set
+
+    var splashAge = Float.MAX_VALUE
+        private set
+
+    /** Whether a splash's drops are still in the air. */
+    val splashing: Boolean
+        get() = splashAge < FishingDimens.SplashSeconds
+
     // Whether the line has snapped, so its end hangs free until the next cast.
     private var broken = false
 
@@ -150,6 +161,7 @@ internal class FishingRig(width: Float) {
             phase == Idle &&
                 pull == 0f &&
                 water.still &&
+                !splashing &&
                 line.still &&
                 abs(bend) < FishingDimens.StraightBend &&
                 abs(bendSpeed) < FishingDimens.StraightSpeed
@@ -284,6 +296,7 @@ internal class FishingRig(width: Float) {
 
     private fun step(dt: Float) {
         t += dt
+        if (splashing) splashAge += dt
         when (phase) {
             Idle,
             Pulling -> holdStill(dt)
@@ -328,6 +341,7 @@ internal class FishingRig(width: Float) {
         if (p >= 1f) {
             bobber = castTo
             water.disturb(castTo.x, FishingDimens.SplashPush, FishingDimens.SplashSpread.value)
+            splash(castTo)
             onSplash()
             enter(Waiting)
         }
@@ -349,6 +363,7 @@ internal class FishingRig(width: Float) {
         when (outcome) {
             is FishingOutcome.Caught -> {
                 water.disturb(castTo.x, FishingDimens.BitePush, FishingDimens.BiteSpread.value)
+                splash(bobber)
                 bendSpeed += FishingDimens.BiteJerk
                 onBite()
                 enter(Biting)
@@ -411,6 +426,11 @@ internal class FishingRig(width: Float) {
         bobber = Offset(x, waterLevel + water.heightAt(x) * FishingDimens.RideSwell)
         bobberAlpha = 1f - p
         if (p >= 1f) finish()
+    }
+
+    private fun splash(at: Offset) {
+        splashAt = Offset(at.x, waterLevel)
+        splashAge = 0f
     }
 
     private fun finish() {

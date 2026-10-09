@@ -1,0 +1,207 @@
+package dev.dimvlachos.lab.core.presentation.components.fishing
+
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.presentation.ui.AppColors
+import kotlin.math.cos
+import kotlin.math.sin
+
+/**
+ * Draws a [FishingRefreshState]'s band: the rod, its line and the bobber in the air, the water over
+ * the top of the list, and a splash's drops. Its paths are kept and drawn again each frame, so a
+ * frame allocates nothing; only the water's shading is made again, and only when the band's height
+ * or its colours change.
+ */
+internal class FishingPainter {
+    private val rod = Path()
+    private val line = Path()
+    private val water = Path()
+
+    private var shadeFor = -1f
+    private var shadeColors: AppColors? = null
+    private var shade: Brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+
+    /** Draws the band, open as far as the pull has opened it, over whatever is under it. */
+    fun DrawScope.draw(state: FishingRefreshState, colors: AppColors) {
+        state.frame
+        val open = state.open
+        if (open <= 0f) return
+        val band = FishingDimens.Band.toPx()
+        // The band opens from the top: the rod shows first, then the water as it opens further.
+        clipRect(bottom = band * open) {
+            drawRod(state, colors)
+            drawLine(state, colors)
+            drawBobber(state, colors)
+            drawWater(state, colors, band)
+            drawSplash(state, colors)
+        }
+    }
+
+    private fun DrawScope.drawRod(state: FishingRefreshState, colors: AppColors) {
+        val rig = state.rig
+        val butt = state.px(rig.butt)
+        val tip = state.px(rig.tip)
+        // The rod bends along its length: it leaves the butt pointing where it would rest, and
+        // curves round to its bent tip.
+        val reach = FishingDimens.RodLength.toPx()
+        val ahead =
+            butt +
+                Offset(cos(FishingDimens.RodRise), -sin(FishingDimens.RodRise)) * (reach * RodStiff)
+        rod.rewind()
+        rod.moveTo(butt.x, butt.y)
+        rod.quadraticTo(ahead.x, ahead.y, tip.x, tip.y)
+        drawPath(rod, colors.rodBlank, style = Stroke(RodWidth.toPx(), cap = StrokeCap.Round))
+        // The cork handle and the reel, near the butt.
+        val along = (ahead - butt) / (reach * RodStiff)
+        val handleEnd = butt + along * HandleLength.toPx()
+        drawLine(colors.rodCork, butt, handleEnd, HandleWidth.toPx(), StrokeCap.Round)
+        val reel = butt + along * ReelAt.toPx() + Offset(0f, ReelDrop.toPx())
+        drawCircle(colors.rodReel, ReelRadius.toPx(), reel)
+        drawCircle(colors.rodBlank, ReelRadius.toPx() * 0.4f, reel)
+    }
+
+    private fun DrawScope.drawLine(state: FishingRefreshState, colors: AppColors) {
+        val rope = state.rig.line
+        line.rewind()
+        val first = state.px(rope[0])
+        line.moveTo(first.x, first.y)
+        // Through the midpoints, curving at each point: a smooth line from a few points.
+        for (i in 1 until rope.size - 1) {
+            val at = state.px(rope[i])
+            val next = state.px(rope[i + 1])
+            line.quadraticTo(at.x, at.y, (at.x + next.x) / 2f, (at.y + next.y) / 2f)
+        }
+        val last = state.px(rope[rope.size - 1])
+        line.lineTo(last.x, last.y)
+        drawPath(
+            line,
+            colors.fishingLine,
+            style = Stroke(LineWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+    }
+
+    private fun DrawScope.drawBobber(state: FishingRefreshState, colors: AppColors) {
+        val rig = state.rig
+        val alpha = rig.bobberAlpha
+        if (alpha <= 0f) return
+        val at = state.px(rig.bobber)
+        val radius = BobberRadius.toPx()
+        // Out of the water, an empty hook hangs under it.
+        val out = rig.bobber.y < FishingDimens.WaterLevel.value - HookShows
+        if (out) {
+            val hook = at + Offset(0f, radius + HookDrop.toPx())
+            drawLine(colors.fishingLine, at, hook, LineWidth.toPx(), alpha = alpha)
+            drawArc(
+                colors.rodReel,
+                startAngle = 0f,
+                sweepAngle = 200f,
+                useCenter = false,
+                topLeft = hook - Offset(HookRadius.toPx() * 2f, HookRadius.toPx()),
+                size = Size(HookRadius.toPx() * 2f, HookRadius.toPx() * 2f),
+                alpha = alpha,
+                style = Stroke(LineWidth.toPx() * 1.4f, cap = StrokeCap.Round),
+            )
+        }
+        drawCircle(colors.bobberWhite, radius, at, alpha = alpha)
+        drawArc(
+            colors.bobberRed,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = true,
+            topLeft = at - Offset(radius, radius),
+            size = Size(radius * 2f, radius * 2f),
+            alpha = alpha,
+        )
+        drawLine(
+            colors.bobberRed,
+            at - Offset(0f, radius),
+            at - Offset(0f, radius + StemLength.toPx()),
+            StemWidth.toPx(),
+            StrokeCap.Round,
+            alpha = alpha,
+        )
+    }
+
+    private fun DrawScope.drawWater(state: FishingRefreshState, colors: AppColors, band: Float) {
+        val surface = state.rig.water
+        val level = FishingDimens.WaterLevel.toPx()
+        val heights = surface.heights
+        val gap = size.width / (heights.size - 1)
+        water.rewind()
+        water.moveTo(0f, level + heights[0] * state.density)
+        for (i in 1 until heights.size) {
+            water.lineTo(i * gap, level + heights[i] * state.density)
+        }
+        // The crest along the top, then the body under it down to the band's foot.
+        drawPath(
+            water,
+            colors.waterCrest,
+            style = Stroke(CrestWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+        water.lineTo(size.width, band)
+        water.lineTo(0f, band)
+        water.close()
+        if (band != shadeFor || colors !== shadeColors) {
+            shadeFor = band
+            shadeColors = colors
+            shade =
+                Brush.verticalGradient(
+                    listOf(colors.waterTop, colors.waterDeep),
+                    startY = level,
+                    endY = band,
+                )
+        }
+        drawPath(water, shade)
+    }
+
+    // A splash's drops: thrown up and out from where it landed, falling back as they fade.
+    private fun DrawScope.drawSplash(state: FishingRefreshState, colors: AppColors) {
+        val rig = state.rig
+        if (!rig.splashing) return
+        val p = rig.splashAge / FishingDimens.SplashSeconds
+        val from = state.px(rig.splashAt)
+        val high = FishingDimens.SplashHeight.toPx()
+        val reach = FishingDimens.SplashReach.toPx()
+        val drops = FishingDimens.SplashDrops
+        for (i in 0 until drops) {
+            // Spread evenly from leaning left to leaning right, the middle ones highest.
+            val lean = i / (drops - 1f) * 2f - 1f
+            val rise = high * (1f - lean * lean * 0.5f)
+            val x = from.x + lean * reach * p
+            val y = from.y - 4f * rise * p * (1f - p)
+            drawCircle(colors.waterCrest, DropRadius.toPx() * (1f - p * 0.5f), Offset(x, y), 1f - p)
+        }
+    }
+
+    private companion object {
+        // How straight the rod leaves its butt, as a share of its length: a stiff rod bends near
+        // its tip.
+        const val RodStiff = 0.6f
+        val RodWidth = 3.dp
+        val HandleLength = 30.dp
+        val HandleWidth = 6.dp
+        val ReelAt = 22.dp
+        val ReelDrop = 7.dp
+        val ReelRadius = 5.dp
+        val LineWidth = 1.dp
+        val BobberRadius = 5.dp
+        val StemLength = 4.dp
+        val StemWidth = 1.5.dp
+        val HookDrop = 6.dp
+        val HookRadius = 3.dp
+        val CrestWidth = 1.5.dp
+        val DropRadius = 2.dp
+
+        // The hook shows once the bobber is this many dp above the water.
+        const val HookShows = 8f
+    }
+}

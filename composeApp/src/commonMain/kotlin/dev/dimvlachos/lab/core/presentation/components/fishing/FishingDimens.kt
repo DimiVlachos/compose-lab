@@ -72,6 +72,12 @@ internal object FishingDimens {
     val SplashSpread = 22.dp
     const val RideSwell = 0.6f
 
+    // Its drops fly this long, this many of them, up to this high and this far out either side.
+    const val SplashSeconds = 0.55f
+    const val SplashDrops = 7
+    val SplashHeight = 22.dp
+    val SplashReach = 18.dp
+
     // Floating, it bobs this deep this many times a second, each bob sending out a small ripple.
     const val BobHz = 0.6f
     val BobDepth = 2.2.dp

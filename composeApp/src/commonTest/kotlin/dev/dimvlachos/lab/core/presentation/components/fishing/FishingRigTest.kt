@@ -107,6 +107,18 @@ class FishingRigTest {
     }
 
     @Test
+    fun aSplashThrowsDropsUpOnlyBriefly() {
+        val rig = rig()
+        assertFalse(rig.splashing)
+        rig.pullAndCast()
+        rig.runWhile(Casting)
+        assertTrue(rig.splashing)
+        assertEquals(rig.bobber.x, rig.splashAt.x, 0.5f)
+        rig.run(FishingDimens.SplashSeconds + 0.1f)
+        assertFalse(rig.splashing)
+    }
+
+    @Test
     fun anOutcomeDuringTheCastWaitsForTheBobberAndTheMinimumWait() {
         val heard = Heard()
         val rig = rig(heard)
