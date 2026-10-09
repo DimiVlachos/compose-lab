@@ -66,11 +66,11 @@ class FishingDemoUiTest {
         // The second finds nothing new, faster than the bobber's shortest float: it floats on
         // after the answer is in, and nothing recomposes while it does.
         mainClock.advanceTimeBy(2_200)
-        assertEquals(FishingStatus.Landed(FishingOutcome.NothingNew), feed!!.status)
+        assertEquals(FishingStatus.Landed(FishingOutcome.NothingNew), feed.status)
         val floating = compositions
         mainClock.advanceTimeBy(600)
         assertEquals(floating, compositions, "the floating bobber must not recompose the refresh")
-        assertEquals(11, feed!!.items.size)
+        assertEquals(11, feed.items.size)
         // The third fails, and says so.
         mainClock.advanceTimeBy(5_900)
         onNode(hasContentDescription("Couldn’t refresh")).assertExists()
@@ -78,7 +78,7 @@ class FishingDemoUiTest {
         mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 15_000 + 100)
         assertTrue(finished)
         onNodeWithText("Folegandros").assertExists()
-        assertEquals(12, feed!!.items.size)
+        assertEquals(12, feed.items.size)
         assertFalse(fishing!!.awake, "everything must be at rest by the end")
     }
 

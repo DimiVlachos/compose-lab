@@ -10,6 +10,7 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -90,7 +91,9 @@ public fun FishingRefresh(
             state.onSnap = {}
         }
     }
-    LaunchedEffect(state) { snapshotFlow { currentStatus }.collect { state.follow(it) } }
+    // Followed as the status is applied, before the frame is laid out: a catch the caller puts on
+    // top of its list in the same change is under water from the first frame it is laid out in.
+    SideEffect { state.follow(status) }
     // The rig steps on a frame at a time while anything moves or the band shows, and the loop
     // sleeps once everything is at rest out of sight.
     LaunchedEffect(state) {

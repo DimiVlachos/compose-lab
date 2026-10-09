@@ -117,9 +117,7 @@ internal fun FishingDemo(
     Column(
         Modifier.fillMaxSize()
             .background(colors.background)
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-            )
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
     ) {
         Column(
             Modifier.fillMaxWidth()

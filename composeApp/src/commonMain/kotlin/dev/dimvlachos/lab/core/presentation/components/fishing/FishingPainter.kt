@@ -66,7 +66,7 @@ internal class FishingPainter {
         drawLine(colors.rodCork, butt, handleEnd, HandleWidth.toPx(), StrokeCap.Round)
         val reel = butt + along * ReelAt.toPx() + Offset(0f, ReelDrop.toPx())
         drawCircle(colors.rodReel, ReelRadius.toPx(), reel)
-        drawCircle(colors.rodBlank, ReelRadius.toPx() * 0.4f, reel)
+        drawCircle(colors.background, ReelRadius.toPx() * 0.4f, reel)
     }
 
     private fun DrawScope.drawLine(state: FishingRefreshState, colors: AppColors) {
@@ -153,9 +153,13 @@ internal class FishingPainter {
         if (band != shadeFor || colors !== shadeColors) {
             shadeFor = band
             shadeColors = colors
+            // Clear at the top, deeper below, then fading out at its foot, so the water melts into
+            // the list under it rather than ending in a hard edge across it.
             shade =
                 Brush.verticalGradient(
-                    listOf(colors.waterTop, colors.waterDeep),
+                    0f to colors.waterTop,
+                    DeepestAt to colors.waterDeep,
+                    1f to colors.waterDeep.copy(alpha = 0f),
                     startY = level,
                     endY = band,
                 )
@@ -171,12 +175,11 @@ internal class FishingPainter {
         val from = state.px(rig.splashAt)
         val high = FishingDimens.SplashHeight.toPx()
         val reach = FishingDimens.SplashReach.toPx()
-        val drops = FishingDimens.SplashDrops
-        for (i in 0 until drops) {
-            // Spread evenly from leaning left to leaning right, the middle ones highest.
-            val lean = i / (drops - 1f) * 2f - 1f
-            val rise = high * (1f - lean * lean * 0.5f)
-            val x = from.x + lean * reach * p
+        for (i in DropLean.indices) {
+            // Each drop thrown its own way, some higher than others, as water splashes: not an even
+            // fan.
+            val rise = high * DropRise[i]
+            val x = from.x + DropLean[i] * reach * p
             val y = from.y - 4f * rise * p * (1f - p)
             drawCircle(colors.waterCrest, DropRadius.toPx() * (1f - p * 0.5f), Offset(x, y), 1f - p)
         }
@@ -200,6 +203,15 @@ internal class FishingPainter {
         val HookRadius = 3.dp
         val CrestWidth = 1.5.dp
         val DropRadius = 2.dp
+
+        // Where a splash's drops lean, from far left (-1) to far right (1), and how high each
+        // flies,
+        // as a share of the splash's height: uneven, as a real splash is.
+        val DropLean = floatArrayOf(-1f, -0.6f, -0.25f, 0.1f, 0.4f, 0.75f, 0.95f)
+        val DropRise = floatArrayOf(0.5f, 0.85f, 1f, 0.7f, 0.95f, 0.6f, 0.4f)
+
+        // How far down the water it is at its deepest colour, as a share of its depth.
+        const val DeepestAt = 0.55f
 
         // The hook shows once the bobber is this many dp above the water.
         const val HookShows = 8f

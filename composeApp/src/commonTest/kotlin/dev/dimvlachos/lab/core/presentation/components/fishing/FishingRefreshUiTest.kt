@@ -219,6 +219,18 @@ class FishingRefreshUiTest {
         assertEquals(0.dp, rowTop(0))
     }
 
+    @Test
+    fun aCatchIsUnderWaterFromTheFirstFrameItLands() = runComposeUiTest {
+        val host = fishing(rising = true)
+        runOnIdle { host.status = FishingStatus.Refreshing }
+        mainClock.advanceTimeBy(1_500)
+        // The caller puts its catch on top as it lands: on the very frame it does, the catch must
+        // already be under water, or it flashes up at full height before it sinks.
+        runOnIdle { host.status = FishingStatus.Landed(FishingOutcome.Caught(1)) }
+        mainClock.advanceTimeByFrame()
+        assertTrue(rowTop(1) <= 1.dp, "the catch showed ${rowTop(1)} tall as it landed")
+    }
+
     // How far row [i] starts below the list's own top.
     private fun ComposeUiTest.rowTop(i: Int): Dp =
         onNodeWithTag("row$i").getUnclippedBoundsInRoot().top -

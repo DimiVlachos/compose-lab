@@ -71,6 +71,7 @@ public class FishingRefreshState internal constructor() {
      * seen before, as when the screen is made again, so it doesn't play a second time.
      */
     internal fun follow(status: FishingStatus) {
+        if (status == followed) return
         val was = followed
         followed = status
         if (was == null) {
