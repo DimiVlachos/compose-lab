@@ -40,7 +40,6 @@ public class PopUpBookState
 internal constructor(
     public val spreadCount: Int,
     opened: Int = 0,
-    private val reducedMotion: Boolean = false,
 ) {
     init {
         require(spreadCount >= 1) { "A pop-up book needs a spread" }
@@ -138,6 +137,8 @@ internal constructor(
      */
     public fun dragStart(position: Offset): Boolean {
         val layout = layout ?: return false
+        // One page in hand at a time: a second finger doesn't take it over.
+        if (held >= 0) return false
         val forward = position.y > layout.gutterY
         val j = if (forward) open.indexOfFirst { !it } else open.indexOfLast { it }
         if (j < 0) return false
@@ -151,6 +152,7 @@ internal constructor(
         return true
     }
 
+    /** The finger holding a page moves to [position]; the page follows it over. */
     public fun dragTo(position: Offset) {
         val layout = layout ?: return
         if (held < 0) return
@@ -165,19 +167,21 @@ internal constructor(
      * back.
      */
     public fun dragEnd(velocity: Velocity) {
-        val layout = layout ?: return
         val j = held
         if (j < 0) return
         held = -1
+        val layout = layout
+        if (layout == null) {
+            letGo(j, angles[j] > pi / 2f)
+            return
+        }
         if (!holdMoved) {
             if (holdForward) next() else previous()
             return
         }
         val speed = -velocity.y / layout.span * pi
         speeds[j] = speed
-        open[j] = angles[j] + PopUpDimens.CommitLead * speed > pi / 2f
-        glide(j)
-        wake()
+        letGo(j, angles[j] + PopUpDimens.CommitLead * speed > pi / 2f)
     }
 
     /**
@@ -188,8 +192,19 @@ internal constructor(
         val j = held
         if (j < 0) return
         held = -1
-        open[j] = angles[j] > pi / 2f
-        glide(j)
+        letGo(j, angles[j] > pi / 2f)
+    }
+
+    // Leaf [j] is let go to lie open or shut. Leaves lie open from the cover on, so if Next or
+    // Back was pressed while it was held, the leaves before it open with it, or those after it
+    // shut with it, and the book can always come to rest.
+    private fun letGo(j: Int, opens: Boolean) {
+        val range = if (opens) 0..j else j until spreadCount
+        for (k in range) {
+            if (open[k] == opens && k != j) continue
+            open[k] = opens
+            glide(k)
+        }
         wake()
     }
 
@@ -210,6 +225,7 @@ internal constructor(
         return true
     }
 
+    /** The finger holding the tab moves to [position]; the tab slides out or in with it. */
     public fun tabTo(position: Offset) {
         val layout = layout ?: return
         val s = tabHeld
@@ -218,6 +234,7 @@ internal constructor(
         tabTravel[s] = travel.coerceIn(0f, layout.tabTravel(s))
     }
 
+    /** The finger lets go of the tab, and a spring draws it back in. */
     public fun tabEnd() {
         tabHeld = -1
         wake()
@@ -259,7 +276,7 @@ internal constructor(
 
     private fun step(dt: Float) {
         time += dt
-        val damping = if (reducedMotion) PopUpDimens.LeafDamping * 2f else PopUpDimens.LeafDamping
+        val damping = PopUpDimens.LeafDamping
         for (j in 0 until spreadCount) {
             if (j == held) continue
             val target = if (open[j]) pi else 0f
@@ -343,8 +360,7 @@ internal constructor(
             if (tabTravel[s] > 0f || sailSpeeds[s] != 0f) moving = true
         }
         val showing = spread - 1
-        if (!reducedMotion && showing >= 0 && showing < restless.size && restless[showing])
-            moving = true
+        if (showing >= 0 && showing < restless.size && restless[showing]) moving = true
         if (awake != moving) awake = moving
     }
 

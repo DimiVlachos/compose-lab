@@ -91,6 +91,17 @@ class PopUpMathTest {
     }
 
     @Test
+    fun aBookOfManySpreadsIsOrdered() {
+        // Forty leaves fanned out, so every spread but the last (whose leaf lies on the board) is
+        // a little open: 40 leaves and the board, and 39 spreads, to order.
+        val angles = FloatArray(40) { pi * (39 - it) / 39f }
+        val out = IntArray(2 * angles.size + 1)
+        val n = PopUpMath.drawOrder(angles, out)
+        assertEquals(80, n)
+        assertTrue(out[n - 1] >= PopUpMath.Spread)
+    }
+
+    @Test
     fun aShutSpreadIsNotDrawn() {
         val out = IntArray(8)
         val n = PopUpMath.drawOrder(floatArrayOf(0f, 0f), out)

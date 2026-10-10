@@ -270,6 +270,39 @@ class PopUpBookStateTest {
     }
 
     @Test
+    fun backTappedWhileAPageIsHeldForwardStillSettles() {
+        openTo(2)
+        // A thumb holds leaf 2 forward; the other taps Back, shutting leaf 1; the page is let go
+        // past halfway.
+        state.dragStart(Offset(100f, 400f))
+        state.previous()
+        state.dragTo(Offset(100f, 400f - 260f))
+        state.dragEnd(Velocity.Zero)
+        settle()
+        assertFalse(state.awake, "angles ${state.angles.toList()}")
+        assertEquals(state.destination, state.spread)
+    }
+
+    @Test
+    fun nextTappedWhileAPageIsHeldBackStillSettles() {
+        openTo(2)
+        // Leaf 1 held back, Next opens leaf 2, and leaf 1 is let fall back.
+        state.dragStart(Offset(100f, 200f))
+        state.next()
+        state.dragTo(Offset(100f, 200f + 30f))
+        state.dragEnd(Velocity.Zero)
+        settle()
+        assertFalse(state.awake, "angles ${state.angles.toList()}")
+        assertEquals(state.destination, state.spread)
+    }
+
+    @Test
+    fun aSecondFingerCannotTakeAHeldPage() {
+        assertTrue(state.dragStart(Offset(100f, 400f)))
+        assertFalse(state.dragStart(Offset(120f, 420f)))
+    }
+
+    @Test
     fun theFrameCountsAdvances() {
         val before = state.frame
         state.next()

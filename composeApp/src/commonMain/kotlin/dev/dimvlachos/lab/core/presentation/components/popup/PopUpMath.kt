@@ -172,6 +172,12 @@ internal object PopUpMath {
      */
     fun drawOrder(angles: FloatArray, out: IntArray): Int {
         val leaves = angles.size
+        // Room for every leaf, the board and every spread.
+        if (codes.size < 2 * leaves + 1) {
+            codes = IntArray(2 * leaves + 1)
+            keys = FloatArray(2 * leaves + 1)
+            stack = FloatArray(2 * leaves + 1)
+        }
         var count = 0
         for (j in 0..leaves) {
             val angle = if (j < leaves) angles[j] else 0f
@@ -214,8 +220,9 @@ internal object PopUpMath {
         return count
     }
 
-    private const val MaxItems = 64
-    private val codes = IntArray(MaxItems)
-    private val keys = FloatArray(MaxItems)
-    private val stack = FloatArray(MaxItems)
+    // Scratch for ordering, grown to fit the largest book drawn. Drawing happens on the UI thread
+    // only, so one set serves every book.
+    private var codes = IntArray(16)
+    private var keys = FloatArray(16)
+    private var stack = FloatArray(16)
 }
