@@ -166,28 +166,14 @@ internal class PopUpPainter {
         if (spread.tab != null)
             drawTab(scope, spread.tab, state.tabTravel[s], near, camera, tab, tabLine)
         // Pieces far to near.
+        val frontSeen = PopUpMath.pieceFrontSeen(near, far)
+        val normal = PopUpMath.pieceNormal(near, far).let { if (frontSeen) it else -it }
         val count = pieces.size
         if (depthOrder.size < count) {
             depthOrder = IntArray(count)
             depths = FloatArray(count)
         }
-        for (i in 0 until count) {
-            depthOrder[i] = i
-            val piece = pieces[i]
-            depths[i] =
-                camera.nearness(PopUpMath.base(piece, near, far, piece.x + piece.width / 2f))
-        }
-        for (i in 1 until count) {
-            val k = depthOrder[i]
-            var m = i - 1
-            while (m >= 0 && depths[depthOrder[m]] > depths[k]) {
-                depthOrder[m + 1] = depthOrder[m]
-                m--
-            }
-            depthOrder[m + 1] = k
-        }
-        val frontSeen = PopUpMath.pieceFrontSeen(near, far)
-        val normal = PopUpMath.pieceNormal(near, far).let { if (frontSeen) it else -it }
+        piecesFarToNear(pieces, near, far, depthOrder, depths)
         val brightness = PopUpMath.brightness(normal)
         // Seen from behind, a piece is its own shape in plain paper.
         val filter = if (frontSeen) shade(brightness) else paperShade(art.paperBack, brightness)
@@ -213,6 +199,37 @@ internal class PopUpPainter {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Writes into [order] the indices of [pieces] from the furthest to the nearest, for a spread
+     * with its pages at [near] and [far], using [depths] as scratch.
+     */
+    fun piecesFarToNear(
+        pieces: List<PopUpPiece>,
+        near: Float,
+        far: Float,
+        order: IntArray,
+        depths: FloatArray,
+    ) {
+        // A spread's pieces all lean the same way, so they are parallel sheets: the one further
+        // along their facing side, towards the eye, is in front, at every angle of the turn.
+        val frontSeen = PopUpMath.pieceFrontSeen(near, far)
+        val facing = PopUpMath.pieceNormal(near, far).let { if (frontSeen) it else -it }
+        for (i in pieces.indices) {
+            order[i] = i
+            val piece = pieces[i]
+            depths[i] = PopUpMath.base(piece, near, far, piece.x) dot facing
+        }
+        for (i in 1 until pieces.size) {
+            val k = order[i]
+            var m = i - 1
+            while (m >= 0 && depths[order[m]] > depths[k]) {
+                order[m + 1] = order[m]
+                m--
+            }
+            order[m + 1] = k
         }
     }
 

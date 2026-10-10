@@ -76,9 +76,6 @@ internal class BookCamera(val width: Float, val height: Float) {
         return Offset(cx + pxPerUnit * p.x * s, cy - pxPerUnit * up(p.y, p.z) * s)
     }
 
-    /** How near the eye [p] is: larger is nearer. */
-    fun nearness(p: Vec3): Float = toward(p.y, p.z)
-
     // Up the screen, and towards the eye, once the book is pitched.
     private fun up(y: Float, z: Float) = y * cosPitch + z * sinPitch
 
