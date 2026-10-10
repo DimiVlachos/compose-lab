@@ -67,6 +67,9 @@ import org.jetbrains.compose.resources.stringResource
 // The cover, then three spreads.
 private const val Spreads = 3
 
+// Lines kept for a caption's text: the longest wraps onto three on a phone.
+private const val CaptionLines = 3
+
 // Between a script's taps when it turns several leaves.
 private const val RiffleMs = 380L
 
@@ -156,7 +159,13 @@ internal fun PopUpDemo(state: DemoState) {
             modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(spacing.small))
-        Text(stringResource(body), style = type.body, color = colors.textMuted)
+        // Room for the longest caption, so a shorter one doesn't let the book grow and jump.
+        Text(
+            stringResource(body),
+            style = type.body,
+            color = colors.textMuted,
+            minLines = CaptionLines,
+        )
         Spacer(Modifier.height(spacing.large))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (shown > 0 && !ended) {
