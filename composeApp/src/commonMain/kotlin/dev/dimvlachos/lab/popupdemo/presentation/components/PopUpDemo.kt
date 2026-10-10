@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,7 +60,9 @@ import dev.dimvlachos.lab.resources.popup_next
 import dev.dimvlachos.lab.resources.popup_open
 import dev.dimvlachos.lab.resources.popup_skip
 import dev.dimvlachos.lab.resources.popup_start
+import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -93,11 +96,24 @@ internal fun PopUpDemo(state: DemoState) {
     val finger = remember { PopUpFinger() }
     val scope = rememberCoroutineScope()
     var finished by rememberSaveable { mutableStateOf(false) }
+    // Where the book is headed while it turns several leaves at once: the caption shows that
+    // spread at once instead of each one the leaves pass on the way.
+    var heading by remember { mutableStateOf<Int?>(null) }
+    suspend fun jumpTo(target: Int, tapWith: PopUpFinger?) {
+        val goal = target.coerceIn(0, Spreads)
+        if (abs(goal - book.destination) > 1) heading = goal
+        try {
+            turnTo(book, tapWith, goal)
+            snapshotFlow { book.spread }.first { it == goal }
+        } finally {
+            heading = null
+        }
+    }
     val colors = LabTheme.colors
     val type = LabTheme.typography
     val spacing = LabTheme.spacing
 
-    LaunchedEffect(book, state.selectedIndex) { turnTo(book, finger, state.selectedIndex) }
+    LaunchedEffect(book, state.selectedIndex) { jumpTo(state.selectedIndex, tapWith = finger) }
     DisposableEffect(state, book) {
         state.setPopUpPageHandler { from, to, duration -> finger.drag(book, from, to, duration) }
         state.setPopUpTabHandler { out, duration -> finger.pullTab(book, out, duration) }
@@ -107,7 +123,7 @@ internal fun PopUpDemo(state: DemoState) {
         }
     }
 
-    val shown = book.spread
+    val shown = heading ?: book.spread
     // The tour's end shows only while the book lies open at its last spread: once the book is
     // turned back, by a finger or by the script, the captions follow it again.
     val ended = finished && shown == Spreads
@@ -129,13 +145,8 @@ internal fun PopUpDemo(state: DemoState) {
             Spacer(Modifier.weight(1f))
             TextButton(
                 onClick = {
-                    scope.launch {
-                        while (book.destination < Spreads) {
-                            book.next()
-                            delay(RiffleMs)
-                        }
-                        finished = true
-                    }
+                    finished = true
+                    scope.launch { jumpTo(Spreads, tapWith = null) }
                 }
             ) {
                 Text(stringResource(Res.string.popup_skip), color = colors.textMuted)
@@ -186,7 +197,7 @@ internal fun PopUpDemo(state: DemoState) {
                     when {
                         ended -> {
                             finished = false
-                            scope.launch { turnTo(book, finger = null, target = 0) }
+                            scope.launch { jumpTo(0, tapWith = null) }
                         }
                         shown < Spreads -> {
                             finished = false

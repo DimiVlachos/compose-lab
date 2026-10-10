@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -82,5 +84,38 @@ class PopUpDemoUiTest {
         mainClock.advanceTimeBy(4_000)
         val last = onNodeWithText("Ride the meltemi").getUnclippedBoundsInRoot().top
         assertEquals(first, last)
+    }
+
+    @Test
+    fun readAgainGoesStraightToTheCoversCaption() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent { LabTheme { PopUpDemo(DemoState()) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Skip").performClick()
+        mainClock.advanceTimeBy(4_000)
+        onNodeWithText("Read again").performClick()
+        // While the leaves turn back, the caption is the cover's, never a spread passed on the way.
+        repeat(12) {
+            mainClock.advanceTimeBy(250)
+            onNodeWithText("A pop-up guide to the islands. Open the cover to begin.")
+                .assertIsDisplayed()
+            onAllNodesWithText("Ride the meltemi").assertCountEquals(0)
+            onAllNodesWithText("Plan the crossing").assertCountEquals(0)
+            onAllNodesWithText("Find your island").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun skipGoesStraightToTheEndCaption() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent { LabTheme { PopUpDemo(DemoState()) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Skip").performClick()
+        repeat(12) {
+            mainClock.advanceTimeBy(250)
+            onNodeWithText("Καλό ταξίδι!").assertIsDisplayed()
+            onAllNodesWithText("Find your island").assertCountEquals(0)
+            onAllNodesWithText("Plan the crossing").assertCountEquals(0)
+        }
     }
 }
