@@ -1,6 +1,11 @@
 package dev.dimvlachos.lab.popupdemo.presentation.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +79,9 @@ private const val Spreads = 3
 // Lines kept for a caption's text: the longest wraps onto three on a phone.
 private const val CaptionLines = 3
 
+// How long the buttons' labels take to change.
+private const val LabelMs = 300
+
 // Between a script's taps when it turns several leaves.
 private const val RiffleMs = 380L
 
@@ -128,9 +136,8 @@ internal fun PopUpDemo(state: DemoState) {
     // The tour's end shows only while the book lies open at its last spread: once the book is
     // turned back, by a finger or by the script, the captions follow it again.
     val ended = finished && shown == Spreads
-    val (title, body) =
-        if (ended) Res.string.popup_end_title to Res.string.popup_end_body else captions[shown]
-    val titleText = stringResource(title)
+    // The book's name for a screen reader: the caption's title.
+    val titleText = stringResource(if (ended) Res.string.popup_end_title else captions[shown].first)
     sky.showFor(if (ended) Paper.skies.lastIndex else shown)
     Column(
         Modifier.fillMaxSize()
@@ -165,23 +172,36 @@ internal fun PopUpDemo(state: DemoState) {
         }
         Dots(selected = shown - 1, Paper.button, Paper.inkFaint)
         Spacer(Modifier.height(spacing.medium))
-        Text(
-            titleText,
-            style = type.title,
-            color = Paper.ink,
-            modifier = Modifier.semantics { heading() },
-        )
-        Spacer(Modifier.height(spacing.small))
-        // Room for the longest caption, so a shorter one doesn't let the book grow and jump.
-        Text(
-            stringResource(body),
-            style = type.body,
-            color = Paper.inkMuted,
-            minLines = CaptionLines,
-        )
+        // The caption turns over like a leaf as the book moves on.
+        TurningCaption(index = if (ended) captions.size else shown) { at ->
+            val (atTitle, atBody) =
+                if (at == captions.size) Res.string.popup_end_title to Res.string.popup_end_body
+                else captions[at]
+            Column {
+                Text(
+                    stringResource(atTitle),
+                    style = type.title,
+                    color = Paper.ink,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Spacer(Modifier.height(spacing.small))
+                // Room for the longest caption, so a shorter one doesn't let the book grow and
+                // jump.
+                Text(
+                    stringResource(atBody),
+                    style = type.body,
+                    color = Paper.inkMuted,
+                    minLines = CaptionLines,
+                )
+            }
+        }
         Spacer(Modifier.height(spacing.large))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (shown > 0 && !ended) {
+            AnimatedVisibility(
+                shown > 0 && !ended,
+                enter = fadeIn(tween(LabelMs)),
+                exit = fadeOut(tween(LabelMs)),
+            ) {
                 TextButton(onClick = { book.previous() }) {
                     Text(stringResource(Res.string.popup_back), color = Paper.ink)
                 }
@@ -214,7 +234,11 @@ internal fun PopUpDemo(state: DemoState) {
                         contentColor = Paper.onButton,
                     ),
             ) {
-                Text(stringResource(next))
+                // The label crossfades, so the button reads Open, Next, Start exploring as the
+                // tour goes, without a jump.
+                Crossfade(next, animationSpec = tween(LabelMs), label = "next") { label ->
+                    Text(stringResource(label))
+                }
             }
         }
     }

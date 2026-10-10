@@ -166,4 +166,28 @@ class PopUpDemoUiTest {
         val light = caption()
         assertTrue((light.red + light.green + light.blue) / 3f > 0.85f, "caption area $light")
     }
+
+    @Test
+    fun theCaptionTurnsOverLikeAPageInsteadOfSnapping() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent { LabTheme { PopUpDemo(DemoState()) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Open").performClick()
+        val oldCaption = "A pop-up guide to the islands. Open the cover to begin."
+        val newCaption = "Beaches, villages and chapels on 24 inhabited islands."
+        var bothAtOnce = false
+        repeat(60) {
+            mainClock.advanceTimeBy(33)
+            val old = onAllNodesWithText(oldCaption).fetchSemanticsNodes().isNotEmpty()
+            val new = onAllNodesWithText(newCaption).fetchSemanticsNodes().isNotEmpty()
+            if (old && new) bothAtOnce = true
+        }
+        assertTrue(
+            bothAtOnce,
+            "the old caption should still be folding away as the new one comes in",
+        )
+        // Settled: only the new caption is left.
+        onAllNodesWithText(oldCaption).assertCountEquals(0)
+        onNodeWithText(newCaption).assertIsDisplayed()
+    }
 }
