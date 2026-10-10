@@ -53,6 +53,13 @@ internal constructor(
     private val speeds = FloatArray(spreadCount)
     private val open = BooleanArray(spreadCount) { it < opened }
 
+    // A turning leaf follows a set point that glides from where the leaf was to where it is going:
+    // easing in and out for a turn from rest, easing out for one already moving.
+    private val glideFrom = FloatArray(spreadCount)
+    private val glideClock = FloatArray(spreadCount)
+    private val glideLength = FloatArray(spreadCount)
+    private val glideEasesIn = BooleanArray(spreadCount)
+
     internal val tabTravel = FloatArray(spreadCount)
     private val tabSpeeds = FloatArray(spreadCount)
     private val pulledBefore = FloatArray(spreadCount)
@@ -112,6 +119,7 @@ internal constructor(
         val j = open.indexOfFirst { !it }
         if (j < 0) return
         open[j] = true
+        glide(j)
         wake()
     }
 
@@ -120,6 +128,7 @@ internal constructor(
         val j = open.indexOfLast { it }
         if (j < 0) return
         open[j] = false
+        glide(j)
         wake()
     }
 
@@ -167,6 +176,7 @@ internal constructor(
         val speed = -velocity.y / layout.span * pi
         speeds[j] = speed
         open[j] = angles[j] + PopUpDimens.CommitLead * speed > pi / 2f
+        glide(j)
         wake()
     }
 
@@ -179,6 +189,7 @@ internal constructor(
         if (j < 0) return
         held = -1
         open[j] = angles[j] > pi / 2f
+        glide(j)
         wake()
     }
 
@@ -224,14 +235,38 @@ internal constructor(
         settle()
     }
 
+    // Leaf [j] sets off from where it is towards where it is now headed.
+    private fun glide(j: Int) {
+        val target = if (open[j]) pi else 0f
+        glideFrom[j] = angles[j]
+        glideClock[j] = 0f
+        glideLength[j] =
+            PopUpDimens.TurnSeconds * (abs(target - angles[j]) / pi).coerceAtLeast(MinGlide)
+        // A leaf at rest is lifted gently; one already moving keeps its way and eases down.
+        glideEasesIn[j] = abs(speeds[j]) < MovingSpeed
+    }
+
+    // Where leaf [j]'s set point is now.
+    private fun setPoint(j: Int, target: Float): Float {
+        val length = glideLength[j]
+        if (length <= 0f || glideClock[j] >= length) return target
+        val x = glideClock[j] / length
+        val eased =
+            if (glideEasesIn[j]) x * x * x * (x * (6f * x - 15f) + 10f)
+            else 1f - (1f - x) * (1f - x) * (1f - x)
+        return glideFrom[j] + (target - glideFrom[j]) * eased
+    }
+
     private fun step(dt: Float) {
         time += dt
         val damping = if (reducedMotion) PopUpDimens.LeafDamping * 2f else PopUpDimens.LeafDamping
         for (j in 0 until spreadCount) {
             if (j == held) continue
             val target = if (open[j]) pi else 0f
+            glideClock[j] += dt
+            val follow = setPoint(j, target)
             speeds[j] +=
-                (PopUpDimens.LeafStiffness * (target - angles[j]) - damping * speeds[j]) * dt
+                (PopUpDimens.LeafStiffness * (follow - angles[j]) - damping * speeds[j]) * dt
             angles[j] += speeds[j] * dt
             if (angles[j] < 0f) {
                 angles[j] = 0f
@@ -287,7 +322,13 @@ internal constructor(
         var shown = 0
         for (j in 0 until spreadCount) {
             val target = if (open[j]) pi else 0f
-            if (j != held && abs(angles[j] - target) < LeafRest && abs(speeds[j]) < LeafRest) {
+            val gliding = glideClock[j] < glideLength[j]
+            if (
+                j != held &&
+                    !gliding &&
+                    abs(angles[j] - target) < LeafRest &&
+                    abs(speeds[j]) < LeafRest
+            ) {
                 angles[j] = target
                 speeds[j] = 0f
             } else {
@@ -313,6 +354,12 @@ internal constructor(
 
     internal companion object {
         private const val LeafRest = 1e-3f
+
+        // A glide over a short way still takes this share of a full turn's time.
+        private const val MinGlide = 0.3f
+
+        // Faster than this, in radians a second, a leaf is already on its way.
+        private const val MovingSpeed = 0.5f
         private const val SailRest = 0.02f
 
         fun saver(): Saver<PopUpBookState, Any> =
