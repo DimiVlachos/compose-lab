@@ -166,9 +166,9 @@ internal object PopUpMath {
      * fixed back board after the last), and returns how many: leaf j as j, the board as
      * angles.size, and the pieces of spread j, between leaf j and the next, as [Spread] + j.
      *
-     * Leaves all turn about the gutter, so they are ordered by how far they point from the eye. The
-     * spread the eye looks into comes last, and is the only spread drawn: any other one lies behind
-     * a leaf.
+     * Leaves and spreads all turn about the gutter, so they are ordered by how far they point from
+     * the eye. The spread the eye looks into comes last; any other one is drawn between its two
+     * leaves, behind the one that is shutting it.
      */
     fun drawOrder(angles: FloatArray, out: IntArray): Int {
         val leaves = angles.size
@@ -184,11 +184,13 @@ internal object PopUpMath {
             val above = angles[j]
             val below = if (j + 1 < leaves) angles[j + 1] else 0f
             if (above - below < PopUpDimens.OpenFrom) continue
-            // Only the spread the eye looks into is seen: any other one lies behind a leaf, and
-            // drawn, a tall piece in it could peek past that leaf's edge.
-            if (below > CameraAngle || CameraAngle > above) continue
             codes[count] = Spread + j
-            keys[count] = -1f
+            // The spread the eye looks into is nearest of all. Any other one is drawn between
+            // its two leaves, so the leaf shutting it covers it as it comes over, rather than
+            // it vanishing all at once.
+            keys[count] =
+                if (below <= CameraAngle && CameraAngle <= above) -1f
+                else abs((above + below) / 2f - CameraAngle)
             stack[count] = 0f
             count++
         }

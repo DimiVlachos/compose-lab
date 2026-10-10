@@ -69,22 +69,25 @@ class PopUpMathTest {
     }
 
     @Test
-    fun aSpreadBehindATurningLeafIsNotDrawnSoNothingPokesPastItsEdge() {
-        // Leaf 1 a little past upright, shutting spread 0 behind it: the eye looks into spread 1,
-        // and spread 0's pieces are hidden by leaf 1, so none of them peeks over its edge.
+    fun aSpreadBeingShutStaysDrawnBehindTheLeafShuttingIt() {
+        // Leaf 1 a little past upright, shutting spread 0: its pieces don't vanish, they are drawn
+        // before leaf 1, which covers them as it comes over. The eye looks into spread 1, last.
         val out = IntArray(8)
         val n = PopUpMath.drawOrder(floatArrayOf(pi, 100f * pi / 180f), out)
         val order = out.take(n)
-        assertFalse(PopUpMath.Spread in order, "$order")
+        assertTrue(PopUpMath.Spread in order, "$order")
+        assertTrue(order.indexOf(PopUpMath.Spread) < order.indexOf(1), "$order")
         assertEquals(PopUpMath.Spread + 1, order.last())
     }
 
     @Test
-    fun aSpreadBehindTheRisingCoverIsNotDrawn() {
-        // The cover just lifting: spread 0 lies behind it, out of sight.
+    fun aSpreadBehindTheRisingCoverIsDrawnUnderIt() {
+        // The cover just lifting: spread 0 lies under it and is drawn first, so the cover hides it
+        // and nothing pops into view as the cover passes the eye.
         val out = IntArray(8)
         val n = PopUpMath.drawOrder(floatArrayOf(0.4f, 0f), out)
-        assertFalse(out.take(n).any { it >= PopUpMath.Spread })
+        val order = out.take(n)
+        assertTrue(order.indexOf(PopUpMath.Spread) in 0 until order.indexOf(0), "$order")
     }
 
     @Test

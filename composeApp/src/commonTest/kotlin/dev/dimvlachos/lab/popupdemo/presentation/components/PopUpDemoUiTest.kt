@@ -169,7 +169,7 @@ class PopUpDemoUiTest {
     }
 
     @Test
-    fun theCaptionDriftsIntoPlaceInsteadOfSnapping() = runComposeUiTest {
+    fun theCaptionDissolvesIntoTheNextInsteadOfSnapping() = runComposeUiTest {
         mainClock.autoAdvance = false
         setContent { LabTheme { PopUpDemo(DemoState()) } }
         mainClock.advanceTimeBy(500)

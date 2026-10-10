@@ -178,8 +178,8 @@ internal fun PopUpDemo(state: DemoState) {
         }
         Dots(selected = shown - 1, Paper.button, Paper.inkFaint)
         Spacer(Modifier.height(spacing.medium))
-        // The caption drifts softly from one to the next as the book moves on.
-        DriftingCaption(index = if (ended) captions.size else shown) { at ->
+        // The caption dissolves softly into the next as the book moves on.
+        FadingCaption(index = if (ended) captions.size else shown) { at ->
             val (atTitle, atBody) =
                 if (at == captions.size) Res.string.popup_end_title to Res.string.popup_end_body
                 else captions[at]
