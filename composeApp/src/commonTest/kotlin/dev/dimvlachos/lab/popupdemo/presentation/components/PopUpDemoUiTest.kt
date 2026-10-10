@@ -3,12 +3,16 @@ package dev.dimvlachos.lab.popupdemo.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -17,6 +21,7 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class PopUpDemoUiTest {
@@ -116,6 +121,24 @@ class PopUpDemoUiTest {
             onNodeWithText("Καλό ταξίδι!").assertIsDisplayed()
             onAllNodesWithText("Find your island").assertCountEquals(0)
             onAllNodesWithText("Plan the crossing").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun theBookLiesOnASunlitSurfaceNotOnBlack() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            LabTheme {
+                Box(Modifier.size(360.dp, 760.dp).testTag("screen")) { PopUpDemo(DemoState()) }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        val pixels = onNodeWithTag("screen").captureToImage().toPixelMap()
+        // Beside the book, and down by the buttons.
+        for ((x, y) in listOf(6 to pixels.height / 3, pixels.width / 2 to pixels.height - 30)) {
+            val c = pixels[x, y]
+            val light = (c.red + c.green + c.blue) / 3f
+            assertTrue(light > 0.75f, "($x, $y) is $c")
         }
     }
 }

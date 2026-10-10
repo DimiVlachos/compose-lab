@@ -100,4 +100,14 @@ internal object CycladesPaper {
     val drystone = Color(0xFFCFC4B1)
     val stoneDark = Color(0xFFBDB19C)
     val stoneLight = Color(0xFFD8CDB9)
+
+    // The tour's own screen: a sunlit whitewashed table the book lies on, Aegean ink and buttons.
+    val tableLight = Color(0xFFFAF6EE)
+    val tableWarm = Color(0xFFEFE5D2)
+    val tableGlow = Color(0x66FFFFFF)
+    val ink = Color(0xFF1B2E4A)
+    val inkMuted = Color(0xFF5E6878)
+    val inkFaint = Color(0xFFC9BEAA)
+    val button = Color(0xFF1F5FA8)
+    val onButton = Color(0xFFFFFFFF)
 }

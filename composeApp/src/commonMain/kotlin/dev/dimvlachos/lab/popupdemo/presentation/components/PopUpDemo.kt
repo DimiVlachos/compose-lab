@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +41,7 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.popup.PopUpBook
 import dev.dimvlachos.lab.core.presentation.components.popup.PopUpBookState
 import dev.dimvlachos.lab.core.presentation.components.popup.rememberPopUpBookState
+import dev.dimvlachos.lab.core.presentation.ui.CycladesPaper as Paper
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.popupdemo.rememberCycladesBook
 import dev.dimvlachos.lab.resources.Res
@@ -109,7 +111,6 @@ internal fun PopUpDemo(state: DemoState) {
             heading = null
         }
     }
-    val colors = LabTheme.colors
     val type = LabTheme.typography
     val spacing = LabTheme.spacing
 
@@ -132,7 +133,8 @@ internal fun PopUpDemo(state: DemoState) {
     val titleText = stringResource(title)
     Column(
         Modifier.fillMaxSize()
-            .background(colors.background)
+            .background(Brush.verticalGradient(listOf(Paper.tableLight, Paper.tableWarm)))
+            .background(Brush.radialGradient(listOf(Paper.tableGlow, Color.Transparent)))
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
     ) {
@@ -140,7 +142,7 @@ internal fun PopUpDemo(state: DemoState) {
             Text(
                 stringResource(Res.string.popup_brand),
                 style = type.subtitle,
-                color = colors.textPrimary,
+                color = Paper.ink,
             )
             Spacer(Modifier.weight(1f))
             TextButton(
@@ -149,7 +151,7 @@ internal fun PopUpDemo(state: DemoState) {
                     scope.launch { jumpTo(Spreads, tapWith = null) }
                 }
             ) {
-                Text(stringResource(Res.string.popup_skip), color = colors.textMuted)
+                Text(stringResource(Res.string.popup_skip), color = Paper.inkMuted)
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -158,15 +160,15 @@ internal fun PopUpDemo(state: DemoState) {
                 spreads = art.spreads,
                 state = book,
                 description = titleText,
-                modifier = with(finger) { Modifier.drawFinger(colors.touch) },
+                modifier = with(finger) { Modifier.drawFinger(Paper.ink) },
             )
         }
-        Dots(selected = shown - 1, colors.accent, colors.textMuted)
+        Dots(selected = shown - 1, Paper.button, Paper.inkFaint)
         Spacer(Modifier.height(spacing.medium))
         Text(
             titleText,
             style = type.title,
-            color = colors.textPrimary,
+            color = Paper.ink,
             modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(spacing.small))
@@ -174,14 +176,14 @@ internal fun PopUpDemo(state: DemoState) {
         Text(
             stringResource(body),
             style = type.body,
-            color = colors.textMuted,
+            color = Paper.inkMuted,
             minLines = CaptionLines,
         )
         Spacer(Modifier.height(spacing.large))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (shown > 0 && !ended) {
                 TextButton(onClick = { book.previous() }) {
-                    Text(stringResource(Res.string.popup_back), color = colors.textPrimary)
+                    Text(stringResource(Res.string.popup_back), color = Paper.ink)
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -208,8 +210,8 @@ internal fun PopUpDemo(state: DemoState) {
                 },
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = colors.onAccent,
+                        containerColor = Paper.button,
+                        contentColor = Paper.onButton,
                     ),
             ) {
                 Text(stringResource(next))

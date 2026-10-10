@@ -100,18 +100,23 @@ internal class PopUpPainter {
         }
     }
 
-    // A soft dark patch on the table under the book.
+    // A soft shadow on the table under the book: layers spreading out and fading, darkest close
+    // under the boards, so it reads as shade on any table rather than a frame round the book.
     private fun drawTable(scope: DrawScope, camera: BookCamera, angles: FloatArray) {
-        val w = PopUpDimens.BoardWidth / 2f + TableMargin
-        val near = -PopUpDimens.BoardDepth - TableMargin
-        val far = if (angles.any { it > 0f }) PopUpDimens.BoardDepth + TableMargin else TableMargin
-        path.reset()
-        moveTo(camera.project(Vec3(-w, near, 0f)))
-        lineTo(camera.project(Vec3(w, near, 0f)))
-        lineTo(camera.project(Vec3(w, far, 0f)))
-        lineTo(camera.project(Vec3(-w, far, 0f)))
-        path.close()
-        scope.drawPath(path, Color.Black, alpha = TableAlpha)
+        val open = angles.any { it > 0f }
+        for (layer in TableShadow.indices) {
+            val margin = TableShadow[layer]
+            val w = PopUpDimens.BoardWidth / 2f + margin
+            val near = -PopUpDimens.BoardDepth - margin
+            val far = if (open) PopUpDimens.BoardDepth + margin else margin
+            path.reset()
+            moveTo(camera.project(Vec3(-w, near, 0f)))
+            lineTo(camera.project(Vec3(w, near, 0f)))
+            lineTo(camera.project(Vec3(w, far, 0f)))
+            lineTo(camera.project(Vec3(-w, far, 0f)))
+            path.close()
+            scope.drawPath(path, Color.Black, alpha = TableAlpha)
+        }
     }
 
     private fun drawLeaf(
@@ -418,8 +423,10 @@ internal class PopUpPainter {
         // Art is painted at about the size it is seen, and no sharper than this per book unit.
         const val ArtSharpness = 1.15f
         const val MaxQuality = 3f
-        const val TableMargin = 8f
-        const val TableAlpha = 0.18f
+        // How far each layer of the table's shadow spreads past the boards, in book units, and how
+        // dark each one is; they pile up to darkest close under the book.
+        val TableShadow = floatArrayOf(16f, 13f, 10.5f, 8f, 6f, 4f, 2.5f, 1f)
+        const val TableAlpha = 0.024f
         const val ShadeLevels = 48
     }
 }
