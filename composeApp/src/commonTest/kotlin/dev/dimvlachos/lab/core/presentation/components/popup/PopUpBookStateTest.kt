@@ -115,6 +115,24 @@ class PopUpBookStateTest {
     }
 
     @Test
+    fun aCancelledTouchTurnsNothing() {
+        state.dragStart(Offset(100f, 400f))
+        state.dragCancel()
+        settle()
+        assertEquals(0, state.spread)
+        assertFalse(state.awake)
+    }
+
+    @Test
+    fun aCancelledDragLetsTheLeafFallWhereItWasHeaded() {
+        state.dragStart(Offset(100f, 400f))
+        state.dragTo(Offset(100f, 400f - 260f))
+        state.dragCancel()
+        settle()
+        assertEquals(1, state.spread)
+    }
+
+    @Test
     fun aTapAboveTheGutterTurnsBack() {
         openTo(2)
         state.dragStart(Offset(100f, 200f))
@@ -141,6 +159,21 @@ class PopUpBookStateTest {
         repeat(600) {
             step()
             assertTrue(state.angles[0] >= state.angles[1] - 1e-4f)
+        }
+    }
+
+    @Test
+    fun aHeldLeafPushesTheLeavesAboveItWithoutPassingThem() {
+        // Two leaves in flight, then the third dragged quickly far over them.
+        state.next()
+        state.next()
+        step(8)
+        state.dragStart(Offset(100f, 400f))
+        state.dragTo(Offset(100f, 80f))
+        repeat(30) {
+            step()
+            assertTrue(state.angles[0] >= state.angles[1] - 1e-4f, "${state.angles.toList()}")
+            assertTrue(state.angles[1] >= state.angles[2] - 1e-4f, "${state.angles.toList()}")
         }
     }
 
@@ -210,6 +243,14 @@ class PopUpBookStateTest {
             last = state.sailAngle[2]
         }
         assertFalse(state.awake)
+    }
+
+    @Test
+    fun aBookRestoredOnARestlessSpreadKeepsMoving() {
+        // Made again on the boat's spread, as after a rotation: the boat bobs on at once.
+        val restored = PopUpBookState(spreadCount = 3, opened = 2)
+        restored.restless = booleanArrayOf(false, true, false)
+        assertTrue(restored.awake)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.popup
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
@@ -24,7 +25,8 @@ internal class BookArt(
     val fronts: List<ImageBitmap>,
     val backs: List<ImageBitmap?>,
     val pieces: List<List<ImageBitmap>>,
-    val pieceBacks: List<List<ImageBitmap>>,
+    /** A piece's plain paper back: its art's shape, filled with this. */
+    val paperBack: Color,
     val shadows: List<List<ImageBitmap?>>,
     val shadowPad: Float,
 )
@@ -58,14 +60,13 @@ internal class PopUpPainter {
                 if (j < n) raster(spreads[j].far, leafWidth(j, n), leafDepth(j, n)) else null
             }
         val pieces = spreads.map { s -> s.pieces.map { raster(it.art, it.width, it.height) } }
-        val pieceBacks = pieces.map { list -> list.map { PopUpArt.silhouette(it, paperBack) } }
         val blur = PopUpDimens.ShadowBlur * q
         val shadows = spreads.mapIndexed { s, spread ->
             spread.pieces.mapIndexed { i, piece ->
                 if (piece.castsShadow) PopUpArt.softShadow(pieces[s][i], blur) else null
             }
         }
-        return BookArt(q, fronts, backs, pieces, pieceBacks, shadows, (blur.toInt() + 1).toFloat())
+        return BookArt(q, fronts, backs, pieces, paperBack, shadows, (blur.toInt() + 1).toFloat())
     }
 
     fun draw(
@@ -79,6 +80,8 @@ internal class PopUpPainter {
     ) {
         val angles = state.angles
         drawTable(scope, camera, angles)
+        // Room for every leaf, the board and every spread.
+        if (order.size < 2 * angles.size + 1) order = IntArray(2 * angles.size + 1)
         val count = PopUpMath.drawOrder(angles, order)
         for (i in 0 until count) {
             val code = order[i]
@@ -157,13 +160,17 @@ internal class PopUpPainter {
             clipToSpread(camera, near, far, s, angles.size)
             for (i in pieces.indices) {
                 val shadow = art.shadows[s][i] ?: continue
-                drawShadow(scope, pieces[i], shadow, s, state, near, far, camera, art, fade)
+                drawShadow(scope, pieces[i], spread, shadow, s, state, near, far, camera, art, fade)
             }
         }
         if (spread.tab != null)
             drawTab(scope, spread.tab, state.tabTravel[s], near, camera, tab, tabLine)
         // Pieces far to near.
         val count = pieces.size
+        if (depthOrder.size < count) {
+            depthOrder = IntArray(count)
+            depths = FloatArray(count)
+        }
         for (i in 0 until count) {
             depthOrder[i] = i
             val piece = pieces[i]
@@ -181,12 +188,14 @@ internal class PopUpPainter {
         }
         val frontSeen = PopUpMath.pieceFrontSeen(near, far)
         val normal = PopUpMath.pieceNormal(near, far).let { if (frontSeen) it else -it }
-        val filter = shade(PopUpMath.brightness(normal))
+        val brightness = PopUpMath.brightness(normal)
+        // Seen from behind, a piece is its own shape in plain paper.
+        val filter = if (frontSeen) shade(brightness) else paperShade(art.paperBack, brightness)
         for (o in 0 until count) {
             val i = depthOrder[o]
             val piece = pieces[i]
-            val image = if (frontSeen) art.pieces[s][i] else art.pieceBacks[s][i]
-            piecePlane(piece, s, state, near, far, camera, image, pad = 0f)
+            val image = art.pieces[s][i]
+            piecePlane(piece, spread, s, state, near, far, camera, image, pad = 0f)
             val spins = piece.motion as? PieceMotion.Spins
             if (spins == null) {
                 drawSheet(scope, image, filter)
@@ -210,6 +219,7 @@ internal class PopUpPainter {
     // Writes into [h] the plane of [piece]'s art (padded by [pad] bitmap pixels on every side).
     private fun piecePlane(
         piece: PopUpPiece,
+        spread: PopUpSpread,
         s: Int,
         state: PopUpBookState,
         near: Float,
@@ -218,9 +228,10 @@ internal class PopUpPainter {
         image: ImageBitmap,
         pad: Float,
     ) {
-        val (x, lift) = placement(piece, s, state)
+        place(piece, spread, s, state)
+        val lift = placedLift
         val up = PopUpMath.up(near, far)
-        val base = PopUpMath.base(piece, near, far, x)
+        val base = PopUpMath.base(piece, near, far, placedX)
         val du = piece.width / (image.width - 2f * pad)
         val dv = piece.height / (image.height - 2f * pad)
         val top = lift + piece.height
@@ -238,18 +249,28 @@ internal class PopUpPainter {
         )
     }
 
-    // Where along the gutter [piece] is, and how far it is lifted, as its tab and the time say.
-    private fun placement(piece: PopUpPiece, s: Int, state: PopUpBookState): Pair<Float, Float> {
-        val rides = piece.motion as? PieceMotion.RidesTab ?: return piece.x to piece.lift
-        val travel = state.layout?.tabTravel?.invoke(s)?.takeIf { it > 0f } ?: 1f
+    // Where along the gutter [piece] is, and how far it is lifted, as its tab and the time say:
+    // into [placedX] and [placedLift].
+    private fun place(piece: PopUpPiece, spread: PopUpSpread, s: Int, state: PopUpBookState) {
+        val rides = piece.motion as? PieceMotion.RidesTab
+        if (rides == null) {
+            placedX = piece.x
+            placedLift = piece.lift
+            return
+        }
+        val travel = spread.tab?.travel?.takeIf { it > 0f } ?: 1f
         val t = (state.tabTravel[s] / travel).coerceIn(0f, 1f)
-        val x = rides.from + (rides.to - rides.from) * t
-        return x to piece.lift + rides.bob * sin(PopUpDimens.BobRate * state.time)
+        placedX = rides.from + (rides.to - rides.from) * t
+        placedLift = piece.lift + rides.bob * sin(PopUpDimens.BobRate * state.time)
     }
+
+    private var placedX = 0f
+    private var placedLift = 0f
 
     private fun drawShadow(
         scope: DrawScope,
         piece: PopUpPiece,
+        spread: PopUpSpread,
         shadow: ImageBitmap,
         s: Int,
         state: PopUpBookState,
@@ -261,9 +282,10 @@ internal class PopUpPainter {
     ) {
         // The plane's origin and axes in book space, cast along the light onto the page.
         val pageAngle = if (piece.side == PopUpSide.Near) near else far
-        val (x, lift) = placement(piece, s, state)
+        place(piece, spread, s, state)
+        val lift = placedLift
         val up = PopUpMath.up(near, far)
-        val base = PopUpMath.base(piece, near, far, x)
+        val base = PopUpMath.base(piece, near, far, placedX)
         val du = piece.width / (shadow.width - 2f * art.shadowPad)
         val dv = piece.height / (shadow.height - 2f * art.shadowPad)
         val top = lift + piece.height + art.shadowPad * dv
@@ -320,7 +342,7 @@ internal class PopUpPainter {
         lineTo(camera.project(Vec3(x0, a.y * d1, a.z * d1)))
         path.close()
         scope.drawPath(path, color)
-        scope.drawPath(path, line, style = Stroke(width = 1f))
+        scope.drawPath(path, line, style = tabEdge)
     }
 
     private fun drawSheet(scope: DrawScope, image: ImageBitmap, filter: ColorFilter?) {
@@ -340,6 +362,21 @@ internal class PopUpPainter {
             }
     }
 
+    // Paper seen from behind, tinted plain and darkened as it turns from the light.
+    private fun paperShade(paper: Color, brightness: Float): ColorFilter {
+        val dark = (1f - brightness) * PopUpDimens.ShadeAlpha
+        val level = (dark * ShadeLevels).roundToInt().coerceIn(0, ShadeLevels)
+        val cached = backShades[level]
+        if (cached != null && backPaper == paper) return cached
+        if (backPaper != paper) {
+            backShades.fill(null)
+            backPaper = paper
+        }
+        val k = 1f - level.toFloat() / ShadeLevels
+        val tint = Color(paper.red * k, paper.green * k, paper.blue * k, paper.alpha)
+        return ColorFilter.tint(tint, BlendMode.SrcIn).also { backShades[level] = it }
+    }
+
     private fun moveTo(p: Offset) = path.moveTo(p)
 
     private fun lineTo(p: Offset) = path.lineTo(p)
@@ -352,14 +389,18 @@ internal class PopUpPainter {
     private val matrix = Matrix()
     private val path = Path()
     private val clip = Path()
-    private val order = IntArray(64)
-    private val depthOrder = IntArray(64)
-    private val depths = FloatArray(64)
+    private var order = IntArray(16)
+    private var depthOrder = IntArray(16)
+    private var depths = FloatArray(16)
     private val shades = arrayOfNulls<ColorFilter>(ShadeLevels + 1)
+    private val backShades = arrayOfNulls<ColorFilter>(ShadeLevels + 1)
+    private var backPaper = Color.Unspecified
+    private val tabEdge = Stroke(width = 1f)
 
     private companion object {
-        const val ArtSharpness = 1.5f
-        const val MaxQuality = 4f
+        // Art is painted at about the size it is seen, and no sharper than this per book unit.
+        const val ArtSharpness = 1.15f
+        const val MaxQuality = 3f
         const val TableMargin = 8f
         const val TableAlpha = 0.18f
         const val ShadeLevels = 48

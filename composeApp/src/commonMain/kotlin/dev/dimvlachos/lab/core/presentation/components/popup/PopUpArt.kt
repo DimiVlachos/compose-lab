@@ -33,18 +33,6 @@ internal object PopUpArt {
         return bitmap
     }
 
-    /** The art's shape filled with [color]: a piece's plain paper back. */
-    fun silhouette(art: ImageBitmap, color: Color): ImageBitmap {
-        val bitmap = ImageBitmap(art.width, art.height)
-        Canvas(bitmap)
-            .drawImage(
-                art,
-                Offset.Zero,
-                Paint().apply { colorFilter = ColorFilter.tint(color, BlendMode.SrcIn) },
-            )
-        return bitmap
-    }
-
     /**
      * The art's shape in black, softened by drawing it many times over a disc [radiusPx] wide, and
      * padded by that radius on every side. Done once, so no platform blur is needed.

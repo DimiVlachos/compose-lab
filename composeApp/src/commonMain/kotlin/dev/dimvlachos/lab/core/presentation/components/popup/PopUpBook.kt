@@ -4,7 +4,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -19,7 +18,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.unit.Velocity
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlinx.coroutines.flow.first
 
@@ -72,8 +70,9 @@ public fun PopUpBook(
     }
 
     Spacer(
+        // As wide as it may be, or as tall, whichever fits: on a short screen it never spills
+        // over its neighbours.
         modifier
-            .fillMaxWidth()
             .aspectRatio(1f / PopUpDimens.Aspect)
             .onSizeChanged { size ->
                 val camera = BookCamera(size.width.toFloat(), size.height.toFloat())
@@ -88,11 +87,13 @@ public fun PopUpBook(
                     val tracker = VelocityTracker()
                     tracker.addPosition(down.uptimeMillis, down.position)
                     var lifted = false
+                    var lastUptime = down.uptimeMillis
                     try {
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
                             tracker.addPosition(change.uptimeMillis, change.position)
+                            lastUptime = change.uptimeMillis
                             if (!change.pressed) {
                                 lifted = true
                                 break
@@ -101,11 +102,16 @@ public fun PopUpBook(
                             change.consume()
                         }
                     } finally {
-                        if (tab) state.tabEnd()
-                        else
-                            state.dragEnd(
-                                if (lifted) tracker.calculateVelocity() else Velocity.Zero
-                            )
+                        // A touch the system took away, or one held still past a long press,
+                        // taps nothing: the leaf is only let go.
+                        val heldFor = lastUptime - down.uptimeMillis
+                        val tap = heldFor < viewConfiguration.longPressTimeoutMillis
+                        when {
+                            tab -> state.tabEnd()
+                            lifted && (tap || state.isDragMoved) ->
+                                state.dragEnd(tracker.calculateVelocity())
+                            else -> state.dragCancel()
+                        }
                     }
                 }
             }

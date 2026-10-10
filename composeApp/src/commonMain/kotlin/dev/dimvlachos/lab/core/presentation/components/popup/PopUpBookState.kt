@@ -65,6 +65,11 @@ internal constructor(
 
     /** Spreads that move on their own while open, such as a bobbing boat. Set by the book. */
     internal var restless: BooleanArray = BooleanArray(spreadCount)
+        set(value) {
+            field = value
+            // A book made again on a spread that moves by itself starts moving at once.
+            settle()
+        }
 
     internal var layout: BookLayout? = null
 
@@ -93,6 +98,10 @@ internal constructor(
     private var holdStart = Offset.Zero
     private var holdForward = true
     private var holdMoved = false
+
+    /** Whether the held leaf has been dragged past a tap's slop. */
+    internal val isDragMoved: Boolean
+        get() = held >= 0 && holdMoved
 
     private var tabHeld = -1
     private var tabStartTravel = 0f
@@ -161,6 +170,18 @@ internal constructor(
         wake()
     }
 
+    /**
+     * The touch was taken away (the system cancelled it, or it was held too long to be a tap): the
+     * leaf is let go where it is, to finish or fall back, and nothing is tapped.
+     */
+    public fun dragCancel() {
+        val j = held
+        if (j < 0) return
+        held = -1
+        open[j] = angles[j] > pi / 2f
+        wake()
+    }
+
     /** A finger down at [position] on the open spread's tab, if it has one and is open enough. */
     public fun tabStart(position: Offset): Boolean {
         val layout = layout ?: return false
@@ -220,16 +241,19 @@ internal constructor(
                 speeds[j] = -speeds[j] * PopUpDimens.Restitution
             }
         }
-        // A leaf lies under the one before it: they never pass through each other.
+        // A leaf lies under the one before it: they never pass through each other. A held leaf
+        // pushes every leaf above it up ahead of it, then each leaf caps the ones below.
+        if (held >= 0) {
+            for (k in held - 1 downTo 0) {
+                if (angles[k] >= angles[k + 1]) break
+                angles[k] = angles[k + 1]
+                speeds[k] = maxOf(speeds[k], 0f)
+            }
+        }
         for (j in 1 until spreadCount) {
             if (angles[j] <= angles[j - 1]) continue
-            if (held == j) {
-                angles[j - 1] = angles[j]
-                speeds[j - 1] = maxOf(speeds[j - 1], 0f)
-            } else {
-                angles[j] = angles[j - 1]
-                speeds[j] = minOf(speeds[j], speeds[j - 1])
-            }
+            angles[j] = angles[j - 1]
+            speeds[j] = minOf(speeds[j], speeds[j - 1])
         }
         for (s in 0 until spreadCount) {
             if (s == tabHeld) {
