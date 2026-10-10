@@ -20,7 +20,7 @@ internal object PopUpDemos {
     // The book is shut by select(0) a leaf at a time after the script's last step; the hold at the
     // end waits for it to land, so the clip loops on a shut book.
     private val tour =
-        demoScript(holdEnd = 3.5.seconds) {
+        demoScript(holdEnd = 4.seconds) {
             at(0.8.seconds, lasts = 1.4.seconds) { dragPopUpPage(Low, High, 1.0.seconds) }
             at(3.6.seconds, lasts = 1.4.seconds) {
                 dragPopUpPage(Low.copy(x = 0.55f), High.copy(x = 0.55f), 1.0.seconds)

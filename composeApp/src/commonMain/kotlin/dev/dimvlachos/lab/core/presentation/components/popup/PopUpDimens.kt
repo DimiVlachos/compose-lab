@@ -19,9 +19,11 @@ internal object PopUpDimens {
     // The book's frame is this many times as tall as it is wide.
     const val Aspect = 1.22f
 
-    // Leaves: springs to 0 or π, bouncing a little off each stack.
-    const val LeafStiffness = 62f
-    const val LeafDamping = 13.5f
+    // Leaves: springs to 0 or π, critically damped, so paper swings over in about a second and
+    // eases down onto its stack instead of snapping into place; a flick that still reaches a
+    // stack bounces a little off it.
+    const val LeafStiffness = 36f
+    const val LeafDamping = 12f
     const val Restitution = 0.15f
     const val CommitLead = 0.15f
 

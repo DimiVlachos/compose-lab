@@ -48,6 +48,19 @@ class PopUpBookStateTest {
     }
 
     @Test
+    fun aLeafSwingsOverUnhurriedAndSettlesWithoutASnap() {
+        state.next()
+        // Paper takes its time: still well short of lying flat 0.4 s in...
+        step(48)
+        assertTrue(state.angles[0] < pi * 150f / 180f, "${state.angles[0] * 180f / pi}° at 0.4 s")
+        // ...and down within about a second and a half.
+        step(132)
+        assertEquals(1, state.spread)
+        settle()
+        assertFalse(state.awake)
+    }
+
+    @Test
     fun previousTurnsItBack() {
         openTo(2)
         state.previous()
