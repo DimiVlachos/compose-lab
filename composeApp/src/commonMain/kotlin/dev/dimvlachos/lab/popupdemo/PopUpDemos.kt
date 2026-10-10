@@ -17,17 +17,20 @@ internal object PopUpDemos {
     // The tour: the cover dragged open, a page dragged over, the boat sailed out on its tab, Next
     // to the windmill, its sails spun twice, and the book shut again, with time for three leaves to
     // land, so the clip loops.
-    private val tour = demoScript {
-        at(0.8.seconds, lasts = 1.4.seconds) { dragPopUpPage(Low, High, 1.0.seconds) }
-        at(3.6.seconds, lasts = 1.4.seconds) {
-            dragPopUpPage(Low.copy(x = 0.55f), High.copy(x = 0.55f), 1.0.seconds)
+    // The book is shut by select(0) a leaf at a time after the script's last step; the hold at the
+    // end waits for it to land, so the clip loops on a shut book.
+    private val tour =
+        demoScript(holdEnd = 3.5.seconds) {
+            at(0.8.seconds, lasts = 1.4.seconds) { dragPopUpPage(Low, High, 1.0.seconds) }
+            at(3.6.seconds, lasts = 1.4.seconds) {
+                dragPopUpPage(Low.copy(x = 0.55f), High.copy(x = 0.55f), 1.0.seconds)
+            }
+            at(6.4.seconds, lasts = 1.6.seconds) { pullPopUpTab(50f, 0.9.seconds) }
+            at(9.0.seconds) { select(3) }
+            at(11.0.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
+            at(12.8.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
+            at(16.0.seconds) { select(0) }
         }
-        at(6.4.seconds, lasts = 1.6.seconds) { pullPopUpTab(50f, 0.9.seconds) }
-        at(9.0.seconds) { select(3) }
-        at(11.0.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
-        at(12.8.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
-        at(16.0.seconds, lasts = 3.5.seconds) { select(0) }
-    }
 
     val all = listOf(Demo("tour.popup", Res.string.demo_popup, tour, tall = true) { PopUpDemo(it) })
 }

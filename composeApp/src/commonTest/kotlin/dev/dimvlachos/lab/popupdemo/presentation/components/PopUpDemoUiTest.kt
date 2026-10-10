@@ -43,4 +43,22 @@ class PopUpDemoUiTest {
         mainClock.advanceTimeBy(4_000)
         onNodeWithText("Plan the crossing").assertIsDisplayed()
     }
+
+    @Test
+    fun theEndCaptionGoesOnceTheBookTurnsBack() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        setContent { LabTheme { PopUpDemo(state) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Skip").performClick()
+        mainClock.advanceTimeBy(4_000)
+        onNodeWithText("Καλό ταξίδι!").assertIsDisplayed()
+        // The tour plays on and shuts the book: the cover's caption is back.
+        state.select(3)
+        mainClock.advanceTimeBy(100)
+        state.select(0)
+        mainClock.advanceTimeBy(5_000)
+        onNodeWithText("A pop-up guide to the islands. Open the cover to begin.")
+            .assertIsDisplayed()
+    }
 }

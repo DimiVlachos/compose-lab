@@ -43,8 +43,14 @@ class PopUpDemosTest {
 
     @Test
     fun theClipLastsLongEnoughToSettleAndLoop() {
-        // Closing three leaves at the end takes a few seconds of its own.
-        assertTrue(demo.script.nominalDuration >= 20.5.seconds, "${demo.script.nominalDuration}")
+        assertTrue(demo.script.nominalDuration >= 20.seconds, "${demo.script.nominalDuration}")
         assertTrue(demo.script.nominalDuration <= 24.seconds, "${demo.script.nominalDuration}")
+    }
+
+    @Test
+    fun theScriptWaitsForTheBookToShutBeforeItEnds() {
+        // select(0) returns at once while the book is tapped shut a leaf at a time (about 0.85 s
+        // each, then the cover lands): the script's own hold at the end is what waits for that.
+        assertTrue(demo.script.holdEnd >= 3.2.seconds, "${demo.script.holdEnd}")
     }
 }

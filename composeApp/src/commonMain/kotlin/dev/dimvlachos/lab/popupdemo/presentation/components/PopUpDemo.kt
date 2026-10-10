@@ -105,8 +105,11 @@ internal fun PopUpDemo(state: DemoState) {
     }
 
     val shown = book.spread
+    // The tour's end shows only while the book lies open at its last spread: once the book is
+    // turned back, by a finger or by the script, the captions follow it again.
+    val ended = finished && shown == Spreads
     val (title, body) =
-        if (finished) Res.string.popup_end_title to Res.string.popup_end_body else captions[shown]
+        if (ended) Res.string.popup_end_title to Res.string.popup_end_body else captions[shown]
     val titleText = stringResource(title)
     Column(
         Modifier.fillMaxSize()
@@ -156,7 +159,7 @@ internal fun PopUpDemo(state: DemoState) {
         Text(stringResource(body), style = type.body, color = colors.textMuted)
         Spacer(Modifier.height(spacing.large))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (shown > 0 && !finished) {
+            if (shown > 0 && !ended) {
                 TextButton(onClick = { book.previous() }) {
                     Text(stringResource(Res.string.popup_back), color = colors.textPrimary)
                 }
@@ -164,7 +167,7 @@ internal fun PopUpDemo(state: DemoState) {
             Spacer(Modifier.weight(1f))
             val next =
                 when {
-                    finished -> Res.string.popup_again
+                    ended -> Res.string.popup_again
                     shown == 0 -> Res.string.popup_open
                     shown < Spreads -> Res.string.popup_next
                     else -> Res.string.popup_start
@@ -172,11 +175,14 @@ internal fun PopUpDemo(state: DemoState) {
             Button(
                 onClick = {
                     when {
-                        finished -> {
+                        ended -> {
                             finished = false
                             scope.launch { turnTo(book, finger = null, target = 0) }
                         }
-                        shown < Spreads -> book.next()
+                        shown < Spreads -> {
+                            finished = false
+                            book.next()
+                        }
                         else -> finished = true
                     }
                 },

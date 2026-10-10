@@ -19,8 +19,11 @@ import dev.dimvlachos.lab.core.presentation.components.popup.Vec3
 import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import kotlin.time.Duration
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 // Where a scripted tap lands on the book: well out on the near or the far page.
@@ -46,12 +49,12 @@ internal class PopUpFinger {
         at = camera.project(Vec3(0f, if (forward) -TapAcross else TapAcross, 0f))
         var held = false
         try {
-            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            fade(1f, ScriptedTouch.DownMs)
             held = book.dragStart(at)
             delay(ScriptedTouch.TapHoldMs)
             if (held) book.dragEnd(Velocity.Zero)
             held = false
-            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
+            fade(0f, ScriptedTouch.UpMs)
         } finally {
             if (held) book.dragEnd(Velocity.Zero)
             lift(touch)
@@ -69,7 +72,7 @@ internal class PopUpFinger {
         at = start
         var held = false
         try {
-            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            fade(1f, ScriptedTouch.DownMs)
             held = book.dragStart(start)
             if (!held) return
             animate(
@@ -83,7 +86,7 @@ internal class PopUpFinger {
             }
             book.dragEnd(Velocity.Zero)
             held = false
-            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
+            fade(0f, ScriptedTouch.UpMs)
         } finally {
             if (held) book.dragEnd(Velocity.Zero)
             lift(touch)
@@ -98,7 +101,7 @@ internal class PopUpFinger {
         at = start
         var held = false
         try {
-            alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
+            fade(1f, ScriptedTouch.DownMs)
             held = book.tabStart(start)
             if (!held) return
             val reach = out * layout.camera.pxPerUnit
@@ -114,10 +117,20 @@ internal class PopUpFinger {
             delay(TabHoldMs)
             book.tabEnd()
             held = false
-            alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
+            fade(0f, ScriptedTouch.UpMs)
         } finally {
             if (held) book.tabEnd()
             lift(touch)
+        }
+    }
+
+    // One dot shows every touch, so the next touch's fade cuts this one's short: that is not a
+    // reason to stop this touch, only a cancelled script is.
+    private suspend fun fade(to: Float, ms: Int) {
+        try {
+            alpha.animateTo(to, tween(ms))
+        } catch (e: CancellationException) {
+            if (!currentCoroutineContext().isActive) throw e
         }
     }
 
