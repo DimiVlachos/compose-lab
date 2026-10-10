@@ -101,13 +101,28 @@ internal object CycladesPaper {
     val stoneDark = Color(0xFFBDB19C)
     val stoneLight = Color(0xFFD8CDB9)
 
-    // The tour's own screen: a sunlit whitewashed table the book lies on, Aegean ink and buttons.
-    val tableLight = Color(0xFFFAF6EE)
-    val tableWarm = Color(0xFFEFE5D2)
-    val tableGlow = Color(0x66FFFFFF)
+    // The tour's own screen: Aegean ink and buttons.
     val ink = Color(0xFF1B2E4A)
     val inkMuted = Color(0xFF5E6878)
     val inkFaint = Color(0xFFC9BEAA)
     val button = Color(0xFF1F5FA8)
     val onButton = Color(0xFFFFFFFF)
+
+    // The sky behind the tour, one for each moment of it: the cover at dawn, the islands at noon,
+    // the crossing over open sea, the meltemi at sunset, and the farewell in the golden hour. Each
+    // fades from a sky at the top to light cream at the foot, where the caption is read.
+    val skies =
+        listOf(
+            CycladesSky(Color(0xFFCADDEB), Color(0xFFF1ECE3), Color(0xFFF8F2E8), Color(0xFFFFE3BC)),
+            CycladesSky(Color(0xFF9FCBEC), Color(0xFFE6F1F4), Color(0xFFF7F1E5), Color(0xFFFFF8E8)),
+            CycladesSky(Color(0xFF86BCE4), Color(0xFFD7EAF3), Color(0xFFF2F1EB), Color(0xFFF4FBFF)),
+            CycladesSky(Color(0xFFD7B3CF), Color(0xFFF5D3BD), Color(0xFFFBEBDC), Color(0xFFFFBF86)),
+            CycladesSky(Color(0xFFF0C59C), Color(0xFFF8E2C6), Color(0xFFFCF1E2), Color(0xFFFFD27A)),
+        )
 }
+
+/**
+ * A sky behind the pop-up tour: [top] fading through [middle] to [bottom], and the sun's [glow] in
+ * the top corner, where the book's own suns are.
+ */
+internal class CycladesSky(val top: Color, val middle: Color, val bottom: Color, val glow: Color)

@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -96,6 +95,7 @@ internal fun PopUpDemo(state: DemoState) {
     val art = rememberCycladesBook()
     val book = rememberPopUpBookState(Spreads)
     val finger = remember { PopUpFinger() }
+    val sky = rememberTourSky()
     val scope = rememberCoroutineScope()
     var finished by rememberSaveable { mutableStateOf(false) }
     // Where the book is headed while it turns several leaves at once: the caption shows that
@@ -131,10 +131,10 @@ internal fun PopUpDemo(state: DemoState) {
     val (title, body) =
         if (ended) Res.string.popup_end_title to Res.string.popup_end_body else captions[shown]
     val titleText = stringResource(title)
+    sky.showFor(if (ended) Paper.skies.lastIndex else shown)
     Column(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Paper.tableLight, Paper.tableWarm)))
-            .background(Brush.radialGradient(listOf(Paper.tableGlow, Color.Transparent)))
+            .then(with(sky) { Modifier.drawSky() })
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
     ) {

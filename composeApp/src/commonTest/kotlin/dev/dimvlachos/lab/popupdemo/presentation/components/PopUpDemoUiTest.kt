@@ -141,4 +141,29 @@ class PopUpDemoUiTest {
             assertTrue(light > 0.75f, "($x, $y) is $c")
         }
     }
+
+    @Test
+    fun theSkyFollowsTheSpreadFromMiddayBlueToSunsetWhileTheCaptionStaysLight() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        setContent {
+            LabTheme { Box(Modifier.size(360.dp, 760.dp).testTag("screen")) { PopUpDemo(state) } }
+        }
+        mainClock.advanceTimeBy(500)
+        fun sky() = onNodeWithTag("screen").captureToImage().toPixelMap().let { it[6, 6] }
+        fun caption() =
+            onNodeWithTag("screen").captureToImage().toPixelMap().let {
+                it[it.width / 2, it.height - 30]
+            }
+        state.select(1)
+        mainClock.advanceTimeBy(4_000)
+        val midday = sky()
+        assertTrue(midday.blue > midday.red + 0.05f, "midday sky $midday")
+        state.select(3)
+        mainClock.advanceTimeBy(5_000)
+        val sunset = sky()
+        assertTrue(sunset.red > sunset.blue, "sunset sky $sunset")
+        val light = caption()
+        assertTrue((light.red + light.green + light.blue) / 3f > 0.85f, "caption area $light")
+    }
 }
