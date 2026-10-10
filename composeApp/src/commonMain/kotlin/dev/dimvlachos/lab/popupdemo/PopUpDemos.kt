@@ -15,7 +15,8 @@ internal object PopUpDemos {
     private val High = Offset(0.5f, 0.2f)
 
     // The tour: the cover dragged open, a page dragged over, the boat sailed out on its tab, Next
-    // to the windmill, its sails spun twice, and the book shut again so the clip loops.
+    // to the windmill, its sails spun twice, and the book shut again, with time for three leaves to
+    // land, so the clip loops.
     private val tour = demoScript {
         at(0.8.seconds, lasts = 1.4.seconds) { dragPopUpPage(Low, High, 1.0.seconds) }
         at(3.6.seconds, lasts = 1.4.seconds) {
@@ -25,7 +26,7 @@ internal object PopUpDemos {
         at(9.0.seconds) { select(3) }
         at(11.0.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
         at(12.8.seconds, lasts = 1.2.seconds) { pullPopUpTab(55f, 0.6.seconds) }
-        at(16.0.seconds, lasts = 2.0.seconds) { select(0) }
+        at(16.0.seconds, lasts = 3.5.seconds) { select(0) }
     }
 
     val all = listOf(Demo("tour.popup", Res.string.demo_popup, tour, tall = true) { PopUpDemo(it) })

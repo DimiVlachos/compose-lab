@@ -43,7 +43,8 @@ class PopUpDemosTest {
 
     @Test
     fun theClipLastsLongEnoughToSettleAndLoop() {
-        assertTrue(demo.script.nominalDuration >= 16.seconds, "${demo.script.nominalDuration}")
-        assertTrue(demo.script.nominalDuration <= 20.seconds, "${demo.script.nominalDuration}")
+        // Closing three leaves at the end takes a few seconds of its own.
+        assertTrue(demo.script.nominalDuration >= 20.5.seconds, "${demo.script.nominalDuration}")
+        assertTrue(demo.script.nominalDuration <= 24.seconds, "${demo.script.nominalDuration}")
     }
 }
