@@ -27,8 +27,9 @@ import kotlinx.coroutines.flow.first
  * turn forward and the far half to turn back; pull a spread's tab to move its pieces.
  *
  * The [cover] is the book's outside; there is one [PopUpSpread] per opening, as many as [state] was
- * made for. The book is decoration to a screen reader, named by [description]; give the tour its
- * own buttons and text alongside.
+ * made for. Remember the spreads: a new list each time paints the book's art again. The book is
+ * decoration to a screen reader, named by [description]; give the tour its own buttons and text
+ * alongside.
  */
 @Composable
 public fun PopUpBook(

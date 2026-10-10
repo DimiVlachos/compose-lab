@@ -48,8 +48,8 @@ import org.jetbrains.compose.resources.stringResource
 internal class CycladesBook(val cover: Painter, val spreads: List<PopUpSpread>)
 
 /**
- * The book's art, ported from the HTML prototype: every page and piece is drawn in book units (a
- * page is 300 by 190) with paths, gradients and printed text.
+ * The book's art: every page and piece is drawn in book units (a page is 300 by 190) with paths,
+ * gradients and printed text.
  */
 @Composable
 internal fun rememberCycladesBook(): CycladesBook {
@@ -255,7 +255,7 @@ private class Print(private val measurer: TextMeasurer) {
     }
 }
 
-// The prototype's seeded random numbers (mulberry32), so the art is the same every time.
+// Seeded random numbers (mulberry32), so the art is the same every time.
 private class Seeded(private var seed: Int) {
     fun next(): Float {
         seed += 0x6D2B79F5
