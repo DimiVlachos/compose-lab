@@ -8,6 +8,7 @@ import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.magnetdemo.MagnetDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
+import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog
@@ -21,7 +22,8 @@ internal object Catalog {
                     PlaneDemos.all +
                     PullCordDemos.all +
                     MagnetDemos.all +
-                    FishingDemos.all)
+                    FishingDemos.all +
+                    PopUpDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
