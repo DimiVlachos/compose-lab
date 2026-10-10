@@ -1,11 +1,13 @@
 package dev.dimvlachos.lab.popupdemo.presentation.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +40,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -79,8 +82,11 @@ private const val Spreads = 3
 // Lines kept for a caption's text: the longest wraps onto three on a phone.
 private const val CaptionLines = 3
 
+// The main button, for tests.
+internal const val NextTag = "popup.next"
+
 // How long the buttons' labels take to change.
-private const val LabelMs = 300
+private const val LabelMs = 360
 
 // Between a script's taps when it turns several leaves.
 private const val RiffleMs = 380L
@@ -172,8 +178,8 @@ internal fun PopUpDemo(state: DemoState) {
         }
         Dots(selected = shown - 1, Paper.button, Paper.inkFaint)
         Spacer(Modifier.height(spacing.medium))
-        // The caption turns over like a leaf as the book moves on.
-        TurningCaption(index = if (ended) captions.size else shown) { at ->
+        // The caption drifts softly from one to the next as the book moves on.
+        DriftingCaption(index = if (ended) captions.size else shown) { at ->
             val (atTitle, atBody) =
                 if (at == captions.size) Res.string.popup_end_title to Res.string.popup_end_body
                 else captions[at]
@@ -228,16 +234,26 @@ internal fun PopUpDemo(state: DemoState) {
                         else -> finished = true
                     }
                 },
+                modifier = Modifier.testTag(NextTag),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = Paper.button,
                         contentColor = Paper.onButton,
                     ),
             ) {
-                // The label crossfades, so the button reads Open, Next, Start exploring as the
-                // tour goes, without a jump.
-                Crossfade(next, animationSpec = tween(LabelMs), label = "next") { label ->
-                    Text(stringResource(label))
+                // The label fades from one to the next while the button eases to its new width,
+                // so it reads Open, Next, Start exploring as the tour goes, without a jump.
+                AnimatedContent(
+                    next,
+                    transitionSpec = {
+                        (fadeIn(tween(LabelMs, LabelMs / 3)) togetherWith
+                                fadeOut(tween(LabelMs / 2)))
+                            .using(SizeTransform(clip = false) { _, _ -> tween(LabelMs) })
+                    },
+                    contentAlignment = Alignment.Center,
+                    label = "next",
+                ) { label ->
+                    Text(stringResource(label), maxLines = 1)
                 }
             }
         }

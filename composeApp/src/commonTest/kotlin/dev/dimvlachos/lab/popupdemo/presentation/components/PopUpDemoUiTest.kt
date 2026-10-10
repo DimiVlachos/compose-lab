@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
@@ -168,7 +169,7 @@ class PopUpDemoUiTest {
     }
 
     @Test
-    fun theCaptionTurnsOverLikeAPageInsteadOfSnapping() = runComposeUiTest {
+    fun theCaptionDriftsIntoPlaceInsteadOfSnapping() = runComposeUiTest {
         mainClock.autoAdvance = false
         setContent { LabTheme { PopUpDemo(DemoState()) } }
         mainClock.advanceTimeBy(500)
@@ -184,10 +185,34 @@ class PopUpDemoUiTest {
         }
         assertTrue(
             bothAtOnce,
-            "the old caption should still be folding away as the new one comes in",
+            "the old caption should still be fading away as the new one comes in",
         )
         // Settled: only the new caption is left.
         onAllNodesWithText(oldCaption).assertCountEquals(0)
         onNodeWithText(newCaption).assertIsDisplayed()
+    }
+
+    @Test
+    fun theButtonGrowsSmoothlyToItsNewLabel() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        setContent { LabTheme { PopUpDemo(state) } }
+        mainClock.advanceTimeBy(500)
+        state.select(2)
+        mainClock.advanceTimeBy(4_000)
+        fun width() = onNodeWithTag("popup.next").getUnclippedBoundsInRoot().width
+        val before = width()
+        onNodeWithTag("popup.next").performClick()
+        val seen = mutableListOf<androidx.compose.ui.unit.Dp>()
+        repeat(60) {
+            mainClock.advanceTimeBy(33)
+            seen += width()
+        }
+        val after = width()
+        assertTrue(after > before, "Start exploring is wider than Next: $before -> $after")
+        assertTrue(
+            seen.any { it > before + 2.dp && it < after - 2.dp },
+            "no width in between: $seen",
+        )
     }
 }
