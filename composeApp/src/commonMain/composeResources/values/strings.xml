@@ -122,6 +122,7 @@
     <string name="popup_pull">PULL</string>
     <string name="demo_popup">Pop-up book</string>
     <string name="popup_brand">Cyclades</string>
+    <string name="popup_book_description">A pop-up book of the Cyclades</string>
     <string name="popup_skip">Skip</string>
     <string name="popup_back">Back</string>
     <string name="popup_next">Next</string>
