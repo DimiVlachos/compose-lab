@@ -111,4 +111,13 @@
     <string name="demo_fishing">Fishing refresh</string>
     <string name="fishing_feed_title">Islands</string>
     <string name="fishing_feed_hint">Pull down to fish for new islands</string>
+    <string name="popup_cover_title">CYCLADES</string>
+    <string name="popup_cover_subtitle">A  POP-UP  GUIDE  TO  THE  ISLANDS</string>
+    <string name="popup_footer_1_title">I · THE ISLANDS</string>
+    <string name="popup_footer_1_line">Milos · Naxos · Folegandros · Sifnos</string>
+    <string name="popup_footer_2_title">II · THE CROSSING</string>
+    <string name="popup_footer_2_line">Piraeus to Milos: 3 h 40 min by fast ferry</string>
+    <string name="popup_footer_3_title">III · THE WIND</string>
+    <string name="popup_footer_3_line">Meltemi: force 5 to 6 through July and August</string>
+    <string name="popup_pull">PULL</string>
 </resources>
