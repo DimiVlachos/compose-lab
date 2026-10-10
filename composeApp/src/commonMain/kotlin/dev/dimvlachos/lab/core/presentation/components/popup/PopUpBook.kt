@@ -117,7 +117,7 @@ public fun PopUpBook(
             }
             .drawWithCache {
                 val camera = BookCamera(size.width, size.height)
-                val art = painter.prepare(cover, spreads, camera, this, colors.pageEdge)
+                val art = painter.prepare(cover, spreads, camera, this, colors.paperBack)
                 onDrawBehind {
                     // Read so a moved frame redraws; the moving values themselves are read below.
                     state.frame

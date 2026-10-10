@@ -150,6 +150,46 @@ class PopUpBookUiTest {
         assertEquals(before, compositions)
     }
 
+    @Test
+    fun aPieceSeenFromBehindIsWhitePaperWithItsPrintShowingThrough() = runComposeUiTest {
+        // The cover 60° up: the eye looks into the spread, at the back of a piece still folded low.
+        val piece =
+            PopUpPiece(
+                ColorPainter(Color.Blue),
+                PopUpSide.Near,
+                fromGutter = 20f,
+                x = -100f,
+                width = 200f,
+                height = 150f,
+            )
+        val spread =
+            listOf(PopUpSpread(ColorPainter(Color.Gray), ColorPainter(Color.Gray), listOf(piece)))
+        val state = PopUpBookState(spreadCount = 1)
+        val cover = 60f * kotlin.math.PI.toFloat() / 180f
+        state.angles[0] = cover
+        mainClock.autoAdvance = false
+        setContent {
+            LabTheme {
+                Box(Modifier.background(Color.Black)) {
+                    PopUpBook(
+                        ColorPainter(Color.Red),
+                        spread,
+                        state,
+                        Modifier.width(width.dp).testTag(BookTag),
+                    )
+                }
+            }
+        }
+        mainClock.advanceTimeByFrame()
+        assertTrue(!PopUpMath.pieceFrontSeen(near = 0f, far = cover))
+        val up = PopUpMath.up(near = 0f, far = cover)
+        val base = PopUpMath.base(piece, near = 0f, far = cover, x = 0f)
+        val seen = pixels().at(0f, base.y + up.y * 75f, base.z + up.z * 75f)
+        // Light paper, not the sand of a page's edge, with a cool trace of the blue print.
+        assertTrue(seen.brightness() > 0.7f, "$seen")
+        assertTrue(seen.blue > seen.red, "$seen")
+    }
+
     private companion object {
         const val BookTag = "popup"
     }

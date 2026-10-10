@@ -210,17 +210,19 @@ internal class PopUpPainter {
         val brightness = PopUpMath.brightness(normal)
         // Seen from behind, a piece is its own shape in plain paper.
         val filter = if (frontSeen) shade(brightness) else paperShade(art.paperBack, brightness)
+        // From behind, the print shows faintly through the card, darkened as the card is.
+        val ink = if (frontSeen) null else shade(brightness)
         for (o in 0 until count) {
             val i = depthOrder[o]
             val piece = pieces[i]
             val image = art.pieces[s][i]
             piecePlane(piece, spread, s, state, near, far, camera, image, pad = 0f)
             val spins = piece.motion as? PieceMotion.Spins
-            if (spins == null) {
-                drawSheet(scope, image, filter)
-            } else {
-                Homography.toMatrix(h, matrix)
-                scope.withTransform({ transform(matrix) }) {
+            Homography.toMatrix(h, matrix)
+            scope.withTransform({ transform(matrix) }) {
+                if (spins == null) {
+                    drawPieceFace(image, frontSeen, filter, ink)
+                } else {
                     rotateRad(
                         state.sailAngle[s],
                         Offset(
@@ -228,11 +230,23 @@ internal class PopUpPainter {
                             spins.pivotY * image.height / piece.height,
                         ),
                     ) {
-                        drawImage(image, colorFilter = filter)
+                        drawPieceFace(image, frontSeen, filter, ink)
                     }
                 }
             }
         }
+    }
+
+    // A piece's face: its art from the front; from behind, plain card in [filter]'s paper with the
+    // art faintly through it, mirrored as print seen through paper is.
+    private fun DrawScope.drawPieceFace(
+        image: ImageBitmap,
+        frontSeen: Boolean,
+        filter: ColorFilter?,
+        ink: ColorFilter?,
+    ) {
+        drawImage(image, colorFilter = filter)
+        if (!frontSeen) drawImage(image, alpha = BleedThrough, colorFilter = ink)
     }
 
     /**
@@ -455,6 +469,9 @@ internal class PopUpPainter {
         // dark each one is; they pile up to darkest close under the book.
         val TableShadow = floatArrayOf(10f, 7.5f, 5.5f, 4f, 2.5f, 1.2f, 0f)
         const val TableAlpha = 0.035f
+
+        // How much of a piece's print shows through its card from behind.
+        const val BleedThrough = 0.16f
         val Clockwise = intArrayOf(0, 1, 2, 3)
         val Anticlockwise = intArrayOf(0, 3, 2, 1)
         const val ShadeLevels = 48
