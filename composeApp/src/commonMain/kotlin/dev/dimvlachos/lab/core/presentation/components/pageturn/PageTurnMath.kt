@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.util.lerp
+import dev.dimvlachos.lab.core.presentation.components.perspective.Homography
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan
@@ -117,27 +118,12 @@ internal class TurnFrame(
      * Writes into [out] the projection that draws wedge [k]: from the flat page (x from the spine,
      * y down) to where [geometry] sees it.
      */
-    fun matrix(k: Int, geometry: PageGeometry, out: Matrix): Matrix {
-        val h = homography(k, geometry)
-        out.reset()
-        out[0, 0] = h[0]
-        out[1, 0] = h[1]
-        out[3, 0] = h[2]
-        out[0, 1] = h[3]
-        out[1, 1] = h[4]
-        out[3, 1] = h[5]
-        out[0, 3] = h[6]
-        out[1, 3] = h[7]
-        out[3, 3] = h[8]
-        return out
-    }
+    fun matrix(k: Int, geometry: PageGeometry, out: Matrix): Matrix =
+        Homography.toMatrix(homography(k, geometry), out)
 
     /** Where [geometry] sees the paper at ([x], [y]). */
-    fun project(x: Float, y: Float, geometry: PageGeometry): Offset {
-        val h = homography(wedgeAt(x, y), geometry)
-        val w = h[6] * x + h[7] * y + h[8]
-        return Offset((h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w)
-    }
+    fun project(x: Float, y: Float, geometry: PageGeometry): Offset =
+        Homography.project(homography(wedgeAt(x, y), geometry), x, y)
 
     /**
      * The paper seen at [point] (x from the spine, y down), or null if the leaf is not there. Of
@@ -145,21 +131,9 @@ internal class TurnFrame(
      */
     fun unproject(point: Offset, geometry: PageGeometry): Offset? {
         for (k in wedges - 1 downTo 0) {
-            val h = homography(k, geometry)
-            // The inverse of a projection, up to scale: its adjugate.
-            val a0 = h[4] * h[8] - h[5] * h[7]
-            val a1 = h[2] * h[7] - h[1] * h[8]
-            val a2 = h[1] * h[5] - h[2] * h[4]
-            val a3 = h[5] * h[6] - h[3] * h[8]
-            val a4 = h[0] * h[8] - h[2] * h[6]
-            val a5 = h[2] * h[3] - h[0] * h[5]
-            val a6 = h[3] * h[7] - h[4] * h[6]
-            val a7 = h[1] * h[6] - h[0] * h[7]
-            val a8 = h[0] * h[4] - h[1] * h[3]
-            val w = a6 * point.x + a7 * point.y + a8
-            if (abs(w) < 1e-9f) continue
-            val x = (a0 * point.x + a1 * point.y + a2) / w
-            val y = (a3 * point.x + a4 * point.y + a5) / w
+            val seen = Homography.unproject(homography(k, geometry), point) ?: continue
+            val x = seen.x
+            val y = seen.y
             if (x < 0f || x > width || y < 0f || y > height) continue
             // On this wedge's plane, but only its own piece of paper counts.
             val across = x / (width * (1f + tilt * (y - height / 2f) / (height / 2f))) / spacing
@@ -173,21 +147,21 @@ internal class TurnFrame(
     private fun homography(k: Int, geometry: PageGeometry): FloatArray {
         val p = k * Placement
         val r = placements
-        val perspective = geometry.perspectivePx
-        val w0 = r[p + 6] / perspective
-        val w1 = r[p + 7] / perspective
-        val w2 = 1f + r[p + 11] / perspective
-        val h = scratch
-        h[0] = r[p] + geometry.spineX * w0
-        h[1] = r[p + 1] + geometry.spineX * w1
-        h[2] = r[p + 9] + geometry.spineX * w2
-        h[3] = r[p + 3] + geometry.originY * w0
-        h[4] = r[p + 4] + geometry.originY * w1
-        h[5] = r[p + 10] - geometry.originY + geometry.originY * w2
-        h[6] = w0
-        h[7] = w1
-        h[8] = w2
-        return h
+        return Homography.of(
+            ox = r[p + 9] + geometry.spineX,
+            oy = r[p + 10],
+            oz = r[p + 11],
+            ux = r[p],
+            uy = r[p + 3],
+            uz = r[p + 6],
+            vx = r[p + 1],
+            vy = r[p + 4],
+            vz = r[p + 7],
+            cx = geometry.spineX,
+            cy = geometry.originY,
+            perspective = geometry.perspectivePx,
+            out = scratch,
+        )
     }
 
     private val scratch = FloatArray(9)
