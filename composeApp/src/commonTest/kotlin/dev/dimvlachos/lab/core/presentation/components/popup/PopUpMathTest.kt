@@ -174,6 +174,24 @@ class PopUpMathTest {
     }
 
     @Test
+    fun aWideShortSlotShrinksTheBookToFitItsHeight() {
+        // Landscape: far wider than it is tall. The open book and a tall piece stay inside.
+        val camera = BookCamera(1000f, 300f)
+        val points =
+            listOf(
+                Vec3(-157f, -198f, 0f),
+                Vec3(157f, -198f, 0f),
+                Vec3(-157f, 198f, 0f),
+                Vec3(157f, 198f, 0f),
+                Vec3(0f, 0f, 150f),
+            )
+        for (p in points) {
+            val seen = camera.project(p)
+            assertTrue(seen.x in 0f..1000f && seen.y in 0f..300f, "$p is drawn at $seen")
+        }
+    }
+
+    @Test
     fun theFarPageIsDrawnHigherAndSmallerThanTheNear() {
         val camera = BookCamera(372f, 600f)
         val near = camera.project(Vec3(100f, -100f, 0f))

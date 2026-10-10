@@ -27,7 +27,9 @@ internal data class Vec3(val x: Float, val y: Float, val z: Float) {
  * onto the table and draws the book's middle at ([cx], [cy]).
  */
 internal class BookCamera(val width: Float, val height: Float) {
-    val pxPerUnit: Float = width / PopUpDimens.UnitsAcross
+    // The book fills the width, unless the frame is shorter than the book's own shape; then it
+    // fits the height instead, centred, so it never spills out of its frame.
+    val pxPerUnit: Float = minOf(width, height / PopUpDimens.Aspect) / PopUpDimens.UnitsAcross
     val cx: Float = width / 2f
     val cy: Float = height * PopUpDimens.CentreY
     val perspective: Float = PopUpDimens.CameraDistance * pxPerUnit
