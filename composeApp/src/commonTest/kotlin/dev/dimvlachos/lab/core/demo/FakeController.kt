@@ -145,4 +145,12 @@ internal class FakeController(private val now: () -> Long) : DemoController {
         refreshPulls += distance
         calls += now() to "pullToRefresh($distance, $duration)"
     }
+
+    override suspend fun dragPopUpPage(from: Offset, to: Offset, duration: Duration) {
+        calls += now() to "dragPopUpPage($from, $to, $duration)"
+    }
+
+    override suspend fun pullPopUpTab(out: Float, duration: Duration) {
+        calls += now() to "pullPopUpTab($out, $duration)"
+    }
 }

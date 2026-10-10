@@ -38,6 +38,8 @@ public data class AppColors(
     val threadTwist: Color = Color(0xFF9A8662),
     val pageEdge: Color = Color(0xFFEDE3CB),
     val pageEdgeLine: Color = Color(0xFFA8926A),
+    // The back of a pop-up piece: plain white card, its print faintly showing through.
+    val paperBack: Color = Color(0xFFF8F5EE),
     // The table the book demo lies on, lit from above its centre, and the scripted finger.
     val table: Color = Color(0xFF2B1F17),
     val tableLit: Color = Color(0xFF4A3727),

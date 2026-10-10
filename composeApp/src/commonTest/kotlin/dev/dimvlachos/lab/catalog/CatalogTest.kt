@@ -13,6 +13,7 @@ import dev.dimvlachos.lab.resources.demo_magnet_filter
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_paper_plane
+import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,6 +38,7 @@ class CatalogTest {
                 "lamp.cord",
                 "magnet.filter",
                 "feed.fishing",
+                "tour.popup",
             ),
             Catalog.demos.map { it.id },
         )
@@ -51,6 +53,7 @@ class CatalogTest {
                 Res.string.demo_pull_cord,
                 Res.string.demo_magnet_filter,
                 Res.string.demo_fishing,
+                Res.string.demo_popup,
             ),
             Catalog.demos.map { it.title },
         )
@@ -115,6 +118,7 @@ class CatalogTest {
                 "lamp.cord",
                 "magnet.filter",
                 "feed.fishing",
+                "tour.popup",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

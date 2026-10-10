@@ -41,6 +41,8 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var photoTapHandler: (suspend (String) -> Unit)? = null
     private var refreshPullHandler: (suspend (Dp, Duration) -> Unit)? = null
     private var feedResetHandler: (suspend () -> Unit)? = null
+    private var popUpPageHandler: (suspend (Offset, Offset, Duration) -> Unit)? = null
+    private var popUpTabHandler: (suspend (Float, Duration) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -102,6 +104,14 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         feedResetHandler?.invoke()
     }
 
+    override suspend fun dragPopUpPage(from: Offset, to: Offset, duration: Duration) {
+        popUpPageHandler?.invoke(from, to, duration)
+    }
+
+    override suspend fun pullPopUpTab(out: Float, duration: Duration) {
+        popUpTabHandler?.invoke(out, duration)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -156,5 +166,13 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setFeedResetHandler(handler: (suspend () -> Unit)?) {
         feedResetHandler = handler
+    }
+
+    fun setPopUpPageHandler(handler: (suspend (Offset, Offset, Duration) -> Unit)?) {
+        popUpPageHandler = handler
+    }
+
+    fun setPopUpTabHandler(handler: (suspend (Float, Duration) -> Unit)?) {
+        popUpTabHandler = handler
     }
 }

@@ -81,4 +81,17 @@ internal interface DemoController {
      * that refreshed it ends where it started and loops.
      */
     suspend fun resetFeed()
+
+    /**
+     * Takes the pop-up book's page with a fingertip at [from] (fractions of the book), drags it to
+     * [to] over [duration] and lets go. Returns once the finger has lifted; the leaf lands by
+     * itself.
+     */
+    suspend fun dragPopUpPage(from: Offset, to: Offset, duration: Duration)
+
+    /**
+     * Pulls the open spread's tab [out] book units over [duration], holds it a moment and lets go.
+     * Returns once the finger has lifted; the tab springs back by itself.
+     */
+    suspend fun pullPopUpTab(out: Float, duration: Duration)
 }
