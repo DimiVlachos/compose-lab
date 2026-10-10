@@ -146,6 +146,22 @@ internal object PopUpMath {
     }
 
     /**
+     * The shadow on the table of a leaf [width] by [depth] lying at [angle]: its four corners (two
+     * along the gutter, two along its outer edge) cast along the light onto the table. Lying flat
+     * it shades its own footprint; standing, it throws a shadow away from the light.
+     */
+    fun castOnTable(angle: Float, width: Float, depth: Float): List<Vec3> {
+        val edge = across(angle) * depth
+        return listOf(
+                Vec3(-width / 2f, 0f, 0f),
+                Vec3(width / 2f, 0f, 0f),
+                Vec3(width / 2f, edge.y, edge.z),
+                Vec3(-width / 2f, edge.y, edge.z),
+            )
+            .map { ontoPage(it, 0f).copy(z = 0f) }
+    }
+
+    /**
      * Writes into [out] what to draw, back to front, for leaves at [angles] (leaf 0 the cover, the
      * fixed back board after the last), and returns how many: leaf j as j, the board as
      * angles.size, and the pieces of spread j, between leaf j and the next, as [Spread] + j.

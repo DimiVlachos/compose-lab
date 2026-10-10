@@ -118,6 +118,34 @@ class PopUpMathTest {
     }
 
     @Test
+    fun aLeafLyingOnTheNearStackShadesOnlyItsOwnFootprint() {
+        val c = PopUpMath.castOnTable(angle = 0f, width = 300f, depth = 190f)
+        assertTrue(c.all { it.z == 0f && it.y <= 1e-3f && it.y >= -190.01f }, "$c")
+    }
+
+    @Test
+    fun anUprightLeafCastsItsShadowAcrossTheFarSideAwayFromTheLight() {
+        val c = PopUpMath.castOnTable(angle = pi / 2f, width = 300f, depth = 190f)
+        assertTrue(c.all { it.z == 0f }, "$c")
+        // The light is in front and to the left: the shadow falls behind the gutter and right.
+        assertTrue(c.maxOf { it.y } > 50f, "$c")
+        assertTrue(c.maxOf { it.x } > 150f, "$c")
+    }
+
+    @Test
+    fun aLeafComingDownPullsItsShadowInWithIt() {
+        // Shutting the book: a leaf lying on the far stack shades the far side. Lifting, its
+        // raised edge throws the shadow a little further; then as it swings back over, the
+        // shadow on the far side shrinks steadily, and well before it lies down it is gone.
+        fun reach(a: Float) = PopUpMath.castOnTable(a, 300f, 190f).maxOf { it.y }
+        assertEquals(190f, reach(pi), 0.5f)
+        val coming = listOf(0.75f, 0.6f, 0.45f, 0.3f, 0.15f, 0f).map { reach(it * pi) }
+        assertTrue(coming.zipWithNext().all { (a, b) -> b <= a }, "$coming")
+        assertTrue(coming[1] < coming[0] && coming[2] < coming[1], "$coming")
+        assertTrue(coming.last() <= 1e-3f, "$coming")
+    }
+
+    @Test
     fun shadowsFadeInOnlyNearlyOpen() {
         assertEquals(0f, PopUpMath.shadowFade(0f, 2f))
         assertEquals(1f, PopUpMath.shadowFade(0f, pi))

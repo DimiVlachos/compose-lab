@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Density
 import dev.dimvlachos.lab.core.presentation.components.perspective.Homography
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlin.math.sin
 
 /** Every bitmap one frame draws, painted for one size of the book. */
@@ -100,24 +101,51 @@ internal class PopUpPainter {
         }
     }
 
-    // A soft shadow on the table under the book: layers spreading out and fading, darkest close
-    // under the boards, so it reads as shade on any table rather than a frame round the book.
+    // The book's shadow on the table: every leaf, and the back board, casts its own along the
+    // light, so the shadow follows each page as it turns. They are filled as one shape, in layers
+    // spreading out and fading, darkest close under the paper.
     private fun drawTable(scope: DrawScope, camera: BookCamera, angles: FloatArray) {
-        val open = angles.any { it > 0f }
+        val n = angles.size
         for (layer in TableShadow.indices) {
             val margin = TableShadow[layer]
-            val w = PopUpDimens.BoardWidth / 2f + margin
-            val near = -PopUpDimens.BoardDepth - margin
-            val far = if (open) PopUpDimens.BoardDepth + margin else margin
             path.reset()
-            moveTo(camera.project(Vec3(-w, near, 0f)))
-            lineTo(camera.project(Vec3(w, near, 0f)))
-            lineTo(camera.project(Vec3(w, far, 0f)))
-            lineTo(camera.project(Vec3(-w, far, 0f)))
-            path.close()
+            for (j in 0..n) {
+                val angle = if (j < n) angles[j] else 0f
+                addCast(
+                    camera,
+                    PopUpMath.castOnTable(angle, leafWidth(j, n), leafDepth(j, n)),
+                    margin,
+                )
+            }
             scope.drawPath(path, Color.Black, alpha = TableAlpha)
         }
     }
+
+    // Adds a cast shadow's quad to [path], grown by [margin] book units on every side, always
+    // wound the same way on the screen so that overlapping shadows fill once instead of cancelling.
+    private fun addCast(camera: BookCamera, corners: List<Vec3>, margin: Float) {
+        val cx = corners.sumOf { it.x.toDouble() }.toFloat() / 4f
+        val cy = corners.sumOf { it.y.toDouble() }.toFloat() / 4f
+        for (i in 0 until 4) {
+            val c = corners[i]
+            val grown = Vec3(c.x + sign(c.x - cx) * margin, c.y + sign(c.y - cy) * margin, 0f)
+            val seen = camera.project(grown)
+            castX[i] = seen.x
+            castY[i] = seen.y
+        }
+        var area = 0f
+        for (i in 0 until 4) {
+            val k = (i + 1) % 4
+            area += castX[i] * castY[k] - castX[k] * castY[i]
+        }
+        val order = if (area >= 0f) Clockwise else Anticlockwise
+        path.moveTo(castX[order[0]], castY[order[0]])
+        for (i in 1 until 4) path.lineTo(castX[order[i]], castY[order[i]])
+        path.close()
+    }
+
+    private val castX = FloatArray(4)
+    private val castY = FloatArray(4)
 
     private fun drawLeaf(
         scope: DrawScope,
@@ -425,8 +453,10 @@ internal class PopUpPainter {
         const val MaxQuality = 3f
         // How far each layer of the table's shadow spreads past the boards, in book units, and how
         // dark each one is; they pile up to darkest close under the book.
-        val TableShadow = floatArrayOf(16f, 13f, 10.5f, 8f, 6f, 4f, 2.5f, 1f)
-        const val TableAlpha = 0.024f
+        val TableShadow = floatArrayOf(10f, 7.5f, 5.5f, 4f, 2.5f, 1.2f, 0f)
+        const val TableAlpha = 0.035f
+        val Clockwise = intArrayOf(0, 1, 2, 3)
+        val Anticlockwise = intArrayOf(0, 3, 2, 1)
         const val ShadeLevels = 48
     }
 }
