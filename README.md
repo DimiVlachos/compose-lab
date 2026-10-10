@@ -31,6 +31,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Pull cord](#pull-cord-corepresentationcomponentspullcord) | `pullcord` | `lamp.cord` | Pull a lamp's cord to switch a screen between light and dark |
 | [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet) | `magnet` | `magnet.filter` | Drag tag magnets over photos to filter them; snap two together to search for both |
 | [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | A pull-to-refresh that isn't a boring spinner: cast a line, haul new cards up from the deep, reel in an empty hook, or snap the line |
+| [Pop-up book](#pop-up-book-corepresentationcomponentspopup) | `popup` | `tour.popup` | An onboarding as a pop-up book: paper scenery stands up as a spread opens, and pull tabs sail a boat and spin windmill sails |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -46,6 +47,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Pull cord](#pull-cord-corepresentationcomponentspullcord)
 - [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet)
 - [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing)
+- [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [Project structure](#project-structure)
 - [Run](#run)
@@ -346,6 +348,51 @@ FishingRefresh(status = viewModel.status, onRefresh = viewModel::refresh, state 
 }
 ```
 
+## Pop-up book (`core/presentation/components/popup/`)
+
+An onboarding that is a pop-up book lying open on the table. Drag the cover open, or tap Open, and paper scenery stands up out of the gutter: a whitewashed chapel with a blue dome on its hills, a wall of bougainvillea. Turn the page and a lighthouse rises over the sea; pull the paper tab at the page's edge and a boat sails out across the waves. On the last spread, pull the tab and a windmill's sails spin, then coast down. Shut a spread and everything folds flat again, face down between the pages.
+
+- **Every sheet is flat, so one projection draws it exactly.** Leaves and pieces are planes. Each one's pose in the book, seen through one pitched camera, gives a 3×3 projection, written into Compose's 4×4 `Matrix`; the sheet's bitmap is drawn under it. The projection is the page-turn book's, moved into a shared `perspective/Homography` that both books use.
+- **Pieces stand on the bisector.** A piece's foot is a line on its page, and the piece leans along the bisector of its spread's two pages. So it stands upright with the spread open flat and lies flat when it shuts, the way a V-fold in paper does, and nothing has to be animated by hand: the leaves' angles move everything.
+- **Drawn in the right order, without fudge.** Leaves and spreads all turn about the gutter, so they are drawn by how far they point from the eye, and the spread the eye looks into goes last. A leaf in mid-turn always sits between the two spreads it separates.
+- **Light and shadow.** Each sheet is shaded by how it faces one light, with a colour filter so the shade follows a piece's cut-out shape. Each piece casts a soft shadow onto its spread as it opens: its silhouette, softened once when the art is painted, then cast along the light onto the page plane by one more projection and clipped to the paper. No platform blur is used.
+- **Leaves on springs.** Leaves turn on springs stepped at a fixed 120 Hz, bounce a little off each stack, and never pass through each other. Let go past halfway, or with a flick, and a leaf finishes; a tap on the near half turns forward and on the far half turns back. A tab springs back in when let go; the sails take only the outward pull and coast down.
+- **Art drawn in Kotlin.** The demo's Cyclades art is vector paths, gradients and printed text, painted into bitmaps once per size. The component takes a `Painter` for the cover, each page and each piece, so a caller can pass images instead.
+
+Nothing recomposes while the book moves: the leaf angles, tabs and sails are read only while drawing, and the frame loop sleeps once everything is still. The book is decoration to a screen reader; the demo's caption and its Back and Next buttons carry the tour.
+
+The demo, `tour.popup`, is a tall onboarding screen: the book, progress dots, a caption, and Back and Next. Its script drags the cover open, drags a page over, sails the boat, taps to the windmill, spins its sails twice and shuts the book.
+
+```kotlin
+val book = rememberPopUpBookState(spreadCount = spreads.size)
+
+PopUpBook(
+    cover = coverPainter,
+    spreads = listOf(
+        PopUpSpread(
+            near = islandsPage, // drawn with the gutter along its top edge
+            far = skyPage,      // drawn with the gutter along its bottom edge
+            pieces = listOf(
+                // Book units: a page is 300 wide and 190 deep, x from the middle.
+                PopUpPiece(chapel, PopUpSide.Near, fromGutter = 0f, x = -112f, width = 130f, height = 150f),
+            ),
+        ),
+        PopUpSpread(
+            near = seaPage,
+            far = cloudsPage,
+            pieces = listOf(
+                PopUpPiece(boat, PopUpSide.Near, fromGutter = 74f, x = -122f, width = 90f, height = 74f,
+                    motion = PieceMotion.RidesTab(from = -122f, to = 28f, bob = 1.6f)),
+            ),
+            tab = PullTab(),
+        ),
+    ),
+    state = book,
+    description = "Find your island",
+)
+// Next and Back buttons call book.next() and book.previous(); book.spread says where it is.
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -449,6 +496,8 @@ The page-turn book shows a two-page spread, 2:1, each spread one image; for cris
 The paper plane carries one message of any length; a bubble up to 264 dp wide comes down within its 0.6 s whatever its length, the plane crossing it faster for a long one. The message field grows to 4 lines, 2 on a short screen, and scrolls past that; only the letters it shows are poured into the button. Messages are dropped from the left, whatever the script's direction.
 
 The pull cord hangs one lamp over a screen it fills. While a new look spreads, the screen is composed twice, once in each look, so its state belongs outside it, scroll position included, and it must paint an opaque background; a switch back before the new look has finished spreading turns its circle round, shrinking it back into the bulb. `across` is measured from the left whatever the layout direction, so a right-to-left screen mirrors it itself, as the demo does; the demo's settings scroll when they don't fit.
+
+The pop-up book's leaves are rigid boards; a spread has at most one tab, on its near page; and it takes any number of spreads, each with as many pieces as it likes, drawn as flat sheets.
 
 ## Contributing
 
