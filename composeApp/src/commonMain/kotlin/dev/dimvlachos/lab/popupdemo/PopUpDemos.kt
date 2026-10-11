@@ -2,10 +2,13 @@ package dev.dimvlachos.lab.popupdemo
 
 import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.popupdemo.presentation.components.PopUpDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_popup
+import dev.dimvlachos.lab.resources.demo_popup_description
+import dev.dimvlachos.lab.resources.ic_demo_popup
 import kotlin.time.Duration.Companion.seconds
 
 internal object PopUpDemos {
@@ -30,5 +33,18 @@ internal object PopUpDemos {
             at(16.0.seconds) { select(0) }
         }
 
-    val all = listOf(Demo("tour.popup", Res.string.demo_popup, tour, tall = true) { PopUpDemo(it) })
+    val all =
+        listOf(
+            Demo(
+                "tour.popup",
+                Res.string.demo_popup,
+                tour,
+                description = Res.string.demo_popup_description,
+                icon = Res.drawable.ic_demo_popup,
+                tags = setOf(DemoTag.Gesture, DemoTag.ThreeD, DemoTag.Canvas),
+                tall = true,
+            ) {
+                PopUpDemo(it)
+            }
+        )
 }

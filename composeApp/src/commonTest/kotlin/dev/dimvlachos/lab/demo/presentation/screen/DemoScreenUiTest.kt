@@ -12,10 +12,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.demo_navbar_description
+import dev.dimvlachos.lab.resources.ic_demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,6 +31,9 @@ class DemoScreenUiTest {
             id = "test.stage",
             title = Res.string.demo_navbar,
             script = demoScript {},
+            description = Res.string.demo_navbar_description,
+            icon = Res.drawable.ic_demo_navbar,
+            tags = setOf(DemoTag.Motion),
             content = { Box(Modifier.fillMaxSize().testTag("stage")) },
         )
 
@@ -59,6 +65,9 @@ class DemoScreenUiTest {
             id = "test.handsOn",
             title = Res.string.demo_navbar,
             script = demoScript { at(100.milliseconds) { select(1) } },
+            description = Res.string.demo_navbar_description,
+            icon = Res.drawable.ic_demo_navbar,
+            tags = setOf(DemoTag.Motion),
             autoplay = false,
             content = { state -> selections += state.selectedIndex },
         )
@@ -100,6 +109,9 @@ class DemoScreenUiTest {
                 id = "test.replay",
                 title = Res.string.demo_navbar,
                 script = demoScript { at(100.milliseconds) { select(1) } },
+                description = Res.string.demo_navbar_description,
+                icon = Res.drawable.ic_demo_navbar,
+                tags = setOf(DemoTag.Motion),
                 autoplay = false,
                 content = { state -> replaying += state.replay },
             )

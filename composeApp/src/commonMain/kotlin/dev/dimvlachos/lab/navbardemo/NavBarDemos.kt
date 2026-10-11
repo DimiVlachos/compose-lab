@@ -1,10 +1,13 @@
 package dev.dimvlachos.lab.navbardemo
 
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.navbardemo.presentation.components.NavBarDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.demo_navbar_description
+import dev.dimvlachos.lab.resources.ic_demo_navbar
 import kotlin.time.Duration.Companion.seconds
 
 internal object NavBarDemos {
@@ -24,5 +27,16 @@ internal object NavBarDemos {
 
     // The finished bar only: the layer-by-layer story lives on in the README's GIFs.
     val all: List<Demo> =
-        listOf(Demo("navbar.all", Res.string.demo_navbar, fullTour) { NavBarDemo(it) })
+        listOf(
+            Demo(
+                "navbar.all",
+                Res.string.demo_navbar,
+                fullTour,
+                description = Res.string.demo_navbar_description,
+                icon = Res.drawable.ic_demo_navbar,
+                tags = setOf(DemoTag.Motion, DemoTag.Navigation),
+            ) {
+                NavBarDemo(it)
+            }
+        )
 }

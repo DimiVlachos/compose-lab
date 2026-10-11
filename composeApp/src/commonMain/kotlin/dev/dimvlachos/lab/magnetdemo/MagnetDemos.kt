@@ -2,10 +2,13 @@ package dev.dimvlachos.lab.magnetdemo
 
 import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.magnetdemo.presentation.components.MagnetDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_magnet_filter
+import dev.dimvlachos.lab.resources.demo_magnet_filter_description
+import dev.dimvlachos.lab.resources.ic_demo_magnet
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -54,7 +57,15 @@ internal object MagnetDemos {
     // A table is to play with: on the phone it waits for the hand, and the recorder plays this.
     val all =
         listOf(
-            Demo("magnet.filter", Res.string.demo_magnet_filter, filter, autoplay = false) {
+            Demo(
+                "magnet.filter",
+                Res.string.demo_magnet_filter,
+                filter,
+                description = Res.string.demo_magnet_filter_description,
+                icon = Res.drawable.ic_demo_magnet,
+                tags = setOf(DemoTag.Gesture, DemoTag.Physics),
+                autoplay = false,
+            ) {
                 MagnetDemo(it)
             }
         )

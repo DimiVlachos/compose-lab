@@ -1,10 +1,13 @@
 package dev.dimvlachos.lab.gallerydemo
 
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.gallerydemo.presentation.components.GalleryDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_morph_app
+import dev.dimvlachos.lab.resources.demo_morph_app_description
+import dev.dimvlachos.lab.resources.ic_demo_gallery
 import kotlin.time.Duration.Companion.seconds
 
 internal object GalleryDemos {
@@ -28,5 +31,16 @@ internal object GalleryDemos {
     }
 
     val all: List<Demo> =
-        listOf(Demo("morph.app", Res.string.demo_morph_app, appTour) { GalleryDemo(it) })
+        listOf(
+            Demo(
+                "morph.app",
+                Res.string.demo_morph_app,
+                appTour,
+                description = Res.string.demo_morph_app_description,
+                icon = Res.drawable.ic_demo_gallery,
+                tags = setOf(DemoTag.Motion, DemoTag.Navigation),
+            ) {
+                GalleryDemo(it)
+            }
+        )
 }

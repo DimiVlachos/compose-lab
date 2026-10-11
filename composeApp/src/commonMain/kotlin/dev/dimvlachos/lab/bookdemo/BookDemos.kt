@@ -2,11 +2,14 @@ package dev.dimvlachos.lab.bookdemo
 
 import dev.dimvlachos.lab.bookdemo.presentation.components.BookDemo
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.DragMove
 import dev.dimvlachos.lab.core.demo.PageDrag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_book_turn
+import dev.dimvlachos.lab.resources.demo_book_turn_description
+import dev.dimvlachos.lab.resources.ic_demo_book
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -107,6 +110,16 @@ internal object BookDemos {
 
     val all: List<Demo> =
         listOf(
-            Demo("book.turn", Res.string.demo_book_turn, tour, landscape = true) { BookDemo(it) }
+            Demo(
+                "book.turn",
+                Res.string.demo_book_turn,
+                tour,
+                description = Res.string.demo_book_turn_description,
+                icon = Res.drawable.ic_demo_book,
+                tags = setOf(DemoTag.Gesture, DemoTag.ThreeD, DemoTag.Canvas),
+                landscape = true,
+            ) {
+                BookDemo(it)
+            }
         )
 }

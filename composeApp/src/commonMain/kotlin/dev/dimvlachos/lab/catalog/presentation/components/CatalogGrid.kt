@@ -21,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.catalog.CatalogEntry
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.catalog_in_folder
+import dev.dimvlachos.lab.resources.catalog_versions
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 // Wide enough for a card's title and description on one line each: one column on a phone held
@@ -65,16 +69,32 @@ internal fun CatalogGrid(
                 is CatalogEntry.Single ->
                     CatalogCard(
                         title = stringResource(entry.demo.title),
-                        subtitle = entry.demo.id,
+                        description = stringResource(entry.demo.description),
+                        caption =
+                            entry.folder?.let {
+                                stringResource(
+                                    Res.string.catalog_in_folder,
+                                    stringResource(it.title),
+                                )
+                            } ?: entry.demo.id,
+                        icon = entry.demo.icon,
                         onClick = { onOpenDemo(entry.demo) },
                         modifier = card,
                     )
                 is CatalogEntry.Group ->
                     CatalogCard(
                         title = stringResource(entry.title),
-                        subtitle = entry.id,
+                        description = stringResource(entry.description),
+                        caption =
+                            pluralStringResource(
+                                Res.plurals.catalog_versions,
+                                entry.demos.size,
+                                entry.demos.size,
+                            ),
+                        icon = entry.icon,
                         onClick = { onOpenGroup(entry) },
                         modifier = card,
+                        folder = true,
                     )
             }
         }

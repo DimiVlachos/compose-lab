@@ -1,12 +1,15 @@
 package dev.dimvlachos.lab.planedemo
 
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.planedemo.presentation.components.PlaneDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.chat_script_1
 import dev.dimvlachos.lab.resources.chat_script_2
 import dev.dimvlachos.lab.resources.demo_paper_plane
+import dev.dimvlachos.lab.resources.demo_paper_plane_description
+import dev.dimvlachos.lab.resources.ic_demo_plane
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -29,7 +32,15 @@ internal object PlaneDemos {
     // Replay.
     val all =
         listOf(
-            Demo("chat.plane", Res.string.demo_paper_plane, chat, autoplay = false) {
+            Demo(
+                "chat.plane",
+                Res.string.demo_paper_plane,
+                chat,
+                description = Res.string.demo_paper_plane_description,
+                icon = Res.drawable.ic_demo_plane,
+                tags = setOf(DemoTag.Motion, DemoTag.Text, DemoTag.Canvas),
+                autoplay = false,
+            ) {
                 PlaneDemo(it)
             }
         )

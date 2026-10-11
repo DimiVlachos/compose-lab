@@ -2,10 +2,13 @@ package dev.dimvlachos.lab.pullcorddemo
 
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.pullcorddemo.presentation.components.PullCordDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_pull_cord
+import dev.dimvlachos.lab.resources.demo_pull_cord_description
+import dev.dimvlachos.lab.resources.ic_demo_lamp
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -32,7 +35,15 @@ internal object PullCordDemos {
     // Replay.
     val all =
         listOf(
-            Demo("lamp.cord", Res.string.demo_pull_cord, cord, autoplay = false) {
+            Demo(
+                "lamp.cord",
+                Res.string.demo_pull_cord,
+                cord,
+                description = Res.string.demo_pull_cord_description,
+                icon = Res.drawable.ic_demo_lamp,
+                tags = setOf(DemoTag.Gesture, DemoTag.Physics),
+                autoplay = false,
+            ) {
                 PullCordDemo(it)
             }
         )

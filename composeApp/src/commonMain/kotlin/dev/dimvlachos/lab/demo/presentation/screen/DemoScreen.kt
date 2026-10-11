@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.tooling.preview.Preview
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.platform.LockLandscape
@@ -40,7 +41,9 @@ import dev.dimvlachos.lab.resources.action_back
 import dev.dimvlachos.lab.resources.action_replay
 import dev.dimvlachos.lab.resources.action_stop
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.demo_navbar_description
 import dev.dimvlachos.lab.resources.ic_arrow_back
+import dev.dimvlachos.lab.resources.ic_demo_navbar
 import dev.dimvlachos.lab.resources.ic_play_arrow
 import dev.dimvlachos.lab.resources.ic_stop
 import kotlin.time.Duration.Companion.milliseconds
@@ -157,6 +160,9 @@ private fun DemoScreenSample() {
             id = "preview.demo",
             title = Res.string.demo_navbar,
             script = demoScript {},
+            description = Res.string.demo_navbar_description,
+            icon = Res.drawable.ic_demo_navbar,
+            tags = setOf(DemoTag.Motion),
             content = { Box(Modifier.fillMaxSize().background(LabTheme.colors.surface)) },
         )
     }

@@ -2,10 +2,13 @@ package dev.dimvlachos.lab.fishingdemo
 
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.fishingdemo.presentation.components.FishingDemo
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fishing
+import dev.dimvlachos.lab.resources.demo_fishing_description
+import dev.dimvlachos.lab.resources.ic_demo_fishing
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -34,7 +37,16 @@ internal object FishingDemos {
     // Replay.
     val all =
         listOf(
-            Demo("feed.fishing", Res.string.demo_fishing, feed, tall = true, autoplay = false) {
+            Demo(
+                "feed.fishing",
+                Res.string.demo_fishing,
+                feed,
+                description = Res.string.demo_fishing_description,
+                icon = Res.drawable.ic_demo_fishing,
+                tags = setOf(DemoTag.Gesture, DemoTag.Physics, DemoTag.Canvas),
+                tall = true,
+                autoplay = false,
+            ) {
                 FishingDemo(it)
             }
         )

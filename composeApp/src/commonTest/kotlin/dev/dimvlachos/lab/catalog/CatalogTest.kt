@@ -2,6 +2,7 @@
 
 package dev.dimvlachos.lab.catalog
 
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_book_turn
@@ -23,6 +24,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.compose.resources.getString
 
 class CatalogTest {
     @Test
@@ -122,5 +124,28 @@ class CatalogTest {
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
+    }
+
+    @Test
+    fun everyTagIsUsedAndEveryDemoHasOne() {
+        for (demo in Catalog.demos) assertTrue(demo.tags.isNotEmpty(), "${demo.id} has no tags")
+        val used = Catalog.demos.flatMap { it.tags }.toSet()
+        assertEquals(DemoTag.entries.toSet(), used, "a tag no demo uses")
+    }
+
+    @Test
+    fun eachCardSaysSomethingOfItsOwn() = runTest {
+        val descriptions =
+            (Catalog.demos.map { it.description } +
+                    Catalog.entries.filterIsInstance<CatalogEntry.Group>().map { it.description })
+                .map { getString(it) }
+        assertTrue(descriptions.all { it.isNotBlank() })
+        assertEquals(descriptions.size, descriptions.toSet().size, "two cards share a description")
+    }
+
+    @Test
+    fun aFoldersTagsAreItsVersionsTags() {
+        val group = Catalog.entries.filterIsInstance<CatalogEntry.Group>().single()
+        assertEquals(group.demos.flatMap { it.tags }.toSet(), group.tags)
     }
 }
