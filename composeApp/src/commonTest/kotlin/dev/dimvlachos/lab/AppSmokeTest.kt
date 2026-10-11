@@ -3,6 +3,8 @@ package dev.dimvlachos.lab
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -264,5 +266,19 @@ class AppSmokeTest {
             LabApp(initialDemoId = null, record = false, label = false, themeStore = store)
         }
         onNodeWithContentDescription("Theme: dark").assertExists()
+    }
+
+    @Test
+    fun theSearchFieldTakesFocusWhenOpenedButNotOnTheWayBackFromADemo() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        waitForIdle()
+        onNode(hasSetTextAction()).assertIsFocused()
+        onNode(hasSetTextAction()).performTextInput("plane")
+        onNodeWithText("Paper plane").performClick()
+        waitForIdle()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNode(hasSetTextAction()).assertIsNotFocused()
     }
 }

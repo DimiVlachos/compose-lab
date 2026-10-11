@@ -26,19 +26,27 @@ import dev.dimvlachos.lab.resources.catalog_search_placeholder
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The search field in home's bar: one line, focused (and the keyboard up) as soon as it appears,
- * with a muted placeholder while it is empty. The keyboard's search key puts the keyboard away.
+ * The search field in home's bar: one line, with a muted placeholder while it is empty. With
+ * [autoFocus] it takes the focus (and the keyboard comes up), and says so through [onAutoFocused].
+ * The keyboard's search key puts the keyboard away.
  */
 @Composable
 internal fun CatalogSearchField(
     value: String,
     onValueChange: (String) -> Unit,
+    autoFocus: Boolean,
+    onAutoFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LabTheme.colors
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            focus.requestFocus()
+            onAutoFocused()
+        }
+    }
     val selection =
         TextSelectionColors(handleColor = colors.accent, backgroundColor = colors.accentSoft)
     CompositionLocalProvider(LocalTextSelectionColors provides selection) {

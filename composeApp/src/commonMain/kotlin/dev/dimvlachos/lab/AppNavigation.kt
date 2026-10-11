@@ -44,6 +44,13 @@ internal class AppNavigation(initialDemo: Demo?, record: Boolean) {
     var searchOpen by mutableStateOf(false)
         private set
 
+    /**
+     * Whether the search field should take the focus, and bring up the keyboard: once, as the
+     * search opens, and not each time home comes back (from a demo, or behind a back swipe).
+     */
+    var focusSearch by mutableStateOf(false)
+        private set
+
     private val recordedDemo = if (record) initialDemo else null
 
     /**
@@ -83,7 +90,15 @@ internal class AppNavigation(initialDemo: Demo?, record: Boolean) {
 
     /** Opens the search, on the home screen only. */
     fun openSearch() {
-        if (demo == null && group == null) searchOpen = true
+        if (demo == null && group == null) {
+            searchOpen = true
+            focusSearch = true
+        }
+    }
+
+    /** The search field has taken the focus it was opened with. */
+    fun searchFocused() {
+        focusSearch = false
     }
 
     fun back() {

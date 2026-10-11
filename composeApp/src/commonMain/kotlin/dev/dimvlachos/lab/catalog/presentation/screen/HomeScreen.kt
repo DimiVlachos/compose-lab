@@ -46,13 +46,16 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The home screen: the lab's name in the bar over a row of tags to filter by, and a card for every
  * demo and folder under it, filtered by [filter]. The bar's search button ([onOpenSearch]) turns
- * the title into a search field while [searchOpen]; its back arrow ([onCloseSearch]) turns it back.
+ * the title into a search field while [searchOpen], focused when [focusSearch] says so
+ * ([onSearchFocused] once it is); its back arrow ([onCloseSearch]) turns it back.
  */
 @Composable
 internal fun HomeScreen(
     entries: List<CatalogEntry>,
     filter: CatalogFilterState,
     searchOpen: Boolean,
+    focusSearch: Boolean,
+    onSearchFocused: () -> Unit,
     themeMode: ThemeMode,
     onCycleTheme: () -> Unit,
     onOpenSearch: () -> Unit,
@@ -122,7 +125,12 @@ internal fun HomeScreen(
                 contentAlignment = Alignment.CenterStart,
             ) { open ->
                 if (open) {
-                    CatalogSearchField(value = filter.text, onValueChange = { filter.text = it })
+                    CatalogSearchField(
+                        value = filter.text,
+                        onValueChange = { filter.text = it },
+                        autoFocus = focusSearch,
+                        onAutoFocused = onSearchFocused,
+                    )
                 } else {
                     LabTopBarTitle(stringResource(Res.string.catalog_title))
                 }
@@ -188,6 +196,8 @@ private fun HomeScreenPreview() {
             entries = Catalog.entries,
             filter = remember { CatalogFilterState() },
             searchOpen = false,
+            focusSearch = false,
+            onSearchFocused = {},
             themeMode = ThemeMode.System,
             onCycleTheme = {},
             onOpenSearch = {},

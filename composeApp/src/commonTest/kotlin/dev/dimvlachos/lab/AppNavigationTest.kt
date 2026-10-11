@@ -129,4 +129,19 @@ class AppNavigationTest {
         navigation.openSearch()
         assertFalse(navigation.searchOpen)
     }
+
+    @Test
+    fun theSearchAsksForTheFocusOncePerOpening() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        assertFalse(navigation.focusSearch)
+        navigation.openSearch()
+        assertTrue(navigation.focusSearch)
+        navigation.searchFocused()
+        navigation.openDemo(morphApp)
+        navigation.back()
+        assertFalse(navigation.focusSearch, "coming back from a demo")
+        navigation.back()
+        navigation.openSearch()
+        assertTrue(navigation.focusSearch, "opened again")
+    }
 }
