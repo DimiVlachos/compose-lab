@@ -351,7 +351,8 @@ private class FeedFinger {
         val alpha = alpha.value
         if (alpha <= 0f) return
         val start = FingerStart.toPx()
-        val room = size.height - start - ScriptedTouch.Radius.toPx() * 2f
+        // None at all on a feed too short for it, so the finger never travels upwards.
+        val room = (size.height - start - ScriptedTouch.Radius.toPx() * 2f).coerceAtLeast(0f)
         val scale = if (distance > 0f) min(1f, room / distance) else 1f
         drawTouch(color, Offset(size.width / 2f, start + travelled * scale), alpha)
     }
