@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -81,14 +81,15 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
     Box(
         Modifier.fillMaxSize()
             .background(Brush.radialGradient(listOf(colors.tableLit, colors.table)))
-            // Beside the book, the margin or the camera's cutout, whichever is wider, so a phone
-            // turned on its side keeps the book clear of it. While recording, just the margin.
+            // Beside the book, the margin or whatever the screen keeps at its side (the camera's
+            // cutout, a navigation bar), whichever is wider, so a phone turned on its side keeps
+            // the book clear of them. While recording, just the margin.
             .then(
                 if (state.recording) Modifier.padding(horizontal = TableMarginX)
                 else
                     Modifier.windowInsetsPadding(
                         WindowInsets(left = TableMarginX, right = TableMarginX)
-                            .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                            .union(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     )
             )
             .padding(vertical = TableMarginY),
