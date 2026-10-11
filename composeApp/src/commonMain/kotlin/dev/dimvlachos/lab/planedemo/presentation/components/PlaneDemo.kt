@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -400,24 +401,21 @@ private fun MessageField(
                     alpha = shown.coerceIn(0f, 1f)
                 }
                 .then(with(tap) { Modifier.drawTap(colors.touch) })
+                // The disc is drawn, not laid out, so the dart sits exactly where it always has.
+                .drawBehind { drawCircle(colors.sendDisc, radius = SendDiscSize.toPx() / 2f) }
                 .clip(CircleShape)
                 .clickable(enabled = canSend, role = Role.Button, onClick = onSend)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier.size(SendDiscSize).background(colors.sendDisc, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                PaperPlaneIcon(
-                    colors.paper,
-                    modifier =
-                        Modifier.size(IconSize).graphicsLayer {
-                            scaleX = iconIn
-                            scaleY = iconIn
-                        },
-                )
-            }
+            PaperPlaneIcon(
+                colors.paper,
+                modifier =
+                    Modifier.size(IconSize).graphicsLayer {
+                        scaleX = iconIn
+                        scaleY = iconIn
+                    },
+            )
         }
     }
 }
