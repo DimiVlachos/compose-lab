@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.imagemorph
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -72,7 +73,7 @@ internal fun Modifier.morphRadiusBounds(
             )
         // paired is constant for the lifetime of a call site, so the branch never flips.
         val overlayClip =
-            if (paired) rememberMorphOverlayClip(radius)
+            if (paired) rememberMorphOverlayClip(radius, shadowReach(shadowElevation))
             else remember(restRadius) { OverlayClip(RoundedCornerShape(restRadius)) }
         sharedBounds(
                 sharedContentState = sharedContentState,
@@ -86,11 +87,18 @@ internal fun Modifier.morphRadiusBounds(
             )
             // The element's own clip, read in the layer block: Modifier.clip(shape) takes a value,
             // so a radius read there would recompose this end on every frame of the morph. The
-            // shadow follows the same shape; the overlay's clip hides it while the morph runs.
+            // shadow follows the same shape, and travels with it: the overlay's clip leaves room
+            // for it. Only the end that is staying casts it while the two are drawn over each
+            // other, so it never doubles up; the leaving end hands its shadow over on the first
+            // frame, at the same bounds, and the shadow carries on unbroken.
             .graphicsLayer {
                 clip = true
                 shape = RoundedCornerShape(radius.value)
-                this.shadowElevation = shadowElevation.toPx()
+                if (shadowElevation > 0.dp) {
+                    val leaving =
+                        animatedVisibilityScope.transition.targetState == EnterExitState.PostExit
+                    this.shadowElevation = morphShadowElevation(shadowElevation, leaving).toPx()
+                }
             }
     }
 
@@ -152,3 +160,10 @@ internal fun RadiusMorphNode(
         content = content,
     )
 }
+
+/** The shadow a morphing end casts: none while it is leaving, its own [elevation] otherwise. */
+internal fun morphShadowElevation(elevation: Dp, leaving: Boolean): Dp =
+    if (leaving) 0.dp else elevation
+
+// How far past the element a shadow of [elevation] reaches, blur and drop together.
+internal fun shadowReach(elevation: Dp): Dp = elevation * 3
