@@ -110,6 +110,54 @@ class PullCordDemoUiTest {
     }
 
     @Test
+    fun onAPhoneOnItsSideTheLampHangsBesideTheSettings() = runComposeUiTest {
+        setContent { LabTheme { Box(Modifier.size(800.dp, 320.dp)) { PullCordDemo(DemoState()) } } }
+        val bead = onNodeWithContentDescription(CordLabel).getUnclippedBoundsInRoot()
+        val middle = (bead.left + bead.right) / 2
+        assertTrue(middle > 560.dp, "the bead hangs at $middle")
+        for (setting in listOf("Dark theme", "Notifications", "Sounds", "Message previews")) {
+            val row = onNodeWithText(setting).getUnclippedBoundsInRoot()
+            assertTrue(
+                row.right <= bead.left || row.bottom <= bead.top || row.top >= bead.bottom,
+                "the bead's target $bead lies over $setting at $row",
+            )
+        }
+    }
+
+    @Test
+    fun onAPhoneOnItsSideTheScriptStillSwitchesTheLamp() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        setContent {
+            LabTheme {
+                Box(Modifier.size(800.dp, 320.dp)) { PullCordDemo(state) }
+                LaunchedEffect(Unit) { state.pullCord(PullCordDemos.Pull, 500.milliseconds) }
+            }
+        }
+        mainClock.advanceTimeBy(2_000)
+        onNodeWithContentDescription(CordLabel).assertIsOn()
+    }
+
+    @Test
+    fun rightToLeftOnAPhoneOnItsSideTheLampHangsNearTheLeft() = runComposeUiTest {
+        var lamp: PullCordState? = null
+        setContent {
+            LabTheme {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Box(Modifier.size(800.dp, 320.dp)) {
+                        val lampState = rememberPullCordState()
+                        lamp = lampState
+                        PullCordDemo(DemoState(), lampState)
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        val pivot = lamp!!.rig.pivot
+        assertTrue(pivot.x < 200f, "it hangs at $pivot")
+    }
+
+    @Test
     fun rightToLeftTheLampHangsLeftOfTheMiddle() = runComposeUiTest {
         var lamp: PullCordState? = null
         setContent {

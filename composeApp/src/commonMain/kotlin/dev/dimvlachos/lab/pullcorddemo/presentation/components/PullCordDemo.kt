@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -61,6 +62,7 @@ import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.ScreenPalette
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.profile_name
 import dev.dimvlachos.lab.resources.pullcord_dark_theme
@@ -79,6 +81,12 @@ import org.jetbrains.compose.resources.stringResource
 // The lamp hangs right of the middle, clear of the title, so its cord falls between the rows'
 // names and their switches: on the other side of the middle when they are laid out right to left.
 private const val LampAcross = 0.62f
+
+// On a phone on its side the lamp hangs well over to the right, beside the settings, which keep to
+// this share of the width at the start, at most this wide; the other way round right to left.
+private const val WideLampAcross = 0.8f
+private const val WideSettingsShare = 0.6f
+private val WideSettingsWidth = 440.dp
 
 // The scripted finger holds the bead this long at the end of a pull before it lets go.
 private const val HoldMs = 120L
@@ -123,29 +131,36 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
     val scroll = rememberScrollState()
     val touch = LabTheme.colors.touch
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    PullCordLamp(
-        lamp,
-        // Clear of the navigation bar, so its buttons stay light on the app's dark background
-        // rather than lost on the day look's paper.
-        Modifier.fillMaxSize().navigationBarsPadding().drawWithContent {
-            drawContent()
-            with(finger) { drawFinger(lamp, touch, ScreenPalette.Day.textPrimary) }
-        },
-        across = if (rtl) 1f - LampAcross else LampAcross,
-    ) { lit ->
-        val palette = if (lit) ScreenPalette.Night else ScreenPalette.Day
-        Settings(
-            palette,
-            scroll,
-            darkTheme = lit,
-            onDarkTheme = { lamp.toggle() },
-            notifications = notifications,
-            onNotifications = { notifications = it },
-            sounds = sounds,
-            onSounds = { sounds = it },
-            previews = previews,
-            onPreviews = { previews = it },
-        )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Wide, the cord would hang over the settings to the foot of the screen: the lamp hangs
+        // beside them instead.
+        val wide = isWideStage(maxWidth, maxHeight)
+        val across = if (wide) WideLampAcross else LampAcross
+        PullCordLamp(
+            lamp,
+            // Clear of the navigation bar, so its buttons stay light on the app's dark background
+            // rather than lost on the day look's paper.
+            Modifier.fillMaxSize().navigationBarsPadding().drawWithContent {
+                drawContent()
+                with(finger) { drawFinger(lamp, touch, ScreenPalette.Day.textPrimary) }
+            },
+            across = if (rtl) 1f - across else across,
+        ) { lit ->
+            val palette = if (lit) ScreenPalette.Night else ScreenPalette.Day
+            Settings(
+                palette,
+                scroll,
+                wide = wide,
+                darkTheme = lit,
+                onDarkTheme = { lamp.toggle() },
+                notifications = notifications,
+                onNotifications = { notifications = it },
+                sounds = sounds,
+                onSounds = { sounds = it },
+                previews = previews,
+                onPreviews = { previews = it },
+            )
+        }
     }
 }
 
@@ -153,6 +168,7 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
 private fun Settings(
     palette: ScreenPalette,
     scroll: ScrollState,
+    wide: Boolean,
     darkTheme: Boolean,
     onDarkTheme: (Boolean) -> Unit,
     notifications: Boolean,
@@ -165,10 +181,12 @@ private fun Settings(
     val spacing = LabTheme.spacing
     val type = LabTheme.typography
     // It scrolls when it is taller than the screen, as in landscape or at a large font size; with
-    // room to spare, the hint sits at the bottom.
+    // room to spare, the hint sits at the bottom. Wide, it keeps to the start, the lamp beside it,
+    // with no room left for the shade; the background still covers everything, as the lamp needs.
     BoxWithConstraints(Modifier.fillMaxSize().background(palette.background)) {
         Column(
-            Modifier.fillMaxWidth()
+            (if (wide) Modifier.fillMaxWidth(WideSettingsShare).widthIn(max = WideSettingsWidth)
+                else Modifier.fillMaxWidth())
                 .verticalScroll(scroll)
                 .heightIn(min = maxHeight)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
@@ -184,7 +202,7 @@ private fun Settings(
                     style = type.title,
                     color = palette.textPrimary,
                 )
-                Spacer(Modifier.height(ShadeRoom))
+                if (!wide) Spacer(Modifier.height(ShadeRoom))
                 Profile(palette)
                 Column(
                     Modifier.fillMaxWidth()
