@@ -21,6 +21,9 @@ class MainActivity : ComponentActivity() {
             if (record) SystemBarStyle.dark(Color.TRANSPARENT)
             else SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+        // The auto style puts a translucent scrim behind three-button navigation; the app draws
+        // its own content under the bar and keeps it clear of the buttons itself.
+        if (!record) window.isNavigationBarContrastEnforced = false
         super.onCreate(savedInstanceState)
         val demoId = intent.getStringExtra("demo")
         val label = intent.getBooleanExtra("label", false)
