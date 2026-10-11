@@ -13,23 +13,20 @@ import platform.UIKit.UIViewController
  */
 internal val LocalHostViewController = staticCompositionLocalOf<UIViewController?> { null }
 
-// iOS has no navigation bar, and its home indicator picks its own colour from what is under it, so
-// only the status bar is set. Its icons follow the window's interface style: the system's own for
-// System, so they turn with it, or light or dark as chosen, or as a screen asks. The same style
-// colours the keyboard and the system's alerts.
+// The window's interface style follows the theme mode: the system's own for System, so it turns
+// with it, or light or dark as chosen. The status bar's icons, the keyboard and the system's alerts
+// follow it. Screens' requests for bar icons are left alone here: iOS has no navigation bar, its
+// home indicator picks its own colour from what is under it, and the status bar sits over the top
+// bar, which wears the theme. The style can't be bent to a request either, since Compose reads the
+// system's dark theme from it, and the whole palette would turn with it.
 @Composable
 internal actual fun SystemAppearance(mode: ThemeMode, dark: Boolean, requests: SystemBarRequests) {
     val controller = LocalHostViewController.current ?: return
     val style =
-        when (requests.statusDarkIcons) {
-            true -> UIUserInterfaceStyle.UIUserInterfaceStyleLight
-            false -> UIUserInterfaceStyle.UIUserInterfaceStyleDark
-            null ->
-                when (mode) {
-                    ThemeMode.System -> UIUserInterfaceStyle.UIUserInterfaceStyleUnspecified
-                    ThemeMode.Light -> UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                    ThemeMode.Dark -> UIUserInterfaceStyle.UIUserInterfaceStyleDark
-                }
+        when (mode) {
+            ThemeMode.System -> UIUserInterfaceStyle.UIUserInterfaceStyleUnspecified
+            ThemeMode.Light -> UIUserInterfaceStyle.UIUserInterfaceStyleLight
+            ThemeMode.Dark -> UIUserInterfaceStyle.UIUserInterfaceStyleDark
         }
     LaunchedEffect(controller, style) {
         // On the first composition the view may not be in its window yet.
