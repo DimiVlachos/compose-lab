@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsActions
@@ -48,7 +51,7 @@ class PullCordDemoUiTest {
         var compositions = 0
         var lamp: PullCordState? = null
         setContent {
-            LabTheme {
+            LabTheme(darkTheme = false) {
                 CompositionLocalProvider(
                     LocalPullCordCompositionProbe provides { compositions++ }
                 ) {
@@ -83,8 +86,57 @@ class PullCordDemoUiTest {
     }
 
     @Test
+    fun inTheLightThemeTheLampStartsOff() = runComposeUiTest {
+        setContent {
+            LabTheme(darkTheme = false) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
+        }
+        onNodeWithContentDescription(CordLabel).assertIsOff()
+    }
+
+    @Test
+    fun inTheDarkThemeTheLampStartsOn() = runComposeUiTest {
+        setContent {
+            LabTheme(darkTheme = true) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
+        }
+        onNodeWithContentDescription(CordLabel).assertIsOn()
+    }
+
+    @Test
+    fun aRecordingStartsWithTheLampOffAsTheClipDoes() = runComposeUiTest {
+        // A recording always wears the dark theme.
+        setContent {
+            LabTheme(darkTheme = true) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState(recording = true)) }
+            }
+        }
+        onNodeWithContentDescription(CordLabel).assertIsOff()
+    }
+
+    @Test
+    fun aThemeChangeLeavesTheLampAsItIs() = runComposeUiTest {
+        var dark by mutableStateOf(false)
+        setContent {
+            LabTheme(darkTheme = dark) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
+        }
+        onNodeWithContentDescription(CordLabel).assertIsOff()
+        dark = true
+        waitForIdle()
+        onNodeWithContentDescription(CordLabel).assertIsOff()
+    }
+
+    @Test
     fun theDarkThemeSwitchOnTheScreenSwitchesTheLampToo() = runComposeUiTest {
-        setContent { LabTheme { Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) } } }
+        setContent {
+            LabTheme(darkTheme = false) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
+        }
         onNodeWithText("Dark theme").performSemanticsAction(SemanticsActions.OnClick)
         mainClock.advanceTimeBy(1_000)
         onNodeWithContentDescription(CordLabel).assertIsOn()
@@ -92,7 +144,11 @@ class PullCordDemoUiTest {
 
     @Test
     fun aTapOffTheBeadReachesTheScreen() = runComposeUiTest {
-        setContent { LabTheme { Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) } } }
+        setContent {
+            LabTheme(darkTheme = false) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
+        }
         onNodeWithText("Dark theme").performClick()
         mainClock.advanceTimeBy(1_000)
         onNodeWithContentDescription(CordLabel).assertIsOn()
@@ -129,7 +185,7 @@ class PullCordDemoUiTest {
         mainClock.autoAdvance = false
         val state = DemoState()
         setContent {
-            LabTheme {
+            LabTheme(darkTheme = false) {
                 Box(Modifier.size(800.dp, 320.dp)) { PullCordDemo(state) }
                 LaunchedEffect(Unit) { state.pullCord(PullCordDemos.Pull, 500.milliseconds) }
             }
@@ -188,7 +244,9 @@ class PullCordDemoUiTest {
     fun theSettingsOutliveTheScreen() = runComposeUiTest {
         val recreation = Recreation(this)
         recreation.setContent {
-            LabTheme { Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) } }
+            LabTheme(darkTheme = false) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState()) }
+            }
         }
         onNodeWithText("Sounds").assertIsOff().performClick()
         onNodeWithText("Dark theme").performClick()
@@ -204,7 +262,7 @@ class PullCordDemoUiTest {
         val state = DemoState()
         var lamp: PullCordState? = null
         setContent {
-            LabTheme {
+            LabTheme(darkTheme = false) {
                 Box(Modifier.size(400.dp, 800.dp)) {
                     val lampState = rememberPullCordState()
                     lamp = lampState

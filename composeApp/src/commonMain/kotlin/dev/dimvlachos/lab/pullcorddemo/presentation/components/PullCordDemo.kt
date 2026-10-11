@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -60,6 +61,7 @@ import dev.dimvlachos.lab.core.presentation.components.pullcord.PullCordState
 import dev.dimvlachos.lab.core.presentation.components.pullcord.rememberPullCordState
 import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
+import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.ScreenPalette
 import dev.dimvlachos.lab.core.presentation.ui.isWideStage
@@ -110,7 +112,13 @@ private val KnobSize = 20.dp
  * lamp's own grab, drag and release.
  */
 @Composable
-internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCordState()) {
+internal fun PullCordDemo(
+    state: DemoState,
+    // In the dark theme the lamp starts on, so the screen opens dark; a clip always starts with it
+    // off. The theme picks only where it starts: the lamp and the screen's own switch change the
+    // screen, never the app, and a change of theme later leaves the lamp as it is.
+    lamp: PullCordState = rememberPullCordState(lit = LabTheme.isDark && !state.recording),
+) {
     val finger = remember { CordFinger() }
     val density = LocalDensity.current
     DisposableEffect(state, lamp, density) {
@@ -129,7 +137,6 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
     var sounds by rememberSaveable { mutableStateOf(false) }
     var previews by rememberSaveable { mutableStateOf(true) }
     val scroll = rememberScrollState()
-    val touch = LabTheme.colors.touch
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Wide, the cord would hang over the settings to the foot of the screen: the lamp hangs
@@ -138,11 +145,13 @@ internal fun PullCordDemo(state: DemoState, lamp: PullCordState = rememberPullCo
         val across = if (wide) WideLampAcross else LampAcross
         PullCordLamp(
             lamp,
-            // Clear of the navigation bar, so its buttons stay light on the app's dark background
-            // rather than lost on the day look's paper.
+            // Clear of the navigation bar, so its buttons stay on the app's own background, which
+            // the bar's icons are set for, not on whichever look the lamp has the screen in.
             Modifier.fillMaxSize().navigationBarsPadding().drawWithContent {
                 drawContent()
-                with(finger) { drawFinger(lamp, touch, ScreenPalette.Day.textPrimary) }
+                with(finger) {
+                    drawFinger(lamp, AppColors.Dark.touch, ScreenPalette.Day.textPrimary)
+                }
             },
             across = if (rtl) 1f - across else across,
         ) { lit ->
@@ -368,10 +377,24 @@ private class CordFinger {
         }
     }
 
-    // White on the lamplit screen, ink on the daylit one, so it shows on both.
+    // White on the lamplit screen, ink on the daylit one, so it shows on both, whatever the app's
+    // theme: the screen's looks are the lamp's, not the theme's.
     fun DrawScope.drawFinger(lamp: PullCordState, lit: Color, day: Color) {
         val alpha = alpha.value
         if (alpha <= 0f) return
         drawTouch(if (lamp.lit) lit else day, letGo ?: lamp.bead, alpha)
     }
+}
+
+// The demo as it opens in each theme: by day in the light one, lamplit in the dark one.
+@Preview
+@Composable
+private fun PullCordDemoDarkPreview() {
+    LabTheme(darkTheme = true) { PullCordDemo(DemoState()) }
+}
+
+@Preview
+@Composable
+private fun PullCordDemoLightPreview() {
+    LabTheme(darkTheme = false) { PullCordDemo(DemoState()) }
 }
