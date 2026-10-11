@@ -1,14 +1,18 @@
 package dev.dimvlachos.lab.navbardemo.presentation.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.demoInsets
@@ -85,3 +89,17 @@ internal fun NavBarDemo(state: DemoState) {
         )
     }
 }
+
+// The bar over the feed, as the demo opens.
+@Composable
+private fun NavBarDemoPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Box(Modifier.size(360.dp, 640.dp).background(LabTheme.colors.background)) {
+            NavBarDemo(DemoState())
+        }
+    }
+}
+
+@Preview @Composable private fun NavBarDemoDarkPreview() = NavBarDemoPreview(dark = true)
+
+@Preview @Composable private fun NavBarDemoLightPreview() = NavBarDemoPreview(dark = false)
