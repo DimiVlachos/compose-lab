@@ -45,4 +45,34 @@ class SystemBarsTest {
         waitForIdle()
         assertNull(requests.navigationDarkIcons)
     }
+
+    @Test
+    fun requestsCanEndInAnyOrder() = runComposeUiTest {
+        // As one screen slides off while the next slides in, the first's request ends after the
+        // second's has begun: the second's must outlast it.
+        val requests = SystemBarRequests()
+        var leaving by mutableStateOf(true)
+        var arriving by mutableStateOf(false)
+        setContent {
+            CompositionLocalProvider(LocalSystemBarRequests provides requests) {
+                if (leaving) RequestSystemBarIcons(navigationDarkIcons = true)
+                if (arriving) {
+                    RequestSystemBarIcons(navigationDarkIcons = false, statusDarkIcons = true)
+                }
+            }
+        }
+        waitForIdle()
+        assertEquals(true, requests.navigationDarkIcons)
+        arriving = true
+        waitForIdle()
+        assertEquals(false, requests.navigationDarkIcons)
+        leaving = false
+        waitForIdle()
+        assertEquals(false, requests.navigationDarkIcons, "the arriving screen's request stays")
+        assertEquals(true, requests.statusDarkIcons)
+        arriving = false
+        waitForIdle()
+        assertNull(requests.navigationDarkIcons)
+        assertNull(requests.statusDarkIcons)
+    }
 }
