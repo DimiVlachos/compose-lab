@@ -175,7 +175,7 @@ internal class MagnetPainter {
      * The magnets and the grid, in the order that keeps them whole: the grid over the magnets as it
      * fans out and while it is out, but under them as it folds back, so its photos land under the
      * magnets they return to instead of covering them and then dropping under. Folding, the magnets
-     * are darkened as the scrim fading over the rest is, so they don't flash out from under it.
+     * are shaded as the scrim fading over the rest is, so they don't flash out from under it.
      */
     fun DrawScope.drawMagnetsAndFan(
         state: MagnetState,
@@ -193,12 +193,23 @@ internal class MagnetPainter {
             return
         }
         drawFan(state, thumbs, titles, header, colors)
-        val light = 1f - ScrimAlpha * smooth(state.fan)
+        val scrim = ScrimAlpha * smooth(state.fan)
+        val light = 1f - scrim
+        // On the dark table the scrim all but darkens them; on the light one it pales them, so
+        // they take on as much of its colour as it lays over the rest.
+        val wash =
+            if (colors.isDark) Color.Black
+            else
+                Color(
+                    colors.fanScrim.red * scrim,
+                    colors.fanScrim.green * scrim,
+                    colors.fanScrim.blue * scrim,
+                )
         drawIntoCanvas { canvas ->
             canvas.saveLayer(
                 Rect(Offset.Zero, size),
                 Paint().apply {
-                    colorFilter = ColorFilter.lighting(Color(light, light, light), Color.Black)
+                    colorFilter = ColorFilter.lighting(Color(light, light, light), wash)
                 },
             )
             drawMagnets(state, labels, badges, colors)

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -272,4 +273,16 @@ private fun along(points: List<Offset>, t: Float): Offset {
     val f = t * (points.size - 1)
     val i = f.toInt().coerceAtMost(points.size - 2)
     return lerp(points[i], points[i + 1], f - i)
+}
+
+@Preview
+@Composable
+private fun MagnetDemoDarkPreview() {
+    LabTheme(darkTheme = true) { MagnetDemo(remember { DemoState() }) }
+}
+
+@Preview
+@Composable
+private fun MagnetDemoLightPreview() {
+    LabTheme(darkTheme = false) { MagnetDemo(remember { DemoState() }) }
 }
