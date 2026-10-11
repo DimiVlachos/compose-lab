@@ -7,9 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -19,20 +17,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.ReportMorphComposition
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.ShapedMorphNode
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChrome
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphWidthFraction
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 internal const val AvatarKey = "profile_avatar"
 internal const val AvatarSourceTag = "avatarSource"
 internal const val AvatarTargetTag = "avatarTarget"
 internal val AvatarSize = 88.dp
-private const val AvatarOpenWidth = 0.72f
+private const val AvatarOpenSide = 0.72f
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -82,10 +84,7 @@ internal fun AvatarTarget(
             animatedVisibilityScope,
             AvatarKey,
             CircleShape,
-            Modifier.align(Alignment.Center)
-                .fillMaxWidth(AvatarOpenWidth)
-                .aspectRatio(1f)
-                .testTag(AvatarTargetTag),
+            Modifier.align(Alignment.Center).openAvatarSize().testTag(AvatarTargetTag),
             overlayZIndex = 1f,
         ) {
             // The circle's own width, so what the overlay shows lands with it.
@@ -98,4 +97,12 @@ internal fun AvatarTarget(
         }
         overlay(Modifier.morphChrome(animatedVisibilityScope, fraction))
     }
+}
+
+// A share of the stage's shorter side: of its width on a phone held upright, as before, and of its
+// height on one turned on its side, where the width's share would run off the top and bottom.
+private fun Modifier.openAvatarSize(): Modifier = layout { measurable, constraints ->
+    val side = (min(constraints.maxWidth, constraints.maxHeight) * AvatarOpenSide).roundToInt()
+    val placeable = measurable.measure(Constraints.fixed(side, side))
+    layout(side, side) { placeable.placeRelative(0, 0) }
 }

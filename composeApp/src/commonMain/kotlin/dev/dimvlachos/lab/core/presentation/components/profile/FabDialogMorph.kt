@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,8 @@ import dev.dimvlachos.lab.resources.edit_photo_title
 import dev.dimvlachos.lab.resources.ic_edit
 import dev.dimvlachos.lab.resources.ic_image
 import dev.dimvlachos.lab.resources.ic_photo_camera
+import kotlin.math.min
+import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -56,6 +59,7 @@ internal val FabRadius = 16.dp
 internal val DialogRadius = 28.dp
 internal val FabSize = 56.dp
 private const val DialogWidth = 0.8f
+private val DialogMaxWidth = 400.dp
 private const val IconFadeMs = 100
 private const val DialogScrimAlpha = 0.5f
 internal const val DialogScrimTag = "dialogScrim"
@@ -131,7 +135,7 @@ internal fun FabDialogTarget(
             counterpartRadius = FabRadius,
             modifier =
                 Modifier.align(Alignment.Center)
-                    .fillMaxWidth(DialogWidth)
+                    .dialogWidth()
                     .wrapContentHeight()
                     .testTag(FabDialogTag),
             preMorphRadius = FabRadius,
@@ -198,4 +202,12 @@ private fun DialogRow(icon: Painter, label: String, chrome: Modifier) {
         Icon(icon, null, tint = LabTheme.colors.textPrimary)
         Text(label, color = LabTheme.colors.textPrimary, style = LabTheme.typography.body)
     }
+}
+
+// Four fifths of the stage's width, up to a dialog's usual 400 dp, so it stays a dialog on a phone
+// turned on its side instead of stretching into a banner.
+private fun Modifier.dialogWidth(): Modifier = layout { measurable, constraints ->
+    val width = min((constraints.maxWidth * DialogWidth).roundToInt(), DialogMaxWidth.roundToPx())
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
 }
