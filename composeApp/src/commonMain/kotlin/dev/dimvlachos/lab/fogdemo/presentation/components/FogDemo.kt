@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -50,6 +51,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.core.camera.CameraAccess
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.presentation.components.fog.DripDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.core.presentation.components.fog.FoggedMirror
@@ -313,7 +315,11 @@ internal fun FogDemo(
             }
         Crossfade(
             targetState = hint,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(LabTheme.spacing.mediumLarge),
+            modifier =
+                Modifier.align(Alignment.BottomCenter)
+                    // Above the gesture bar, and clear of a cutout at the side in landscape.
+                    .windowInsetsPadding(demoInsets(state))
+                    .padding(LabTheme.spacing.mediumLarge),
         ) { shown ->
             if (shown != null) {
                 Row(
