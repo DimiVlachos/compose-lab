@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -355,3 +356,20 @@ private class FeedFinger {
         drawTouch(color, Offset(size.width / 2f, start + travelled * scale), alpha)
     }
 }
+
+// The feed's first island as a card, the name under the photo and, as on a phone on its side,
+// beside it.
+@Composable
+private fun IslandCardPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        val island = rememberIslandFeed().items.first()
+        Column(Modifier.background(LabTheme.colors.background).padding(LabTheme.spacing.medium)) {
+            IslandCard(island, photoHeight = null, Modifier)
+            IslandCard(island, photoHeight = WidePhotoHeight, Modifier)
+        }
+    }
+}
+
+@Preview @Composable private fun IslandCardDarkPreview() = IslandCardPreview(dark = true)
+
+@Preview @Composable private fun IslandCardLightPreview() = IslandCardPreview(dark = false)

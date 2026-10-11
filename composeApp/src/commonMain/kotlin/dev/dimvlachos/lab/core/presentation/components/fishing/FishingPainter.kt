@@ -49,6 +49,7 @@ internal class FishingPainter {
     private var crestStroke = Stroke()
     private var sheenStroke = Stroke()
     private var hookStroke = Stroke()
+    private var rimStroke = Stroke()
 
     /** Draws the band, open as far as the pull has opened it, over whatever is under it. */
     fun DrawScope.draw(state: FishingRefreshState, colors: AppColors) {
@@ -82,6 +83,7 @@ internal class FishingPainter {
         crestStroke = Stroke(CrestWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         sheenStroke = Stroke(SheenWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         hookStroke = Stroke(LineWidth.toPx() * HookWeight, cap = StrokeCap.Round)
+        rimStroke = Stroke(LineWidth.toPx())
     }
 
     private fun DrawScope.drawRod(state: FishingRefreshState, colors: AppColors) {
@@ -226,6 +228,10 @@ internal class FishingPainter {
             StrokeCap.Round,
             alpha = alpha,
         )
+        // On a light screen its white half would be lost against the air: a fine rim in the
+        // line's colour keeps it round.
+        if (!colors.isDark)
+            drawCircle(colors.fishingLine, radius, at, alpha = alpha, style = rimStroke)
     }
 
     private fun DrawScope.drawWater(state: FishingRefreshState, colors: AppColors, band: Float) {
@@ -321,13 +327,16 @@ internal class FishingPainter {
         val from = state.px(rig.splashAt)
         val high = FishingDimens.SplashHeight.toPx()
         val reach = FishingDimens.SplashReach.toPx()
+        // Pale as the crest over a dark screen; on a light one that would vanish, so the drops are
+        // the water's own turquoise.
+        val drops = if (colors.isDark) colors.waterCrest else colors.waterTop
         for (i in DropLean.indices) {
             // Each drop thrown its own way, some higher than others, as water splashes: not an even
             // fan.
             val rise = high * DropRise[i]
             val x = from.x + DropLean[i] * reach * p
             val y = from.y - 4f * rise * p * (1f - p)
-            drawCircle(colors.waterCrest, DropRadius.toPx() * (1f - p * 0.5f), Offset(x, y), 1f - p)
+            drawCircle(drops, DropRadius.toPx() * (1f - p * 0.5f), Offset(x, y), 1f - p)
         }
     }
 
