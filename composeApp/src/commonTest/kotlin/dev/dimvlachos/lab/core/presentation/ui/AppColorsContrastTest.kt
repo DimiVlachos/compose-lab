@@ -51,6 +51,39 @@ class AppColorsContrastTest {
         }
     }
 
+    @Test
+    fun whatTheShellDrawsReads() {
+        for (colors in Palettes) {
+            // A catalog card's icon on its tile.
+            val tile = colors.accentSoft.compositeOver(colors.surface)
+            assertContrast(colors.accent, tile, 3f, colors, "accent icon on its tile")
+            // A selected tag chip, and the muted chips and placeholder, on the top bar.
+            val chip = colors.accentSoft.compositeOver(colors.topBar)
+            assertContrast(colors.textPrimary, chip, 4.5f, colors, "selected chip")
+            assertContrast(colors.textMuted, colors.topBar, 4.5f, colors, "textMuted on topBar")
+        }
+    }
+
+    @Test
+    fun theFannedPhotosTitlesRead() {
+        // The titles under a fanned-out cluster, over the scrim on the steel table.
+        for (colors in Palettes) {
+            for (steel in listOf(colors.tableSteel, colors.tableSteelDeep)) {
+                val scrim = colors.fanScrim.copy(alpha = FanScrimAlpha).compositeOver(steel)
+                assertContrast(colors.textPrimary, scrim, 4.5f, colors, "fan title")
+            }
+        }
+    }
+
+    @Test
+    fun textOverAPhotoReads() {
+        // The photo detail's caption sits on a black scrim; under it, a white sky at worst.
+        val scrim = Color.Black.copy(alpha = PhotoScrimAlpha).compositeOver(Color.White)
+        val colors = AppColors.Light
+        assertContrast(colors.onPhoto, scrim, 4.5f, colors, "onPhoto")
+        assertContrast(colors.onPhotoMuted, scrim, 4.5f, colors, "onPhotoMuted")
+    }
+
     private fun assertContrast(
         front: Color,
         back: Color,
@@ -65,6 +98,10 @@ class AppColorsContrastTest {
 
     private companion object {
         val Palettes = listOf(AppColors.Dark, AppColors.Light)
+
+        // As MagnetPainter and MorphDetail draw them.
+        const val FanScrimAlpha = 0.7f
+        const val PhotoScrimAlpha = 0.7f
     }
 }
 
