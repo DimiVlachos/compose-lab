@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The theme's background (AppColors.background); the app is dark only. -->
-    <color name="lab_background">#0B0D12</color>
+    <!-- The theme's background (AppColors.Light.background); values-night has the dark one. -->
+    <color name="lab_background">#F2F2F7</color>
+    <!-- The launcher icon's backdrop: the dark background, whatever the theme. -->
     <color name="ic_launcher_background">#0B0D12</color>
 </resources>

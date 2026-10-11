@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The theme's background in the dark (AppColors.Dark.background). -->
+    <color name="lab_background">#0B0D12</color>
+</resources>

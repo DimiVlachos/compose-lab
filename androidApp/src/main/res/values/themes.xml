@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The window behind Compose (launch splash, rotation): the theme's background, so launching
-         never flashes white. -->
+    <!-- The window behind Compose (launch splash, rotation): the theme's background, light or dark
+         as the app's night mode is, so launching never flashes the other one. -->
     <style name="Theme.Lab" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/lab_background</item>
     </style>

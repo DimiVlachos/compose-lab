@@ -7,6 +7,7 @@ import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
@@ -22,7 +23,11 @@ import dev.dimvlachos.lab.core.platform.ThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
 import dev.dimvlachos.lab.core.platform.rememberThemeModeStore
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.LocalSystemBarRequests
+import dev.dimvlachos.lab.core.presentation.ui.SystemAppearance
+import dev.dimvlachos.lab.core.presentation.ui.SystemBarRequests
 import dev.dimvlachos.lab.core.presentation.ui.ThemeController
+import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.core.presentation.ui.useDarkTheme
 import dev.dimvlachos.lab.demo.presentation.screen.DemoScreen
 import dev.dimvlachos.lab.resources.Res
@@ -54,7 +59,7 @@ internal fun LabApp(
 ) {
     val theme = remember(themeStore) { ThemeController(themeStore) }
     val dark = useDarkTheme(theme.mode, isSystemInDarkTheme(), record)
-    LabTheme(darkTheme = dark) {
+    LabWindow(mode = theme.mode, dark = dark, record = record) {
         val initialDemo = remember { Catalog.find(initialDemoId) }
         val navigation = remember { AppNavigation(initialDemo, record) }
         // The system back gesture steps back like the on-screen Back buttons; on the home screen
@@ -138,6 +143,25 @@ internal fun LabApp(
                     )
             }
         }
+    }
+}
+
+/**
+ * The lab's theme, light or dark as [dark] says, around [content], with the system bars and the
+ * window set to match and the screens' requests of the bars applied. While recording ([record]) the
+ * system's pieces are left as they are.
+ */
+@Composable
+private fun LabWindow(
+    mode: ThemeMode,
+    dark: Boolean,
+    record: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val barRequests = remember { SystemBarRequests() }
+    if (!record) SystemAppearance(mode, dark, barRequests)
+    CompositionLocalProvider(LocalSystemBarRequests provides barRequests) {
+        LabTheme(darkTheme = dark, content = content)
     }
 }
 

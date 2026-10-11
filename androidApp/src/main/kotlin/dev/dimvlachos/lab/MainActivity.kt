@@ -13,13 +13,16 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
+        val record = intent.getBooleanExtra("record", false)
+        // A clip's bars are hidden and its theme always dark, as it has always been. Otherwise the
+        // bars start out following the system's theme, and the app sets their icons to its own
+        // theme from then on.
+        val barStyle =
+            if (record) SystemBarStyle.dark(Color.TRANSPARENT)
+            else SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
         super.onCreate(savedInstanceState)
         val demoId = intent.getStringExtra("demo")
-        val record = intent.getBooleanExtra("record", false)
         val label = intent.getBooleanExtra("label", false)
         if (record) enterRecordMode()
         setContent { App(initialDemoId = demoId, record = record, label = label) }
