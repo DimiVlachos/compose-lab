@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -28,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalTestApi::class)
 class FishingDemoUiTest {
@@ -135,6 +137,42 @@ class FishingDemoUiTest {
         assertEquals(FishingStatus.Refreshing, feed!!.status)
         mainClock.advanceTimeBy(6_000)
         onNodeWithText("Mykonos").assertExists()
+    }
+
+    @Test
+    fun onAPhoneOnItsSideTheFirstIslandFitsInTheFeed() = runComposeUiTest {
+        setContent { LabTheme { Box(Modifier.size(800.dp, 300.dp)) { FishingDemo(DemoState()) } } }
+        val feed = onNodeWithTag("feed").getUnclippedBoundsInRoot()
+        // The card, read as one, and its name within it.
+        val card = onNodeWithText("Corfu").getUnclippedBoundsInRoot()
+        val name = onNodeWithText("Corfu", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue(card.top >= feed.top, "the card starts at ${card.top}, the feed at ${feed.top}")
+        assertTrue(
+            card.bottom <= feed.bottom,
+            "the card ends at ${card.bottom}, the feed at ${feed.bottom}",
+        )
+        assertTrue(name.left > card.left + 100.dp, "the name sits beside the photo, not under it")
+        assertTrue(card.right - card.left <= 640.dp, "the card is ${card.right - card.left} wide")
+    }
+
+    @Test
+    fun onAPhoneOnItsSideTheScriptsPullStillCatches() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState(replay = true)
+        var feed: IslandFeed? = null
+        setContent {
+            LabTheme {
+                Box(Modifier.size(800.dp, 300.dp)) {
+                    val islands = rememberIslandFeed()
+                    feed = islands
+                    FishingDemo(state, islands)
+                }
+                LaunchedEffect(Unit) {
+                    state.pullToRefresh(FishingDemos.Pull, 900.milliseconds)
+                }
+            }
+        }
+        advanceUntil("the catch") { feed!!.items.size == 11 }
     }
 
     @Test

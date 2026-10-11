@@ -13,6 +13,7 @@ import dev.dimvlachos.lab.core.presentation.components.physics.VerletRope
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.sin
 
 /** Where a refresh is on the water. */
@@ -59,6 +60,22 @@ internal class FishingRig(width: Float) {
     // How wide the band is, and how long the line can be at most: as long as the band is wide.
     private var width = width
     private var longest = width
+
+    // How tall the list under the band is, once it is known.
+    private var height = Float.POSITIVE_INFINITY
+
+    // How deep a catch is hauled up from: deep, but with its leader still above the list's foot,
+    // so a short list, as on a phone turned on its side, shows it coming up from the start.
+    private val catchDepth: Float
+        get() =
+            min(
+                    FishingDimens.CatchDepth.value,
+                    height -
+                        waterLevel -
+                        FishingDimens.Leader.value -
+                        FishingDimens.CatchRoom.value,
+                )
+                .coerceAtLeast(FishingDimens.Band.value)
 
     val water = WaterSurface(width = width)
 
@@ -173,8 +190,12 @@ internal class FishingRig(width: Float) {
         bobber = dangle()
     }
 
-    /** Spreads the band over [width] dp instead: the line is hung afresh, the water keeps on. */
-    fun resize(width: Float) {
+    /**
+     * Spreads the band over [width] dp instead, over a list [height] dp tall: the line is hung
+     * afresh, the water keeps on.
+     */
+    fun resize(width: Float, height: Float = this.height) {
+        if (height > 0f) this.height = height
         if (width == this.width || width <= 0f) return
         this.width = width
         longest = width
@@ -373,7 +394,7 @@ internal class FishingRig(width: Float) {
      */
     val catchTop: Offset
         get() {
-            val deep = Offset(castTo.x, waterLevel + FishingDimens.CatchDepth.value)
+            val deep = Offset(castTo.x, waterLevel + catchDepth)
             val placed = Offset(width / 2f, waterLevel)
             return deep + (placed - deep) * hauled
         }

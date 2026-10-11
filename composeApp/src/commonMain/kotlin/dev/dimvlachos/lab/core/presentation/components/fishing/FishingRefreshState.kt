@@ -142,10 +142,10 @@ public class FishingRefreshState internal constructor() {
         rising++
     }
 
-    /** Lays the band out [width] px wide at [density]. */
-    internal fun place(width: Int, density: Float) {
+    /** Lays the band out [width] px wide, over a list [height] px tall, at [density]. */
+    internal fun place(width: Int, height: Int, density: Float) {
         this.density = density
-        rig.resize(width / density)
+        rig.resize(width / density, height / density)
         frame++
     }
 

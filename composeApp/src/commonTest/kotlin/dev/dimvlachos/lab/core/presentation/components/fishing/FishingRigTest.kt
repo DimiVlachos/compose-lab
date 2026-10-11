@@ -205,6 +205,45 @@ class FishingRigTest {
         assertEquals(1f, rig.riseFor(1))
     }
 
+    // Lands a catch of two and runs it on to the start of its reel.
+    private fun FishingRig.toTheReel() {
+        floatAtOnce()
+        land(FishingOutcome.Caught(2))
+        runWhile(Waiting)
+        runWhile(Biting)
+        assertEquals(Reeling, phase)
+    }
+
+    @Test
+    fun aTallFeedHaulsTheCatchUpFromTheFullDepth() {
+        val rig = rig()
+        rig.resize(360f, 700f)
+        rig.toTheReel()
+        val level = FishingDimens.WaterLevel.value
+        assertEquals(level + FishingDimens.CatchDepth.value, rig.catchTop.y, 1f)
+    }
+
+    @Test
+    fun aShortFeedHaulsTheCatchUpFromWithinIt() {
+        val rig = rig()
+        rig.resize(640f, 220f)
+        rig.toTheReel()
+        val level = FishingDimens.WaterLevel.value
+        // Still deep, but with its leader inside the feed.
+        val top = rig.catchTop.y
+        assertTrue(top > level + 60f, "it still starts deep: $top")
+        assertTrue(top + FishingDimens.Leader.value <= 220f, "it starts below the feed: $top")
+    }
+
+    @Test
+    fun aVeryShortFeedStillHaulsTheCatchUpFromABandDown() {
+        val rig = rig()
+        rig.resize(640f, 100f)
+        rig.toTheReel()
+        val level = FishingDimens.WaterLevel.value
+        assertEquals(level + FishingDimens.Band.value, rig.catchTop.y, 1f)
+    }
+
     @Test
     fun nothingNewReelsInAnEmptyHook() {
         val heard = Heard()
