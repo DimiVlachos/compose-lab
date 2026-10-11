@@ -302,6 +302,28 @@ class PopUpDemoUiTest {
     }
 
     @Test
+    fun onAPhoneOnItsSideEveryStepFitsWithoutScrolling() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        // A 360 dp phone on its side, less its status bar, the demo's bar and the gesture bar.
+        setContent { LabTheme { Box(Modifier.size(780.dp, 254.dp)) { PopUpDemo(state) } } }
+        mainClock.advanceTimeBy(500)
+        fun assertButtonsShow(step: String) {
+            val next = onNodeWithTag(NextTag).getUnclippedBoundsInRoot()
+            assertTrue(next.top >= 0.dp && next.bottom <= 254.dp, "$step: Next $next is cut off")
+        }
+        assertButtonsShow("cover")
+        for (spread in 1..3) {
+            state.select(spread)
+            mainClock.advanceTimeBy(4_000)
+            assertButtonsShow("spread $spread")
+        }
+        onNodeWithText("Start exploring").performClick()
+        mainClock.advanceTimeBy(2_000)
+        assertButtonsShow("end")
+    }
+
+    @Test
     fun inAShortLandscapeAtTheLargestFontTheButtonsCanBeScrolledTo() = runComposeUiTest {
         mainClock.autoAdvance = false
         val state = DemoState()

@@ -203,9 +203,10 @@ internal fun PopUpDemo(state: DemoState) {
             )
         }
     }
-    val captionArea: @Composable () -> Unit = {
+    // [gap] under the dots: less on a phone on its side, where height is short.
+    val captionArea: @Composable (gap: Dp) -> Unit = { gap ->
         Dots(selected = shown - 1, Paper.button, Paper.inkMuted)
-        Spacer(Modifier.height(spacing.medium))
+        Spacer(Modifier.height(gap))
         Box {
             // Every caption, unseen and unheard, keeps the space of the longest one at this
             // font size, so a shorter caption never lets the book grow and jump.
@@ -285,36 +286,43 @@ internal fun PopUpDemo(state: DemoState) {
         Modifier.fillMaxSize()
             .then(with(sky) { Modifier.drawSky() })
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
     ) {
         if (isWideStage(maxWidth, maxHeight)) {
-            val height = maxHeight
-            // Landscape: the book on the left, the words on the right.
-            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            // Landscape: the book on the left, the words on the right, with tighter margins and
+            // gaps so that at the usual font size all of it fits a phone on its side.
+            Row(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 bookArea(Modifier.weight(1.2f).fillMaxHeight())
                 Spacer(Modifier.width(spacing.large))
                 // The words scroll when they are taller than the screen, as at a large font
                 // size; with room to spare, the caption and the buttons sit at the bottom.
-                Column(
-                    Modifier.weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
-                        .heightIn(min = height),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    header()
-                    Column(Modifier.fillMaxWidth()) {
-                        captionArea()
-                        Spacer(Modifier.height(spacing.large))
-                        buttons()
+                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(min = maxHeight),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        header()
+                        Column(Modifier.fillMaxWidth()) {
+                            captionArea(spacing.small)
+                            Spacer(Modifier.height(spacing.small))
+                            buttons()
+                        }
                     }
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
+            ) {
                 header()
                 bookArea(Modifier.weight(1f).fillMaxWidth())
-                captionArea()
+                captionArea(spacing.medium)
                 Spacer(Modifier.height(spacing.large))
                 buttons()
             }
