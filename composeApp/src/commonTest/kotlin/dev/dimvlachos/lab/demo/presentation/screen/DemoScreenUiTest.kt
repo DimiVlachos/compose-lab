@@ -6,8 +6,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -74,7 +74,7 @@ class DemoScreenUiTest {
         mainClock.advanceTimeBy(2_000)
 
         assertTrue(selections.none { it == 1 }, "the script has not run: $selections")
-        onNodeWithText("Replay").performClick()
+        onNodeWithContentDescription("Replay").performClick()
         mainClock.advanceTimeBy(2_000)
         assertTrue(selections.any { it == 1 }, "Replay runs it: $selections")
     }
@@ -104,11 +104,11 @@ class DemoScreenUiTest {
                 content = { state -> replaying += state.replay },
             )
         setContent { LabTheme { DemoScreen(demo, record = false, label = null, onBack = {}) } }
-        onNodeWithText("Replay").performClick()
+        onNodeWithContentDescription("Replay").performClick()
         mainClock.advanceTimeBy(500)
         assertEquals(true, replaying.last(), "replaying: $replaying")
 
-        onNodeWithText("Stop").performClick()
+        onNodeWithContentDescription("Stop").performClick()
         mainClock.advanceTimeBy(500)
         assertEquals(false, replaying.last(), "the user's again: $replaying")
     }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -47,8 +48,8 @@ class AppSmokeTest {
         onNodeWithText("Fogged mirror").assertExists()
         onNodeWithText("Profile gallery").performClick()
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithText("Stop").assertExists()
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Stop").assertExists()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("compose-lab").assertExists()
     }
 
@@ -93,12 +94,12 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(100)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithText("Stop").assertExists()
+        onNodeWithContentDescription("Stop").assertExists()
         // Called off, it slides back over home, and home is gone again.
         runOnUiThread { input.backCancelled() }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithText("Stop").assertExists()
+        onNodeWithContentDescription("Stop").assertExists()
         // Swiped all the way and let go, it is home.
         runOnUiThread {
             input.backStarted(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0f))
@@ -107,7 +108,7 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithText("Stop").assertDoesNotExist()
+        onNodeWithContentDescription("Stop").assertDoesNotExist()
     }
 
     @Test
@@ -128,7 +129,7 @@ class AppSmokeTest {
 
         onNodeWithText("Bathroom").performClick()
         onNodeWithText("Your reflection").assertDoesNotExist()
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("Your reflection").assertExists()
 
         onAllNodesWithText("Back").onFirst().performClick()

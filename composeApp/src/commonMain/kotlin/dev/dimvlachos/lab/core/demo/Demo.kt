@@ -3,6 +3,15 @@ package dev.dimvlachos.lab.core.demo
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.StringResource
 
+/**
+ * A demo in the catalog: its [id] and [title], the [script] that plays it, and its [content], the
+ * stage.
+ *
+ * On the phone the stage sits under the demo screen's top bar, which holds the top of the screen:
+ * the status bar and the cutout's top inset are already taken. The stage reaches the sides and the
+ * foot of the screen, so a demo keeps its controls clear of them with [demoInsets], which is empty
+ * while recording, when the clip's frame touches no edge.
+ */
 internal class Demo(
     val id: String,
     val title: StringResource,

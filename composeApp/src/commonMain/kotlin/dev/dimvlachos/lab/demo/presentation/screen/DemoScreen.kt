@@ -3,20 +3,17 @@ package dev.dimvlachos.lab.demo.presentation.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,19 +25,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.platform.LockLandscape
+import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
+import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
+import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
 import dev.dimvlachos.lab.resources.action_replay
 import dev.dimvlachos.lab.resources.action_stop
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.ic_arrow_back
+import dev.dimvlachos.lab.resources.ic_play_arrow
+import dev.dimvlachos.lab.resources.ic_stop
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -102,73 +104,73 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
             // a 4:5 frame would leave bands above and below it that look like the demo but never
             // reach it.
             Column(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.fillMaxWidth()
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(
-                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-                            )
-                        )
-                        .padding(horizontal = LabTheme.spacing.small),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (onBack != null) {
-                        TextButton(
-                            onClick = onBack,
-                            colors =
-                                ButtonDefaults.textButtonColors(
-                                    contentColor = LabTheme.colors.accent
-                                ),
-                        ) {
-                            Text(stringResource(Res.string.action_back))
-                        }
-                    }
-                    Text(
-                        stringResource(demo.title),
-                        color = LabTheme.colors.textPrimary,
-                        style = LabTheme.typography.body,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(horizontal = LabTheme.spacing.small),
-                    )
-                    TextButton(
-                        onClick = {
-                            if (playing) {
-                                playing = false
-                                state.endReplay()
-                            } else {
-                                runId++
-                                playing = true
+                LabTopBar(
+                    navigationIcon =
+                        onBack?.let { back ->
+                            {
+                                LabIconButton(
+                                    Res.drawable.ic_arrow_back,
+                                    contentDescription = stringResource(Res.string.action_back),
+                                    onClick = back,
+                                )
                             }
                         },
-                        colors =
-                            ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.accent),
-                    ) {
-                        Text(
-                            stringResource(
-                                if (playing) Res.string.action_stop else Res.string.action_replay
-                            )
+                    actions = {
+                        LabIconButton(
+                            if (playing) Res.drawable.ic_stop else Res.drawable.ic_play_arrow,
+                            contentDescription =
+                                stringResource(
+                                    if (playing) Res.string.action_stop
+                                    else Res.string.action_replay
+                                ),
+                            onClick = {
+                                if (playing) {
+                                    playing = false
+                                    state.endReplay()
+                                } else {
+                                    runId++
+                                    playing = true
+                                }
+                            },
+                            tint = LabTheme.colors.accent,
                         )
-                    }
+                    },
+                ) {
+                    LabTopBarTitle(stringResource(demo.title))
                 }
-                stage(Modifier.fillMaxWidth().weight(1f))
+                // The bar has the top: the demo keeps its controls clear of the sides and the
+                // foot itself, through demoInsets.
+                stage(
+                    Modifier.fillMaxWidth()
+                        .weight(1f)
+                        .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                )
             }
         }
     }
 }
 
+@Composable
+private fun DemoScreenSample() {
+    val demo = remember {
+        Demo(
+            id = "preview.demo",
+            title = Res.string.demo_navbar,
+            script = demoScript {},
+            content = { Box(Modifier.fillMaxSize().background(LabTheme.colors.surface)) },
+        )
+    }
+    DemoScreen(demo = demo, record = false, label = "iOS", onBack = {})
+}
+
 @Preview
 @Composable
-private fun DemoScreenPreview() {
-    LabTheme {
-        val demo = remember {
-            Demo(
-                id = "preview.demo",
-                title = Res.string.demo_navbar,
-                script = demoScript {},
-                content = { Box(Modifier.fillMaxSize().background(LabTheme.colors.surface)) },
-            )
-        }
-        DemoScreen(demo = demo, record = false, label = "iOS", onBack = {})
-    }
+private fun DemoScreenLightPreview() {
+    LabTheme(darkTheme = false) { DemoScreenSample() }
+}
+
+@Preview
+@Composable
+private fun DemoScreenDarkPreview() {
+    LabTheme(darkTheme = true) { DemoScreenSample() }
 }
