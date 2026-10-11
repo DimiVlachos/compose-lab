@@ -1,7 +1,9 @@
 package dev.dimvlachos.lab.fogdemo.presentation.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +20,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -33,12 +37,14 @@ import dev.dimvlachos.lab.resources.mirror_card_not_now
 import dev.dimvlachos.lab.resources.mirror_card_open_settings
 import dev.dimvlachos.lab.resources.mirror_card_promise
 import dev.dimvlachos.lab.resources.mirror_card_title
+import dev.dimvlachos.lab.resources.mirror_view
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private val CardIconSize = 32.dp
 private val CardMaxWidth = 360.dp
+private val CardLightElevation = 12.dp
 
 /** What the card still needs for the camera. */
 internal enum class Need {
@@ -68,6 +74,11 @@ internal fun MirrorPermissionCard(
         modifier
             .widthIn(max = CardMaxWidth)
             .padding(horizontal = LabTheme.spacing.large)
+            // On the light palette a soft shadow lifts the white card off the white tiles.
+            .then(
+                if (LabTheme.isDark) Modifier
+                else Modifier.shadow(CardLightElevation, LabTheme.shapes.extraLarge)
+            )
             .background(LabTheme.colors.surface, LabTheme.shapes.extraLarge)
             // Landscape or large text can make it taller than the stage: it scrolls, so the
             // buttons are always within reach.
@@ -135,15 +146,32 @@ private fun CardText(text: StringResource, color: Color, title: Boolean = false)
     )
 }
 
-@Preview
+// The card as it first asks, on the bathroom's tiles.
 @Composable
-private fun MirrorPermissionCardPreview() {
-    LabTheme {
-        MirrorPermissionCard(
-            camera = Need.Ask,
-            onAllow = {},
-            onOpenSettings = {},
-            onNotNow = {},
-        )
+private fun MirrorPermissionCardPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                painterResource(Res.drawable.mirror_view),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+            )
+            MirrorPermissionCard(
+                camera = Need.Ask,
+                onAllow = {},
+                onOpenSettings = {},
+                onNotNow = {},
+                modifier = Modifier.padding(vertical = LabTheme.spacing.large),
+            )
+        }
     }
 }
+
+@Preview
+@Composable
+private fun MirrorPermissionCardDarkPreview() = MirrorPermissionCardPreview(dark = true)
+
+@Preview
+@Composable
+private fun MirrorPermissionCardLightPreview() = MirrorPermissionCardPreview(dark = false)

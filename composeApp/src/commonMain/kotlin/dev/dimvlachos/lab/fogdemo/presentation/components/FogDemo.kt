@@ -5,10 +5,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -40,8 +43,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
@@ -58,6 +63,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.FoggedMirror
 import dev.dimvlachos.lab.core.presentation.components.fog.MistDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.RequestSystemBarIcons
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.fogdemo.clipFrameToWindow
 import dev.dimvlachos.lab.fogdemo.newFogDemoState
@@ -74,6 +80,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -89,6 +96,8 @@ internal fun FogDemo(
     // No default: each version says which camera it uses, so the bathroom can never ask for one.
     cameraAccess: CameraAccess,
 ) {
+    // The tiles and the basin run under the gesture bar in either theme, so its handle is dark.
+    RequestSystemBarIcons(navigationDarkIcons = true)
     var window by remember { mutableStateOf(Size.Zero) }
     // Condensation running down the glass; in the clip, only the script's drops.
     val drips = remember(fog) { DripDriver(fog, wipeRadius = FogDemos.FingerBrush) }
@@ -270,8 +279,8 @@ internal fun FogDemo(
         }
     }
 
-    val surface = LabTheme.colors.surface
-    val startingGlass = remember(surface) { ColorPainter(surface) }
+    val glass = LabTheme.colors.mirrorGlass
+    val startingGlass = remember(glass) { ColorPainter(glass) }
     // You, cut out of the camera's picture, in front of the bathroom rather than your own room.
     val bathroom = imageResource(Res.drawable.mirror_view)
     val inTheBathroom =
@@ -321,36 +330,7 @@ internal fun FogDemo(
                     .windowInsetsPadding(demoInsets(state))
                     .padding(LabTheme.spacing.mediumLarge),
         ) { shown ->
-            if (shown != null) {
-                Row(
-                    Modifier.background(
-                            LabTheme.colors.surface.copy(alpha = 0.7f),
-                            RoundedCornerShape(percent = 50),
-                        )
-                        .then(if (canAsk) Modifier.clickable { cardOpen = true } else Modifier)
-                        .padding(
-                            horizontal = LabTheme.spacing.mediumLarge,
-                            vertical = LabTheme.spacing.small,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // A way back to the card, where there is something to ask for.
-                    if (canAsk) {
-                        Icon(
-                            painterResource(Res.drawable.ic_photo_camera),
-                            contentDescription = null,
-                            tint = LabTheme.colors.accent,
-                            modifier = Modifier.size(HintIconSize),
-                        )
-                    }
-                    Text(
-                        stringResource(shown),
-                        color = LabTheme.colors.textPrimary,
-                        style = LabTheme.typography.body,
-                    )
-                }
-            }
+            if (shown != null) HintPill(shown, camera = canAsk, onClick = { cardOpen = true })
         }
         // While the card is up the glass takes no touches, so reaching for a button cannot wipe it.
         // Being hit is enough to keep touches off the glass beneath; consuming them as well would
@@ -408,3 +388,57 @@ private fun DrawScope.drawFinger(finger: ScriptFinger) {
 
 private val FingerMarkRadius = 18.dp
 private const val FingerLiftMillis = 250
+
+// The hint at the foot of the mirror; with [camera], a way back to the card that asks for it. On
+// the
+// light palette a hairline keeps the pale pill from melting into the white tiles.
+@Composable
+private fun HintPill(text: StringResource, camera: Boolean, onClick: () -> Unit) {
+    val colors = LabTheme.colors
+    val shape = RoundedCornerShape(percent = 50)
+    Row(
+        Modifier.background(colors.surface.copy(alpha = 0.7f), shape)
+            .then(if (colors.isDark) Modifier else Modifier.border(1.dp, colors.chipBorder, shape))
+            .then(if (camera) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = LabTheme.spacing.mediumLarge, vertical = LabTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // A way back to the card, where there is something to ask for.
+        if (camera) {
+            Icon(
+                painterResource(Res.drawable.ic_photo_camera),
+                contentDescription = null,
+                tint = colors.accent,
+                modifier = Modifier.size(HintIconSize),
+            )
+        }
+        Text(stringResource(text), color = colors.textPrimary, style = LabTheme.typography.body)
+    }
+}
+
+// Both hints on the bathroom's tiles.
+@Composable
+private fun HintPillPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Box {
+            Image(
+                painterResource(Res.drawable.mirror_view),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Column(
+                Modifier.padding(LabTheme.spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
+            ) {
+                HintPill(Res.string.fog_hint_wipe, camera = false, onClick = {})
+                HintPill(Res.string.fog_hint_camera, camera = true, onClick = {})
+            }
+        }
+    }
+}
+
+@Preview @Composable private fun HintPillDarkPreview() = HintPillPreview(dark = true)
+
+@Preview @Composable private fun HintPillLightPreview() = HintPillPreview(dark = false)
