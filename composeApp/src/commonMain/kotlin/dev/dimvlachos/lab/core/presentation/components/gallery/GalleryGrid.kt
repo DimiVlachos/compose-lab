@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
@@ -73,6 +74,9 @@ internal fun GalleryGrid(
         }
     // Where each card last stood, so a card fading out stays there instead of jumping.
     val lastSlot = remember(photos.size) { IntArray(photos.size) { it } }
+    // Where each card was last placed, so one fading out stays there even if the columns change
+    // under it, as when the phone turns: by slot, it would jump to that slot in the new columns.
+    val lastAt = remember(photos.size) { arrayOfNulls<IntOffset>(photos.size) }
     val typed = query.value
     photos.forEachIndexed { i, photo -> filter[i].targetState = matchesQuery(photo.title, typed) }
     val glide = remember {
@@ -140,14 +144,17 @@ internal fun GalleryGrid(
             fun slotY(slot: Int) = (slot / columns) * (cellHeight + gapPx)
             placeables.forEachIndexed { i, placeable ->
                 if (!filter[i].targetState && filter[i].currentState) {
-                    placeable.place(slotX(lastSlot[i]), slotY(lastSlot[i]), zIndex = -1f)
+                    val at = lastAt[i] ?: IntOffset(slotX(lastSlot[i]), slotY(lastSlot[i]))
+                    placeable.place(at, zIndex = -1f)
                 }
             }
             var slot = 0
             placeables.forEachIndexed { i, placeable ->
                 if (filter[i].targetState) {
                     lastSlot[i] = slot
-                    placeable.place(slotX(slot), slotY(slot))
+                    val at = IntOffset(slotX(slot), slotY(slot))
+                    lastAt[i] = at
+                    placeable.place(at)
                     slot++
                 }
             }
