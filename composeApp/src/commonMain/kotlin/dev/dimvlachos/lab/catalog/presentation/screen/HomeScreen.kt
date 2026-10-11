@@ -1,9 +1,5 @@
 package dev.dimvlachos.lab.catalog.presentation.screen
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,43 +7,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.catalog.Catalog
 import dev.dimvlachos.lab.catalog.CatalogEntry
 import dev.dimvlachos.lab.catalog.filterCatalog
 import dev.dimvlachos.lab.catalog.presentation.CatalogFilterState
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogGrid
-import dev.dimvlachos.lab.catalog.presentation.components.CatalogSearchField
+import dev.dimvlachos.lab.catalog.presentation.components.CatalogSearchBar
 import dev.dimvlachos.lab.catalog.presentation.components.TagFilterRow
-import dev.dimvlachos.lab.catalog.presentation.components.ThemeModeButton
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoTag
-import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
-import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.action_back
-import dev.dimvlachos.lab.resources.action_search
 import dev.dimvlachos.lab.resources.catalog_no_results
-import dev.dimvlachos.lab.resources.catalog_search_clear
-import dev.dimvlachos.lab.resources.catalog_title
-import dev.dimvlachos.lab.resources.ic_arrow_back
-import dev.dimvlachos.lab.resources.ic_close
-import dev.dimvlachos.lab.resources.ic_search
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * The home screen: the lab's name in the bar over a row of tags to filter by, and a card for every
- * demo and folder under it, filtered by [filter]. The bar's search button ([onOpenSearch]) turns
- * the title into a search field while [searchOpen], focused when [focusSearch] says so
- * ([onSearchFocused] once it is); its back arrow ([onCloseSearch]) turns it back.
+ * demo and folder under it, filtered by [filter]. The bar's round search button ([onOpenSearch])
+ * grows into a pill holding the search field while [searchOpen], focused when [focusSearch] says so
+ * ([onSearchFocused] once it is); its back arrow ([onCloseSearch]) shrinks it back.
  */
 @Composable
 internal fun HomeScreen(
@@ -77,35 +63,6 @@ internal fun HomeScreen(
     val shown = remember(entries, query, words) { filterCatalog(entries, query, words) }
     Column(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
         LabTopBar(
-            navigationIcon =
-                if (searchOpen) {
-                    {
-                        LabIconButton(
-                            Res.drawable.ic_arrow_back,
-                            contentDescription = stringResource(Res.string.action_back),
-                            onClick = {
-                                leaving()
-                                onCloseSearch()
-                            },
-                        )
-                    }
-                } else null,
-            actions = {
-                if (!searchOpen) {
-                    LabIconButton(
-                        Res.drawable.ic_search,
-                        contentDescription = stringResource(Res.string.action_search),
-                        onClick = onOpenSearch,
-                    )
-                    ThemeModeButton(mode = themeMode, onCycle = onCycleTheme)
-                } else if (filter.text.isNotEmpty()) {
-                    LabIconButton(
-                        Res.drawable.ic_close,
-                        contentDescription = stringResource(Res.string.catalog_search_clear),
-                        onClick = { filter.text = "" },
-                    )
-                }
-            },
             bottom = {
                 TagFilterRow(
                     tags = tags,
@@ -119,23 +76,22 @@ internal fun HomeScreen(
                         ),
                 )
             },
+            titlePadding = 0.dp,
         ) {
-            AnimatedContent(
-                targetState = searchOpen,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                contentAlignment = Alignment.CenterStart,
-            ) { open ->
-                if (open) {
-                    CatalogSearchField(
-                        value = filter.text,
-                        onValueChange = { filter.text = it },
-                        autoFocus = focusSearch,
-                        onAutoFocused = onSearchFocused,
-                    )
-                } else {
-                    LabTopBarTitle(stringResource(Res.string.catalog_title))
-                }
-            }
+            CatalogSearchBar(
+                searchOpen = searchOpen,
+                text = filter.text,
+                onTextChange = { filter.text = it },
+                focusSearch = focusSearch,
+                onSearchFocused = onSearchFocused,
+                themeMode = themeMode,
+                onCycleTheme = onCycleTheme,
+                onOpenSearch = onOpenSearch,
+                onCloseSearch = {
+                    leaving()
+                    onCloseSearch()
+                },
+            )
         }
         CatalogGrid(
             entries = shown,

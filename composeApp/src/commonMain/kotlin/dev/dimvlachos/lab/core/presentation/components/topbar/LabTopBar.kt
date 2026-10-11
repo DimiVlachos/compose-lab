@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -42,8 +43,9 @@ private val BarElevation = 8.dp
 /**
  * The bar across the top of every screen: a way back ([navigationIcon]), the [title], buttons at
  * the end ([actions]), and anything that belongs to the bar under them ([bottom]), like a row of
- * filters. It reaches up under the status bar, so its colour runs to the top of the screen, and
- * casts its shadow over the content below it.
+ * filters. [titlePadding] keeps the title off the buttons either side; a screen that lays out its
+ * own buttons in the title's place can take it away. It reaches up under the status bar, so its
+ * colour runs to the top of the screen, and casts its shadow over the content below it.
  */
 @Composable
 internal fun LabTopBar(
@@ -51,6 +53,7 @@ internal fun LabTopBar(
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     bottom: (@Composable () -> Unit)? = null,
+    titlePadding: Dp = LabTheme.spacing.small,
     title: @Composable BoxScope.() -> Unit,
 ) {
     val colors = LabTheme.colors
@@ -78,7 +81,7 @@ internal fun LabTopBar(
         ) {
             navigationIcon?.invoke()
             Box(
-                Modifier.weight(1f).padding(horizontal = LabTheme.spacing.small),
+                Modifier.weight(1f).padding(horizontal = titlePadding),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 title()
