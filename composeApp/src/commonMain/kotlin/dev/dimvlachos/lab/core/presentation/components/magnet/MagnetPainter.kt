@@ -36,10 +36,10 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Where a magnet's [count] photos go when they fan out: a grid of up to three columns, centred on a
- * [width] × [height] table under a [header], its last row centred too, with room for a [caption]
- * under each card. The cards grow to at most FanScale times their size, less if that wouldn't fit,
- * and keep [gap] apart and from the edges.
+ * Where a magnet's [count] photos go when they fan out: a grid, three columns across or more on a
+ * table too short for three, centred on a [width] × [height] table under a [header], its last row
+ * centred too, with room for a [caption] under each card. The cards grow to at most FanScale times
+ * their size, less if that wouldn't fit, and keep [gap] apart and from the edges.
  */
 internal class FanGrid(
     private val count: Int,
@@ -51,17 +51,12 @@ internal class FanGrid(
     private val caption: Float = 0f,
     private val header: Float = 0f,
 ) {
-    private val columns = count.coerceIn(1, MagnetDimens.FanColumns)
+    private val columns =
+        fanColumns(count, width, height, cardWidth, cardHeight, gap, caption, header)
     private val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
 
     val scale: Float =
-        min(
-                MagnetDimens.FanScale,
-                min(
-                    (width - gap * (columns + 1)) / (columns * cardWidth),
-                    (height - header - gap * (rows + 1) - rows * caption) / (rows * cardHeight),
-                ),
-            )
+        fanScale(columns, count, width, height, cardWidth, cardHeight, gap, caption, header)
             .coerceAtLeast(0.1f)
 
     /**
@@ -85,6 +80,56 @@ internal class FanGrid(
             top + h / 2f + row * (rowHeight + gap),
         )
     }
+}
+
+/**
+ * How many columns a grid of [count] cards takes on a [width] × [height] table: up to FanColumns,
+ * or, where the cards would come out bigger in a wider grid, as on a short wide table, that one.
+ */
+internal fun fanColumns(
+    count: Int,
+    width: Float,
+    height: Float,
+    cardWidth: Float,
+    cardHeight: Float,
+    gap: Float,
+    caption: Float = 0f,
+    header: Float = 0f,
+): Int {
+    var best = count.coerceIn(1, MagnetDimens.FanColumns)
+    var bestScale =
+        fanScale(best, count, width, height, cardWidth, cardHeight, gap, caption, header)
+    for (columns in MagnetDimens.FanColumns + 1..count) {
+        val scale =
+            fanScale(columns, count, width, height, cardWidth, cardHeight, gap, caption, header)
+        if (scale > bestScale) {
+            best = columns
+            bestScale = scale
+        }
+    }
+    return best
+}
+
+/** How much [count] cards grow in a grid [columns] across that fits a [width] × [height] table. */
+internal fun fanScale(
+    columns: Int,
+    count: Int,
+    width: Float,
+    height: Float,
+    cardWidth: Float,
+    cardHeight: Float,
+    gap: Float,
+    caption: Float,
+    header: Float,
+): Float {
+    val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
+    return min(
+        MagnetDimens.FanScale,
+        min(
+            (width - gap * (columns + 1)) / (columns * cardWidth),
+            (height - header - gap * (rows + 1) - rows * caption) / (rows * cardHeight),
+        ),
+    )
 }
 
 /**

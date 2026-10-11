@@ -144,8 +144,8 @@ internal object MagnetDimens {
     // With every magnet put away the filings settle back as they fell over this long, eased.
     const val CalmSeconds = 1f
 
-    // Tapped, a magnet's photos fan out into a grid of up to FanColumns columns, the cards up to
-    // FanScale times their size, in FanMs; FanGap between them.
+    // Tapped, a magnet's photos fan out into a grid of up to FanColumns columns, more on a table
+    // too short for them, the cards up to FanScale times their size, in FanMs; FanGap between them.
     const val FanMs = 320
     const val FanColumns = 3
     const val FanScale = 1.5f
