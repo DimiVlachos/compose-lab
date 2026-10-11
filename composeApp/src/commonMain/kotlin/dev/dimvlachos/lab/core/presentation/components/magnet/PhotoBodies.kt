@@ -47,6 +47,12 @@ internal class PhotoBody(
     /** Held by a finger: it goes where the finger takes it and feels no magnet. */
     var held = false
 
+    /**
+     * How far it is lifted off the table, 0 lying on it to 1 held: eased towards how it lies, so
+     * its shadow spreads as it is picked up and gathers back as it lands.
+     */
+    var lift = 0f
+
     /** The magnets it is stuck to, in the order it stuck: one, or two when it hangs between. */
     val stuckTo: MutableSet<String> = LinkedHashSet()
 
@@ -223,6 +229,13 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 if (speed > most) body.velocity *= most / speed
             }
             if (body.velocity.getDistance() > MagnetDimens.StillSpeed) moving = true
+        }
+        for (i in bodies.indices) {
+            val body = bodies[i]
+            val target = liftOf(body, travelling[i])
+            val gap = target - body.lift
+            body.lift += gap * min(1f, dt * MagnetDimens.LiftRate)
+            if (abs(gap) > MagnetDimens.StillLift) moving = true else body.lift = target
         }
         quiet = if (moving || changed) 0 else quiet + 1
         return changed
@@ -532,6 +545,18 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     }
 
     internal companion object {
+        /**
+         * How far a card is lifted off the table, 0 to 1: all the way in a finger, a little on its
+         * way to a magnet or lying on one, over the cards it gathers on.
+         */
+        fun liftOf(body: PhotoBody, travelling: Boolean): Float =
+            when {
+                body.held -> 1f
+                travelling -> MagnetDimens.TravelLift
+                body.stuckTo.isNotEmpty() -> MagnetDimens.StuckLift
+                else -> 0f
+            }
+
         /**
          * Where [count] cards first lie: each dealt a cell of a grid in a shuffled order, and put
          * somewhere near its middle, so the table looks strewn but no two cards start on top of

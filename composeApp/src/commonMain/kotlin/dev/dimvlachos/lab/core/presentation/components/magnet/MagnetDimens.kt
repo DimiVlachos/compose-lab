@@ -9,8 +9,13 @@ internal object MagnetDimens {
     val CardWidth = 76.dp
     val CardHeight = 56.dp
     val CardCorner = 4.dp
-    // How far a card's shadow falls below it (half as far to the side), at the card's own size.
-    val CardShadowDrop = 3.dp
+    // How far a card is lifted off the table, for its shadow: a little on its way to a magnet or
+    // stuck on one, all the way in a finger. It eases there at LiftRate a second, and is taken to
+    // be there within StillLift.
+    const val TravelLift = 0.35f
+    const val StuckLift = 0.2f
+    const val LiftRate = 14f
+    const val StillLift = 0.005f
     val CardBorder = 3.dp
     val ClipWidth = 16.dp
     val ClipHeight = 7.dp
