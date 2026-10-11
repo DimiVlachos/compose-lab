@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
@@ -55,6 +56,12 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+/**
+ * How tall [AnimatedNavBar] stands, the selected tab's bubble included: what content scrolling
+ * beneath the bar keeps clear of.
+ */
+public val AnimatedNavBarHeight: Dp = NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight
 
 internal const val NavBarRowTestTag = "navBarRow"
 internal const val NavBarBubbleTestTag = "navBarBubble"
@@ -115,10 +122,9 @@ public fun AnimatedNavBar(
     LaunchedEffect(target, layers.action) { actionState.animateTo(target) }
 
     Box(
-        modifier
-            .fillMaxWidth()
-            .height(NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight)
-            .graphicsLayer { translationY = -collapse() * NavBarDimens.FloatLift.toPx() }
+        modifier.fillMaxWidth().height(AnimatedNavBarHeight).graphicsLayer {
+            translationY = -collapse() * NavBarDimens.FloatLift.toPx()
+        }
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(

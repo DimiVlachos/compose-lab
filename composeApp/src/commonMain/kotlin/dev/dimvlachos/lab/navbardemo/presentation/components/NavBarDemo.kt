@@ -1,19 +1,24 @@
 package dev.dimvlachos.lab.navbardemo.presentation.components
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.presentation.components.navbar.AnimatedNavBar
 import dev.dimvlachos.lab.core.presentation.components.navbar.NavAction
 import dev.dimvlachos.lab.core.presentation.components.navbar.NavBarLayers
 import dev.dimvlachos.lab.core.presentation.components.navbar.NavItem
 import dev.dimvlachos.lab.core.presentation.components.navbar.rememberNavBarScrollState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_edit_profile
 import dev.dimvlachos.lab.resources.action_new_post
@@ -29,6 +34,9 @@ import dev.dimvlachos.lab.resources.nav_home
 import dev.dimvlachos.lab.resources.nav_profile
 import dev.dimvlachos.lab.resources.nav_saved
 import org.jetbrains.compose.resources.stringResource
+
+// The widest the bar grows: a large phone's width, so its tabs stay within a thumb's reach.
+internal val NavBarMaxWidth = 480.dp
 
 @Composable
 internal fun NavBarDemo(state: DemoState) {
@@ -56,14 +64,22 @@ internal fun NavBarDemo(state: DemoState) {
             )
         }
     val scrollState = rememberNavBarScrollState()
-    Box(Modifier.fillMaxSize()) {
-        FeedList(state, scrollState)
+    // On a phone turned on its side the bar keeps a phone's width, centred, and sits lower to
+    // leave the feed more of the little height there is.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val spacing = LabTheme.spacing
+        val barBottom = if (isWideStage(maxWidth, maxHeight)) spacing.small else spacing.mediumLarge
+        FeedList(state, scrollState, barBottom)
         AnimatedNavBar(
             items = navItems,
             selectedIndex = state.selectedIndex,
             onSelect = state::select,
             onActionClick = {},
-            modifier = Modifier.align(Alignment.BottomCenter).padding(LabTheme.spacing.mediumLarge),
+            modifier =
+                Modifier.align(Alignment.BottomCenter)
+                    .windowInsetsPadding(demoInsets(state))
+                    .padding(horizontal = spacing.mediumLarge, vertical = barBottom)
+                    .widthIn(max = NavBarMaxWidth),
             layers = NavBarLayers.All,
             scrollState = scrollState,
         )
