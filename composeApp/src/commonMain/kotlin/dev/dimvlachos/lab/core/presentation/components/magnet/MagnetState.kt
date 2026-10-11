@@ -99,11 +99,11 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     internal val bodies: PhotoBodies = run {
         val random = Random(LayoutSeed)
-        val spots = PhotoBodies.scatter(photos.size, random)
+        val seeds = PhotoBodies.scatter(photos.size, random)
         PhotoBodies(
             photos.mapIndexed { i, photo ->
                 val tilt = (random.nextFloat() - 0.5f) * 2f * MagnetDimens.MostTilt
-                PhotoBody(photo.id, photo.strengths, spots[i], tilt)
+                PhotoBody(photo.id, photo.strengths, seeds[i], tilt)
             }
         )
     }

@@ -8,6 +8,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+// The seed the magnet table strews its photos with.
+private const val LayoutSeed = 29
+
 class PhotoBodiesTest {
     private val step = MagnetDimens.StepSeconds
     private val ring = MagnetDimens.ContactRing.value
@@ -35,7 +38,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aStrongMatchSnapsAndSticksWithinAboutAThirdOfASecond() {
-        val photo = PhotoBody("p", mapOf("a" to 0.9f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("a" to 0.9f))
         // A card's width beyond touching.
         val m = magnet("a", Offset(300f + ring + card, 500f))
         val table = bodies(photo to Offset(300f, 500f))
@@ -52,7 +55,7 @@ class PhotoBodiesTest {
     @Test
     fun aMatchUnderTheThresholdNeitherMovesNorSticks() {
         // Only what will be counted moves: a weak match stays where it lies.
-        val photo = PhotoBody("p", mapOf("a" to 0.4f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("a" to 0.4f))
         val m = magnet("a", Offset(300f + ring + card, 500f))
         val table = bodies(photo to Offset(300f, 500f))
         table.run(3f, listOf(m))
@@ -62,7 +65,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aPhotoThatDoesNotMatchNeverMoves() {
-        val photo = PhotoBody("p", mapOf("b" to 1f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("b" to 1f))
         val table = bodies(photo to Offset(300f, 500f))
         table.run(2f, listOf(magnet("a", Offset(400f, 500f))))
         assertEquals(photo.home, photo.at)
@@ -70,14 +73,14 @@ class PhotoBodiesTest {
 
     @Test
     fun aTagMissingFromAPhotosStrengthsCountsAsNothing() {
-        val photo = PhotoBody("p", emptyMap(), Offset.Zero)
+        val photo = PhotoBody("p", emptyMap())
         assertEquals(0f, photo.strength("a"))
         assertFalse(photo.matches("a"))
     }
 
     @Test
     fun releasedEachPhotoSlidesBackHome() {
-        val photos = List(3) { PhotoBody("p$it", mapOf("a" to 1f), Offset.Zero) }
+        val photos = List(3) { PhotoBody("p$it", mapOf("a" to 1f)) }
         val m = magnet("a", Offset(500f, 500f))
         val table =
             bodies(
@@ -97,7 +100,7 @@ class PhotoBodiesTest {
 
     @Test
     fun cardsOnAMagnetDoNotPileUp() {
-        val photos = List(6) { PhotoBody("p$it", mapOf("a" to 1f), Offset.Zero) }
+        val photos = List(6) { PhotoBody("p$it", mapOf("a" to 1f)) }
         val m = magnet("a", Offset(500f, 500f))
         val table =
             // All within the magnet's reach, a card's width or more apart.
@@ -113,8 +116,8 @@ class PhotoBodiesTest {
 
     @Test
     fun nothingGoesNaNAtZeroDistance() {
-        val a = PhotoBody("a", mapOf("a" to 1f), Offset.Zero)
-        val b = PhotoBody("b", mapOf("a" to 1f), Offset.Zero)
+        val a = PhotoBody("a", mapOf("a" to 1f))
+        val b = PhotoBody("b", mapOf("a" to 1f))
         val m = magnet("a", Offset(500f, 500f))
         val table = bodies(a to Offset(500f, 500f), b to Offset(500f, 500f))
         table.run(1f, listOf(m))
@@ -127,7 +130,7 @@ class PhotoBodiesTest {
     @Test
     fun twoSeparateMagnetsNeverShareOrHandOverAPhoto() {
         // It matches both well; nearer A, it reaches A first.
-        val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.9f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("a" to 0.9f, "b" to 0.9f))
         val a = magnet("a", Offset(300f, 500f))
         val b = magnet("b", Offset(700f, 500f))
         val table = bodies(photo to Offset(420f, 500f))
@@ -141,8 +144,8 @@ class PhotoBodiesTest {
 
     @Test
     fun twoMagnetsJoinedHoldOnlyWhatMatchesBothAtTheirMiddle() {
-        val both = PhotoBody("both", mapOf("a" to 0.9f, "b" to 0.8f), Offset.Zero)
-        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f), Offset.Zero)
+        val both = PhotoBody("both", mapOf("a" to 0.9f, "b" to 0.8f))
+        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f))
         val a = magnet("a", Offset(400f, 500f))
         val b = magnet("b", Offset(400f + MagnetDimens.Dock.value, 500f))
         val table = bodies(both to Offset(426f, 640f), onlyA to Offset(300f, 500f))
@@ -154,7 +157,7 @@ class PhotoBodiesTest {
 
     @Test
     fun joiningTwoMagnetsDropsWhatMatchesOnlyOneOfThem() {
-        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f), Offset.Zero)
+        val onlyA = PhotoBody("onlyA", mapOf("a" to 1f))
         val a = magnet("a", Offset(400f, 500f))
         val b = magnet("b", Offset(700f, 500f))
         val table = bodies(onlyA to Offset(470f, 500f))
@@ -169,7 +172,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aPhotoPulledOffByHandDoesNotStickBackUntilItsMagnetIsPutAway() {
-        val photo = PhotoBody("p", mapOf("a" to 1f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("a" to 1f))
         val m = magnet("a", Offset(500f, 500f))
         val table = bodies(photo to Offset(440f, 500f))
         table.run(1f, listOf(m))
@@ -188,7 +191,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aPhotoFeelsOnlyMagnetsItMatchesAndHasNotRefused() {
-        val photo = PhotoBody("p", mapOf("a" to 0.3f), Offset.Zero)
+        val photo = PhotoBody("p", mapOf("a" to 0.3f))
         val a = magnet("a", Offset.Zero)
         val b = magnet("b", Offset.Zero)
         assertTrue(photo.feelsAny(listOf(a, b)))
@@ -204,7 +207,7 @@ class PhotoBodiesTest {
     // A magnet carrying one photo it holds swept right across [other], lying in its way, and on
     // past it; then left for three seconds. Returns how far [other] was pushed at most.
     private fun sweepPast(other: PhotoBody): Float {
-        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
+        val match = PhotoBody("match", mapOf("a" to 1f))
         val m = magnet("a", Offset(300f, 500f))
         val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
         table.run(1f, listOf(m))
@@ -222,7 +225,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aPhotoAMagnetDoesNotPullIsNudgedAsideWhereItTouchesAndSlidesBackHome() {
-        val other = PhotoBody("other", mapOf("b" to 1f), Offset.Zero)
+        val other = PhotoBody("other", mapOf("b" to 1f))
         val furthest = sweepPast(other)
         assertTrue(furthest > 10f, "it wasn't nudged")
         // Swept straight through, it is bumped, not carried off: past a nudge it slips under.
@@ -232,7 +235,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aWeakMatchIsNudgedTooButNeverDrawnIn() {
-        val weak = PhotoBody("weak", mapOf("a" to 0.3f), Offset.Zero)
+        val weak = PhotoBody("weak", mapOf("a" to 0.3f))
         val furthest = sweepPast(weak)
         assertTrue(furthest > 10f, "it wasn't nudged")
         assertTrue(furthest <= MagnetDimens.MostNudge.value * 1.5f, "it was carried $furthest dp")
@@ -241,7 +244,7 @@ class PhotoBodiesTest {
 
     @Test
     fun aMagnetSetDownRightBesideAPhotoItDoesNotPullPushesItJustClearOfItself() {
-        val other = PhotoBody("other", emptyMap(), Offset.Zero)
+        val other = PhotoBody("other", emptyMap())
         val m = magnet("a", Offset(500f, 500f))
         val table = bodies(other to Offset(500f + 20f, 500f))
         table.run(1f, listOf(m))
@@ -256,8 +259,8 @@ class PhotoBodiesTest {
     @Test
     fun aClusterLeftLyingOverAPhotosSpotLetsItLieStillUnderIt() {
         // Its spot right where the magnet's cluster comes to rest.
-        val match = PhotoBody("match", mapOf("a" to 1f), Offset.Zero)
-        val other = PhotoBody("other", emptyMap(), Offset.Zero)
+        val match = PhotoBody("match", mapOf("a" to 1f))
+        val other = PhotoBody("other", emptyMap())
         val m = magnet("a", Offset(300f, 500f))
         val table = bodies(match to Offset(300f, 560f), other to Offset(520f, 500f))
         table.run(1f, listOf(m))
@@ -279,7 +282,7 @@ class PhotoBodiesTest {
 
     @Test
     fun cardsAreKeptOnTheTable() {
-        val photo = PhotoBody("p", emptyMap(), Offset.Zero)
+        val photo = PhotoBody("p", emptyMap())
         val table = bodies(photo to Offset(500f, 500f))
         photo.at = Offset(-200f, 2000f)
         table.keepOnTable()
@@ -288,8 +291,8 @@ class PhotoBodiesTest {
 
     @Test
     fun theTopmostCardIsTheOneTouched() {
-        val under = PhotoBody("under", emptyMap(), Offset.Zero)
-        val over = PhotoBody("over", emptyMap(), Offset.Zero)
+        val under = PhotoBody("under", emptyMap())
+        val over = PhotoBody("over", emptyMap())
         val table = bodies(under to Offset(500f, 500f), over to Offset(510f, 500f))
         assertEquals("over", table.at(Offset(505f, 500f))?.id)
         over.held = true
@@ -298,9 +301,102 @@ class PhotoBodiesTest {
         assertNull(table.at(Offset(100f, 100f)))
     }
 
+    // The scatter as it was before it learnt other columns: three across, the grid every clip was
+    // recorded with.
+    private fun scatterThreeAcross(count: Int, random: Random): List<Offset> {
+        val columns = 3
+        val rows = (count + columns - 1) / columns
+        val cells = (0 until count).shuffled(random)
+        return List(count) { i ->
+            val cell = cells[i]
+            val column = cell % columns
+            val row = cell / columns
+            Offset(
+                (column + 0.5f + (random.nextFloat() - 0.5f) * 0.3f) / columns,
+                (row + 0.5f + (random.nextFloat() - 0.5f) * 0.3f) / rows,
+            )
+        }
+    }
+
+    private fun spots(count: Int, columns: Int, seed: Int = LayoutSeed): List<Offset> =
+        PhotoBodies.scatter(count, Random(seed)).map { PhotoBodies.scatterSpot(it, count, columns) }
+
+    @Test
+    fun threeAcrossTheScatterIsTheOneTheClipsWereRecordedWith() {
+        for (seed in listOf(LayoutSeed, 1, 7)) {
+            for (count in 1..14) {
+                val before = Random(seed)
+                val after = Random(seed)
+                assertEquals(
+                    scatterThreeAcross(count, before),
+                    spots(count, 3, seed).also {
+                        PhotoBodies.scatter(count, after)
+                    },
+                )
+                // And it leaves the random numbers where it found them, for the cards' tilts.
+                assertEquals(before.nextFloat(), after.nextFloat())
+            }
+        }
+    }
+
+    @Test
+    fun aPortraitTableIsScatteredThreeAcross() {
+        // The table in a 4:5 or 9:16 clip, under the hint's line and over the strip.
+        val strip = MagnetDimens.StripHeight.value
+        for (width in 360..430 step 10) {
+            for (frame in listOf(width * 5f / 4f, width * 16f / 9f)) {
+                val height = frame - 40f - strip
+                assertEquals(
+                    3,
+                    PhotoBodies.scatterColumns(12, width.toFloat(), height),
+                    "$width × $height",
+                )
+            }
+        }
+        assertEquals(3, PhotoBodies.scatterColumns(12, 412f, 668f))
+        assertEquals(3, PhotoBodies.scatterColumns(3, 800f, 158f), "three cards are a row")
+    }
+
+    @Test
+    fun aShortWideTableIsScatteredInTwoLongRows() {
+        assertEquals(6, PhotoBodies.scatterColumns(12, 800f, 158f))
+        val homes = spots(12, 6).map { Offset(it.x * 800f, it.y * 158f) }
+        val span = MagnetDimens.CardSpan.value
+        for (i in homes.indices) for (j in i + 1 until homes.size) {
+            assertTrue((homes[i] - homes[j]).getDistance() >= span, "$i and $j overlap")
+        }
+    }
+
+    @Test
+    fun turnedToAnotherShapeTheLooseCardsGoToTheirNewHomesAndTheRestStay() {
+        val cards =
+            PhotoBodies.scatter(12, Random(LayoutSeed)).mapIndexed { i, seed ->
+                PhotoBody("p$i", mapOf("a" to 1f), seed)
+            }
+        val table = PhotoBodies(cards).apply { resize(400f, 500f) }
+        val stuck =
+            cards[0].apply {
+                at = Offset(100f, 100f)
+                stuckTo += "a"
+            }
+        val held =
+            cards[1].apply {
+                at = Offset(300f, 400f)
+                held = true
+            }
+        table.resize(800f, 158f)
+        for (card in cards) {
+            if (card === stuck || card === held) continue
+            assertEquals(card.home, card.at, card.id)
+        }
+        // Those on a magnet or in a finger move with the table, as they always have.
+        assertTrue((stuck.at - Offset(200f, 100f * 158f / 500f)).getDistance() < 0.01f)
+        assertTrue((held.at - Offset(600f, 400f * 158f / 500f)).getDistance() < 0.01f)
+    }
+
     @Test
     fun theScatterFillsTheTableWithoutOverlap() {
-        val spots = PhotoBodies.scatter(12, Random(29))
+        val spots = spots(12, 3, seed = LayoutSeed)
         assertEquals(12, spots.size)
         // On the smallest table the lab shows, 300 × 500 dp, no two homes overlap.
         val span = MagnetDimens.CardSpan.value
