@@ -413,13 +413,18 @@ class ProfileGalleryUiTest {
     fun searchNeverMovesTheHomeGrid() = runComposeUiTest {
         val scroll = ScrollState(0)
         showGallery(scroll = scroll)
-        // Past the header's collapse, and short of the end on the phone's stage.
-        runOnUiThread { scroll.dispatchRawDelta(60f) }
+        // Past the header's collapse, and short of the end on the phone's stage, at any density.
+        val by =
+            with(density) {
+                (HeaderExpandedHeight - HeaderCollapsedHeight + 8.dp).roundToPx()
+            }
+        runOnUiThread { scroll.dispatchRawDelta(by.toFloat()) }
         mainClock.advanceTimeBy(100)
+        assertEquals(by, scroll.value)
         go(GalleryScene(search = true), thenMs = 2_500)
-        assertEquals(60, scroll.value)
+        assertEquals(by, scroll.value)
         go(GalleryScene(), thenMs = 2_500)
-        assertEquals(60, scroll.value)
+        assertEquals(by, scroll.value)
     }
 
     @Test
