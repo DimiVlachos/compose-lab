@@ -592,9 +592,15 @@ class ProfileGalleryUiTest {
         }
         mainClock.advanceTimeBy(500)
         assertNull(requests.navigationDarkIcons, "the bare screen leaves the bars to the theme")
-        go(GalleryScene(photo = 3))
+        // While the photo is still small the light screen shows under the bar: the theme's icons.
+        go(GalleryScene(photo = 3), thenMs = 50)
+        assertNull(requests.navigationDarkIcons, "the photo has barely begun to grow")
+        mainClock.advanceTimeBy(1_500)
         assertEquals(false, requests.navigationDarkIcons, "light icons over the photo's scrim")
-        go(GalleryScene())
+        // As soon as it starts to close, the screen is on its way back.
+        go(GalleryScene(), thenMs = 50)
+        assertNull(requests.navigationDarkIcons, "the photo is closing")
+        mainClock.advanceTimeBy(1_500)
         assertNull(requests.navigationDarkIcons, "and back to the theme's once it has gone")
     }
 }

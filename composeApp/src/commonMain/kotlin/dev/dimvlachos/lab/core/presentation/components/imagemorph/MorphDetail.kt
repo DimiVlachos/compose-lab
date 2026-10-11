@@ -26,6 +26,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -70,12 +73,10 @@ internal fun MorphDetail(
     onClose: () -> Unit,
 ) {
     ReportMorphComposition(MorphEnd.Detail)
-    // The photo fills the screen and darkens at its foot, so the navigation bar's icons go light
-    // while it is open, on either palette.
-    RequestSystemBarIcons(navigationDarkIcons = false)
     val staged = layers.stagedChrome
     val chromeAlpha: (Float) -> Float = { if (staged) morphChromeAlpha(it) else 1f }
     MorphProgress(animatedVisibilityScope) { progress, closing ->
+        CoveredBarIcons(progress, closing)
         val backdropAlpha: () -> Float = {
             if (staged) morphBackdropAlpha(progress.value, closing()) else 1f
         }
@@ -278,3 +279,13 @@ private fun DetailCaptionPreview(darkTheme: Boolean) {
 @Preview
 @Composable
 private fun DetailCaptionLightPreview() = DetailCaptionPreview(darkTheme = false)
+
+// The photo fills the screen and darkens at its foot, so the navigation bar's icons go light, on
+// either palette, once it has grown past halfway and until it starts to close: while it is small
+// the screen behind it still shows under the bar. Its own scope, so only it recomposes when the
+// photo crosses halfway.
+@Composable
+private fun CoveredBarIcons(progress: State<Float>, closing: () -> Boolean) {
+    val covered by remember(progress) { derivedStateOf { progress.value > 0.5f && !closing() } }
+    RequestSystemBarIcons(navigationDarkIcons = if (covered) false else null)
+}
