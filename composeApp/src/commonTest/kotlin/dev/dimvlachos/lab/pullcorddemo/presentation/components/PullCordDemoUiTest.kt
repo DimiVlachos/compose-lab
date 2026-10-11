@@ -106,6 +106,16 @@ class PullCordDemoUiTest {
     }
 
     @Test
+    fun aReplayInTheDarkThemeStartsWithTheLampOffAsTheClipDoes() = runComposeUiTest {
+        setContent {
+            LabTheme(darkTheme = true) {
+                Box(Modifier.size(400.dp, 800.dp)) { PullCordDemo(DemoState(replay = true)) }
+            }
+        }
+        onNodeWithContentDescription(CordLabel).assertIsOff()
+    }
+
+    @Test
     fun aRecordingStartsWithTheLampOffAsTheClipDoes() = runComposeUiTest {
         // A recording always wears the dark theme.
         setContent {

@@ -114,10 +114,12 @@ private val KnobSize = 20.dp
 @Composable
 internal fun PullCordDemo(
     state: DemoState,
-    // In the dark theme the lamp starts on, so the screen opens dark; a clip always starts with it
-    // off. The theme picks only where it starts: the lamp and the screen's own switch change the
-    // screen, never the app, and a change of theme later leaves the lamp as it is.
-    lamp: PullCordState = rememberPullCordState(lit = LabTheme.isDark && !state.recording),
+    // In the dark theme the lamp starts on, so the screen opens dark; a clip, and its replay,
+    // always start with it off, so the script's pulls play the right way round. The theme picks
+    // only where it starts: the lamp and the screen's own switch change the screen, never the app,
+    // and a change of theme later leaves the lamp as it is.
+    lamp: PullCordState =
+        rememberPullCordState(lit = LabTheme.isDark && !state.recording && !state.replay),
 ) {
     val finger = remember { CordFinger() }
     val density = LocalDensity.current
