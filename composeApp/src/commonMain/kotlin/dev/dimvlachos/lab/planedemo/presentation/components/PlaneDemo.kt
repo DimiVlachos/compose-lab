@@ -101,6 +101,7 @@ import dev.dimvlachos.lab.resources.chat_seed_3
 import dev.dimvlachos.lab.resources.chat_seed_4
 import dev.dimvlachos.lab.resources.chat_send
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -305,6 +306,27 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
     }
 }
 
+/**
+ * How big the send button's disc and its dart show, as radii on the screen, in a button scaled by
+ * [scale]: the dart [dart] round at its own size, the disc [disc]. The dart grows inside the disc,
+ * which stays as it is until the dart reaches its edge; then the two grow together, until the disc
+ * reaches the field's edge, [room] from the button's middle less [inset], where both stop.
+ */
+internal fun sendDiscSizes(
+    scale: Float,
+    dart: Float,
+    disc: Float,
+    room: Float,
+    inset: Float,
+): SendDiscSizes {
+    val most = (room - inset).coerceAtLeast(0f)
+    val dartShown = min(dart * scale.coerceAtLeast(0f), most)
+    return SendDiscSizes(disc = min(max(disc, dartShown), most), dart = dartShown)
+}
+
+/** The radii the send button's disc and dart show at, on the screen. */
+internal data class SendDiscSizes(val disc: Float, val dart: Float)
+
 // Where the icon lies in the send button laid out at [button]: in its middle, its size.
 private fun iconAt(button: Rect): Rect =
     Rect(button.center, button.width * (IconSize / TouchTarget) / 2f)
@@ -404,6 +426,21 @@ private fun MessageField(
             },
         )
         val label = stringResource(Res.string.chat_send)
+        // The disc behind the dart, and the dart in it, as the button's scale has them; the disc
+        // is clear on the dark screen, and there the dart is left to grow as it always has.
+        val onDisc = colors.sendDisc.alpha > 0f
+        val density = LocalDensity.current
+        val sizes: (Float) -> SendDiscSizes = { scale ->
+            with(density) {
+                sendDiscSizes(
+                    scale,
+                    dart = IconSize.toPx() / 2f,
+                    disc = SendDiscSize.toPx() / 2f,
+                    room = min(chat.fieldHeight / 2f, TouchTarget.toPx() / 2f),
+                    inset = FieldInset.toPx(),
+                )
+            }
+        }
         Box(
             Modifier.align(Alignment.CenterEnd)
                 .size(TouchTarget)
@@ -417,7 +454,13 @@ private fun MessageField(
                 }
                 .then(with(tap) { Modifier.drawTap(colors.touch) })
                 // The disc is drawn, not laid out, so the dart sits exactly where it always has.
-                .drawBehind { drawCircle(colors.sendDisc, radius = SendDiscSize.toPx() / 2f) }
+                // It holds its size while the dart grows inside it, grows with the dart once the
+                // dart fills it, and stops at the field's edge; it only fades in with the button.
+                .drawBehind {
+                    val scale = shown * grow()
+                    if (scale <= 0f) return@drawBehind
+                    drawCircle(colors.sendDisc, sizes(scale).disc / scale)
+                }
                 .clip(CircleShape)
                 .clickable(enabled = canSend, role = Role.Button, onClick = onSend)
                 .semantics { contentDescription = label },
@@ -427,8 +470,14 @@ private fun MessageField(
                 colors.paper,
                 modifier =
                     Modifier.size(IconSize).graphicsLayer {
-                        scaleX = iconIn
-                        scaleY = iconIn
+                        // On its disc the dart stops at the field's edge with it, through a
+                        // bounce too; with no disc it moves as it always has.
+                        val scale = shown * grow()
+                        val held =
+                            if (!onDisc || scale <= 0f) 1f
+                            else sizes(scale).dart / (IconSize.toPx() / 2f * scale)
+                        scaleX = iconIn * held
+                        scaleY = iconIn * held
                     },
             )
         }
