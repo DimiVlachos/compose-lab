@@ -141,7 +141,7 @@
     <string name="popup_end_body">Have a good trip. That is the whole tour.</string>
     <string name="demo_navbar_description">A bottom bar built from layers, springing from tab to tab</string>
     <string name="demo_morph_app_description">A profile where everything opens with a shared-element morph</string>
-    <string name="demo_fog_description">Wipe the steam off a bathroom mirror with your finger</string>
+    <string name="demo_fog_description">Wipe the steam off a mirror with your finger</string>
     <string name="demo_fog_bathroom_description">Wipe the steam to find the bathroom behind the glass</string>
     <string name="demo_fog_reflection_description">Wipe the steam to find yourself, through the front camera</string>
     <string name="demo_book_turn_description">An open book whose pages turn in 3D under your finger</string>

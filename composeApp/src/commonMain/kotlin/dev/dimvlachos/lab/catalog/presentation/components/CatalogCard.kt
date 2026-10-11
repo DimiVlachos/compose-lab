@@ -117,7 +117,7 @@ private fun CatalogCardSamples() {
         )
         CatalogCard(
             title = "Fogged mirror",
-            description = "Wipe the steam off a bathroom mirror with your finger",
+            description = "Wipe the steam off a mirror with your finger",
             caption = "2 versions",
             icon = Res.drawable.ic_demo_fog,
             onClick = {},
