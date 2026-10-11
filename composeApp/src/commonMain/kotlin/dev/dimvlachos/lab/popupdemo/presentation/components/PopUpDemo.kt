@@ -20,12 +20,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -56,6 +59,7 @@ import dev.dimvlachos.lab.core.presentation.components.popup.PopUpBookState
 import dev.dimvlachos.lab.core.presentation.components.popup.rememberPopUpBookState
 import dev.dimvlachos.lab.core.presentation.ui.CycladesPaper as Paper
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.popupdemo.rememberCycladesBook
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.popup_again
@@ -280,17 +284,27 @@ internal fun PopUpDemo(state: DemoState) {
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
     ) {
-        if (maxWidth > maxHeight) {
+        if (isWideStage(maxWidth, maxHeight)) {
+            val height = maxHeight
             // Landscape: the book on the left, the words on the right.
             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 bookArea(Modifier.weight(1.2f).fillMaxHeight())
                 Spacer(Modifier.width(spacing.large))
-                Column(Modifier.weight(1f).fillMaxHeight()) {
+                // The words scroll when they are taller than the screen, as at a large font
+                // size; with room to spare, the caption and the buttons sit at the bottom.
+                Column(
+                    Modifier.weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = height),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
                     header()
-                    Spacer(Modifier.weight(1f))
-                    captionArea()
-                    Spacer(Modifier.height(spacing.large))
-                    buttons()
+                    Column(Modifier.fillMaxWidth()) {
+                        captionArea()
+                        Spacer(Modifier.height(spacing.large))
+                        buttons()
+                    }
                 }
             }
         } else {

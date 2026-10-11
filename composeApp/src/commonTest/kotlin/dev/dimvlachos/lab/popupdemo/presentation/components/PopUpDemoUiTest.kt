@@ -5,16 +5,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
@@ -294,6 +299,36 @@ class PopUpDemoUiTest {
         assertTrue(book.bottom <= 360.dp && book.right <= 760.dp, "book $book spills out")
         // And it is still a book worth looking at, not squeezed into what the caption leaves.
         assertTrue(book.bottom - book.top >= 240.dp, "book $book is too small")
+    }
+
+    @Test
+    fun inAShortLandscapeAtTheLargestFontTheButtonsCanBeScrolledTo() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DemoState()
+        setContent {
+            LabTheme {
+                val d = androidx.compose.ui.platform.LocalDensity.current
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalDensity provides
+                        androidx.compose.ui.unit.Density(d.density, 2f)
+                ) {
+                    Box(Modifier.size(800.dp, 300.dp)) { PopUpDemo(state) }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        state.select(1)
+        mainClock.advanceTimeBy(3_000)
+        // The words and the buttons are taller than the screen: the column scrolls down to them.
+        onNode(hasScrollAction() and hasAnyDescendant(hasTestTag(NextTag))).performSemanticsAction(
+            SemanticsActions.ScrollBy
+        ) {
+            it(0f, 10_000f)
+        }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithTag(NextTag).assertIsDisplayed()
+        val next = onNodeWithTag(NextTag).getUnclippedBoundsInRoot()
+        assertTrue(next.bottom <= 300.dp && next.top >= 0.dp, "Next $next is off the screen")
     }
 
     @Test
