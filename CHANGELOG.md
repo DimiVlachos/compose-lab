@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - **Pop-up book** (`popup`): a pop-up book whose paper scenery stands up in perspective as a spread opens, with soft shadows and pull tabs that move its pieces; its demo is a Cyclades travel onboarding. The page-turn book's projection moved into a shared `perspective/Homography`.
 - **Fishing refresh** (`fishing`): pull-to-refresh where refreshing is fishing: the pull bends a rod, release casts a bobber into a band of water where it floats while the refresh loads, and the outcome plays out on the water, a catch hauled up from the deep on the line into the list, an empty hook, or a snapped line. Built on Material's `pullToRefresh`; the caller hoists a sealed `FishingStatus`.
+- **App shell**: a shadowed top bar on every screen; search from home's bar that also finds the versions inside a folder; tag chips to filter the catalog; an adaptive grid of cards, each with an icon and a one-line description.
+- **Light theme**: a light palette beside the dark one, and a System/Light/Dark button on home that is remembered across launches. The system bars and the window follow the theme. Each demo's surroundings follow it too, while its art stays the same in both. Recordings always use the dark theme.
+- **Landscape**: every demo works on a phone on its side. Layouts branch on the stage's shape (`isWideStage`), and demos keep their controls clear of the sides and foot with `demoInsets`, so recorded clips keep their portrait layout.
 - **Magnet filter** (`magnet`): drag horseshoe tag magnets over a table of photos to filter them; a magnet finds every match on the table, pulled in by how well it matches, strong ones stick, two snapped together search for both, and a magnet's photos fan out into a grid where each one opens.
 
 ### Changed
@@ -17,6 +20,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- **Demo screen**: the stage no longer pads the top that the bar already covers, which left a doubled gap over the pop-up book.
 - **Pull cord** (`pullcord`): a scripted pull that started as the last one's fingertip faded out was cancelled by it.
 
 ## [0.1.0] - 2026-10-06
