@@ -5,6 +5,7 @@ import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -17,8 +18,12 @@ import dev.dimvlachos.lab.catalog.Catalog
 import dev.dimvlachos.lab.catalog.CatalogEntry
 import dev.dimvlachos.lab.catalog.presentation.screen.CatalogScreen
 import dev.dimvlachos.lab.core.demo.RecordingLog
+import dev.dimvlachos.lab.core.platform.ThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
+import dev.dimvlachos.lab.core.platform.rememberThemeModeStore
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.ThemeController
+import dev.dimvlachos.lab.core.presentation.ui.useDarkTheme
 import dev.dimvlachos.lab.demo.presentation.screen.DemoScreen
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.catalog_title
@@ -33,7 +38,23 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 public fun App(initialDemoId: String?, record: Boolean, label: Boolean) {
-    LabTheme {
+    LabApp(initialDemoId = initialDemoId, record = record, label = label)
+}
+
+/**
+ * [App], with the theme mode kept in [themeStore]: light or dark as the mode chosen says, or as the
+ * system is, except while recording, which is always dark.
+ */
+@Composable
+internal fun LabApp(
+    initialDemoId: String?,
+    record: Boolean,
+    label: Boolean,
+    themeStore: ThemeModeStore = rememberThemeModeStore(),
+) {
+    val theme = remember(themeStore) { ThemeController(themeStore) }
+    val dark = useDarkTheme(theme.mode, isSystemInDarkTheme(), record)
+    LabTheme(darkTheme = dark) {
         val initialDemo = remember { Catalog.find(initialDemoId) }
         val navigation = remember { AppNavigation(initialDemo, record) }
         // The system back gesture steps back like the on-screen Back buttons; on the home screen
