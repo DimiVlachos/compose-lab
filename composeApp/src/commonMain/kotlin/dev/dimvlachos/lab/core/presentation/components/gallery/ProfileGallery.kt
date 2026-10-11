@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -189,8 +190,13 @@ public fun ProfileGallery(
                         }
                     }
                     .verticalScroll(scrollState)
-                    // Inside the scroll, so the last row scrolls clear of the navigation bar.
+                    // Inside the scroll, so the last row scrolls clear of the navigation bar, and
+                    // the cards keep clear of a side cutout or navigation bar on a phone turned
+                    // on its side.
                     .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                    )
                     .padding(bottom = LabTheme.spacing.medium)
             ) {
                 Spacer(Modifier.height(HeaderExpandedHeight + GridTopGap))
@@ -359,6 +365,7 @@ private fun SearchPage(
                 .padding(top = SearchTopSpace)
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(bottom = LabTheme.spacing.medium)
         ) {
             SearchContent(
@@ -507,8 +514,13 @@ private fun BoxScope.EditPhoto(
     SourceSlot(
         !dialogOpen,
         Modifier.align(Alignment.BottomEnd)
-            // Clear of the system navigation bar, then its own inset from the corner.
-            .windowInsetsPadding(WindowInsets.navigationBars)
+            // Clear of the system navigation bar and any cutout at the side, then its own inset
+            // from the corner.
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                )
+            )
             .padding(end = FabEdgeInset, bottom = FabEdgeInset)
             .then(chrome)
             .size(FabSize),

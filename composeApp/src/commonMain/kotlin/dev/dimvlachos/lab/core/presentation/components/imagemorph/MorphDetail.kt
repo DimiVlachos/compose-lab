@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -170,6 +171,7 @@ private fun DetailChrome(
     Box(Modifier.fillMaxSize().morphWidthFraction(fraction)) {
         Box(
             Modifier.align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(LabTheme.spacing.mediumLarge)
                 .then(fade)
                 .graphicsLayer {
@@ -202,9 +204,10 @@ private fun DetailChrome(
                         listOf(Color.Transparent, Color.Black.copy(alpha = ScrimAlpha))
                     )
                 )
-                // Inside the gradient, so the scrim still reaches the edge while the text clears
-                // the navigation bar.
+                // Inside the gradient, so the scrim still reaches the edges while the text clears
+                // the navigation bar and any cutout at the side.
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(
                     start = LabTheme.spacing.mediumLarge,
                     top = LabTheme.spacing.mediumLarge,

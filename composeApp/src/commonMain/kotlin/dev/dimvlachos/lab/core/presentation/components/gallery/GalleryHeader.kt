@@ -3,7 +3,12 @@ package dev.dimvlachos.lab.core.presentation.components.gallery
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -95,7 +100,10 @@ internal fun CollapsingHeader(
                 // Only as solid as the header is collapsed: at the top there is nothing under it
                 // (the grid keeps 16 dp below it all the way up), and a solid background there
                 // swept a dark band over the photos whenever search faded the header in or out.
-                .drawBehind { drawRect(background, alpha = collapse()) },
+                .drawBehind { drawRect(background, alpha = collapse()) }
+                // After the background, so the bar still spans the screen while its contents keep
+                // clear of a side cutout or navigation bar.
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
         content = {
             Box { avatar() }
             Text(

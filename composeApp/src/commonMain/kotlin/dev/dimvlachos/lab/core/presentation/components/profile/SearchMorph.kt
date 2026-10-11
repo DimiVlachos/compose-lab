@@ -7,11 +7,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -153,9 +158,12 @@ internal fun SearchTarget(
     // frames with the last query's results, which then flash away.
     DisposableEffect(Unit) { onDispose { typed.value = "" } }
     val chrome = Modifier.morphChrome(animatedVisibilityScope, fraction)
-    // The bar sits where the top bar was; the page under it shows what [typed] matches.
+    // The bar sits where the top bar was, as clear of the sides as the header; the page under it
+    // shows what [typed] matches.
     Row(
-        Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
+        Modifier.fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .padding(LabTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
