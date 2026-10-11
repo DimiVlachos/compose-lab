@@ -1,5 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.ui
 
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -41,8 +43,12 @@ public object LabTheme {
  */
 @Composable
 public fun LabTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
+    val colors = if (darkTheme) AppColors.Dark else AppColors.Light
     CompositionLocalProvider(
-        LocalAppColors provides if (darkTheme) AppColors.Dark else AppColors.Light,
+        LocalAppColors provides colors,
+        // Every text field's selection, in the accent.
+        LocalTextSelectionColors provides
+            TextSelectionColors(handleColor = colors.accent, backgroundColor = colors.selection),
         LocalSpacing provides Spacing(),
         LocalMotion provides Motion(),
     ) {

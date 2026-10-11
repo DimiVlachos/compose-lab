@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import kotlin.math.max
 import kotlin.math.min
@@ -39,6 +40,14 @@ class AppColorsContrastTest {
             assertContrast(colors.textMuted, colors.stripRail, 4.5f, colors, "on stripRail")
             assertContrast(colors.textPrimary, colors.fanScrim, 4.5f, colors, "on fanScrim")
             assertContrast(colors.touch, colors.background, 3f, colors, "touch")
+        }
+    }
+
+    @Test
+    fun selectedTextReads() {
+        for (colors in Palettes) {
+            val selected = colors.selection.compositeOver(colors.surface)
+            assertContrast(colors.textPrimary, selected, 4.5f, colors, "on selection")
         }
     }
 

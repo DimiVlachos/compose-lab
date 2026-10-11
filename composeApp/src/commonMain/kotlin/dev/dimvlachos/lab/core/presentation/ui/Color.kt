@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
  * @property topBar The top bar over every screen, lifted a little off the background.
  * @property topBarShadow The shadow the top bar casts.
  * @property chipBorder The outline of an unselected filter chip.
+ * @property selection Behind selected text, under the accent's handles.
  * @property sendDisc A disc behind the chat's send dart, so it reads on a light screen; none in the
  *   dark palette.
  * @property mirrorGlass Art: the fogged mirror's glass before the camera comes on.
@@ -47,6 +48,7 @@ public data class AppColors(
     val topBar: Color = Color(0xFF12151C),
     val topBarShadow: Color = Color(0xFF000000),
     val chipBorder: Color = Color(0xFF2E3340),
+    val selection: Color = Color(0x667C5CFF),
     val sendDisc: Color = Color.Transparent,
     val mirrorGlass: Color = Color(0xFF171A22),
     val onPhoto: Color = Color(0xFFF2F3F7),
@@ -147,6 +149,7 @@ public data class AppColors(
                 topBar = Color(0xFFFFFFFF),
                 topBarShadow = Color(0xFF000000),
                 chipBorder = Color(0xFFD5D3DE),
+                selection = Color(0x526542E6),
                 sendDisc = Color(0xFF6542E6),
                 table = Color(0xFFAE8862),
                 tableLit = Color(0xFFD6B386),

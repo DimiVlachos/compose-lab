@@ -5,11 +5,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.LocalTextSelectionColors
-import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,32 +44,28 @@ internal fun CatalogSearchField(
             onAutoFocused()
         }
     }
-    val selection =
-        TextSelectionColors(handleColor = colors.accent, backgroundColor = colors.accentSoft)
-    CompositionLocalProvider(LocalTextSelectionColors provides selection) {
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier.fillMaxWidth().focusRequester(focus),
-            singleLine = true,
-            textStyle = LabTheme.typography.body.copy(color = colors.textPrimary),
-            cursorBrush = SolidColor(colors.accent),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-            decorationBox = { field ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) {
-                        Text(
-                            stringResource(Res.string.catalog_search_placeholder),
-                            color = colors.textMuted,
-                            style = LabTheme.typography.body,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    field()
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth().focusRequester(focus),
+        singleLine = true,
+        textStyle = LabTheme.typography.body.copy(color = colors.textPrimary),
+        cursorBrush = SolidColor(colors.accent),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        decorationBox = { field ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (value.isEmpty()) {
+                    Text(
+                        stringResource(Res.string.catalog_search_placeholder),
+                        color = colors.textMuted,
+                        style = LabTheme.typography.body,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-            },
-        )
-    }
+                field()
+            }
+        },
+    )
 }
