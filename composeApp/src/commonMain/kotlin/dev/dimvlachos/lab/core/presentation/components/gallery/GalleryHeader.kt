@@ -63,6 +63,19 @@ internal fun gridClipTop(collapse: Float): Dp =
 // the header has fully become the bar.
 internal fun headerShadowShows(collapse: Float): Boolean = collapse >= 0.999f
 
+// The last stretch of the collapse over which the bar's background is near enough solid to
+// carry a shadow.
+private const val SolidCollapse = 0.9f
+
+/**
+ * How much of the bar's shadow shows: its timed [fade], and on the light palette only as much as
+ * the bar is solid. The background thins as the header opens out again, and a shadow left fading on
+ * its own clock showed through it as a grey box; this way it thins with the background, on the
+ * scroll's own frames. The dark palette keeps the timed fade alone.
+ */
+internal fun headerShadowStrength(fade: Float, collapse: Float, dark: Boolean): Float =
+    if (dark) fade else fade * ((collapse - SolidCollapse) / (1f - SolidCollapse)).coerceIn(0f, 1f)
+
 /**
  * The profile header, which becomes the screen's top bar as the grid scrolls: the avatar shrinks
  * from 88 dp to the search button's 40 dp, the photo count fades, and the padding tightens to a
@@ -87,13 +100,16 @@ internal fun CollapsingHeader(
             }
     }
     val background = LabTheme.colors.background
+    val dark = LabTheme.isDark
     Layout(
         modifier =
             modifier
                 .testTag(GalleryHeaderTag)
                 .fillMaxWidth()
                 .graphicsLayer {
-                    shadowElevation = shadow.value * HeaderShadowElevation.toPx()
+                    shadowElevation =
+                        headerShadowStrength(shadow.value, collapse(), dark) *
+                            HeaderShadowElevation.toPx()
                     shape = RectangleShape
                     clip = false
                 }
