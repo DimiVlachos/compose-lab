@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.withFrameNanos
 import androidx.navigationevent.NavigationEventInfo
@@ -30,6 +31,9 @@ import dev.dimvlachos.lab.core.presentation.ui.SystemAppearance
 import dev.dimvlachos.lab.core.presentation.ui.SystemBarRequests
 import dev.dimvlachos.lab.core.presentation.ui.ThemeController
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
+import dev.dimvlachos.lab.core.presentation.ui.ThemeReveal
+import dev.dimvlachos.lab.core.presentation.ui.ThemeRevealState
+import dev.dimvlachos.lab.core.presentation.ui.switchShows
 import dev.dimvlachos.lab.core.presentation.ui.useDarkTheme
 import dev.dimvlachos.lab.demo.presentation.screen.DemoScreen
 import kotlinx.coroutines.launch
@@ -56,10 +60,19 @@ internal fun LabApp(
     record: Boolean,
     label: Boolean,
     themeStore: ThemeModeStore = rememberThemeModeStore(),
+    reveal: ThemeRevealState = remember { ThemeRevealState() },
 ) {
     val theme = remember(themeStore) { ThemeController(themeStore) }
-    val dark = useDarkTheme(theme.mode, isSystemInDarkTheme(), record)
-    LabWindow(mode = theme.mode, dark = dark, record = record) {
+    val systemDark = isSystemInDarkTheme()
+    val dark = useDarkTheme(theme.mode, systemDark, record)
+    val scope = rememberCoroutineScope()
+    // The theme button's switch spreads the new theme over the old, when there is a change to see.
+    val cycleTheme = {
+        val shows = switchShows(theme.mode, systemDark, record)
+        scope.launch { reveal.switch(animate = shows) { theme.cycle() } }
+        Unit
+    }
+    LabWindow(mode = theme.mode, dark = dark, record = record, reveal = reveal) {
         val initialDemo = remember { Catalog.find(initialDemoId) }
         val navigation = remember { AppNavigation(initialDemo, record) }
         // Kept here, above the screens, so a search is still there after a demo opened from it.
@@ -152,7 +165,7 @@ internal fun LabApp(
                             focusSearch = navigation.focusSearch,
                             onSearchFocused = navigation::searchFocused,
                             themeMode = theme.mode,
-                            onCycleTheme = theme::cycle,
+                            onCycleTheme = cycleTheme,
                             onOpenSearch = navigation::openSearch,
                             onCloseSearch = navigation::back,
                             onOpenDemo = navigation::openDemo,
@@ -166,20 +179,22 @@ internal fun LabApp(
 
 /**
  * The lab's theme, light or dark as [dark] says, around [content], with the system bars and the
- * window set to match and the screens' requests of the bars applied. While recording ([record]) the
- * system's pieces are left as they are.
+ * window set to match and the screens' requests of the bars applied, and a switch of theme spread
+ * over the screen by [reveal]. While recording ([record]) the system's pieces are left as they are,
+ * and nothing is laid over the clip.
  */
 @Composable
 private fun LabWindow(
     mode: ThemeMode,
     dark: Boolean,
     record: Boolean,
+    reveal: ThemeRevealState,
     content: @Composable () -> Unit,
 ) {
     val barRequests = remember { SystemBarRequests() }
     if (!record) SystemAppearance(mode, dark, barRequests)
     CompositionLocalProvider(LocalSystemBarRequests provides barRequests) {
-        LabTheme(darkTheme = dark, content = content)
+        LabTheme(darkTheme = dark) { if (record) content() else ThemeReveal(reveal, content) }
     }
 }
 

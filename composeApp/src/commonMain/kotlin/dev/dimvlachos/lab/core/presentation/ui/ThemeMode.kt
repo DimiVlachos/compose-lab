@@ -40,6 +40,14 @@ internal fun useDarkTheme(mode: ThemeMode, systemDark: Boolean, record: Boolean)
     record || mode.isDark(systemDark)
 
 /**
+ * Whether the theme button's next switch from [mode] changes how the app looks, given whether the
+ * system is dark, and so is worth spreading over the screen: from following a light system to
+ * light, say, it doesn't. Never while recording, which is always dark.
+ */
+internal fun switchShows(mode: ThemeMode, systemDark: Boolean, record: Boolean): Boolean =
+    !record && mode.next().isDark(systemDark) != mode.isDark(systemDark)
+
+/**
  * The theme mode the app is in, read from [store] when it is made, and saved back to it each time
  * [cycle] moves it on.
  */

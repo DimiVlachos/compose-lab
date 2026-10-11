@@ -2,7 +2,10 @@ package dev.dimvlachos.lab.catalog.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
+import dev.dimvlachos.lab.core.presentation.ui.LocalThemeReveal
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.ic_brightness_auto
@@ -25,10 +28,14 @@ internal fun ThemeModeButton(mode: ThemeMode, onCycle: () -> Unit, modifier: Mod
             ThemeMode.Light -> Res.drawable.ic_light_mode to Res.string.theme_light
             ThemeMode.Dark -> Res.drawable.ic_dark_mode to Res.string.theme_dark
         }
+    // The new theme spreads out from the button's middle, as a lamp's light from its bulb.
+    val reveal = LocalThemeReveal.current
     LabIconButton(
         icon,
         contentDescription = stringResource(description),
         onClick = onCycle,
-        modifier = modifier,
+        modifier =
+            if (reveal == null) modifier
+            else modifier.onGloballyPositioned { reveal.origin = it.boundsInRoot().center },
     )
 }

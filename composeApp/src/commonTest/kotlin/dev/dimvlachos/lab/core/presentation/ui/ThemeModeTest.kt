@@ -57,4 +57,19 @@ class ThemeModeTest {
         assertEquals(ThemeMode.System, store.load())
         assertEquals(ThemeMode.System, ThemeController(store).mode)
     }
+
+    @Test
+    fun aSwitchShowsOnlyWhenTheAppLooksDifferentAfterIt() {
+        // System to light: only if the system is dark.
+        assertTrue(switchShows(ThemeMode.System, systemDark = true, record = false))
+        assertFalse(switchShows(ThemeMode.System, systemDark = false, record = false))
+        // Light to dark always shows.
+        assertTrue(switchShows(ThemeMode.Light, systemDark = false, record = false))
+        assertTrue(switchShows(ThemeMode.Light, systemDark = true, record = false))
+        // Dark to the system: only if the system is light.
+        assertTrue(switchShows(ThemeMode.Dark, systemDark = false, record = false))
+        assertFalse(switchShows(ThemeMode.Dark, systemDark = true, record = false))
+        // Never while recording.
+        assertFalse(switchShows(ThemeMode.Light, systemDark = false, record = true))
+    }
 }
