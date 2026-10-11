@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,6 +65,7 @@ import dev.dimvlachos.lab.core.presentation.components.fog.MistDriver
 import dev.dimvlachos.lab.core.presentation.components.fog.WipeStroke
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.RequestSystemBarIcons
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.fogdemo.clipFrameToWindow
 import dev.dimvlachos.lab.fogdemo.newFogDemoState
@@ -337,13 +339,18 @@ internal fun FogDemo(
         // take a real finger's small movements from the card's own buttons, which then cancel the
         // tap.
         if (cardShown) {
-            Box(
-                Modifier.matchParentSize().pointerInput(Unit) {
-                    awaitPointerEventScope { while (true) awaitPointerEvent() }
-                },
+            BoxWithConstraints(
+                Modifier.matchParentSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope { while (true) awaitPointerEvent() }
+                    }
+                    // Clear of the gesture bar and a side cutout, with a margin above and below.
+                    .windowInsetsPadding(demoInsets(state))
+                    .padding(vertical = LabTheme.spacing.medium),
                 contentAlignment = Alignment.Center,
             ) {
                 MirrorPermissionCard(
+                    compact = isWideStage(maxWidth, maxHeight),
                     camera = cameraNeed,
                     onAllow = ::ask,
                     onOpenSettings = {

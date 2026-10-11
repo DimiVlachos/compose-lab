@@ -7,13 +7,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -30,6 +32,7 @@ import dev.dimvlachos.lab.resources.mirror_card_camera_why
 import dev.dimvlachos.lab.resources.mirror_card_title
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
@@ -88,21 +91,36 @@ class FogDemoCardUiTest {
     }
 
     @Test
-    fun inLandscapeTheCardScrollsSoAllowCanStillBeTapped() = runComposeUiTest {
-        camera = askableCamera()
-        setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
-                LabTheme {
-                    Box(Modifier.size(700.dp, 320.dp)) {
-                        FogDemo(DemoState(), FogState(), camera)
+    fun onAPhoneOnItsSideAllowIsInSightWithoutScrolling() {
+        // A 360 dp phone on its side, less its status bar, the demo's bar and the gesture bar;
+        // at the usual font size and at the largest, where only the words scroll.
+        for (fontScale in listOf(1f, 2f)) runComposeUiTest {
+            asked.clear()
+            camera = askableCamera()
+            setContent {
+                CompositionLocalProvider(LocalLifecycleOwner provides ResumedOwner()) {
+                    LabTheme {
+                        val d = LocalDensity.current
+                        CompositionLocalProvider(
+                            LocalDensity provides Density(d.density, fontScale)
+                        ) {
+                            Box(Modifier.size(780.dp, 254.dp)) {
+                                FogDemo(DemoState(), FogState(), camera)
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        onNodeWithText(allow).performScrollTo().performTouchInput { click() }
-        waitForIdle()
-        assertEquals(listOf("camera"), asked)
+            val button = onNodeWithText(allow).getUnclippedBoundsInRoot()
+            assertTrue(
+                button.top >= 0.dp && button.bottom <= 254.dp,
+                "at font scale $fontScale, Allow $button is cut off",
+            )
+            onNodeWithText(allow).performTouchInput { click() }
+            waitForIdle()
+            assertEquals(listOf("camera"), asked)
+        }
     }
 
     @Test

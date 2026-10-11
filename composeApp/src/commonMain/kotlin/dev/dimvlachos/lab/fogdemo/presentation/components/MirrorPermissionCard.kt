@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 
 private val CardIconSize = 32.dp
 private val CardMaxWidth = 360.dp
+private val CompactCardMaxWidth = 600.dp
 private val CardLightElevation = 12.dp
 
 /** What the card still needs for the camera. */
@@ -60,6 +62,8 @@ internal enum class Need {
 /**
  * Explains, before the system asks, what to do on the mirror and why the camera it still [Need]s
  * helps: the camera is the mirror. Allow while it can be asked for; otherwise it offers settings.
+ * [compact] for a stage wider than it is tall, as on a phone on its side: wider, without the icon,
+ * its buttons kept in sight while only the words scroll.
  */
 @Composable
 internal fun MirrorPermissionCard(
@@ -68,27 +72,14 @@ internal fun MirrorPermissionCard(
     onOpenSettings: () -> Unit,
     onNotNow: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
-    val canAsk = camera == Need.Ask
-    Column(
-        modifier
-            .widthIn(max = CardMaxWidth)
-            .padding(horizontal = LabTheme.spacing.large)
-            // On the light palette a soft shadow lifts the white card off the white tiles.
-            .then(
-                if (LabTheme.isDark) Modifier
-                else Modifier.shadow(CardLightElevation, LabTheme.shapes.extraLarge)
-            )
-            .background(LabTheme.colors.surface, LabTheme.shapes.extraLarge)
-            // Landscape or large text can make it taller than the stage: it scrolls, so the
-            // buttons are always within reach.
-            .verticalScroll(rememberScrollState())
-            .padding(LabTheme.spacing.large),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
-    ) {
-        CardIcon()
-        CardText(Res.string.mirror_card_title, LabTheme.colors.textPrimary, title = true)
+    val words: @Composable () -> Unit = {
+        CardText(
+            Res.string.mirror_card_title,
+            LabTheme.colors.textPrimary,
+            if (compact) LabTheme.typography.subtitle else LabTheme.typography.title,
+        )
         CardText(Res.string.mirror_card_body_what, LabTheme.colors.textPrimary)
         if (camera == Need.Ask)
             CardText(Res.string.mirror_card_camera_why, LabTheme.colors.textMuted)
@@ -96,32 +87,84 @@ internal fun MirrorPermissionCard(
         if (camera == Need.Settings) {
             CardText(Res.string.mirror_card_camera_blocked, LabTheme.colors.textPrimary)
         }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
+    }
+    val card =
+        modifier
+            .widthIn(max = if (compact) CompactCardMaxWidth else CardMaxWidth)
+            .padding(horizontal = LabTheme.spacing.large)
+            // On the light palette a soft shadow lifts the white card off the white tiles.
+            .then(
+                if (LabTheme.isDark) Modifier
+                else Modifier.shadow(CardLightElevation, LabTheme.shapes.extraLarge)
+            )
+            .background(LabTheme.colors.surface, LabTheme.shapes.extraLarge)
+    if (compact) {
+        // Short of height: the buttons stay put at the foot and only the words above them scroll.
+        Column(
+            card.padding(LabTheme.spacing.medium),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
         ) {
-            TextButton(
-                onClick = onNotNow,
-                colors = ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.textMuted),
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
             ) {
-                Text(stringResource(Res.string.mirror_card_not_now))
+                words()
             }
-            Button(
-                onClick = if (canAsk) onAllow else onOpenSettings,
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = LabTheme.colors.accent,
-                        contentColor = LabTheme.colors.onAccent,
-                    ),
-            ) {
-                Text(
-                    stringResource(
-                        if (canAsk) Res.string.mirror_card_allow
-                        else Res.string.mirror_card_open_settings
-                    )
+            CardButtons(camera, onAllow, onOpenSettings, onNotNow)
+        }
+    } else {
+        Column(
+            card
+                // Large text can make it taller than the stage: it scrolls, so the buttons are
+                // always within reach.
+                .verticalScroll(rememberScrollState())
+                .padding(LabTheme.spacing.large),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
+        ) {
+            CardIcon()
+            words()
+            CardButtons(camera, onAllow, onOpenSettings, onNotNow)
+        }
+    }
+}
+
+// Not now, and Allow or, once refused for good, Open settings.
+@Composable
+private fun CardButtons(
+    camera: Need,
+    onAllow: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onNotNow: () -> Unit,
+) {
+    val canAsk = camera == Need.Ask
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.small, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(
+            onClick = onNotNow,
+            colors = ButtonDefaults.textButtonColors(contentColor = LabTheme.colors.textMuted),
+        ) {
+            Text(stringResource(Res.string.mirror_card_not_now))
+        }
+        Button(
+            onClick = if (canAsk) onAllow else onOpenSettings,
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = LabTheme.colors.accent,
+                    contentColor = LabTheme.colors.onAccent,
+                ),
+        ) {
+            Text(
+                stringResource(
+                    if (canAsk) Res.string.mirror_card_allow
+                    else Res.string.mirror_card_open_settings
                 )
-            }
+            )
         }
     }
 }
@@ -137,11 +180,15 @@ private fun CardIcon() {
 }
 
 @Composable
-private fun CardText(text: StringResource, color: Color, title: Boolean = false) {
+private fun CardText(
+    text: StringResource,
+    color: Color,
+    style: TextStyle = LabTheme.typography.body,
+) {
     Text(
         stringResource(text),
         color = color,
-        style = if (title) LabTheme.typography.title else LabTheme.typography.body,
+        style = style,
         textAlign = TextAlign.Center,
     )
 }
