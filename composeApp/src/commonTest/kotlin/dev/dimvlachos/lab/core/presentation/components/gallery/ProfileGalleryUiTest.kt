@@ -1,13 +1,21 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.TouchInjectionScope
@@ -15,7 +23,10 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -23,12 +34,13 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventInfo
@@ -47,11 +59,19 @@ import dev.dimvlachos.lab.core.presentation.components.profile.ScrimTag
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchPillTag
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchSourceTag
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.LocalSystemBarRequests
+import dev.dimvlachos.lab.core.presentation.ui.SystemBarRequests
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+
+// A phone held upright, at the top start of the test window, which is wider than it is tall: the
+// grid's two columns and everything measured from the screen's edges are a phone's.
+private const val PhoneStageTag = "phoneStage"
+private val PhoneStage = Modifier.width(412.dp).testTag(PhoneStageTag)
 
 @OptIn(ExperimentalTestApi::class)
 class ProfileGalleryUiTest {
@@ -83,6 +103,7 @@ class ProfileGalleryUiTest {
                             recentSearches = listOf("Santorini", "Milos", "Hydra"),
                             scene = scene,
                             onSceneChange = { reported += it },
+                            modifier = PhoneStage,
                             scrollState = scroll,
                         )
                     }
@@ -134,7 +155,8 @@ class ProfileGalleryUiTest {
         go(GalleryScene(avatar = true, dialog = true))
         onNodeWithTag(FabDialogTag).assertExists()
         onNodeWithTag(FabSourceTag).assertDoesNotExist()
-        onNodeWithTag(DialogScrimTag).performClick()
+        // Beside the dialog: a tap on the dialog itself stays in it.
+        onNodeWithTag(DialogScrimTag).performTouchInput { click(Offset(10f, 10f)) }
         assertEquals(GalleryScene(avatar = true), reported.last(), "only the dialog closes")
         go(GalleryScene(avatar = true))
         onNodeWithTag(FabSourceTag).assertExists()
@@ -246,7 +268,7 @@ class ProfileGalleryUiTest {
         showGallery()
         go(GalleryScene(avatar = true))
         val fab = onNodeWithTag(FabSourceTag).getBoundsInRoot()
-        val root = onRoot().getBoundsInRoot()
+        val root = onNodeWithTag(PhoneStageTag).getBoundsInRoot()
         assertEquals(36.dp, root.right - fab.right)
         assertEquals(36.dp, root.bottom - fab.bottom)
     }
@@ -258,7 +280,7 @@ class ProfileGalleryUiTest {
         onNodeWithTag(GalleryScrollTag).performTouchInput { repeat(4) { swipeUp() } }
         waitForIdle()
         val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
-        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - grid.bottom)
+        assertEquals(16.dp, onNodeWithTag(PhoneStageTag).getBoundsInRoot().bottom - grid.bottom)
     }
 
     @Test
@@ -266,7 +288,7 @@ class ProfileGalleryUiTest {
         showGallery()
         go(GalleryScene(photo = 3), thenMs = 2_000)
         val caption = onNodeWithText("Caption Santorini").getBoundsInRoot()
-        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - caption.bottom)
+        assertEquals(16.dp, onNodeWithTag(PhoneStageTag).getBoundsInRoot().bottom - caption.bottom)
     }
 
     @Test
@@ -312,6 +334,7 @@ class ProfileGalleryUiTest {
                     searchQuery = "xos",
                     scene = live,
                     onSceneChange = { live = it },
+                    modifier = PhoneStage,
                 )
             }
         }
@@ -390,12 +413,18 @@ class ProfileGalleryUiTest {
     fun searchNeverMovesTheHomeGrid() = runComposeUiTest {
         val scroll = ScrollState(0)
         showGallery(scroll = scroll)
-        runOnUiThread { scroll.dispatchRawDelta(400f) }
+        // Past the header's collapse, and short of the end on the phone's stage, at any density.
+        val by =
+            with(density) {
+                (HeaderExpandedHeight - HeaderCollapsedHeight + 8.dp).roundToPx()
+            }
+        runOnUiThread { scroll.dispatchRawDelta(by.toFloat()) }
         mainClock.advanceTimeBy(100)
+        assertEquals(by, scroll.value)
         go(GalleryScene(search = true), thenMs = 2_500)
-        assertEquals(400, scroll.value)
+        assertEquals(by, scroll.value)
         go(GalleryScene(), thenMs = 2_500)
-        assertEquals(400, scroll.value)
+        assertEquals(by, scroll.value)
     }
 
     @Test
@@ -536,6 +565,7 @@ class ProfileGalleryUiTest {
                         searchQuery = "xos",
                         scene = scene,
                         onSceneChange = { reported += it },
+                        modifier = PhoneStage,
                     )
                 }
             }
@@ -550,8 +580,79 @@ class ProfileGalleryUiTest {
     fun tapsOnAnOpenPhotoNeverReachTheGridUnderIt() = runComposeUiTest {
         showGallery()
         go(GalleryScene(photo = 3))
-        onRoot().performTouchInput { click(Offset(centerX / 2, centerY)) } // a card lies below
+        onNodeWithTag(PhoneStageTag).performTouchInput {
+            click(Offset(centerX / 2, centerY))
+        } // a card lies below
         mainClock.advanceTimeBy(1_000)
         assertEquals(emptyList(), reported)
+    }
+
+    @Test
+    fun anOpenPhotoAsksForLightNavigationIconsOnTheLightPalette() = runComposeUiTest {
+        val requests = SystemBarRequests()
+        mainClock.autoAdvance = false
+        setContent {
+            CompositionLocalProvider(LocalSystemBarRequests provides requests) {
+                LabTheme(darkTheme = false) {
+                    ProfileGallery(
+                        name = "Alex Morgan",
+                        portrait = Res.drawable.portrait,
+                        photos = testIslands(),
+                        searchQuery = "xos",
+                        scene = scene,
+                        onSceneChange = { reported += it },
+                        modifier = PhoneStage,
+                    )
+                }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        assertNull(requests.navigationDarkIcons, "the bare screen leaves the bars to the theme")
+        // While the photo is still small the light screen shows under the bar: the theme's icons.
+        go(GalleryScene(photo = 3), thenMs = 50)
+        assertNull(requests.navigationDarkIcons, "the photo has barely begun to grow")
+        mainClock.advanceTimeBy(1_500)
+        assertEquals(false, requests.navigationDarkIcons, "light icons over the photo's scrim")
+        // As soon as it starts to close, the screen is on its way back.
+        go(GalleryScene(), thenMs = 50)
+        assertNull(requests.navigationDarkIcons, "the photo is closing")
+        mainClock.advanceTimeBy(1_500)
+        assertNull(requests.navigationDarkIcons, "and back to the theme's once it has gone")
+    }
+
+    @Test
+    fun onAPhoneOnItsSideAtTheLargestFontTheDialogScrollsToCancel() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        scene = GalleryScene(avatar = true, dialog = true)
+        setContent {
+            LabTheme {
+                val d = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(d.density, 2f)) {
+                    Box(Modifier.size(800.dp, 290.dp)) {
+                        ProfileGallery(
+                            name = "Alex Morgan",
+                            portrait = Res.drawable.portrait,
+                            photos = testIslands(),
+                            searchQuery = "xos",
+                            scene = scene,
+                            onSceneChange = { reported += it },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(2_000)
+        val dialog = onNodeWithTag(FabDialogTag).getUnclippedBoundsInRoot()
+        assertTrue(dialog.top >= 0.dp && dialog.bottom <= 290.dp, "dialog $dialog spills out")
+        onNode(hasScrollAction() and hasAnyDescendant(hasText("Cancel"))).performSemanticsAction(
+            SemanticsActions.ScrollBy
+        ) {
+            it(0f, 10_000f)
+        }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("Cancel").assertIsDisplayed()
+        val cancel = onNodeWithText("Cancel").getUnclippedBoundsInRoot()
+        assertTrue(cancel.bottom <= dialog.bottom, "Cancel $cancel is cut off by $dialog")
     }
 }

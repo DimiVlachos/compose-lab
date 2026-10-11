@@ -6,16 +6,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_navbar
+import dev.dimvlachos.lab.resources.demo_navbar_description
+import dev.dimvlachos.lab.resources.ic_demo_navbar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,6 +31,9 @@ class DemoScreenUiTest {
             id = "test.stage",
             title = Res.string.demo_navbar,
             script = demoScript {},
+            description = Res.string.demo_navbar_description,
+            icon = Res.drawable.ic_demo_navbar,
+            tags = setOf(DemoTag.Motion),
             content = { Box(Modifier.fillMaxSize().testTag("stage")) },
         )
 
@@ -59,6 +65,9 @@ class DemoScreenUiTest {
             id = "test.handsOn",
             title = Res.string.demo_navbar,
             script = demoScript { at(100.milliseconds) { select(1) } },
+            description = Res.string.demo_navbar_description,
+            icon = Res.drawable.ic_demo_navbar,
+            tags = setOf(DemoTag.Motion),
             autoplay = false,
             content = { state -> selections += state.selectedIndex },
         )
@@ -74,7 +83,7 @@ class DemoScreenUiTest {
         mainClock.advanceTimeBy(2_000)
 
         assertTrue(selections.none { it == 1 }, "the script has not run: $selections")
-        onNodeWithText("Replay").performClick()
+        onNodeWithContentDescription("Replay").performClick()
         mainClock.advanceTimeBy(2_000)
         assertTrue(selections.any { it == 1 }, "Replay runs it: $selections")
     }
@@ -100,15 +109,18 @@ class DemoScreenUiTest {
                 id = "test.replay",
                 title = Res.string.demo_navbar,
                 script = demoScript { at(100.milliseconds) { select(1) } },
+                description = Res.string.demo_navbar_description,
+                icon = Res.drawable.ic_demo_navbar,
+                tags = setOf(DemoTag.Motion),
                 autoplay = false,
                 content = { state -> replaying += state.replay },
             )
         setContent { LabTheme { DemoScreen(demo, record = false, label = null, onBack = {}) } }
-        onNodeWithText("Replay").performClick()
+        onNodeWithContentDescription("Replay").performClick()
         mainClock.advanceTimeBy(500)
         assertEquals(true, replaying.last(), "replaying: $replaying")
 
-        onNodeWithText("Stop").performClick()
+        onNodeWithContentDescription("Stop").performClick()
         mainClock.advanceTimeBy(500)
         assertEquals(false, replaying.last(), "the user's again: $replaying")
     }

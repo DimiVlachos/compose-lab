@@ -100,6 +100,59 @@ class MagnetDemoUiTest {
     }
 
     @Test
+    fun onAPhoneOnItsSideTheScriptStillSearchesApartThenTogether() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val demo = MagnetDemos.all.single()
+        val state = DemoState()
+        var table: MagnetState? = null
+        setContent {
+            LabTheme {
+                // A phone on its side, the stage under the top bar.
+                Box(Modifier.size(780.dp, 270.dp)) {
+                    val islands = rememberIslandMagnetState()
+                    table = islands
+                    MagnetDemo(state, islands)
+                }
+                LaunchedEffect(Unit) { demo.script.play(state) }
+            }
+        }
+        val start = mainClock.currentTime
+        fun at(seconds: Double) =
+            mainClock.advanceTimeBy(
+                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime
+            )
+        fun results(tag: String) = table!!.results[tag].orEmpty()
+        // The hint lies over the table, which has every bit of height over the strip.
+        at(0.0)
+        assertEquals(270f - table!!.stripHeight, table!!.tableHeight, 0.5f)
+        // Put down apart, two searches.
+        at(7.7)
+        assertFalse(table!!.joined, "Sea must first be put down apart")
+        assertTrue(results(IslandTags.Sunset).isNotEmpty())
+        assertTrue(results(IslandTags.Sea).isNotEmpty())
+        // Brought up close enough to snap to Sunset's side: one search, for the photos of both.
+        at(10.4)
+        assertTrue(table!!.joined, "Sea must snap to Sunset's side")
+        assertEquals(setOf("corfu", "naxos"), results(IslandTags.Sunset))
+        at(11.3)
+        assertEquals(IslandTags.Sunset, table!!.fannedOut)
+        // Fanned out over the whole stage, strip and all, the cards grow as far as they may.
+        assertEquals(MagnetDimens.FanScale, table!!.fanScale())
+        at(12.8)
+        assertEquals("corfu", table!!.opened)
+        // Opened, the photo takes most of the stage's height, not a sliver of the table's.
+        val opened = table!!.openedBounds
+        val openedHeight = opened.height / table!!.density
+        assertTrue(openedHeight >= 270f * 0.6f, "the photo opened $openedHeight dp tall")
+        assertTrue(opened.top >= 0f && opened.bottom <= 270f * table!!.density, "$opened")
+        at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
+        assertTrue(table!!.results.isEmpty(), "${table!!.results}")
+        for (body in table!!.bodies.bodies) {
+            assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
+        }
+    }
+
+    @Test
     fun theHintGivesWayWhileAMagnetIsOut() = runComposeUiTest {
         var table: MagnetState? = null
         setContent {

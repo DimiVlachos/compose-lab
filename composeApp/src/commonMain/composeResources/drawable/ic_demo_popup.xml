@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A domed chapel standing up, as the pop-up book's first spread raises one. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M5,12h14v9H5zM10.5,21v-3.5a1.5,1.5 0,0 1,3 0V21zM7,12a5,5 0,0 1,10 0zM11.25,2.5h1.5v4h-1.5zM10,3.75h4v1.5h-4z" />
+</vector>

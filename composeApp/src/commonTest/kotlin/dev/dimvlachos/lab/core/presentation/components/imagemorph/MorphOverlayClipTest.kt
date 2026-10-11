@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -34,5 +35,35 @@ class MorphOverlayClipTest {
         radius = 16.dp
         // The corners are now cut away, so the clip no longer covers the rectangle.
         assertFalse(coversTheWholeRect(clip.clipPath(bounds, density)))
+    }
+
+    @Test
+    fun anOutsetLeavesRoomAllRoundForAShadow() {
+        val clip = RoundedOverlayClip(outset = 18.dp) { 16.dp }
+        val path = clip.clipPath(bounds, density)
+        // Even with its corners rounded, the whole element and a band around it stay uncut.
+        assertTrue(coversTheWholeRect(path))
+        assertEquals(Rect(-18f, -18f, 118f, 118f), path.getBounds())
+    }
+
+    @Test
+    fun noOutsetIsTheShapeItself() {
+        val plain = RoundedOverlayClip { 16.dp }.clipPath(bounds, density).getBounds()
+        val none = RoundedOverlayClip(outset = 0.dp) { 16.dp }.clipPath(bounds, density)
+        assertEquals(plain, none.getBounds())
+        assertFalse(coversTheWholeRect(none))
+    }
+
+    @Test
+    fun onlyTheEndThatStaysCastsTheShadow() {
+        assertEquals(6.dp, morphShadowElevation(6.dp, leaving = false))
+        assertEquals(0.dp, morphShadowElevation(6.dp, leaving = true))
+        assertEquals(0.dp, morphShadowElevation(0.dp, leaving = false))
+    }
+
+    @Test
+    fun noShadowNeedsNoRoom() {
+        assertEquals(0.dp, shadowReach(0.dp))
+        assertTrue(shadowReach(6.dp) >= 12.dp, "a shadow's blur and drop together")
     }
 }

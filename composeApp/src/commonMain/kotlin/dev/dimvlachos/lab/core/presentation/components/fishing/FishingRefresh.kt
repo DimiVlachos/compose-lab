@@ -119,7 +119,7 @@ public fun FishingRefresh(
     val canRefresh = !busy && status != FishingStatus.Refreshing
     Box(
         modifier
-            .onSizeChanged { state.place(it.width, density) }
+            .onSizeChanged { state.place(it.width, it.height, density) }
             .onPlaced { state.box = it }
             .pullToRefresh(
                 isRefreshing = status == FishingStatus.Refreshing || busy,

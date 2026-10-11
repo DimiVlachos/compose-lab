@@ -20,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphLayers
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphPhoto
@@ -32,13 +34,24 @@ import kotlin.math.roundToInt
 
 private const val CardAspect = 0.8f // width / height: the photos' own 4:5
 private const val FilterFadeMs = 200
+// The narrowest a card gets before the grid drops a column: two on any phone held upright, which
+// is every recording's frame, and four on one turned on its side.
+private val MinCardWidth = 160.dp
+
+/**
+ * How many columns of at least [minCellPx] fit across [widthPx] with [gapPx] between them, and
+ * never fewer than two.
+ */
+internal fun galleryColumns(widthPx: Int, minCellPx: Int, gapPx: Int): Int =
+    ((widthPx + gapPx) / (minCellPx + gapPx)).coerceAtLeast(2)
 
 /**
  * The photo grid, filtered by [query]. A card that stops matching gives up its slot at once and
  * fades out where it stands, under the cards gliding into the freed slots; clearing the query fades
  * the returning ones in at their slots while the others glide back. Nothing waits for anything, so
  * no photo is ever missing from a slot mid-reshuffle. Every card keeps one parent and one place in
- * the composition, so its shared node and its glide survive the reshuffle.
+ * the composition, so its shared node and its glide survive the reshuffle. The column count follows
+ * the grid's own width, so turning the phone glides the cards into their new slots the same way.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -61,6 +74,9 @@ internal fun GalleryGrid(
         }
     // Where each card last stood, so a card fading out stays there instead of jumping.
     val lastSlot = remember(photos.size) { IntArray(photos.size) { it } }
+    // Where each card was last placed, so one fading out stays there even if the columns change
+    // under it, as when the phone turns: by slot, it would jump to that slot in the new columns.
+    val lastAt = remember(photos.size) { arrayOfNulls<IntOffset>(photos.size) }
     val typed = query.value
     photos.forEachIndexed { i, photo -> filter[i].targetState = matchesQuery(photo.title, typed) }
     val glide = remember {
@@ -106,7 +122,7 @@ internal fun GalleryGrid(
         },
     ) { measurables, constraints ->
         val gapPx = gap.roundToPx()
-        val columns = MorphDimens.Columns
+        val columns = galleryColumns(constraints.maxWidth, MinCardWidth.roundToPx(), gapPx)
         val cellWidth = (constraints.maxWidth - gapPx * (columns - 1)) / columns
         val cellHeight = (cellWidth / CardAspect).roundToInt()
         val cell = Constraints.fixed(cellWidth, cellHeight)
@@ -128,14 +144,17 @@ internal fun GalleryGrid(
             fun slotY(slot: Int) = (slot / columns) * (cellHeight + gapPx)
             placeables.forEachIndexed { i, placeable ->
                 if (!filter[i].targetState && filter[i].currentState) {
-                    placeable.place(slotX(lastSlot[i]), slotY(lastSlot[i]), zIndex = -1f)
+                    val at = lastAt[i] ?: IntOffset(slotX(lastSlot[i]), slotY(lastSlot[i]))
+                    placeable.place(at, zIndex = -1f)
                 }
             }
             var slot = 0
             placeables.forEachIndexed { i, placeable ->
                 if (filter[i].targetState) {
                     lastSlot[i] = slot
-                    placeable.place(slotX(slot), slotY(slot))
+                    val at = IntOffset(slotX(slot), slotY(slot))
+                    lastAt[i] = at
+                    placeable.place(at)
                     slot++
                 }
             }

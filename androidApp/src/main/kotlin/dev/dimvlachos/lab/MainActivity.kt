@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab
 
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -13,19 +14,28 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
+        val record = intent.getBooleanExtra("record", false)
+        // A clip's bars are hidden and its theme always dark, as it has always been. Otherwise the
+        // bars start out following the system's theme, and the app sets their icons to its own
+        // theme from then on.
+        val barStyle =
+            if (record) SystemBarStyle.dark(Color.TRANSPARENT)
+            else SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+        // The auto style puts a translucent scrim behind three-button navigation; the app draws
+        // its own content under the bar and keeps it clear of the buttons itself.
+        if (!record) window.isNavigationBarContrastEnforced = false
         super.onCreate(savedInstanceState)
         val demoId = intent.getStringExtra("demo")
-        val record = intent.getBooleanExtra("record", false)
         val label = intent.getBooleanExtra("label", false)
         if (record) enterRecordMode()
         setContent { App(initialDemoId = demoId, record = record, label = label) }
     }
 
     private fun enterRecordMode() {
+        // A clip is always dark, even when the app was last left in light mode: the window
+        // behind Compose's first frame is dark too.
+        window.setBackgroundDrawable(ColorDrawable(getColor(R.color.lab_record_background)))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes =
             window.attributes.apply {

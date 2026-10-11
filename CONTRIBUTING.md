@@ -35,6 +35,10 @@ CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE pr
 - Keep a component's animated values out of composition: read them in layout or draw, so a component recomposes only when its inputs change. The existing components show how.
 - Put platform code behind `expect`/`actual` and keep it small.
 - New behaviour comes with a test in `commonTest`.
+- A demo's stage sits under the demo screen's top bar, which owns the top of the screen (the status bar and the cutout). The demo keeps its controls clear of the sides and the foot with `demoInsets(state)`, which is zero while recording, when the clip's frame touches no edge.
+- A landscape layout branches on the shape of the whole stage, `isWideStage(maxWidth, maxHeight)`, never on a height threshold. The 4:5 and 9:16 record frames are never wide, so clips keep their portrait layout.
+- Every colour is a `LabTheme` token in `core/presentation/ui/Color.kt`, either themed (with a light value in `AppColors.Light`) or art (the same in both themes). The `AppColors` tests fail until a new token is sorted into one or the other, and hold the themed ones to their contrast.
+- A new `Demo` needs a description, an icon (a vector drawable, `ic_demo_*`) and at least one tag, for its catalog card, the search and the tag filter.
 - A change to how a component looks should update its clip. [Record a clip](README.md#record-a-clip) has the scripts.
 
 ## Commits and pull requests

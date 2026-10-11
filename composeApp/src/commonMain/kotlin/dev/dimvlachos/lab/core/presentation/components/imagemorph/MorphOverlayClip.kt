@@ -13,12 +13,17 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 
 // The stock OverlayClip takes a fixed shape. This one asks for the radius on every frame, so the
-// overlay's clip can follow the paired radius while the bounds animate.
+// overlay's clip can follow the paired radius while the bounds animate. An [outset] widens it all
+// round, by as much as a shadow on the element reaches, so the shadow travels with the morph
+// instead of being cut off until it lands; the element's own clip still holds its content.
 @OptIn(ExperimentalSharedTransitionApi::class)
-internal class RoundedOverlayClip(private val radius: () -> Dp) :
-    SharedTransitionScope.OverlayClip {
+internal class RoundedOverlayClip(
+    private val outset: Dp = 0.dp,
+    private val radius: () -> Dp,
+) : SharedTransitionScope.OverlayClip {
     private val path = Path()
 
     override fun getClipPath(
@@ -30,7 +35,9 @@ internal class RoundedOverlayClip(private val radius: () -> Dp) :
 
     internal fun clipPath(bounds: Rect, density: Density): Path {
         path.reset()
-        path.addRoundRect(RoundRect(bounds, CornerRadius(with(density) { radius().toPx() })))
+        val out = with(density) { outset.toPx() }
+        val corner = with(density) { radius().toPx() } + out
+        path.addRoundRect(RoundRect(bounds.inflate(out), CornerRadius(corner)))
         return path
     }
 }
@@ -40,7 +47,10 @@ internal class RoundedOverlayClip(private val radius: () -> Dp) :
 // clip to its first frame and it could never animate.
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-internal fun rememberMorphOverlayClip(radius: State<Dp>): SharedTransitionScope.OverlayClip {
+internal fun rememberMorphOverlayClip(
+    radius: State<Dp>,
+    outset: Dp = 0.dp,
+): SharedTransitionScope.OverlayClip {
     val current = rememberUpdatedState(radius)
-    return remember { RoundedOverlayClip { current.value.value } }
+    return remember(outset) { RoundedOverlayClip(outset) { current.value.value } }
 }

@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.imagemorph
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /** Both ends share one shape (a circle, a pill), so there is no radius to pair. */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -57,6 +59,7 @@ internal fun Modifier.morphRadiusBounds(
     remeasure: Boolean = true,
     paired: Boolean = true,
     overlayZIndex: Float = 0f,
+    shadowElevation: Dp = 0.dp,
 ): Modifier =
     with(sharedTransitionScope) {
         val sharedContentState = rememberSharedContentState(key)
@@ -70,7 +73,7 @@ internal fun Modifier.morphRadiusBounds(
             )
         // paired is constant for the lifetime of a call site, so the branch never flips.
         val overlayClip =
-            if (paired) rememberMorphOverlayClip(radius)
+            if (paired) rememberMorphOverlayClip(radius, shadowReach(shadowElevation))
             else remember(restRadius) { OverlayClip(RoundedCornerShape(restRadius)) }
         sharedBounds(
                 sharedContentState = sharedContentState,
@@ -83,10 +86,19 @@ internal fun Modifier.morphRadiusBounds(
                 clipInOverlayDuringTransition = overlayClip,
             )
             // The element's own clip, read in the layer block: Modifier.clip(shape) takes a value,
-            // so a radius read there would recompose this end on every frame of the morph.
+            // so a radius read there would recompose this end on every frame of the morph. The
+            // shadow follows the same shape, and travels with it: the overlay's clip leaves room
+            // for it. Only the end that is staying casts it while the two are drawn over each
+            // other, so it never doubles up; the leaving end hands its shadow over on the first
+            // frame, at the same bounds, and the shadow carries on unbroken.
             .graphicsLayer {
                 clip = true
                 shape = RoundedCornerShape(radius.value)
+                if (shadowElevation > 0.dp) {
+                    val leaving =
+                        animatedVisibilityScope.transition.targetState == EnterExitState.PostExit
+                    this.shadowElevation = morphShadowElevation(shadowElevation, leaving).toPx()
+                }
             }
     }
 
@@ -129,6 +141,7 @@ internal fun RadiusMorphNode(
     preMorphRadius: Dp = restRadius,
     overlayZIndex: Float = 0f,
     color: Color = Color.Transparent,
+    shadowElevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -141,8 +154,16 @@ internal fun RadiusMorphNode(
                 counterpartRadius = counterpartRadius,
                 preMorphRadius = preMorphRadius,
                 overlayZIndex = overlayZIndex,
+                shadowElevation = shadowElevation,
             )
             .background(color),
         content = content,
     )
 }
+
+/** The shadow a morphing end casts: none while it is leaving, its own [elevation] otherwise. */
+internal fun morphShadowElevation(elevation: Dp, leaving: Boolean): Dp =
+    if (leaving) 0.dp else elevation
+
+// How far past the element a shadow of [elevation] reaches, blur and drop together.
+internal fun shadowReach(elevation: Dp): Dp = elevation * 3

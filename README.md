@@ -49,6 +49,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing)
 - [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
+- [App shell](#app-shell)
 - [Project structure](#project-structure)
 - [Run](#run)
 - [Record a clip](#record-a-clip)
@@ -438,14 +439,31 @@ Run it:
   - iOS: record with `xcrun simctl io booted recordVideo out/moodboard-ios.mov` while running `TEST_RUNNER_SHOWCASE=1 xcodebuild … test -only-testing:MoodboardUITests/ShowcaseUITests`.
   - `scripts/moodboard/showcase-compose.sh out/moodboard-ios.mov <iosStart> out/moodboard-android.mp4 <androidStart> <android-studio.png> out/moodboard.showcase-both.mp4` (each start is the second, in that take, at which its script began: the first scroll), then the GIF at 12 fps and 960 px wide (`scripts/gif.sh` builds the palette in memory, which a 40 s clip can outgrow; ffmpeg's two-pass palettegen/paletteuse makes the same GIF).
 
+## App shell
+
+The lab app around the demos:
+
+- **One bar on every screen.** A shadowed top bar runs up under the status bar on home, in a folder and over each demo, with a back arrow, the title, and Replay/Stop on a demo.
+- **Search from the bar.** The search button turns the title into a field. It finds demos by title, description, id or tag, including the versions inside a folder, and back closes it.
+- **Tags.** A row of chips under home's bar filters the catalog by what each demo is about: Gesture, Physics, Motion, Canvas, 3D, Camera, Text, Navigation.
+- **A grid of cards.** Each card has an icon, the title and a one-line description. The grid adds columns as the screen widens.
+- **System, Light or Dark.** A button in home's bar cycles the theme, and the choice is remembered across launches. The system bars and the window follow it.
+- **Portrait and landscape, light and dark.** Every demo works both ways up and in both themes. A demo's surroundings follow the theme, while its art (the paper, the lamp, the book's pages, the photos) looks the same in both.
+
+Recordings always use the dark theme and the portrait layouts, so clips look the same whatever the phone is set to.
+
 ## Project structure
 
 ```
 composeApp/            the components, their demos and the catalog (Kotlin Multiplatform library)
-  core/presentation/   components/ (one package each) and ui/ (LabTheme: colours, type, motion)
-  core/demo/           the scripted-demo engine: timed steps, a scripted finger, record mode
+  core/presentation/   components/ (one package each, and topbar/, the shell's bar) and ui/
+                       (LabTheme: light and dark colours, type, motion; ThemeMode, SystemBars,
+                       StageShape)
+  core/demo/           the scripted-demo engine: timed steps, a scripted finger, record mode,
+                       DemoTag, and DemoInsets for keeping controls clear of the screen's edges
   *demo/               one package per component: the demos that the clips are recorded from
-  catalog/             the list of demos, opened by id (-demo navbar.all) or from the home screen
+  catalog/             the list of demos, opened by id (-demo navbar.all) or from the home screen:
+                       its screens, the grid and cards, and the search and tag filter
 androidApp/            the Android app: one Activity hosting App()
 iosApp/                the iOS app: SwiftUI hosting MainViewController (XcodeGen project)
 moodboard/shared/      Moodboard's data, logic, ViewModels and shared Compose screens
@@ -477,7 +495,7 @@ Point Gradle at the Android SDK with `ANDROID_HOME` or `sdk.dir` in `local.prope
 
 ## Record a clip
 
-Every demo plays a timed script that ends where it started, so clips loop cleanly.
+Every demo plays a timed script that ends where it started, so clips loop cleanly. A clip always plays in the dark theme, whatever the app's theme is set to.
 
 ```bash
 scripts/record.py android navbar.all              # out/navbar.all-android.mp4 (1080×1350, 60 fps, ≤ 5 MB)

@@ -15,6 +15,15 @@ internal fun ease(p: Float): Float {
     return t * t * (3f - 2f * t)
 }
 
+/**
+ * How much of a falling letter's own ink shows, [p] of the way through its fall: none in the air,
+ * coming in over the last of its way down, and all of it once it has landed.
+ */
+internal fun inkShown(p: Float): Float {
+    val from = PaperPlaneDimens.LandAt * PaperPlaneDimens.AirShare
+    return ease((p - from) / (PaperPlaneDimens.LandAt - from))
+}
+
 /** One cubic piece of a throw, from [p0] to [p3]. */
 internal class Cubic(val p0: Offset, val p1: Offset, val p2: Offset, val p3: Offset) {
     fun at(t: Float): Offset {

@@ -119,9 +119,11 @@ internal object FishingDimens {
     val SurfacedAbove = 2.dp
 
     // A catch is hauled up from this deep under the surface, on a leader this long below the
-    // bobber, to its place at the top of the list.
+    // bobber, to its place at the top of the list. In a list too short for that, it comes up from
+    // as deep as leaves the leader and this much more inside it, and never less than a band down.
     val CatchDepth = 220.dp
     val Leader = 18.dp
+    val CatchRoom = 16.dp
 
     // A snapped line's bobber drifts off this fast, fading out over this long; the rod springs up.
     const val DriftSeconds = 1.6f

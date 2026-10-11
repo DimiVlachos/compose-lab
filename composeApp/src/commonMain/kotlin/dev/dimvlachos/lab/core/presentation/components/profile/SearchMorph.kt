@@ -3,18 +3,13 @@ package dev.dimvlachos.lab.core.presentation.components.profile
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,69 +20,32 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.ReportMorphComposition
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.ShapedMorphNode
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphBoundsTransform
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphChrome
-import dev.dimvlachos.lab.core.presentation.components.imagemorph.morphWidthFraction
+import dev.dimvlachos.lab.core.presentation.components.searchmorph.MorphSearchBar
+import dev.dimvlachos.lab.core.presentation.components.searchmorph.MorphSearchButton
+import dev.dimvlachos.lab.core.presentation.components.searchmorph.SearchBarBackTag
+import dev.dimvlachos.lab.core.presentation.components.searchmorph.SearchBarPillTag
+import dev.dimvlachos.lab.core.presentation.components.searchmorph.SearchMorphKeys
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.action_back
 import dev.dimvlachos.lab.resources.action_search
-import dev.dimvlachos.lab.resources.ic_arrow_back
-import dev.dimvlachos.lab.resources.ic_search
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val SearchKey = "profile_search"
 internal const val SearchIconKey = "profile_search_icon"
 internal const val SearchSourceTag = "searchSource"
-internal const val SearchPillTag = "searchPill"
-internal const val SearchBackTag = "searchBack"
-private val SearchButtonSize = 40.dp
-private val SearchPillHeight = 48.dp
-private val SearchIconSize = 20.dp
-private val PillShape = RoundedCornerShape(50)
+internal const val SearchPillTag = SearchBarPillTag
+internal const val SearchBackTag = SearchBarBackTag
+private val ProfileSearchKeys = SearchMorphKeys(SearchKey, SearchIconKey)
 private const val SearchStartTimeoutMs = 250L
 private const val LandedFraction = 0.999f
 // A beat between the pill landing and the first letter, as a person would take before typing.
 private const val SearchTypingPauseMs = 400L
 
-// The magnifier is its own shared element, above the container, travelling from the button's
-// centre to the pill's leading slot while the container grows around it.
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-private fun Magnifier(
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
-    opening: () -> Boolean,
-) {
-    with(sharedTransitionScope) {
-        Icon(
-            painter = painterResource(Res.drawable.ic_search),
-            contentDescription = null,
-            tint = LabTheme.colors.textPrimary,
-            modifier =
-                Modifier.sharedElement(
-                        sharedContentState = rememberSharedContentState(SearchIconKey),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        boundsTransform = remember(opening) { morphBoundsTransform(opening) },
-                        zIndexInOverlay = 2f,
-                    )
-                    .size(SearchIconSize),
-        )
-    }
-}
-
+// The profile's search button, in the header: the shared round button, under the gallery's keys.
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun SearchSource(
@@ -97,22 +55,14 @@ internal fun SearchSource(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ReportMorphComposition(MorphEnd.Card)
-    ShapedMorphNode(
+    MorphSearchButton(
+        ProfileSearchKeys,
         sharedTransitionScope,
         animatedVisibilityScope,
-        SearchKey,
-        PillShape,
-        modifier
-            .size(SearchButtonSize)
-            .testTag(SearchSourceTag)
-            .clickable(role = Role.Button, onClick = onOpen),
-        color = LabTheme.colors.bar,
-    ) {
-        Box(Modifier.align(Alignment.Center)) {
-            Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
-        }
-    }
+        opening,
+        onOpen,
+        modifier.testTag(SearchSourceTag),
+    )
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -125,7 +75,6 @@ internal fun SearchTarget(
     opening: () -> Boolean,
     onClose: () -> Unit,
 ) {
-    ReportMorphComposition(MorphEnd.Detail)
     val fraction = remember { mutableFloatStateOf(1f) }
     // Typing starts once the pill has landed: its width reaches its final value. Not when
     // isTransitionActive turns false, which waits for every animation of this end, including the
@@ -152,53 +101,24 @@ internal fun SearchTarget(
     // Cleared once the bar has gone, not when it opens: an open that clears it composes its first
     // frames with the last query's results, which then flash away.
     DisposableEffect(Unit) { onDispose { typed.value = "" } }
-    val chrome = Modifier.morphChrome(animatedVisibilityScope, fraction)
-    // The bar sits where the top bar was; the page under it shows what [typed] matches.
-    Row(
-        Modifier.fillMaxWidth().padding(LabTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            chrome
-                .size(SearchButtonSize)
-                .clip(CircleShape)
-                .testTag(SearchBackTag)
-                .clickable(role = Role.Button, onClick = onClose),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(Res.drawable.ic_arrow_back),
-                stringResource(Res.string.action_back),
-                tint = LabTheme.colors.textPrimary,
-            )
-        }
-        ShapedMorphNode(
-            sharedTransitionScope,
-            animatedVisibilityScope,
-            SearchKey,
-            PillShape,
-            Modifier.weight(1f).height(SearchPillHeight).testTag(SearchPillTag),
-            overlayZIndex = 1f,
-            color = LabTheme.colors.bar,
-        ) {
-            Row(
-                // The whole pill, so the fraction is the pill's own (a Row wrapping its
-                // content would reach its final width long before the pill does) and the
-                // row centres in its height.
-                Modifier.fillMaxSize()
-                    .morphWidthFraction(fraction)
-                    .padding(horizontal = LabTheme.spacing.medium),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LabTheme.spacing.smallMedium),
-            ) {
-                Magnifier(sharedTransitionScope, animatedVisibilityScope, opening)
-                TypedQuery(typed, chrome)
-            }
-        }
+    // The bar sits where the top bar was, as clear of the sides as the header; the page under it
+    // shows what [typed] matches.
+    MorphSearchBar(
+        ProfileSearchKeys,
+        sharedTransitionScope,
+        animatedVisibilityScope,
+        opening,
+        onClose,
+        Modifier.fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .padding(LabTheme.spacing.medium),
+        fraction = fraction,
+    ) { chrome ->
+        TypedQuery(typed, chrome)
     }
 }
 
-// Separate scopes: typing recomposes only these two, never the morphing container around them.
+// A scope of its own: typing recomposes only this, never the morphing container around it.
 @Composable
 private fun TypedQuery(typed: State<String>, modifier: Modifier) {
     val text = typed.value

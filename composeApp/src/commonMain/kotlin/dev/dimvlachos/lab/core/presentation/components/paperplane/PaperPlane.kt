@@ -10,9 +10,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -26,10 +28,20 @@ import kotlin.math.sin
 /**
  * The stage paper planes fly over: lay it over everything they cross. The planes are folded from
  * [paper]; the letters they drop are drawn from the text they carry, as it is laid out where it
- * lands.
+ * lands. Over a background nearly as light as the paper, an [edge] colour traces round each facet
+ * so the plane still stands out; left unspecified, there is none. Likewise a letter in a colour
+ * that would be lost on the background falls in [air] instead, taking back its own as it comes down
+ * into its place; left unspecified, it falls in its own.
  */
 @Composable
-public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier = Modifier) {
+public fun PaperPlane(
+    state: PaperPlaneState,
+    paper: Color,
+    modifier: Modifier = Modifier,
+    edge: Color = Color.Unspecified,
+    air: Color = Color.Unspecified,
+) {
+    val airFilter = remember(air) { if (air.isSpecified) ColorFilter.tint(air) else null }
     val inside = remember(paper) { lerp(paper, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
         modifier
@@ -38,11 +50,11 @@ public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier =
                 val flights = state.flights
                 val origin = state.stage.topLeft
                 // The letters fall under the planes that let them go.
-                for (flight in flights) drawDrops(flight, origin)
+                for (flight in flights) drawDrops(flight, origin, airFilter)
                 for (flight in flights) {
                     if (!flight.flying) continue
                     val placed = flight.placement().shiftedBy(-origin)
-                    with(flight.painter) { drawDart(flight.plan, placed, paper, inside) }
+                    with(flight.painter) { drawDart(flight.plan, placed, paper, inside, edge) }
                 }
             }
     )
@@ -51,7 +63,9 @@ public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier =
 // Each letter let go so far: out from under the plane where it was let go, carried on a little
 // way, slowed by the air, falling faster as it goes, tumbling out of its turn as it grows back to
 // its size, and down into its place with a small dip as it settles.
-private fun DrawScope.drawDrops(flight: Flight, origin: Offset) {
+// In [air], if there is one, until it comes down: its own ink is laid over the air's colour as it
+// does, so the letter never thins out on the way.
+private fun DrawScope.drawDrops(flight: Flight, origin: Offset, air: ColorFilter?) {
     val clock = flight.clock.value
     val at = flight.textOrigin() - origin
     val land = PaperPlaneDimens.LandAt
@@ -75,7 +89,13 @@ private fun DrawScope.drawDrops(flight: Flight, origin: Offset) {
             scale(scale, scale, now)
             translate(now.x - home.x, now.y - home.y)
         }) {
-            translate(at.x, at.y) { with(flight.letters) { drawLetter(drop.box, alpha) } }
+            translate(at.x, at.y) {
+                with(flight.letters) {
+                    val ink = if (air == null) 1f else inkShown(p)
+                    if (ink < 1f) drawLetter(drop.box, alpha, air)
+                    if (ink > 0f) drawLetter(drop.box, alpha * ink)
+                }
+            }
         }
     }
 }

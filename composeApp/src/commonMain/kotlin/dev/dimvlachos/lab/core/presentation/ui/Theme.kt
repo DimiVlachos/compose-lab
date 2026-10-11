@@ -1,10 +1,12 @@
 package dev.dimvlachos.lab.core.presentation.ui
 
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
-private val LocalAppColors = staticCompositionLocalOf { AppColors() }
+private val LocalAppColors = staticCompositionLocalOf { AppColors.Dark }
 private val LocalSpacing = staticCompositionLocalOf { Spacing() }
 private val LocalMotion = staticCompositionLocalOf { Motion() }
 
@@ -13,6 +15,10 @@ public object LabTheme {
     /** The colours in use. */
     public val colors: AppColors
         @Composable get() = LocalAppColors.current
+
+    /** Whether the colours in use are the dark palette. */
+    public val isDark: Boolean
+        @Composable get() = LocalAppColors.current.isDark
 
     /** The spacing scale in use. */
     public val spacing: Spacing
@@ -31,11 +37,18 @@ public object LabTheme {
         get() = AppTextStyle
 }
 
-/** Provides the lab's colours, spacing and motion to [content]. */
+/**
+ * Provides the lab's colours, spacing and motion to [content]: the dark palette, or the light one
+ * when [darkTheme] is false.
+ */
 @Composable
-public fun LabTheme(content: @Composable () -> Unit) {
+public fun LabTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
+    val colors = if (darkTheme) AppColors.Dark else AppColors.Light
     CompositionLocalProvider(
-        LocalAppColors provides AppColors(),
+        LocalAppColors provides colors,
+        // Every text field's selection, in the accent.
+        LocalTextSelectionColors provides
+            TextSelectionColors(handleColor = colors.accent, backgroundColor = colors.selection),
         LocalSpacing provides Spacing(),
         LocalMotion provides Motion(),
     ) {

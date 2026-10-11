@@ -20,12 +20,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -56,6 +59,8 @@ import dev.dimvlachos.lab.core.presentation.components.popup.PopUpBookState
 import dev.dimvlachos.lab.core.presentation.components.popup.rememberPopUpBookState
 import dev.dimvlachos.lab.core.presentation.ui.CycladesPaper as Paper
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.RequestSystemBarIcons
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.popupdemo.rememberCycladesBook
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.popup_again
@@ -145,6 +150,8 @@ internal fun PopUpDemo(state: DemoState) {
     }
     val type = LabTheme.typography
     val spacing = LabTheme.spacing
+    // The paper runs under the gesture bar in either theme, so its handle is drawn dark.
+    RequestSystemBarIcons(navigationDarkIcons = true)
 
     // The script's select(i): only a change of it turns the book, so a screen made again keeps
     // its book where it was.
@@ -196,9 +203,10 @@ internal fun PopUpDemo(state: DemoState) {
             )
         }
     }
-    val captionArea: @Composable () -> Unit = {
+    // [gap] under the dots: less on a phone on its side, where height is short.
+    val captionArea: @Composable (gap: Dp) -> Unit = { gap ->
         Dots(selected = shown - 1, Paper.button, Paper.inkMuted)
-        Spacer(Modifier.height(spacing.medium))
+        Spacer(Modifier.height(gap))
         Box {
             // Every caption, unseen and unheard, keeps the space of the longest one at this
             // font size, so a shorter caption never lets the book grow and jump.
@@ -278,26 +286,43 @@ internal fun PopUpDemo(state: DemoState) {
         Modifier.fillMaxSize()
             .then(with(sky) { Modifier.drawSky() })
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
     ) {
-        if (maxWidth > maxHeight) {
-            // Landscape: the book on the left, the words on the right.
-            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        if (isWideStage(maxWidth, maxHeight)) {
+            // Landscape: the book on the left, the words on the right, with tighter margins and
+            // gaps so that at the usual font size all of it fits a phone on its side.
+            Row(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 bookArea(Modifier.weight(1.2f).fillMaxHeight())
                 Spacer(Modifier.width(spacing.large))
-                Column(Modifier.weight(1f).fillMaxHeight()) {
-                    header()
-                    Spacer(Modifier.weight(1f))
-                    captionArea()
-                    Spacer(Modifier.height(spacing.large))
-                    buttons()
+                // The words scroll when they are taller than the screen, as at a large font
+                // size; with room to spare, the caption and the buttons sit at the bottom.
+                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(min = maxHeight),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        header()
+                        Column(Modifier.fillMaxWidth()) {
+                            captionArea(spacing.small)
+                            Spacer(Modifier.height(spacing.small))
+                            buttons()
+                        }
+                    }
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
+            ) {
                 header()
                 bookArea(Modifier.weight(1f).fillMaxWidth())
-                captionArea()
+                captionArea(spacing.medium)
                 Spacer(Modifier.height(spacing.large))
                 buttons()
             }

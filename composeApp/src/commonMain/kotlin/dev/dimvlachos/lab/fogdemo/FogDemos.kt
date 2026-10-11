@@ -3,13 +3,18 @@ package dev.dimvlachos.lab.fogdemo
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.presentation.components.fog.FogState
 import dev.dimvlachos.lab.fogdemo.bathroom.BathroomMirror
 import dev.dimvlachos.lab.fogdemo.reflection.ReflectionMirror
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
+import dev.dimvlachos.lab.resources.demo_fog_bathroom_description
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_fog_reflection_description
+import dev.dimvlachos.lab.resources.ic_demo_fog_bathroom
+import dev.dimvlachos.lab.resources.ic_demo_fog_camera
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -69,7 +74,15 @@ internal object FogDemos {
 
     // On the phone the glass is the user's to wipe; Replay plays the clip.
     val bathroom =
-        Demo("fog.mirror.bathroom", Res.string.demo_fog_bathroom, showcaseTour, autoplay = false) {
+        Demo(
+            "fog.mirror.bathroom",
+            Res.string.demo_fog_bathroom,
+            showcaseTour,
+            description = Res.string.demo_fog_bathroom_description,
+            icon = Res.drawable.ic_demo_fog_bathroom,
+            tags = setOf(DemoTag.Gesture, DemoTag.Canvas),
+            autoplay = false,
+        ) {
             BathroomMirror(it)
         }
 
@@ -78,6 +91,9 @@ internal object FogDemos {
             "fog.mirror.camera",
             Res.string.demo_fog_reflection,
             showcaseTour,
+            description = Res.string.demo_fog_reflection_description,
+            icon = Res.drawable.ic_demo_fog_camera,
+            tags = setOf(DemoTag.Gesture, DemoTag.Canvas, DemoTag.Camera),
             autoplay = false,
         ) {
             ReflectionMirror(it)

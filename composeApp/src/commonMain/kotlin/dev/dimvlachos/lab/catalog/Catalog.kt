@@ -12,12 +12,20 @@ import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog
+import dev.dimvlachos.lab.resources.demo_fog_description
+import dev.dimvlachos.lab.resources.ic_demo_fog
 
 internal object Catalog {
     // The finished demo of each component, each one a clip; the fogged mirror in two versions.
     val entries: List<CatalogEntry> =
         (NavBarDemos.all + GalleryDemos.all).map { CatalogEntry.Single(it) } +
-            CatalogEntry.Group("fog.mirror", Res.string.demo_fog, FogDemos.all) +
+            CatalogEntry.Group(
+                id = "fog.mirror",
+                title = Res.string.demo_fog,
+                description = Res.string.demo_fog_description,
+                icon = Res.drawable.ic_demo_fog,
+                demos = FogDemos.all,
+            ) +
             (BookDemos.all +
                     PlaneDemos.all +
                     PullCordDemos.all +

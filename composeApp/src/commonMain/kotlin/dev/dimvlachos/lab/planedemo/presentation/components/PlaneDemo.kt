@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -78,6 +79,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -99,6 +101,7 @@ import dev.dimvlachos.lab.resources.chat_seed_3
 import dev.dimvlachos.lab.resources.chat_seed_4
 import dev.dimvlachos.lab.resources.chat_send
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -113,10 +116,15 @@ import org.jetbrains.compose.resources.stringResource
 // or not, so nothing typed ever runs under it.
 private val TouchTarget = 48.dp
 private val IconSize = 26.dp
+// The disc the dart sits on, where the screen is too light for the paper to show without one.
+private val SendDiscSize = 38.dp
 private val FieldCorner = 24.dp
 private val FieldShape = RoundedCornerShape(FieldCorner)
 private val FieldPadding = PaddingValues(start = 18.dp, top = 12.dp, bottom = 12.dp)
 private val ButtonRoom = TouchTarget + 4.dp
+
+// How dark the line round the flying plane's facets is on the light screen.
+private const val LightEdgeAlpha = 0.2f
 
 // The field grows to this many lines, fewer on a screen too short to spare them (a phone on its
 // side, with the keyboard up).
@@ -282,9 +290,42 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
             )
         }
         LetterStage(letters, Modifier.fillMaxSize())
-        PaperPlane(plane, colors.paper, Modifier.fillMaxSize())
+        PaperPlane(
+            plane,
+            colors.paper,
+            Modifier.fillMaxSize(),
+            // On the light screen the paper is nearly the background's own colour: a faint line
+            // round each facet keeps the plane in sight.
+            edge =
+                if (LabTheme.isDark) Color.Unspecified
+                else Color.Black.copy(alpha = LightEdgeAlpha),
+            // And a sent message's letters, white for the bubble they land in, would be lost on
+            // it as they fall: they fall in the bubble's own colour and whiten as they land.
+            air = if (LabTheme.isDark) Color.Unspecified else colors.accent,
+        )
     }
 }
+
+/**
+ * How big the send button's disc and its dart show, as radii on the screen, in a button scaled by
+ * [scale]: the dart [dart] round at its own size, the disc [disc]. The dart grows inside the disc,
+ * which stays as it is until the dart reaches its edge; then the two grow together, until the disc
+ * reaches the field's edge, [room] from the button's middle less [inset], where both stop.
+ */
+internal fun sendDiscSizes(
+    scale: Float,
+    dart: Float,
+    disc: Float,
+    room: Float,
+    inset: Float,
+): SendDiscSizes {
+    val most = (room - inset).coerceAtLeast(0f)
+    val dartShown = min(dart * scale.coerceAtLeast(0f), most)
+    return SendDiscSizes(disc = min(max(disc, dartShown), most), dart = dartShown)
+}
+
+/** The radii the send button's disc and dart show at, on the screen. */
+internal data class SendDiscSizes(val disc: Float, val dart: Float)
 
 // Where the icon lies in the send button laid out at [button]: in its middle, its size.
 private fun iconAt(button: Rect): Rect =
@@ -385,6 +426,21 @@ private fun MessageField(
             },
         )
         val label = stringResource(Res.string.chat_send)
+        // The disc behind the dart, and the dart in it, as the button's scale has them; the disc
+        // is clear on the dark screen, and there the dart is left to grow as it always has.
+        val onDisc = colors.sendDisc.alpha > 0f
+        val density = LocalDensity.current
+        val sizes: (Float) -> SendDiscSizes = { scale ->
+            with(density) {
+                sendDiscSizes(
+                    scale,
+                    dart = IconSize.toPx() / 2f,
+                    disc = SendDiscSize.toPx() / 2f,
+                    room = min(chat.fieldHeight / 2f, TouchTarget.toPx() / 2f),
+                    inset = FieldInset.toPx(),
+                )
+            }
+        }
         Box(
             Modifier.align(Alignment.CenterEnd)
                 .size(TouchTarget)
@@ -397,6 +453,14 @@ private fun MessageField(
                     alpha = shown.coerceIn(0f, 1f)
                 }
                 .then(with(tap) { Modifier.drawTap(colors.touch) })
+                // The disc is drawn, not laid out, so the dart sits exactly where it always has.
+                // It holds its size while the dart grows inside it, grows with the dart once the
+                // dart fills it, and stops at the field's edge; it only fades in with the button.
+                .drawBehind {
+                    val scale = shown * grow()
+                    if (scale <= 0f) return@drawBehind
+                    drawCircle(colors.sendDisc, sizes(scale).disc / scale)
+                }
                 .clip(CircleShape)
                 .clickable(enabled = canSend, role = Role.Button, onClick = onSend)
                 .semantics { contentDescription = label },
@@ -406,8 +470,14 @@ private fun MessageField(
                 colors.paper,
                 modifier =
                     Modifier.size(IconSize).graphicsLayer {
-                        scaleX = iconIn
-                        scaleY = iconIn
+                        // On its disc the dart stops at the field's edge with it, through a
+                        // bounce too; with no disc it moves as it always has.
+                        val scale = shown * grow()
+                        val held =
+                            if (!onDisc || scale <= 0f) 1f
+                            else sizes(scale).dart / (IconSize.toPx() / 2f * scale)
+                        scaleX = iconIn * held
+                        scaleY = iconIn * held
                     },
             )
         }
@@ -435,3 +505,26 @@ private class TapDot {
         drawTouch(color, Offset(size.width / 2f, size.height / 2f), alpha.value)
     }
 }
+
+// The field with a message typed, its send button out on its disc.
+@Composable
+private fun MessageFieldPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Box(Modifier.background(LabTheme.colors.background).padding(LabTheme.spacing.medium)) {
+            MessageField(
+                field = rememberTextFieldState("See you at the harbour"),
+                scroll = rememberScrollState(),
+                chat = remember { PlaneChat(emptyList()) },
+                tap = remember { TapDot() },
+                grow = { 1f },
+                lines = FieldMaxLines,
+                enabled = true,
+                onSend = {},
+            )
+        }
+    }
+}
+
+@Preview @Composable private fun MessageFieldDarkPreview() = MessageFieldPreview(dark = true)
+
+@Preview @Composable private fun MessageFieldLightPreview() = MessageFieldPreview(dark = false)

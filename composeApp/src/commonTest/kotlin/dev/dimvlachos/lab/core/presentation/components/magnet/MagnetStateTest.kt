@@ -196,6 +196,33 @@ class MagnetStateTest {
     }
 
     @Test
+    fun turnedOnItsSideTheLooseCardsSpreadAlongTheTableAndTheStuckOnesStayStuck() {
+        // Twelve photos, a third of them Alpha's.
+        val photos =
+            List(12) {
+                MagnetPhoto(
+                    "p$it",
+                    TestPhotos[0].image,
+                    "P$it",
+                    if (it % 3 == 0) mapOf("a" to 1f) else emptyMap(),
+                )
+            }
+        val table =
+            MagnetState(photos, TestTags).apply { layOut((360 * D).toInt(), (720 * D).toInt(), D) }
+        table.apply("a")
+        table.run(3f)
+        val stuck = table.results
+        assertTrue(stuck["a"].orEmpty().isNotEmpty())
+        // A phone on its side: a table far wider than it is tall.
+        table.layOut((800 * D).toInt(), (250 * D).toInt(), D)
+        for (body in table.bodies.bodies) {
+            if (body.stuckTo.isEmpty()) assertEquals(body.home, body.at, body.id)
+        }
+        table.run(1f)
+        assertEquals(stuck, table.results)
+    }
+
+    @Test
     fun withEveryMagnetPutAwayTheFilingsCalmOverAboutASecond() {
         val table = table()
         table.apply("a")

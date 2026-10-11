@@ -36,10 +36,10 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Where a magnet's [count] photos go when they fan out: a grid of up to three columns, centred on a
- * [width] × [height] table under a [header], its last row centred too, with room for a [caption]
- * under each card. The cards grow to at most FanScale times their size, less if that wouldn't fit,
- * and keep [gap] apart and from the edges.
+ * Where a magnet's [count] photos go when they fan out: a grid, three columns across or more on a
+ * table too short for three, centred on a [width] × [height] table under a [header], its last row
+ * centred too, with room for a [caption] under each card. The cards grow to at most FanScale times
+ * their size, less if that wouldn't fit, and keep [gap] apart and from the edges.
  */
 internal class FanGrid(
     private val count: Int,
@@ -51,17 +51,12 @@ internal class FanGrid(
     private val caption: Float = 0f,
     private val header: Float = 0f,
 ) {
-    private val columns = count.coerceIn(1, MagnetDimens.FanColumns)
+    private val columns =
+        fanColumns(count, width, height, cardWidth, cardHeight, gap, caption, header)
     private val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
 
     val scale: Float =
-        min(
-                MagnetDimens.FanScale,
-                min(
-                    (width - gap * (columns + 1)) / (columns * cardWidth),
-                    (height - header - gap * (rows + 1) - rows * caption) / (rows * cardHeight),
-                ),
-            )
+        fanScale(columns, count, width, height, cardWidth, cardHeight, gap, caption, header)
             .coerceAtLeast(0.1f)
 
     /**
@@ -85,6 +80,56 @@ internal class FanGrid(
             top + h / 2f + row * (rowHeight + gap),
         )
     }
+}
+
+/**
+ * How many columns a grid of [count] cards takes on a [width] × [height] table: up to FanColumns,
+ * or, where the cards would come out bigger in a wider grid, as on a short wide table, that one.
+ */
+internal fun fanColumns(
+    count: Int,
+    width: Float,
+    height: Float,
+    cardWidth: Float,
+    cardHeight: Float,
+    gap: Float,
+    caption: Float = 0f,
+    header: Float = 0f,
+): Int {
+    var best = count.coerceIn(1, MagnetDimens.FanColumns)
+    var bestScale =
+        fanScale(best, count, width, height, cardWidth, cardHeight, gap, caption, header)
+    for (columns in MagnetDimens.FanColumns + 1..count) {
+        val scale =
+            fanScale(columns, count, width, height, cardWidth, cardHeight, gap, caption, header)
+        if (scale > bestScale) {
+            best = columns
+            bestScale = scale
+        }
+    }
+    return best
+}
+
+/** How much [count] cards grow in a grid [columns] across that fits a [width] × [height] table. */
+internal fun fanScale(
+    columns: Int,
+    count: Int,
+    width: Float,
+    height: Float,
+    cardWidth: Float,
+    cardHeight: Float,
+    gap: Float,
+    caption: Float,
+    header: Float,
+): Float {
+    val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
+    return min(
+        MagnetDimens.FanScale,
+        min(
+            (width - gap * (columns + 1)) / (columns * cardWidth),
+            (height - header - gap * (rows + 1) - rows * caption) / (rows * cardHeight),
+        ),
+    )
 }
 
 /**
@@ -121,7 +166,7 @@ internal class MagnetPainter {
                 if (fanning && state.inFan(i)) continue
                 // Shaded while a magnet is out that doesn't pull it, so the matches stand out.
                 val shade = MagnetDimens.DimShade * body.shade
-                drawCard(thumbs[i], body.at * density, body.tilt, 1f, colors, shade)
+                drawCard(thumbs[i], body.at * density, body.tilt, 1f, body.lift, colors, shade)
             }
         }
     }
@@ -130,7 +175,7 @@ internal class MagnetPainter {
      * The magnets and the grid, in the order that keeps them whole: the grid over the magnets as it
      * fans out and while it is out, but under them as it folds back, so its photos land under the
      * magnets they return to instead of covering them and then dropping under. Folding, the magnets
-     * are darkened as the scrim fading over the rest is, so they don't flash out from under it.
+     * are shaded as the scrim fading over the rest is, so they don't flash out from under it.
      */
     fun DrawScope.drawMagnetsAndFan(
         state: MagnetState,
@@ -148,12 +193,23 @@ internal class MagnetPainter {
             return
         }
         drawFan(state, thumbs, titles, header, colors)
-        val light = 1f - ScrimAlpha * smooth(state.fan)
+        val scrim = ScrimAlpha * smooth(state.fan)
+        val light = 1f - scrim
+        // On the dark table the scrim all but darkens them; on the light one it pales them, so
+        // they take on as much of its colour as it lays over the rest.
+        val wash =
+            if (colors.isDark) Color.Black
+            else
+                Color(
+                    colors.fanScrim.red * scrim,
+                    colors.fanScrim.green * scrim,
+                    colors.fanScrim.blue * scrim,
+                )
         drawIntoCanvas { canvas ->
             canvas.saveLayer(
                 Rect(Offset.Zero, size),
                 Paint().apply {
-                    colorFilter = ColorFilter.lighting(Color(light, light, light), Color.Black)
+                    colorFilter = ColorFilter.lighting(Color(light, light, light), wash)
                 },
             )
             drawMagnets(state, labels, badges, colors)
@@ -241,6 +297,15 @@ internal class MagnetPainter {
         }
     }
 
+    // The strokes a horseshoe's shadow is drawn with, one a pass, kept while they stay as wide.
+    private val shadowStrokes = arrayOfNulls<Stroke>(MagnetShadowShares.size)
+
+    private fun shadowStroke(pass: Int, width: Float): Stroke {
+        val kept = shadowStrokes[pass]
+        if (kept != null && kept.width == width) return kept
+        return Stroke(width).also { shadowStrokes[pass] = it }
+    }
+
     // The two halves of a horseshoe, made again for each magnet drawn.
     private val leftHalf = Path()
     private val rightHalf = Path()
@@ -248,7 +313,9 @@ internal class MagnetPainter {
     // A nail's head at [at], with its shadow on the rail and a glint on its dome.
     private fun DrawScope.drawNailHead(at: Offset, colors: AppColors) {
         val r = MagnetDimens.NailRadius.toPx()
-        drawCircle(colors.cardShadow, r, at + Offset(r * 0.4f, r * 0.6f))
+        // A soft shadow: a faint wide disc, and a darker one close under the head.
+        drawCircle(colors.cardShadow, r * 1.35f, at + Offset(r * 0.3f, r * 0.7f), alpha = 0.4f)
+        drawCircle(colors.cardShadow, r * 1.05f, at + Offset(r * 0.2f, r * 0.45f), alpha = 0.7f)
         drawCircle(colors.magnetSteel, r, at)
         drawCircle(colors.clipSheen, r * 0.4f, at - Offset(r * 0.3f, r * 0.3f))
     }
@@ -289,15 +356,26 @@ internal class MagnetPainter {
         val legEnd = shapeHorseshoe(centre)
         val bar = Stroke(thickness)
         scale(lift, pivot = centre) {
-            translate(drop / 2f, drop) {
-                drawPath(leftHalf, colors.cardShadow, style = bar)
-                drawPath(rightHalf, colors.cardShadow, style = bar)
-                for (x in floatArrayOf(centre.x - bend, centre.x + bend)) {
-                    drawRect(
-                        colors.cardShadow,
-                        Offset(x - thickness / 2f, legEnd),
-                        Size(thickness, tip),
-                    )
+            // Its shadow softened by drawing it a few times, each wider and fainter, so its edge
+            // fades out instead of stopping: further for a magnet held up off the table.
+            val soft = drop * MagnetSoftness
+            translate(drop * CardShadow.Slant * 2f, drop) {
+                for (pass in MagnetShadowShares.indices) {
+                    val grow = soft * pass
+                    val share =
+                        colors.cardShadow.copy(
+                            alpha = colors.cardShadow.alpha * MagnetShadowShares[pass]
+                        )
+                    val stroke = shadowStroke(pass, thickness + grow)
+                    drawPath(leftHalf, share, style = stroke)
+                    drawPath(rightHalf, share, style = stroke)
+                    for (x in floatArrayOf(centre.x - bend, centre.x + bend)) {
+                        drawRect(
+                            share,
+                            Offset(x - (thickness + grow) / 2f, legEnd),
+                            Size(thickness + grow, tip + grow / 2f),
+                        )
+                    }
                 }
             }
             drawPath(leftHalf, face, style = bar)
@@ -342,7 +420,7 @@ internal class MagnetPainter {
         val tag = state.fanShown ?: return
         val t = smooth(state.fan)
         if (t <= 0f) return
-        val tableBottom = state.tableHeight * density
+        val tableBottom = state.overlayHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = ScrimAlpha * t)
         val scale = lerp(1f, state.fanScale(), t)
         val captionGap = MagnetDimens.FanCaptionGap.toPx()
@@ -352,7 +430,8 @@ internal class MagnetPainter {
             if (i == state.openIndex && state.openness > 0f) continue
             val body = state.bodies.bodies[i]
             val centre = state.photoCentre(i) * density
-            drawCard(thumbs[i], centre, lerp(body.tilt, 0f, t), scale, colors)
+            val lift = lerp(body.lift, FanLift, t)
+            drawCard(thumbs[i], centre, lerp(body.tilt, 0f, t), scale, lift, colors)
             // Its title under it, coming in with the grid.
             val title = titles[i]
             val below = centre.y + MagnetDimens.CardHeight.toPx() * scale / 2f + captionGap
@@ -385,11 +464,14 @@ internal class MagnetPainter {
         }
     }
 
+    private val shadows = SoftShadow()
+
     private fun DrawScope.drawCard(
         image: ImageBitmap,
         centre: Offset,
         tilt: Float,
         scale: Float,
+        lift: Float,
         colors: AppColors,
         shade: Float = 0f,
     ) {
@@ -397,15 +479,9 @@ internal class MagnetPainter {
         val h = MagnetDimens.CardHeight.toPx() * scale
         val corner = CornerRadius(MagnetDimens.CardCorner.toPx() * scale)
         val border = MagnetDimens.CardBorder.toPx() * scale
+        drawCardShadow(shadows, centre, w, h, tilt, scale, lift, colors)
         translate(centre.x, centre.y) {
             rotate(tilt * DegreesPerRadian, pivot = Offset.Zero) {
-                val shadow = 3.dp.toPx() * scale
-                drawRoundRect(
-                    colors.cardShadow,
-                    Offset(-w / 2f + shadow / 2f, -h / 2f + shadow),
-                    Size(w, h),
-                    corner,
-                )
                 drawRoundRect(colors.cardPaper, Offset(-w / 2f, -h / 2f), Size(w, h), corner)
                 drawImage(
                     image,
@@ -484,6 +560,76 @@ internal fun leftAcross(centre: Float, width: Float, stage: Float): Float =
 // Eased in and out, so the grid starts and lands softly.
 internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
 
+/**
+ * How strong the card's shadow is under a photo opening from it, by how far it has opened: the
+ * card's own at the start, fading out as the photo grows, gone once it is fully open.
+ */
+internal fun openShadowAlpha(openness: Float): Float = (1f - openness).coerceIn(0f, 1f)
+
+/**
+ * How much of the card's paper border a photo opening from it still shows, by how far it has
+ * opened: all of it at the start, thinning to none once it is fully open.
+ */
+internal fun openBorder(openness: Float): Float = (1f - openness).coerceIn(0f, 1f)
+
+/**
+ * How strongly the card's clip shows on a photo opening from it: fully at the start, gone once it
+ * is OpenClipGone of the way open, so the clip comes off quickly as the photo lifts.
+ */
+internal fun openClipAlpha(openness: Float): Float = (1f - openness / OpenClipGone).coerceIn(0f, 1f)
+
+private const val OpenClipGone = 0.4f
+
+/**
+ * The soft shadow of a card [w] × [h] px whose middle is at [centre], turned by [tilt], at [scale]
+ * times its own size and [lift]ed off the table as far as [CardShadow] says, at [alpha] of its full
+ * strength: the wide shadow first, then the contact one over it.
+ */
+internal fun DrawScope.drawCardShadow(
+    shadows: SoftShadow,
+    centre: Offset,
+    w: Float,
+    h: Float,
+    tilt: Float,
+    scale: Float,
+    lift: Float,
+    colors: AppColors,
+    alpha: Float = 1f,
+) {
+    val strength = colors.cardShadow.alpha * alpha
+    val unit = density * scale
+    for (layer in 0..1) {
+        val ambient = layer == 0
+        val blur = if (ambient) CardShadow.ambientBlur(lift) else CardShadow.contactBlur(lift)
+        val drop = if (ambient) CardShadow.ambientDrop(lift) else CardShadow.contactDrop(lift)
+        val share = if (ambient) CardShadow.ambientAlpha(lift) else CardShadow.contactAlpha(lift)
+        val spread = if (ambient) CardShadow.ambientSpread(lift) * unit else 0f
+        // Cast down from the light, then turned with the card about its own middle.
+        translate(centre.x + drop * CardShadow.Slant * unit, centre.y + drop * unit) {
+            rotate(tilt * DegreesPerRadian, pivot = Offset.Zero) {
+                with(shadows) {
+                    drawSoftShadow(
+                        -w / 2f - spread,
+                        -h / 2f - spread,
+                        w / 2f + spread,
+                        h / 2f + spread,
+                        blur * unit,
+                        strength * share,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// A horseshoe's shadow is drawn in passes, each this share of the card shadow's strength and
+// MagnetSoftness of its drop wider than the last.
+private val MagnetShadowShares = floatArrayOf(0.45f, 0.3f, 0.2f, 0.12f)
+private const val MagnetSoftness = 0.9f
+
+// How far a card in the grid, or one opening from it, is lifted for its shadow.
+private const val FanLift = 0.5f
+
 // How dark the scrim behind a fanned-out grid is, fully out.
 private const val ScrimAlpha = 0.7f
 
@@ -499,6 +645,7 @@ private const val DegreesPerRadian = 57.29578f
  */
 internal class OpenPainter {
     private val clip = Path()
+    private val shadows = SoftShadow()
 
     fun DrawScope.drawOpen(
         state: MagnetState,
@@ -513,7 +660,7 @@ internal class OpenPainter {
         val t = smooth(state.openness)
         if (t <= 0f) return
         val image = images[index]
-        val tableBottom = state.tableHeight * density
+        val tableBottom = state.overlayHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.85f * t)
         // From its card in the grid...
         // The card it grows from is as big as the grid draws it, folding or not.
@@ -528,10 +675,12 @@ internal class OpenPainter {
                 (caption?.size?.height ?: 0) +
                 MagnetDimens.OpenTextGap.toPx() * 2f
         val margin = MagnetDimens.OpenMargin.toPx()
+        // Short and wide, it keeps less room over and under it, so it opens as big as it can.
+        val marginY = if (state.wide) MagnetDimens.OpenTextGap.toPx() else margin
         val aspect = image.height.toFloat() / max(1, image.width)
         var toW = size.width - margin * 2f
         var toH = toW * aspect
-        val room = tableBottom - margin * 2f - words
+        val room = tableBottom - marginY * 2f - words
         if (toH > room) {
             toH = max(1f, room)
             toW = toH / aspect
@@ -543,9 +692,39 @@ internal class OpenPainter {
         val h = lerp(fromH, toH, t)
         val corner = lerp(MagnetDimens.CardCorner.toPx() * scale, MagnetDimens.OpenCorner.toPx(), t)
         val topLeft = Offset(centre.x - w / 2f, centre.y - h / 2f)
+        state.openedBounds = Rect(topLeft, Size(w, h))
+        // The card's shadow comes along, lifting and fading out as the photo grows, so it does not
+        // drop away on the first frame, nor come back all at once as the photo lands on its card.
+        val shadowAlpha = openShadowAlpha(t)
+        if (shadowAlpha > 0f) {
+            drawCardShadow(
+                shadows,
+                centre,
+                w,
+                h,
+                0f,
+                1f,
+                lerp(FanLift, 1f, t),
+                colors,
+                alpha = shadowAlpha,
+            )
+        }
+        // The card's paper border thins into the growing photo, so the picture grows out of the
+        // print rather than jumping to its edges, and comes back as it closes.
+        val border = MagnetDimens.CardBorder.toPx() * scale * openBorder(t)
+        if (border > 0f) {
+            drawRoundRect(colors.cardPaper, topLeft, Size(w, h), CornerRadius(corner))
+        }
+        val inner = max(0f, corner - border)
         clip.rewind()
         clip.addRoundRect(
-            RoundRect(topLeft.x, topLeft.y, topLeft.x + w, topLeft.y + h, CornerRadius(corner))
+            RoundRect(
+                topLeft.x + border,
+                topLeft.y + border,
+                topLeft.x + w - border,
+                topLeft.y + h - border,
+                CornerRadius(inner),
+            )
         )
         clipPath(clip) {
             // Cropped to the shape it has on its way, so it never stretches.
@@ -559,6 +738,27 @@ internal class OpenPainter {
                 dstOffset = IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()),
                 dstSize = IntSize(w.roundToInt().coerceAtLeast(1), h.roundToInt().coerceAtLeast(1)),
                 filterQuality = FilterQuality.Medium,
+            )
+        }
+        // Its clip comes off as it starts to open, and back on as it lands on its card again.
+        val clipAlpha = openClipAlpha(t)
+        if (clipAlpha > 0f) {
+            val clipW = MagnetDimens.ClipWidth.toPx() * scale
+            val clipH = MagnetDimens.ClipHeight.toPx() * scale
+            val clipTop = Offset(centre.x - clipW / 2f, topLeft.y - clipH / 2f)
+            drawRoundRect(
+                colors.clipMetal,
+                clipTop,
+                Size(clipW, clipH),
+                CornerRadius(clipH / 3f),
+                alpha = clipAlpha,
+            )
+            drawLine(
+                colors.clipSheen,
+                clipTop + Offset(clipW * 0.2f, clipH * 0.3f),
+                clipTop + Offset(clipW * 0.8f, clipH * 0.3f),
+                strokeWidth = 1.dp.toPx() * scale,
+                alpha = clipAlpha,
             )
         }
         // Its words fade in under it once it has nearly arrived.

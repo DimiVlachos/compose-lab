@@ -139,4 +139,34 @@
     <string name="popup_caption_3_body">Wind forecasts for every harbour, so you know when the boats run. Pull the tab to turn the sails.</string>
     <string name="popup_end_title">Καλό ταξίδι!</string>
     <string name="popup_end_body">Have a good trip. That is the whole tour.</string>
+    <string name="demo_navbar_description">A bottom bar built from layers, springing from tab to tab</string>
+    <string name="demo_morph_app_description">A profile where everything opens with a shared-element morph</string>
+    <string name="demo_fog_description">Wipe the steam off a mirror with your finger</string>
+    <string name="demo_fog_bathroom_description">Wipe the steam to find the bathroom behind the glass</string>
+    <string name="demo_fog_reflection_description">Wipe the steam to find yourself, through the front camera</string>
+    <string name="demo_book_turn_description">An open book whose pages turn in 3D under your finger</string>
+    <string name="demo_paper_plane_description">A chat that sends each message as a paper plane</string>
+    <string name="demo_pull_cord_description">Pull a lamp’s cord to switch the screen dark</string>
+    <string name="demo_magnet_filter_description">Drag a magnet over the photos to filter them by tag</string>
+    <string name="demo_fishing_description">Pull to refresh by casting a line into the sea</string>
+    <string name="demo_popup_description">An onboarding that is a pop-up book open on the table</string>
+    <string name="tag_gesture">Gesture</string>
+    <string name="tag_physics">Physics</string>
+    <string name="tag_motion">Motion</string>
+    <string name="tag_canvas">Canvas</string>
+    <string name="tag_three_d">3D</string>
+    <string name="tag_camera">Camera</string>
+    <string name="tag_text">Text</string>
+    <string name="tag_navigation">Navigation</string>
+    <plurals name="catalog_versions">
+        <item quantity="one">%1$d version</item>
+        <item quantity="other">%1$d versions</item>
+    </plurals>
+    <string name="catalog_in_folder">in %1$s</string>
+    <string name="catalog_search_placeholder">Search demos</string>
+    <string name="catalog_search_clear">Clear search</string>
+    <string name="catalog_no_results">No demos match your search</string>
+    <string name="theme_system">Theme: follow system</string>
+    <string name="theme_light">Theme: light</string>
+    <string name="theme_dark">Theme: dark</string>
 </resources>

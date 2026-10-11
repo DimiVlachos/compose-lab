@@ -3,17 +3,23 @@ package dev.dimvlachos.lab
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import dev.dimvlachos.lab.core.platform.InMemoryThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
+import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
@@ -47,8 +53,8 @@ class AppSmokeTest {
         onNodeWithText("Fogged mirror").assertExists()
         onNodeWithText("Profile gallery").performClick()
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithText("Stop").assertExists()
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Stop").assertExists()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("compose-lab").assertExists()
     }
 
@@ -93,12 +99,12 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(100)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithText("Stop").assertExists()
+        onNodeWithContentDescription("Stop").assertExists()
         // Called off, it slides back over home, and home is gone again.
         runOnUiThread { input.backCancelled() }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithText("Stop").assertExists()
+        onNodeWithContentDescription("Stop").assertExists()
         // Swiped all the way and let go, it is home.
         runOnUiThread {
             input.backStarted(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0f))
@@ -107,7 +113,7 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithText("Stop").assertDoesNotExist()
+        onNodeWithContentDescription("Stop").assertDoesNotExist()
     }
 
     @Test
@@ -128,10 +134,10 @@ class AppSmokeTest {
 
         onNodeWithText("Bathroom").performClick()
         onNodeWithText("Your reflection").assertDoesNotExist()
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("Your reflection").assertExists()
 
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("compose-lab").assertExists()
     }
 
@@ -154,5 +160,125 @@ class AppSmokeTest {
         runOnUiThread { input.backCompleted() }
         waitForIdle()
         onNodeWithText("compose-lab").assertExists()
+    }
+
+    @Test
+    fun theSearchFindsADemoInsideItsFolderAndBackClosesIt() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("bath")
+        waitForIdle()
+        onNodeWithText("Bathroom").assertExists()
+        onNodeWithText("in Fogged mirror").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+        onNodeWithText("compose-lab").assertDoesNotExist()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Nav bar").assertExists()
+    }
+
+    @Test
+    fun aSearchWithNoMatchSaysSo() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("zzqx")
+        waitForIdle()
+        onNodeWithText("No demos match your search").assertExists()
+        onNodeWithContentDescription("Clear search").performClick()
+        waitForIdle()
+        onNodeWithText("Nav bar").assertExists()
+    }
+
+    @Test
+    fun aDemoOpenedFromTheSearchGoesBackToIt() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("plane")
+        waitForIdle()
+        onNodeWithText("Paper plane").performClick()
+        waitForIdle()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNodeWithText("Paper plane").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+    }
+
+    @Test
+    fun systemBackClosesTheSearchAndClearsIt() = runComposeUiTest {
+        val input = DirectNavigationEventInput()
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(input)
+                onDispose { owner.navigationEventDispatcher.removeInput(input) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                App(initialDemoId = null, record = false, label = false)
+            }
+        }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("bath")
+        waitForIdle()
+        runOnUiThread { input.backCompleted() }
+        waitForIdle()
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Nav bar").assertExists()
+        onNodeWithContentDescription("Search").performClick()
+        waitForIdle()
+        onNodeWithText("bath").assertDoesNotExist()
+    }
+
+    @Test
+    fun aTagShowsOnlyItsDemosUntilItIsTappedAgain() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithText("Camera").performClick()
+        waitForIdle()
+        onNodeWithText("Your reflection").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+        onNodeWithText("Camera").performClick()
+        waitForIdle()
+        onNodeWithText("Nav bar").assertExists()
+        onNodeWithText("Your reflection").assertDoesNotExist()
+    }
+
+    @Test
+    fun theThemeButtonCyclesTheModesAndRemembersEach() = runComposeUiTest {
+        val store = InMemoryThemeModeStore()
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, themeStore = store)
+        }
+        onNodeWithContentDescription("Theme: follow system").performClick()
+        onNodeWithContentDescription("Theme: light").assertExists()
+        assertEquals(ThemeMode.Light, store.load())
+        onNodeWithContentDescription("Theme: light").performClick()
+        onNodeWithContentDescription("Theme: dark").assertExists()
+        assertEquals(ThemeMode.Dark, store.load())
+        onNodeWithContentDescription("Theme: dark").performClick()
+        onNodeWithContentDescription("Theme: follow system").assertExists()
+        assertEquals(ThemeMode.System, store.load())
+    }
+
+    @Test
+    fun aSavedModeIsTheOneTheAppStartsIn() = runComposeUiTest {
+        val store = InMemoryThemeModeStore(ThemeMode.Dark)
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, themeStore = store)
+        }
+        onNodeWithContentDescription("Theme: dark").assertExists()
+    }
+
+    @Test
+    fun theSearchFieldTakesFocusWhenOpenedButNotOnTheWayBackFromADemo() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        waitForIdle()
+        onNode(hasSetTextAction()).assertIsFocused()
+        onNode(hasSetTextAction()).performTextInput("plane")
+        onNodeWithText("Paper plane").performClick()
+        waitForIdle()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNode(hasSetTextAction()).assertIsNotFocused()
     }
 }

@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.magnet
 
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -62,6 +63,37 @@ class FanGridTest {
             val bottom = grid.cell(count - 1).y + h / 2f + 20f
             // As much room over the header as under the last row's titles.
             assertEquals(700f - bottom, grid.top - 40f, 0.01f)
+        }
+    }
+
+    private fun columns(count: Int, width: Float, height: Float) =
+        fanColumns(count, width, height, 76f, 56f, 12f, caption = 26f, header = 48f)
+
+    @Test
+    fun aPortraitTableFansOutThreeAcross() {
+        // The table in a 4:5 or 9:16 clip, under the hint's line and over the strip.
+        for (width in 360..430 step 10) {
+            for (frame in listOf(width * 5f / 4f, width * 16f / 9f)) {
+                val height = frame - 40f - MagnetDimens.StripHeight.value
+                for (count in 1..6) {
+                    assertEquals(
+                        min(count, MagnetDimens.FanColumns),
+                        columns(count, width.toFloat(), height),
+                        "$count on $width × $height",
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun aShortWideTableFansOutInAWiderGridWithBiggerCards() {
+        for (count in 4..6) {
+            assertTrue(columns(count, 800f, 158f) > MagnetDimens.FanColumns, "$count")
+            val wide = FanGrid(count, 800f, 158f, 76f, 56f, 12f, caption = 26f, header = 48f)
+            val three =
+                fanScale(MagnetDimens.FanColumns, count, 800f, 158f, 76f, 56f, 12f, 26f, 48f)
+            assertTrue(wide.scale > three, "$count: ${wide.scale} against $three")
         }
     }
 }

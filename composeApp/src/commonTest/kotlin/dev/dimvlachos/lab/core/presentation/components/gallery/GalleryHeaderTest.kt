@@ -31,4 +31,20 @@ class GalleryHeaderTest {
             gridClipTop(collapse = 0.5f),
         )
     }
+
+    @Test
+    fun onTheLightPaletteTheShadowThinsWithTheBackground() {
+        assertEquals(1f, headerShadowStrength(fade = 1f, collapse = 1f, dark = false))
+        assertEquals(0f, headerShadowStrength(fade = 1f, collapse = 0.9f, dark = false))
+        assertEquals(0f, headerShadowStrength(fade = 1f, collapse = 0.5f, dark = false))
+        val opening = (0..20).map { headerShadowStrength(1f, 1f - it / 200f, dark = false) }
+        opening.zipWithNext().forEach { (a, b) -> assertTrue(b <= a, "$a then $b") }
+        assertTrue(opening.zipWithNext().all { (a, b) -> a - b < 0.15f }, "no jump: $opening")
+    }
+
+    @Test
+    fun theTimedFadeStillLeadsAndTheDarkPaletteKeepsItAlone() {
+        assertEquals(0.5f, headerShadowStrength(fade = 0.5f, collapse = 1f, dark = false))
+        assertEquals(0.5f, headerShadowStrength(fade = 0.5f, collapse = 0.2f, dark = true))
+    }
 }

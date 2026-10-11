@@ -9,6 +9,13 @@ internal object MagnetDimens {
     val CardWidth = 76.dp
     val CardHeight = 56.dp
     val CardCorner = 4.dp
+    // How far a card is lifted off the table, for its shadow: a little on its way to a magnet or
+    // stuck on one, all the way in a finger. It eases there at LiftRate a second, and is taken to
+    // be there within StillLift.
+    const val TravelLift = 0.35f
+    const val StuckLift = 0.2f
+    const val LiftRate = 14f
+    const val StillLift = 0.005f
     val CardBorder = 3.dp
     val ClipWidth = 16.dp
     val ClipHeight = 7.dp
@@ -144,8 +151,8 @@ internal object MagnetDimens {
     // With every magnet put away the filings settle back as they fell over this long, eased.
     const val CalmSeconds = 1f
 
-    // Tapped, a magnet's photos fan out into a grid of up to FanColumns columns, the cards up to
-    // FanScale times their size, in FanMs; FanGap between them.
+    // Tapped, a magnet's photos fan out into a grid of up to FanColumns columns, more on a table
+    // too short for them, the cards up to FanScale times their size, in FanMs; FanGap between them.
     const val FanMs = 320
     const val FanColumns = 3
     const val FanScale = 1.5f

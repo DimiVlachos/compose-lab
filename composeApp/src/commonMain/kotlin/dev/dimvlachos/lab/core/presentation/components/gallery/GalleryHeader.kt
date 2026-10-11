@@ -3,7 +3,12 @@ package dev.dimvlachos.lab.core.presentation.components.gallery
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +63,19 @@ internal fun gridClipTop(collapse: Float): Dp =
 // the header has fully become the bar.
 internal fun headerShadowShows(collapse: Float): Boolean = collapse >= 0.999f
 
+// The last stretch of the collapse over which the bar's background is near enough solid to
+// carry a shadow.
+private const val SolidCollapse = 0.9f
+
+/**
+ * How much of the bar's shadow shows: its timed [fade], and on the light palette only as much as
+ * the bar is solid. The background thins as the header opens out again, and a shadow left fading on
+ * its own clock showed through it as a grey box; this way it thins with the background, on the
+ * scroll's own frames. The dark palette keeps the timed fade alone.
+ */
+internal fun headerShadowStrength(fade: Float, collapse: Float, dark: Boolean): Float =
+    if (dark) fade else fade * ((collapse - SolidCollapse) / (1f - SolidCollapse)).coerceIn(0f, 1f)
+
 /**
  * The profile header, which becomes the screen's top bar as the grid scrolls: the avatar shrinks
  * from 88 dp to the search button's 40 dp, the photo count fades, and the padding tightens to a
@@ -82,20 +100,26 @@ internal fun CollapsingHeader(
             }
     }
     val background = LabTheme.colors.background
+    val dark = LabTheme.isDark
     Layout(
         modifier =
             modifier
                 .testTag(GalleryHeaderTag)
                 .fillMaxWidth()
                 .graphicsLayer {
-                    shadowElevation = shadow.value * HeaderShadowElevation.toPx()
+                    shadowElevation =
+                        headerShadowStrength(shadow.value, collapse(), dark) *
+                            HeaderShadowElevation.toPx()
                     shape = RectangleShape
                     clip = false
                 }
                 // Only as solid as the header is collapsed: at the top there is nothing under it
                 // (the grid keeps 16 dp below it all the way up), and a solid background there
                 // swept a dark band over the photos whenever search faded the header in or out.
-                .drawBehind { drawRect(background, alpha = collapse()) },
+                .drawBehind { drawRect(background, alpha = collapse()) }
+                // After the background, so the bar still spans the screen while its contents keep
+                // clear of a side cutout or navigation bar.
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
         content = {
             Box { avatar() }
             Text(

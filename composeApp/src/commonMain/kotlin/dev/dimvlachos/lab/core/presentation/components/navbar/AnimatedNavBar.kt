@@ -23,6 +23,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
@@ -32,6 +35,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
@@ -55,6 +59,12 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+/**
+ * How tall [AnimatedNavBar] stands, the selected tab's bubble included: what content scrolling
+ * beneath the bar keeps clear of.
+ */
+public val AnimatedNavBarHeight: Dp = NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight
 
 internal const val NavBarRowTestTag = "navBarRow"
 internal const val NavBarBubbleTestTag = "navBarBubble"
@@ -115,16 +125,31 @@ public fun AnimatedNavBar(
     LaunchedEffect(target, layers.action) { actionState.animateTo(target) }
 
     Box(
-        modifier
-            .fillMaxWidth()
-            .height(NavBarDimens.BubbleOverhang + NavBarDimens.BarHeight)
-            .graphicsLayer { translationY = -collapse() * NavBarDimens.FloatLift.toPx() }
+        modifier.fillMaxWidth().height(AnimatedNavBarHeight).graphicsLayer {
+            translationY = -collapse() * NavBarDimens.FloatLift.toPx()
+        }
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.align(Alignment.TopStart)
                     .barRowPlacement(itemCount, collapse, actionRevealValue)
                     .testTag(NavBarRowTestTag)
+                    // On the light palette the bar is only a shade off the screen behind it: a
+                    // soft shadow, notch and all, lifts it off.
+                    .then(
+                        if (colors.isDark) Modifier
+                        else
+                            Modifier.graphicsLayer {
+                                shadowElevation = NavBarDimens.LightShadowElevation.toPx()
+                                shape =
+                                    BarShape(
+                                        itemCount,
+                                        layers.cutout,
+                                        collapse(),
+                                        indicator.calmCenterSlot,
+                                    )
+                            }
+                    )
                     .drawBehind { drawBar(itemCount, indicator, layers, colors, collapse) }
                     .selectableGroup()
             ) {
@@ -238,12 +263,40 @@ private fun DrawScope.drawBar(
     colors: AppColors,
     collapse: () -> Float,
 ) {
+    val slot = size.width / itemCount
+    val pillHeight = pillHeightPx(size.height, NavBarDimens.PillInset.toPx())
+    drawPath(
+        barOutline(size, itemCount, layers.cutout, collapse(), indicator.calmCenterSlot),
+        colors.bar,
+    )
+
+    if (layers.indicator && !layers.cutout) {
+        val inset = NavBarDimens.PillInset.toPx()
+        val left = indicator.leftSlot * slot + inset
+        val right = max(indicator.rightSlot * slot - inset, left + pillHeight)
+        drawRoundRect(
+            color = colors.accentSoft,
+            topLeft = Offset(left, (size.height - pillHeight) / 2f),
+            size = Size(right - left, pillHeight),
+            cornerRadius = CornerRadius(pillHeight / 2f),
+        )
+    }
+}
+
+// The bar's outline at [size]: a pill, with the notch the bubble sits in cut into its top when
+// [cutout] is on, collapsed by [m] and centred on slot [centerSlot].
+private fun Density.barOutline(
+    size: Size,
+    itemCount: Int,
+    cutout: Boolean,
+    m: Float,
+    centerSlot: Float,
+): Path {
     val corner = size.height / 2f
     val slot = size.width / itemCount
     val pillHeight = pillHeightPx(size.height, NavBarDimens.PillInset.toPx())
     val notch =
-        if (layers.cutout) {
-            val m = collapse()
+        if (cutout) {
             val morphed =
                 restingNotch(
                     m = m,
@@ -258,7 +311,7 @@ private fun DrawScope.drawBar(
                 )
             morphed?.let {
                 filletedNotch(
-                    centerX = clampNotchCenter(indicator.calmCenterSlot * slot, size.width),
+                    centerX = clampNotchCenter(centerSlot * slot, size.width),
                     centerY = it.centerY,
                     notchRadius = it.notchRadius,
                     filletRadius = it.filletRadius,
@@ -270,19 +323,18 @@ private fun DrawScope.drawBar(
         } else {
             null
         }
-    drawPath(barPath(size, corner, notch), colors.bar)
+    return barPath(size, corner, notch)
+}
 
-    if (layers.indicator && !layers.cutout) {
-        val inset = NavBarDimens.PillInset.toPx()
-        val left = indicator.leftSlot * slot + inset
-        val right = max(indicator.rightSlot * slot - inset, left + pillHeight)
-        drawRoundRect(
-            color = colors.accentSoft,
-            topLeft = Offset(left, (size.height - pillHeight) / 2f),
-            size = Size(right - left, pillHeight),
-            cornerRadius = CornerRadius(pillHeight / 2f),
-        )
-    }
+// The bar's outline as a shape, for its shadow: a new one whenever the notch moves or morphs.
+private data class BarShape(
+    val itemCount: Int,
+    val cutout: Boolean,
+    val m: Float,
+    val centerSlot: Float,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
+        Outline.Generic(density.barOutline(size, itemCount, cutout, m, centerSlot))
 }
 
 @Composable

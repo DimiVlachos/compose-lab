@@ -13,6 +13,8 @@ internal object NavBarDimens {
     val NotchFillet = 16.dp
     val NotchBlendWindow = 16.dp
     val FloatLift = 12.dp
+    // The bar's shadow on the light palette; on the dark one it casts none.
+    val LightShadowElevation = 6.dp
     val IconSize = 26.dp
     val ActionGap = 8.dp
     const val BubbleStretchRatio = 1.35f

@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
@@ -46,6 +50,8 @@ import dev.dimvlachos.lab.resources.edit_photo_title
 import dev.dimvlachos.lab.resources.ic_edit
 import dev.dimvlachos.lab.resources.ic_image
 import dev.dimvlachos.lab.resources.ic_photo_camera
+import kotlin.math.min
+import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -56,6 +62,10 @@ internal val FabRadius = 16.dp
 internal val DialogRadius = 28.dp
 internal val FabSize = 56.dp
 private const val DialogWidth = 0.8f
+private val DialogMaxWidth = 400.dp
+// White on the light palette's pale veil has next to no edge, so there the FAB and the dialog lift
+// off it with a shadow. On the dark one the surface already stands out, and casts none.
+private val LightShadowElevation = 6.dp
 private const val IconFadeMs = 100
 private const val DialogScrimAlpha = 0.5f
 internal const val DialogScrimTag = "dialogScrim"
@@ -82,6 +92,7 @@ internal fun FabSource(
                 .testTag(FabSourceTag)
                 .clickable(role = Role.Button, onClick = onOpen),
         color = LabTheme.colors.surface,
+        shadowElevation = surfaceShadow(),
     ) {
         // The pencil leaves first on an open. On a close it rides the centre of the shrinking
         // dialog and fades in with it, on the morph's own curve and duration, so it lands with the
@@ -131,16 +142,22 @@ internal fun FabDialogTarget(
             counterpartRadius = FabRadius,
             modifier =
                 Modifier.align(Alignment.Center)
-                    .fillMaxWidth(DialogWidth)
+                    // Never taller than the stage less a margin: on a phone on its side at a large
+                    // font size, its contents scroll instead.
+                    .padding(vertical = LabTheme.spacing.large)
+                    .dialogWidth()
                     .wrapContentHeight()
                     .testTag(FabDialogTag),
             preMorphRadius = FabRadius,
             overlayZIndex = appearingOnTop(animatedVisibilityScope),
             color = LabTheme.colors.surface,
+            shadowElevation = surfaceShadow(),
         ) {
             // Inside the node, the contents ride the container and fade with its width.
             Column(
-                Modifier.morphWidthFraction(fraction).padding(LabTheme.spacing.large),
+                Modifier.morphWidthFraction(fraction)
+                    .verticalScroll(rememberScrollState())
+                    .padding(LabTheme.spacing.large),
                 verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
             ) {
                 Text(
@@ -184,6 +201,8 @@ internal fun FabDialogTarget(
 private fun appearingOnTop(animatedVisibilityScope: AnimatedVisibilityScope): Float =
     if (animatedVisibilityScope.transition.targetState == EnterExitState.Visible) 1f else 0f
 
+@Composable private fun surfaceShadow(): Dp = if (LabTheme.isDark) 0.dp else LightShadowElevation
+
 @Composable
 private fun DialogRow(icon: Painter, label: String, chrome: Modifier) {
     Row(
@@ -198,4 +217,12 @@ private fun DialogRow(icon: Painter, label: String, chrome: Modifier) {
         Icon(icon, null, tint = LabTheme.colors.textPrimary)
         Text(label, color = LabTheme.colors.textPrimary, style = LabTheme.typography.body)
     }
+}
+
+// Four fifths of the stage's width, up to a dialog's usual 400 dp, so it stays a dialog on a phone
+// turned on its side instead of stretching into a banner.
+private fun Modifier.dialogWidth(): Modifier = layout { measurable, constraints ->
+    val width = min((constraints.maxWidth * DialogWidth).roundToInt(), DialogMaxWidth.roundToPx())
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
 }

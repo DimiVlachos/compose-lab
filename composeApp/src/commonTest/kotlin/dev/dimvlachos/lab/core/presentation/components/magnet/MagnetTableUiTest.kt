@@ -280,7 +280,7 @@ class MagnetTableUiTest {
         assertTrue(right.blue < Color.Blue.blue && right.red < 0.05f, "the right leg is $right")
         assertTrue(at("a", 0f, 8f) != Color.Blue, "the middle of the U is hollow")
         // A tag without a colour of its own wears the theme's red.
-        assertEquals(AppColors().magnetRed, at("b", -leg, 4f))
+        assertEquals(AppColors.Dark.magnetRed, at("b", -leg, 4f))
     }
 
     private class Ticks : HapticFeedback {
@@ -438,7 +438,7 @@ class MagnetTableUiTest {
         // Just under where the rail now begins: rail, not table.
         val pixels = onNodeWithTag("table").captureToImage().toPixelMap()
         val y = ((720f - after + 4f) * density.density).toInt()
-        assertEquals(AppColors().stripRail, pixels[4, y], "the rail wasn't drawn again")
+        assertEquals(AppColors.Dark.stripRail, pixels[4, y], "the rail wasn't drawn again")
     }
 
     @Test

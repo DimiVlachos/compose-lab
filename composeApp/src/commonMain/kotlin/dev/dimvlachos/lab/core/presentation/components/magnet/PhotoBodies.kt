@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -11,15 +12,23 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * A photo card on the table, in dp from the table's top left. [spot] is where it first lay, as a
- * share of the table's width and height, so it keeps its place on a table of another size; [home]
- * is that spot on this table, where it slides back to when nothing holds it. [strengths] say how
- * well it matches each tag, 0 to 1; a tag it doesn't list it doesn't match at all.
+ * Where a card first lies on a table of any shape: the [cell] it was dealt in a grid of the table's
+ * own columns, and how far across and down that cell it lies, [jx] and [jy], from 0 to 1, a half
+ * being its middle.
+ */
+internal data class ScatterSeed(val cell: Int, val jx: Float, val jy: Float)
+
+/**
+ * A photo card on the table, in dp from the table's top left. [seed] is where it first lay, a cell
+ * in a grid laid over the table, so it keeps its place on a table of another size and finds a new
+ * one on a table of another shape; [home] is that place on this table, where it slides back to when
+ * nothing holds it. [strengths] say how well it matches each tag, 0 to 1; a tag it doesn't list it
+ * doesn't match at all.
  */
 internal class PhotoBody(
     val id: String,
     val strengths: Map<String, Float>,
-    val spot: Offset,
+    val seed: ScatterSeed = ScatterSeed(0, 0.5f, 0.5f),
     val tilt: Float = 0f,
 ) {
     var home = Offset.Zero
@@ -37,6 +46,12 @@ internal class PhotoBody(
 
     /** Held by a finger: it goes where the finger takes it and feels no magnet. */
     var held = false
+
+    /**
+     * How far it is lifted off the table, 0 lying on it to 1 held: eased towards how it lies, so
+     * its shadow spreads as it is picked up and gathers back as it lands.
+     */
+    var lift = 0f
 
     /** The magnets it is stuck to, in the order it stuck: one, or two when it hangs between. */
     val stuckTo: MutableSet<String> = LinkedHashSet()
@@ -129,18 +144,35 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
     val atRest: Boolean
         get() = quiet >= MagnetDimens.QuietSteps
 
+    // How many columns the cards are scattered over: as many as suit the table's shape.
+    private var columns = 0
+
     /**
-     * Lays the cards out on a table [width] × [height] dp: the first time each at its spot, after
-     * that moved with the table as it grows or shrinks.
+     * Lays the cards out on a table [width] × [height] dp: the first time each at its home, after
+     * that moved with the table as it grows or shrinks. A table turned to another shape, which
+     * suits another number of columns, deals the cards new homes, and the loose ones go straight to
+     * theirs; a card on a magnet or in a finger stays with it.
      */
     fun resize(width: Float, height: Float) {
         if (width <= 0f || height <= 0f) return
         val sx = if (this.width > 0f) width / this.width else 0f
         val sy = if (this.height > 0f) height / this.height else 0f
+        val columns = scatterColumns(bodies.size, width, height)
+        val regrid = this.columns != 0 && columns != this.columns
         for (body in bodies) {
-            body.home = Offset(body.spot.x * width, body.spot.y * height)
-            body.at = if (sx > 0f) Offset(body.at.x * sx, body.at.y * sy) else body.home
+            val spot = scatterSpot(body.seed, bodies.size, columns)
+            body.home = Offset(spot.x * width, spot.y * height)
+            body.at =
+                when {
+                    sx <= 0f -> body.home
+                    regrid && body.stuckTo.isEmpty() && !body.held -> {
+                        body.velocity = Offset.Zero
+                        body.home
+                    }
+                    else -> Offset(body.at.x * sx, body.at.y * sy)
+                }
         }
+        this.columns = columns
         this.width = width
         this.height = height
         keepOnTable()
@@ -197,6 +229,13 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
                 if (speed > most) body.velocity *= most / speed
             }
             if (body.velocity.getDistance() > MagnetDimens.StillSpeed) moving = true
+        }
+        for (i in bodies.indices) {
+            val body = bodies[i]
+            val target = liftOf(body, travelling[i])
+            val gap = target - body.lift
+            body.lift += gap * min(1f, dt * MagnetDimens.LiftRate)
+            if (abs(gap) > MagnetDimens.StillLift) moving = true else body.lift = target
         }
         quiet = if (moving || changed) 0 else quiet + 1
         return changed
@@ -507,26 +546,70 @@ internal class PhotoBodies(val bodies: List<PhotoBody>) {
 
     internal companion object {
         /**
-         * Where [count] cards first lie, as shares of the table: a jittered grid three across, in a
-         * shuffled order, so the table looks strewn but no two cards start on top of each other.
+         * How far a card is lifted off the table, 0 to 1: all the way in a finger, a little on its
+         * way to a magnet or lying on one, over the cards it gathers on.
          */
-        fun scatter(count: Int, random: Random): List<Offset> {
-            val columns = 3
-            val rows = (count + columns - 1) / columns
+        fun liftOf(body: PhotoBody, travelling: Boolean): Float =
+            when {
+                body.held -> 1f
+                travelling -> MagnetDimens.TravelLift
+                body.stuckTo.isNotEmpty() -> MagnetDimens.StuckLift
+                else -> 0f
+            }
+
+        /**
+         * Where [count] cards first lie: each dealt a cell of a grid in a shuffled order, and put
+         * somewhere near its middle, so the table looks strewn but no two cards start on top of
+         * each other. [scatterSpot] finds the place on a grid of any number of columns.
+         */
+        fun scatter(count: Int, random: Random): List<ScatterSeed> {
             val cells = (0 until count).shuffled(random)
             return List(count) { i ->
-                val cell = cells[i]
-                val column = cell % columns
-                val row = cell / columns
-                Offset(
-                    (column + 0.5f + (random.nextFloat() - 0.5f) * Jitter) / columns,
-                    (row + 0.5f + (random.nextFloat() - 0.5f) * Jitter) / rows,
-                )
+                ScatterSeed(cells[i], random.nextFloat(), random.nextFloat())
             }
+        }
+
+        /**
+         * Where the card [seed] lies among [count] cards in a grid [columns] across, as shares of
+         * the table's width and height.
+         */
+        fun scatterSpot(seed: ScatterSeed, count: Int, columns: Int): Offset {
+            val rows = ((count + columns - 1) / columns).coerceAtLeast(1)
+            val column = seed.cell % columns
+            val row = seed.cell / columns
+            return Offset(
+                (column + 0.5f + (seed.jx - 0.5f) * Jitter) / columns,
+                (row + 0.5f + (seed.jy - 0.5f) * Jitter) / rows,
+            )
+        }
+
+        /**
+         * How many columns [count] cards are scattered over on a [width] × [height] table: of three
+         * to six, the one whose cells are most nearly a card's shape. A portrait table takes three,
+         * a short wide one more, so the cards spread along it instead of piling up.
+         */
+        fun scatterColumns(count: Int, width: Float, height: Float): Int {
+            if (count <= 0 || width <= 0f || height <= 0f) return MinColumns
+            val card = MagnetDimens.CardWidth.value / MagnetDimens.CardHeight.value
+            var best = MinColumns
+            var bestMiss = Float.MAX_VALUE
+            for (columns in MinColumns..max(MinColumns, min(MaxColumns, count))) {
+                val rows = (count + columns - 1) / columns
+                val miss = abs(ln(width / columns / (height / rows) / card))
+                if (miss < bestMiss) {
+                    best = columns
+                    bestMiss = miss
+                }
+            }
+            return best
         }
 
         // How far a card may lie from the middle of its cell, as a share of the cell.
         private const val Jitter = 0.3f
+
+        // The fewest and most columns the cards are scattered over.
+        private const val MinColumns = 3
+        private const val MaxColumns = 6
 
         // The places on a cluster, from its anchor: the anchor itself, which a single magnet's
         // puck covers but two magnets' midpoint leaves free, then rings a card's span apart, each

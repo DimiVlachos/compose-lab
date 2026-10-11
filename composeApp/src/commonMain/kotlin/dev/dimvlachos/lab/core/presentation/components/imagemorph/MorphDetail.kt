@@ -19,12 +19,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,11 +41,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.RequestSystemBarIcons
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_close
 import dev.dimvlachos.lab.resources.ic_close
+import dev.dimvlachos.lab.resources.photo_milos
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -69,6 +76,7 @@ internal fun MorphDetail(
     val staged = layers.stagedChrome
     val chromeAlpha: (Float) -> Float = { if (staged) morphChromeAlpha(it) else 1f }
     MorphProgress(animatedVisibilityScope) { progress, closing ->
+        CoveredBarIcons(progress, closing)
         val backdropAlpha: () -> Float = {
             if (staged) morphBackdropAlpha(progress.value, closing()) else 1f
         }
@@ -170,6 +178,7 @@ private fun DetailChrome(
     Box(Modifier.fillMaxSize().morphWidthFraction(fraction)) {
         Box(
             Modifier.align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(LabTheme.spacing.mediumLarge)
                 .then(fade)
                 .graphicsLayer {
@@ -189,41 +198,94 @@ private fun DetailChrome(
                 modifier = Modifier.align(Alignment.Center).size(CloseIconSize),
             )
         }
-        Column(
-            Modifier.align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .then(fade)
-                .graphicsLayer {
-                    this.alpha = alpha(fraction.floatValue)
-                    compositingStrategy = CompositingStrategy.ModulateAlpha
-                }
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = ScrimAlpha))
-                    )
+        DetailCaption(
+            title,
+            caption,
+            textModifier,
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().then(fade).graphicsLayer {
+                this.alpha = alpha(fraction.floatValue)
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
+        )
+    }
+}
+
+// The title and caption over the foot of the photo, on a dark scrim whatever the theme: light text
+// there in both. The dark palette keeps its own text tokens, as it always has; the light one's
+// would be dark on dark, so it takes the fixed tokens made for text on a photo.
+@Composable
+private fun DetailCaption(
+    title: String,
+    caption: String,
+    textModifier: Modifier,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LabTheme.colors
+    Column(
+        modifier
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, Color.Black.copy(alpha = ScrimAlpha))
                 )
-                // Inside the gradient, so the scrim still reaches the edge while the text clears
-                // the navigation bar.
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                .padding(
-                    start = LabTheme.spacing.mediumLarge,
-                    top = LabTheme.spacing.mediumLarge,
-                    end = LabTheme.spacing.mediumLarge,
-                    bottom = LabTheme.spacing.medium,
-                )
-        ) {
-            Text(
-                title,
-                color = LabTheme.colors.textPrimary,
-                style = LabTheme.typography.title,
-                modifier = textModifier,
             )
-            Text(
-                caption,
-                color = LabTheme.colors.textMuted,
-                style = LabTheme.typography.body,
-                modifier = textModifier,
+            // Inside the gradient, so the scrim still reaches the edges while the text clears the
+            // navigation bar and any cutout at the side.
+            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .padding(
+                start = LabTheme.spacing.mediumLarge,
+                top = LabTheme.spacing.mediumLarge,
+                end = LabTheme.spacing.mediumLarge,
+                bottom = LabTheme.spacing.medium,
+            )
+    ) {
+        Text(
+            title,
+            color = if (colors.isDark) colors.textPrimary else colors.onPhoto,
+            style = LabTheme.typography.title,
+            modifier = textModifier,
+        )
+        Text(
+            caption,
+            color = if (colors.isDark) colors.textMuted else colors.onPhotoMuted,
+            style = LabTheme.typography.body,
+            modifier = textModifier,
+        )
+    }
+}
+
+@Composable
+private fun DetailCaptionPreview(darkTheme: Boolean) {
+    LabTheme(darkTheme = darkTheme) {
+        Box(Modifier.size(360.dp, 240.dp)) {
+            Image(
+                painterResource(Res.drawable.photo_milos),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            DetailCaption(
+                title = "Milos",
+                caption = "A boat under the white cliffs",
+                textModifier = Modifier,
+                modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(),
             )
         }
     }
+}
+
+@Preview @Composable private fun DetailCaptionDarkPreview() = DetailCaptionPreview(darkTheme = true)
+
+@Preview
+@Composable
+private fun DetailCaptionLightPreview() = DetailCaptionPreview(darkTheme = false)
+
+// The photo fills the screen and darkens at its foot, so the navigation bar's icons go light, on
+// either palette, once it has grown past halfway and until it starts to close: while it is small
+// the screen behind it still shows under the bar. Its own scope, so only it recomposes when the
+// photo crosses halfway.
+@Composable
+private fun CoveredBarIcons(progress: State<Float>, closing: () -> Boolean) {
+    val covered by remember(progress) { derivedStateOf { progress.value > 0.5f && !closing() } }
+    RequestSystemBarIcons(navigationDarkIcons = if (covered) false else null)
 }

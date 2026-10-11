@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A framed mirror with a wiped streak across its glass. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M4,2h16v20H4zM6,4v16h12V4zM8,14.5l6,-7l1.5,1.3l-6,7zM10,18.5l5,-5.8l1.3,1.1l-5,5.8z" />
+</vector>

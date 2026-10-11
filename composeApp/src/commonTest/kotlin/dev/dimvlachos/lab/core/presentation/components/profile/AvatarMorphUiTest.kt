@@ -6,6 +6,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -14,6 +15,7 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -23,6 +25,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalTestApi::class)
@@ -105,5 +108,30 @@ class AvatarMorphUiTest {
         Snapshot.sendApplyNotifications()
         mainClock.advanceTimeBy(1_000)
         onNodeWithTag("overlay").assertDoesNotExist()
+    }
+
+    @Test
+    fun onAWideStageTheCircleFitsTheHeight() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            LabTheme {
+                val painter = painterResource(Res.drawable.portrait)
+                SharedTransitionLayout(Modifier.requiredSize(800.dp, 290.dp)) {
+                    AnimatedVisibility(
+                        true,
+                        enter = EnterTransition.None,
+                        exit = ExitTransition.None,
+                    ) {
+                        AvatarTarget(painter, this@SharedTransitionLayout, this, {})
+                    }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(1_000)
+        val circle = onNodeWithTag(AvatarTargetTag).getBoundsInRoot()
+        val side = circle.right - circle.left
+        assertTrue(side <= 290.dp * 0.72f + 1.dp, "side $side clears the stage's height")
+        assertTrue(side >= 290.dp * 0.72f - 1.dp, "side $side is the height's share")
+        assertTrue((circle.bottom - circle.top - side).value in -1f..1f, "still a circle")
     }
 }
