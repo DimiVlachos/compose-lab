@@ -73,7 +73,8 @@ internal fun HomeScreen(
     val words = rememberCatalogWords(entries)
     // Only the tags some demo has, in the tags' own order.
     val tags = remember(entries) { DemoTag.entries.filter { it in catalogTags(entries) } }
-    val shown = filterCatalog(entries, filter.query, words)
+    val query = filter.query
+    val shown = remember(entries, query, words) { filterCatalog(entries, query, words) }
     Column(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
         LabTopBar(
             navigationIcon =

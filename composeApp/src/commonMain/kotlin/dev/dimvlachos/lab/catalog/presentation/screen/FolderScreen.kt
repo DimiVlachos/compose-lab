@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import dev.dimvlachos.lab.catalog.Catalog
@@ -40,7 +41,7 @@ internal fun FolderScreen(
             LabTopBarTitle(stringResource(group.title))
         }
         CatalogGrid(
-            entries = group.demos.map { CatalogEntry.Single(it) },
+            entries = remember(group) { group.demos.map { CatalogEntry.Single(it) } },
             onOpenDemo = onOpenDemo,
             onOpenGroup = {},
             modifier = Modifier.fillMaxWidth().weight(1f),
