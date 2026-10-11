@@ -6,24 +6,22 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotateRad
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
+import dev.dimvlachos.lab.core.presentation.ui.clipToReveal
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.exp
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.tan
 
@@ -130,19 +128,7 @@ internal class LampPainter {
         inside: Boolean,
         content: DrawScope.() -> Unit,
     ) {
-        val from = state.revealFrom
-        val farthest =
-            max(
-                max(hypot(from.x, from.y), hypot(size.width - from.x, from.y)),
-                max(
-                    hypot(from.x, size.height - from.y),
-                    hypot(size.width - from.x, size.height - from.y),
-                ),
-            )
-        val radius = farthest * state.reveal.value
-        circle.rewind()
-        circle.addOval(Rect(from, radius))
-        clipPath(circle, if (inside) ClipOp.Intersect else ClipOp.Difference) { content() }
+        clipToReveal(circle, state.revealFrom, state.reveal.value, inside, content)
     }
 
     /**
