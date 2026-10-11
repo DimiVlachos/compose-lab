@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import kotlin.math.PI
 import kotlin.math.abs
@@ -57,9 +58,15 @@ internal class DartPainter {
      * The dart at [placement] in [paper], [inside] where the folds show the inside of the sheet,
      * with its shadow under it: each facet cut a little past its creases so no seam shows, its
      * grain on it so it turns and foreshortens with it, and pressed in along every crease and edge
-     * it has.
+     * it has. An [edge] colour, if specified, traces round each facet over that.
      */
-    fun DrawScope.drawDart(plan: FoldPlan, placement: Placement, paper: Color, inside: Color) {
+    fun DrawScope.drawDart(
+        plan: FoldPlan,
+        placement: Placement,
+        paper: Color,
+        inside: Color,
+        edge: Color = Color.Unspecified,
+    ) {
         shape(plan)
         if (filtersFor != (paper to inside)) {
             filters.fill(null)
@@ -87,6 +94,7 @@ internal class DartPainter {
                     alpha = PaperPlaneDimens.CreaseAlpha,
                     style = crease,
                 )
+                if (edge.isSpecified) drawPath(edges[i], edge, style = crease)
             }
         }
     }

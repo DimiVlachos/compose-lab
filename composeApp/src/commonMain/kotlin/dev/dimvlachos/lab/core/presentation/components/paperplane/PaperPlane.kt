@@ -26,10 +26,16 @@ import kotlin.math.sin
 /**
  * The stage paper planes fly over: lay it over everything they cross. The planes are folded from
  * [paper]; the letters they drop are drawn from the text they carry, as it is laid out where it
- * lands.
+ * lands. Over a background nearly as light as the paper, an [edge] colour traces round each facet
+ * so the plane still stands out; left unspecified, there is none.
  */
 @Composable
-public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier = Modifier) {
+public fun PaperPlane(
+    state: PaperPlaneState,
+    paper: Color,
+    modifier: Modifier = Modifier,
+    edge: Color = Color.Unspecified,
+) {
     val inside = remember(paper) { lerp(paper, Color.Black, PaperPlaneDimens.InsideShade) }
     Spacer(
         modifier
@@ -42,7 +48,7 @@ public fun PaperPlane(state: PaperPlaneState, paper: Color, modifier: Modifier =
                 for (flight in flights) {
                     if (!flight.flying) continue
                     val placed = flight.placement().shiftedBy(-origin)
-                    with(flight.painter) { drawDart(flight.plan, placed, paper, inside) }
+                    with(flight.painter) { drawDart(flight.plan, placed, paper, inside, edge) }
                 }
             }
     )

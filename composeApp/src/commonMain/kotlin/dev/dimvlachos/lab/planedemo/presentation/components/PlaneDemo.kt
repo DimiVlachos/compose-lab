@@ -122,6 +122,9 @@ private val FieldShape = RoundedCornerShape(FieldCorner)
 private val FieldPadding = PaddingValues(start = 18.dp, top = 12.dp, bottom = 12.dp)
 private val ButtonRoom = TouchTarget + 4.dp
 
+// How dark the line round the flying plane's facets is on the light screen.
+private const val LightEdgeAlpha = 0.2f
+
 // The field grows to this many lines, fewer on a screen too short to spare them (a phone on its
 // side, with the keyboard up).
 private const val FieldMaxLines = 4
@@ -286,7 +289,16 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
             )
         }
         LetterStage(letters, Modifier.fillMaxSize())
-        PaperPlane(plane, colors.paper, Modifier.fillMaxSize())
+        PaperPlane(
+            plane,
+            colors.paper,
+            Modifier.fillMaxSize(),
+            // On the light screen the paper is nearly the background's own colour: a faint line
+            // round each facet keeps the plane in sight.
+            edge =
+                if (LabTheme.isDark) Color.Unspecified
+                else Color.Black.copy(alpha = LightEdgeAlpha),
+        )
     }
 }
 
