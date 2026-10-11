@@ -3,9 +3,11 @@ package dev.dimvlachos.lab
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
@@ -153,5 +155,72 @@ class AppSmokeTest {
         runOnUiThread { input.backCompleted() }
         waitForIdle()
         onNodeWithText("compose-lab").assertExists()
+    }
+
+    @Test
+    fun theSearchFindsADemoInsideItsFolderAndBackClosesIt() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("bath")
+        waitForIdle()
+        onNodeWithText("Bathroom").assertExists()
+        onNodeWithText("in Fogged mirror").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+        onNodeWithText("compose-lab").assertDoesNotExist()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Nav bar").assertExists()
+    }
+
+    @Test
+    fun aSearchWithNoMatchSaysSo() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("zzqx")
+        waitForIdle()
+        onNodeWithText("No demos match your search").assertExists()
+        onNodeWithContentDescription("Clear search").performClick()
+        waitForIdle()
+        onNodeWithText("Nav bar").assertExists()
+    }
+
+    @Test
+    fun aDemoOpenedFromTheSearchGoesBackToIt() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("plane")
+        waitForIdle()
+        onNodeWithText("Paper plane").performClick()
+        waitForIdle()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+        onNodeWithText("Paper plane").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+    }
+
+    @Test
+    fun systemBackClosesTheSearchAndClearsIt() = runComposeUiTest {
+        val input = DirectNavigationEventInput()
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(input)
+                onDispose { owner.navigationEventDispatcher.removeInput(input) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                App(initialDemoId = null, record = false, label = false)
+            }
+        }
+        onNodeWithContentDescription("Search").performClick()
+        onNode(hasSetTextAction()).performTextInput("bath")
+        waitForIdle()
+        runOnUiThread { input.backCompleted() }
+        waitForIdle()
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithText("Nav bar").assertExists()
+        onNodeWithContentDescription("Search").performClick()
+        waitForIdle()
+        onNodeWithText("bath").assertDoesNotExist()
     }
 }

@@ -97,4 +97,36 @@ class AppNavigationTest {
         assertFalse(inFolder.pushesOver(fromFolder))
         assertFalse(home.pushesOver(fromHome))
     }
+
+    @Test
+    fun backClosesTheSearchOnceEverythingOverItIsClosed() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        navigation.openSearch()
+        assertTrue(navigation.searchOpen)
+        assertTrue(navigation.canGoBack)
+        navigation.openDemo(morphApp)
+        assertEquals(AppScreen.Home, navigation.backScreen)
+        navigation.back()
+        assertNull(navigation.demo)
+        assertTrue(navigation.searchOpen, "back from a demo lands on the search it came from")
+        navigation.back()
+        assertFalse(navigation.searchOpen)
+        assertFalse(navigation.canGoBack)
+    }
+
+    @Test
+    fun closingTheSearchHasNoScreenToSwipeBackTo() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        navigation.openSearch()
+        assertEquals(AppScreen.Home, navigation.screen)
+        assertNull(navigation.backScreen)
+    }
+
+    @Test
+    fun theSearchOpensOnlyFromHome() {
+        val navigation = AppNavigation(initialDemo = null, record = false)
+        navigation.openGroup(folder)
+        navigation.openSearch()
+        assertFalse(navigation.searchOpen)
+    }
 }

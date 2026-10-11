@@ -163,4 +163,7 @@
         <item quantity="other">%1$d versions</item>
     </plurals>
     <string name="catalog_in_folder">in %1$s</string>
+    <string name="catalog_search_placeholder">Search demos</string>
+    <string name="catalog_search_clear">Clear search</string>
+    <string name="catalog_no_results">No demos match your search</string>
 </resources>

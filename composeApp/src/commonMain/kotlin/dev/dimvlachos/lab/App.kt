@@ -17,6 +17,7 @@ import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.catalog.Catalog
+import dev.dimvlachos.lab.catalog.presentation.rememberCatalogFilterState
 import dev.dimvlachos.lab.catalog.presentation.screen.FolderScreen
 import dev.dimvlachos.lab.catalog.presentation.screen.HomeScreen
 import dev.dimvlachos.lab.core.demo.RecordingLog
@@ -61,8 +62,15 @@ internal fun LabApp(
     LabWindow(mode = theme.mode, dark = dark, record = record) {
         val initialDemo = remember { Catalog.find(initialDemoId) }
         val navigation = remember { AppNavigation(initialDemo, record) }
+        // Kept here, above the screens, so a search is still there after a demo opened from it.
+        val filter = rememberCatalogFilterState()
+        LaunchedEffect(navigation.searchOpen) {
+            if (!navigation.searchOpen) filter.text = ""
+        }
         // The system back gesture steps back like the on-screen Back buttons; on the home screen
-        // it is left to the system, which closes the app.
+        // it closes the search, and then is left to the system, which closes the app. It is the
+        // app's one back handler: one inside a screen would stay registered as the screen slid
+        // off, and take the gesture from this one.
         val backGesture = rememberNavigationEventState(NavigationEventInfo.None)
         NavigationBackHandler(
             state = backGesture,
@@ -139,6 +147,10 @@ internal fun LabApp(
                     saveableStates.SaveableStateProvider("home") {
                         HomeScreen(
                             entries = Catalog.entries,
+                            filter = filter,
+                            searchOpen = navigation.searchOpen,
+                            onOpenSearch = navigation::openSearch,
+                            onCloseSearch = navigation::back,
                             onOpenDemo = navigation::openDemo,
                             onOpenGroup = navigation::openGroup,
                         )
