@@ -298,6 +298,9 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
             edge =
                 if (LabTheme.isDark) Color.Unspecified
                 else Color.Black.copy(alpha = LightEdgeAlpha),
+            // And a sent message's letters, white for the bubble they land in, would be lost on
+            // it as they fall: they fall in the bubble's own colour and whiten as they land.
+            air = if (LabTheme.isDark) Color.Unspecified else colors.accent,
         )
     }
 }

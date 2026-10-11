@@ -15,6 +15,23 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PaperPlaneMathTest {
+    @Test
+    fun aFallingLetterTakesBackItsOwnInkAsItComesDownIntoItsPlace() {
+        val land = PaperPlaneDimens.LandAt
+        // In the air, all the air's colour; down in its place, all its own.
+        assertEquals(0f, inkShown(0f))
+        assertEquals(0f, inkShown(land * 0.4f))
+        assertEquals(1f, inkShown(land))
+        assertEquals(1f, inkShown(1f))
+        // And steadily in between.
+        var last = 0f
+        for (i in 0..100) {
+            val now = inkShown(i / 100f)
+            assertTrue(now >= last, "it went back to the air's colour at ${i / 100f}")
+            last = now
+        }
+    }
+
     // The sheet every plane is folded from.
     private val sheet = DartSheet
     private val plan = planFolds(sheet)

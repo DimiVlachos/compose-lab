@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.paperplane
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -21,8 +22,11 @@ import kotlin.math.floor
 internal class LetterAtlas(private val text: TextLayoutResult) {
     private var picture: ImageBitmap? = null
 
-    /** The letter in [box] of the text, at its place in the text laid out from the origin. */
-    fun DrawScope.drawLetter(box: Rect, alpha: Float) {
+    /**
+     * The letter in [box] of the text, at its place in the text laid out from the origin; through
+     * [colorFilter], if there is one, to draw it in another colour.
+     */
+    fun DrawScope.drawLetter(box: Rect, alpha: Float, colorFilter: ColorFilter? = null) {
         val image = picture ?: drawn().also { picture = it }
         val left = floor(box.left).toInt().coerceIn(0, image.width)
         val top = floor(box.top).toInt().coerceIn(0, image.height)
@@ -31,7 +35,7 @@ internal class LetterAtlas(private val text: TextLayoutResult) {
         if (right == left || bottom == top) return
         val at = IntOffset(left, top)
         val size = IntSize(right - left, bottom - top)
-        drawImage(image, at, size, at, size, alpha)
+        drawImage(image, at, size, at, size, alpha, colorFilter = colorFilter)
     }
 
     private fun DrawScope.drawn(): ImageBitmap {

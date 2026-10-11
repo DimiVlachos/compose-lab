@@ -140,6 +140,10 @@ internal object PaperPlaneDimens {
     const val LandAt = 0.72f
     const val Settle = 2.5f
 
+    // A letter drawn in the air's colour, where there is one, keeps it for this share of its way
+    // down to its landing, then takes back its own ink by the time it lands.
+    const val AirShare = 0.5f
+
     // Leaning into its turns as a glider does, against this pull of gravity across the stage, in
     // density units a millisecond squared, up to its steepest; it takes this long to roll into a
     // turn and out of it.
