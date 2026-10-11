@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphEnd
@@ -60,6 +61,9 @@ internal val DialogRadius = 28.dp
 internal val FabSize = 56.dp
 private const val DialogWidth = 0.8f
 private val DialogMaxWidth = 400.dp
+// White on the light palette's pale veil has next to no edge, so there the FAB and the dialog lift
+// off it with a shadow. On the dark one the surface already stands out, and casts none.
+private val LightShadowElevation = 6.dp
 private const val IconFadeMs = 100
 private const val DialogScrimAlpha = 0.5f
 internal const val DialogScrimTag = "dialogScrim"
@@ -86,6 +90,7 @@ internal fun FabSource(
                 .testTag(FabSourceTag)
                 .clickable(role = Role.Button, onClick = onOpen),
         color = LabTheme.colors.surface,
+        shadowElevation = surfaceShadow(),
     ) {
         // The pencil leaves first on an open. On a close it rides the centre of the shrinking
         // dialog and fades in with it, on the morph's own curve and duration, so it lands with the
@@ -141,6 +146,7 @@ internal fun FabDialogTarget(
             preMorphRadius = FabRadius,
             overlayZIndex = appearingOnTop(animatedVisibilityScope),
             color = LabTheme.colors.surface,
+            shadowElevation = surfaceShadow(),
         ) {
             // Inside the node, the contents ride the container and fade with its width.
             Column(
@@ -187,6 +193,8 @@ internal fun FabDialogTarget(
 @Composable
 private fun appearingOnTop(animatedVisibilityScope: AnimatedVisibilityScope): Float =
     if (animatedVisibilityScope.transition.targetState == EnterExitState.Visible) 1f else 0f
+
+@Composable private fun surfaceShadow(): Dp = if (LabTheme.isDark) 0.dp else LightShadowElevation
 
 @Composable
 private fun DialogRow(icon: Painter, label: String, chrome: Modifier) {

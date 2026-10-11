@@ -547,10 +547,9 @@ private fun SourceSlot(
     }
 }
 
-@Preview
 @Composable
-private fun ProfileGalleryPreview() {
-    LabTheme {
+private fun ProfileGalleryPreview(darkTheme: Boolean) {
+    LabTheme(darkTheme = darkTheme) {
         var scene by remember { mutableStateOf(GalleryScene()) }
         ProfileGallery(
             name = "Alex Morgan",
@@ -570,3 +569,11 @@ private fun ProfileGalleryPreview() {
         )
     }
 }
+
+@Preview
+@Composable
+private fun ProfileGalleryDarkPreview() = ProfileGalleryPreview(darkTheme = true)
+
+@Preview
+@Composable
+private fun ProfileGalleryLightPreview() = ProfileGalleryPreview(darkTheme = false)

@@ -49,10 +49,13 @@ import dev.dimvlachos.lab.core.presentation.components.profile.ScrimTag
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchPillTag
 import dev.dimvlachos.lab.core.presentation.components.profile.SearchSourceTag
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.LocalSystemBarRequests
+import dev.dimvlachos.lab.core.presentation.ui.SystemBarRequests
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.portrait
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 // A phone held upright, at the top start of the test window, which is wider than it is tall: the
@@ -566,5 +569,32 @@ class ProfileGalleryUiTest {
         } // a card lies below
         mainClock.advanceTimeBy(1_000)
         assertEquals(emptyList(), reported)
+    }
+
+    @Test
+    fun anOpenPhotoAsksForLightNavigationIconsOnTheLightPalette() = runComposeUiTest {
+        val requests = SystemBarRequests()
+        mainClock.autoAdvance = false
+        setContent {
+            CompositionLocalProvider(LocalSystemBarRequests provides requests) {
+                LabTheme(darkTheme = false) {
+                    ProfileGallery(
+                        name = "Alex Morgan",
+                        portrait = Res.drawable.portrait,
+                        photos = testIslands(),
+                        searchQuery = "xos",
+                        scene = scene,
+                        onSceneChange = { reported += it },
+                        modifier = PhoneStage,
+                    )
+                }
+            }
+        }
+        mainClock.advanceTimeBy(500)
+        assertNull(requests.navigationDarkIcons, "the bare screen leaves the bars to the theme")
+        go(GalleryScene(photo = 3))
+        assertEquals(false, requests.navigationDarkIcons, "light icons over the photo's scrim")
+        go(GalleryScene())
+        assertNull(requests.navigationDarkIcons, "and back to the theme's once it has gone")
     }
 }

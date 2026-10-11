@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /** Both ends share one shape (a circle, a pill), so there is no radius to pair. */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -57,6 +58,7 @@ internal fun Modifier.morphRadiusBounds(
     remeasure: Boolean = true,
     paired: Boolean = true,
     overlayZIndex: Float = 0f,
+    shadowElevation: Dp = 0.dp,
 ): Modifier =
     with(sharedTransitionScope) {
         val sharedContentState = rememberSharedContentState(key)
@@ -83,10 +85,12 @@ internal fun Modifier.morphRadiusBounds(
                 clipInOverlayDuringTransition = overlayClip,
             )
             // The element's own clip, read in the layer block: Modifier.clip(shape) takes a value,
-            // so a radius read there would recompose this end on every frame of the morph.
+            // so a radius read there would recompose this end on every frame of the morph. The
+            // shadow follows the same shape; the overlay's clip hides it while the morph runs.
             .graphicsLayer {
                 clip = true
                 shape = RoundedCornerShape(radius.value)
+                this.shadowElevation = shadowElevation.toPx()
             }
     }
 
@@ -129,6 +133,7 @@ internal fun RadiusMorphNode(
     preMorphRadius: Dp = restRadius,
     overlayZIndex: Float = 0f,
     color: Color = Color.Transparent,
+    shadowElevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -141,6 +146,7 @@ internal fun RadiusMorphNode(
                 counterpartRadius = counterpartRadius,
                 preMorphRadius = preMorphRadius,
                 overlayZIndex = overlayZIndex,
+                shadowElevation = shadowElevation,
             )
             .background(color),
         content = content,
