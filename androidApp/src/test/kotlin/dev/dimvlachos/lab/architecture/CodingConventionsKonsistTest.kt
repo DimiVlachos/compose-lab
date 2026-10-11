@@ -74,8 +74,10 @@ class CodingConventionsKonsistTest {
     fun `isSystemInDarkTheme only in App and the theme package`() {
         labScope()
             .files
+            .filter { !it.path.contains(ARCHITECTURE_TEST_PATH) }
             .filter { file ->
-                file.imports.any { it.name == "androidx.compose.foundation.isSystemInDarkTheme" }
+                file.imports.any { it.name == "androidx.compose.foundation.isSystemInDarkTheme" } ||
+                    file.text.contains("isSystemInDarkTheme(")
             }
             .assertTrue { file ->
                 file.path.endsWith("/dev/dimvlachos/lab/App.kt") ||
