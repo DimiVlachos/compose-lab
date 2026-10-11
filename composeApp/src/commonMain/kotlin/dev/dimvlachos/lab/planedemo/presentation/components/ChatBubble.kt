@@ -1,12 +1,15 @@
 package dev.dimvlachos.lab.planedemo.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -18,6 +21,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import dev.dimvlachos.lab.core.presentation.components.paperplane.ease
@@ -94,3 +98,25 @@ internal fun ChatBubble(
 
 /** What a message on its way is known by, until it lands. */
 internal const val InFlightTag = "message-in-flight"
+
+// A message that came in and the reply to it, as the chat shows them once they have landed.
+@Composable
+private fun ChatBubblesPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Column(
+            Modifier.background(LabTheme.colors.background).padding(LabTheme.spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
+        ) {
+            ChatBubble("Are you coming to the island this weekend?", mine = false)
+            ChatBubble(
+                "On the first boat out!",
+                mine = true,
+                modifier = Modifier.align(Alignment.End),
+            )
+        }
+    }
+}
+
+@Preview @Composable private fun ChatBubblesDarkPreview() = ChatBubblesPreview(dark = true)
+
+@Preview @Composable private fun ChatBubblesLightPreview() = ChatBubblesPreview(dark = false)

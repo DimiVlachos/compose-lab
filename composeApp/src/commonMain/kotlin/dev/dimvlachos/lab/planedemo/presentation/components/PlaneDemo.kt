@@ -78,6 +78,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -113,6 +114,8 @@ import org.jetbrains.compose.resources.stringResource
 // or not, so nothing typed ever runs under it.
 private val TouchTarget = 48.dp
 private val IconSize = 26.dp
+// The disc the dart sits on, where the screen is too light for the paper to show without one.
+private val SendDiscSize = 38.dp
 private val FieldCorner = 24.dp
 private val FieldShape = RoundedCornerShape(FieldCorner)
 private val FieldPadding = PaddingValues(start = 18.dp, top = 12.dp, bottom = 12.dp)
@@ -402,14 +405,19 @@ private fun MessageField(
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {
-            PaperPlaneIcon(
-                colors.paper,
-                modifier =
-                    Modifier.size(IconSize).graphicsLayer {
-                        scaleX = iconIn
-                        scaleY = iconIn
-                    },
-            )
+            Box(
+                Modifier.size(SendDiscSize).background(colors.sendDisc, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                PaperPlaneIcon(
+                    colors.paper,
+                    modifier =
+                        Modifier.size(IconSize).graphicsLayer {
+                            scaleX = iconIn
+                            scaleY = iconIn
+                        },
+                )
+            }
         }
     }
 }
@@ -435,3 +443,26 @@ private class TapDot {
         drawTouch(color, Offset(size.width / 2f, size.height / 2f), alpha.value)
     }
 }
+
+// The field with a message typed, its send button out on its disc.
+@Composable
+private fun MessageFieldPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) {
+        Box(Modifier.background(LabTheme.colors.background).padding(LabTheme.spacing.medium)) {
+            MessageField(
+                field = rememberTextFieldState("See you at the harbour"),
+                scroll = rememberScrollState(),
+                chat = remember { PlaneChat(emptyList()) },
+                tap = remember { TapDot() },
+                grow = { 1f },
+                lines = FieldMaxLines,
+                enabled = true,
+                onSend = {},
+            )
+        }
+    }
+}
+
+@Preview @Composable private fun MessageFieldDarkPreview() = MessageFieldPreview(dark = true)
+
+@Preview @Composable private fun MessageFieldLightPreview() = MessageFieldPreview(dark = false)
