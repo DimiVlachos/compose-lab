@@ -149,6 +149,8 @@ internal fun LabApp(
                             entries = Catalog.entries,
                             filter = filter,
                             searchOpen = navigation.searchOpen,
+                            themeMode = theme.mode,
+                            onCycleTheme = theme::cycle,
                             onOpenSearch = navigation::openSearch,
                             onCloseSearch = navigation::back,
                             onOpenDemo = navigation::openDemo,

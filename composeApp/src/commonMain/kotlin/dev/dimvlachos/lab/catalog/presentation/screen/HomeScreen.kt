@@ -23,12 +23,14 @@ import dev.dimvlachos.lab.catalog.presentation.CatalogFilterState
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogGrid
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogSearchField
 import dev.dimvlachos.lab.catalog.presentation.components.TagFilterRow
+import dev.dimvlachos.lab.catalog.presentation.components.ThemeModeButton
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
 import dev.dimvlachos.lab.resources.action_search
@@ -51,6 +53,8 @@ internal fun HomeScreen(
     entries: List<CatalogEntry>,
     filter: CatalogFilterState,
     searchOpen: Boolean,
+    themeMode: ThemeMode,
+    onCycleTheme: () -> Unit,
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onOpenDemo: (Demo) -> Unit,
@@ -89,6 +93,7 @@ internal fun HomeScreen(
                         contentDescription = stringResource(Res.string.action_search),
                         onClick = onOpenSearch,
                     )
+                    ThemeModeButton(mode = themeMode, onCycle = onCycleTheme)
                 } else if (filter.text.isNotEmpty()) {
                     LabIconButton(
                         Res.drawable.ic_close,
@@ -183,6 +188,8 @@ private fun HomeScreenPreview() {
             entries = Catalog.entries,
             filter = remember { CatalogFilterState() },
             searchOpen = false,
+            themeMode = ThemeMode.System,
+            onCycleTheme = {},
             onOpenSearch = {},
             onCloseSearch = {},
             onOpenDemo = {},

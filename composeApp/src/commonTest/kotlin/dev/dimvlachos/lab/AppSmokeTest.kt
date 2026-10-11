@@ -13,8 +13,11 @@ import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import dev.dimvlachos.lab.core.platform.InMemoryThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
+import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
@@ -235,5 +238,31 @@ class AppSmokeTest {
         waitForIdle()
         onNodeWithText("Nav bar").assertExists()
         onNodeWithText("Your reflection").assertDoesNotExist()
+    }
+
+    @Test
+    fun theThemeButtonCyclesTheModesAndRemembersEach() = runComposeUiTest {
+        val store = InMemoryThemeModeStore()
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, themeStore = store)
+        }
+        onNodeWithContentDescription("Theme: follow system").performClick()
+        onNodeWithContentDescription("Theme: light").assertExists()
+        assertEquals(ThemeMode.Light, store.load())
+        onNodeWithContentDescription("Theme: light").performClick()
+        onNodeWithContentDescription("Theme: dark").assertExists()
+        assertEquals(ThemeMode.Dark, store.load())
+        onNodeWithContentDescription("Theme: dark").performClick()
+        onNodeWithContentDescription("Theme: follow system").assertExists()
+        assertEquals(ThemeMode.System, store.load())
+    }
+
+    @Test
+    fun aSavedModeIsTheOneTheAppStartsIn() = runComposeUiTest {
+        val store = InMemoryThemeModeStore(ThemeMode.Dark)
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, themeStore = store)
+        }
+        onNodeWithContentDescription("Theme: dark").assertExists()
     }
 }
