@@ -11,7 +11,10 @@ import androidx.compose.runtime.setValue
 import dev.dimvlachos.lab.catalog.CatalogQuery
 import dev.dimvlachos.lab.core.demo.DemoTag
 
-/** The words in home's search field and the tags picked under it. */
+/**
+ * The words in home's search field and the tags picked under it. Only the tags are saved: the
+ * search itself isn't, and comes back closed, so its words go with it.
+ */
 @Stable
 internal class CatalogFilterState(text: String = "", tags: Set<DemoTag> = emptySet()) {
     var text by mutableStateOf(text)
@@ -31,12 +34,9 @@ internal class CatalogFilterState(text: String = "", tags: Set<DemoTag> = emptyS
     companion object {
         val Saver: Saver<CatalogFilterState, Any> =
             listSaver(
-                save = { listOf(it.text) + it.tags.map(DemoTag::name) },
+                save = { it.tags.map(DemoTag::name) },
                 restore = { saved ->
-                    CatalogFilterState(
-                        text = saved.first(),
-                        tags = saved.drop(1).mapNotNull { name -> tagNamed(name) }.toSet(),
-                    )
+                    CatalogFilterState(tags = saved.mapNotNull { name -> tagNamed(name) }.toSet())
                 },
             )
 
@@ -45,7 +45,7 @@ internal class CatalogFilterState(text: String = "", tags: Set<DemoTag> = emptyS
     }
 }
 
-/** A [CatalogFilterState] that outlives the screens, a rotation and the app's process. */
+/** A [CatalogFilterState] that outlives the screens; its tags also outlive the app's process. */
 @Composable
 internal fun rememberCatalogFilterState(): CatalogFilterState =
     rememberSaveable(saver = CatalogFilterState.Saver) { CatalogFilterState() }
