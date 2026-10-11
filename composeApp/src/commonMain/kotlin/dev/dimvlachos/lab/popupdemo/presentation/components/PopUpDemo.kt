@@ -59,6 +59,7 @@ import dev.dimvlachos.lab.core.presentation.components.popup.PopUpBookState
 import dev.dimvlachos.lab.core.presentation.components.popup.rememberPopUpBookState
 import dev.dimvlachos.lab.core.presentation.ui.CycladesPaper as Paper
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.RequestSystemBarIcons
 import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.popupdemo.rememberCycladesBook
 import dev.dimvlachos.lab.resources.Res
@@ -149,6 +150,8 @@ internal fun PopUpDemo(state: DemoState) {
     }
     val type = LabTheme.typography
     val spacing = LabTheme.spacing
+    // The paper runs under the gesture bar in either theme, so its handle is drawn dark.
+    RequestSystemBarIcons(navigationDarkIcons = true)
 
     // The script's select(i): only a change of it turns the book, so a screen made again keeps
     // its book where it was.
