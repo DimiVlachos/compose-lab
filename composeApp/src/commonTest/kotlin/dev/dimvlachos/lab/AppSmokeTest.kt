@@ -3,8 +3,6 @@ package dev.dimvlachos.lab
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -132,7 +130,7 @@ class AppSmokeTest {
         onNodeWithContentDescription("Back").performClick()
         onNodeWithText("Your reflection").assertExists()
 
-        onAllNodesWithText("Back").onFirst().performClick()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("compose-lab").assertExists()
     }
 

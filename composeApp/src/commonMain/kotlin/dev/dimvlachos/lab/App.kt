@@ -10,14 +10,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.withFrameNanos
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.catalog.Catalog
-import dev.dimvlachos.lab.catalog.CatalogEntry
-import dev.dimvlachos.lab.catalog.presentation.screen.CatalogScreen
+import dev.dimvlachos.lab.catalog.presentation.screen.FolderScreen
+import dev.dimvlachos.lab.catalog.presentation.screen.HomeScreen
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.platform.ThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
@@ -30,8 +31,6 @@ import dev.dimvlachos.lab.core.presentation.ui.ThemeController
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.core.presentation.ui.useDarkTheme
 import dev.dimvlachos.lab.demo.presentation.screen.DemoScreen
-import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.catalog_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -114,6 +113,7 @@ internal fun LabApp(
             }
         }
         val motion = LabTheme.motion
+        val saveableStates = rememberSaveableStateHolder()
         transition.AnimatedContent(transitionSpec = { appTransition(motion) }) { shown ->
             when (shown) {
                 is AppScreen.Open ->
@@ -127,20 +127,22 @@ internal fun LabApp(
                             if (record && shown.demo === initialDemo) null else navigation::back,
                     )
                 is AppScreen.Folder ->
-                    CatalogScreen(
-                        title = stringResource(shown.group.title),
-                        entries = shown.group.demos.map { CatalogEntry.Single(it) },
-                        onOpenDemo = navigation::openDemo,
-                        onOpenGroup = navigation::openGroup,
-                        onBack = navigation::back,
-                    )
+                    // Each catalog screen keeps its scroll while a demo is open over it.
+                    saveableStates.SaveableStateProvider("folder:${shown.group.id}") {
+                        FolderScreen(
+                            group = shown.group,
+                            onOpenDemo = navigation::openDemo,
+                            onBack = navigation::back,
+                        )
+                    }
                 AppScreen.Home ->
-                    CatalogScreen(
-                        title = stringResource(Res.string.catalog_title),
-                        entries = Catalog.entries,
-                        onOpenDemo = navigation::openDemo,
-                        onOpenGroup = navigation::openGroup,
-                    )
+                    saveableStates.SaveableStateProvider("home") {
+                        HomeScreen(
+                            entries = Catalog.entries,
+                            onOpenDemo = navigation::openDemo,
+                            onOpenGroup = navigation::openGroup,
+                        )
+                    }
             }
         }
     }
