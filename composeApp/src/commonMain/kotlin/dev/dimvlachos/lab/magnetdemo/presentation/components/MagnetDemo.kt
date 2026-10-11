@@ -37,15 +37,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetState
 import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetTable
 import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.magnetdemo.rememberIslandMagnetState
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.magnet_hint
+import kotlin.math.min
 import kotlin.time.Duration
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -127,8 +130,23 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
 private class Stage {
     var size = IntSize.Zero
 
-    fun toPx(fraction: Offset): Offset = Offset(fraction.x * size.width, fraction.y * size.height)
+    fun toPx(fraction: Offset): Offset {
+        val width = size.width.toFloat()
+        val height = size.height.toFloat()
+        // Only the stage's shape matters here, so its px stand in for dp.
+        if (!isWideStage(width.dp, height.dp)) {
+            return Offset(fraction.x * size.width, fraction.y * size.height)
+        }
+        // On a stage wider than it is tall the script plays down a band in its middle about as
+        // wide as a clip's stage, so the magnets travel as far as they do in the clip, and the two
+        // put down apart still lie apart and the two brought together still snap.
+        val band = min(width, height * ScriptBand)
+        return Offset((width - band) / 2f + fraction.x * band, fraction.y * height)
+    }
 }
+
+// How wide the script's band on a wide stage is, for its height: about a 4:5 clip's stage.
+private const val ScriptBand = 0.85f
 
 /**
  * The scripted fingertip on a magnet, so a clip shows the hand: it takes the magnet, carries it,
