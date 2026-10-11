@@ -223,4 +223,17 @@ class AppSmokeTest {
         waitForIdle()
         onNodeWithText("bath").assertDoesNotExist()
     }
+
+    @Test
+    fun aTagShowsOnlyItsDemosUntilItIsTappedAgain() = runComposeUiTest {
+        setContent { App(initialDemoId = null, record = false, label = false) }
+        onNodeWithText("Camera").performClick()
+        waitForIdle()
+        onNodeWithText("Your reflection").assertExists()
+        onNodeWithText("Nav bar").assertDoesNotExist()
+        onNodeWithText("Camera").performClick()
+        waitForIdle()
+        onNodeWithText("Nav bar").assertExists()
+        onNodeWithText("Your reflection").assertDoesNotExist()
+    }
 }

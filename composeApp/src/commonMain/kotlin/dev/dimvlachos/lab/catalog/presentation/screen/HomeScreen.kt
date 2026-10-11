@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ import dev.dimvlachos.lab.catalog.filterCatalog
 import dev.dimvlachos.lab.catalog.presentation.CatalogFilterState
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogGrid
 import dev.dimvlachos.lab.catalog.presentation.components.CatalogSearchField
+import dev.dimvlachos.lab.catalog.presentation.components.TagFilterRow
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
@@ -40,9 +42,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The home screen: the lab's name in the bar, and a card for every demo and folder under it,
- * filtered by [filter]. The bar's search button ([onOpenSearch]) turns the title into a search
- * field while [searchOpen]; its back arrow ([onCloseSearch]) turns it back.
+ * The home screen: the lab's name in the bar over a row of tags to filter by, and a card for every
+ * demo and folder under it, filtered by [filter]. The bar's search button ([onOpenSearch]) turns
+ * the title into a search field while [searchOpen]; its back arrow ([onCloseSearch]) turns it back.
  */
 @Composable
 internal fun HomeScreen(
@@ -62,6 +64,8 @@ internal fun HomeScreen(
         keyboard?.hide()
     }
     val words = rememberCatalogWords(entries)
+    // Only the tags some demo has, in the tags' own order.
+    val tags = remember(entries) { DemoTag.entries.filter { it in catalogTags(entries) } }
     val shown = filterCatalog(entries, filter.query, words)
     Column(Modifier.fillMaxSize().background(LabTheme.colors.background)) {
         LabTopBar(
@@ -92,6 +96,19 @@ internal fun HomeScreen(
                         onClick = { filter.text = "" },
                     )
                 }
+            },
+            bottom = {
+                TagFilterRow(
+                    tags = tags,
+                    selected = filter.tags,
+                    onToggle = filter::toggle,
+                    contentPadding =
+                        PaddingValues(
+                            start = LabTheme.spacing.medium,
+                            end = LabTheme.spacing.medium,
+                            bottom = LabTheme.spacing.small,
+                        ),
+                )
             },
         ) {
             AnimatedContent(
@@ -136,6 +153,16 @@ private fun rememberCatalogWords(entries: List<CatalogEntry>): (StringResource) 
         lookUp
     }
 }
+
+private fun catalogTags(entries: List<CatalogEntry>): Set<DemoTag> =
+    entries
+        .flatMap { entry ->
+            when (entry) {
+                is CatalogEntry.Single -> entry.demo.tags
+                is CatalogEntry.Group -> entry.tags
+            }
+        }
+        .toSet()
 
 private fun catalogStrings(entries: List<CatalogEntry>): List<StringResource> =
     (entries.flatMap { entry ->
