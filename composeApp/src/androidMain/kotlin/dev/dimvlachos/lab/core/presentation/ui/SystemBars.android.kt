@@ -1,10 +1,12 @@
 package dev.dimvlachos.lab.core.presentation.ui
 
 import android.app.UiModeManager
+import android.graphics.drawable.ColorDrawable
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 
 // The bars' icons through the window's insets controller. The app's night mode goes to the system
@@ -22,6 +24,12 @@ internal actual fun SystemAppearance(mode: ThemeMode, dark: Boolean, requests: S
             isAppearanceLightStatusBars = statusDark
             isAppearanceLightNavigationBars = navigationDark
         }
+    }
+    // The window behind Compose shows through for a frame on a rotation or a resize: it follows the
+    // theme as it changes, not only the night mode it was created with.
+    LaunchedEffect(activity, dark) {
+        val background = if (dark) AppColors.Dark.background else AppColors.Light.background
+        activity.window.setBackgroundDrawable(ColorDrawable(background.toArgb()))
     }
     LaunchedEffect(activity, mode) {
         val nightMode =
