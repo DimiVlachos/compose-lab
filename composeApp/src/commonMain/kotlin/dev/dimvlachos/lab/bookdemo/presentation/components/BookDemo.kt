@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.pageturn.PageTurnBook
@@ -100,3 +102,14 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
         )
     }
 }
+
+// The book on its table, walnut in the dark theme and oak in the light one; a preview may show
+// the table alone while the pages load.
+@Composable
+private fun BookDemoPreview(dark: Boolean) {
+    LabTheme(darkTheme = dark) { Box(Modifier.size(640.dp, 320.dp)) { BookDemo(DemoState()) } }
+}
+
+@Preview @Composable private fun BookDemoDarkPreview() = BookDemoPreview(dark = true)
+
+@Preview @Composable private fun BookDemoLightPreview() = BookDemoPreview(dark = false)
