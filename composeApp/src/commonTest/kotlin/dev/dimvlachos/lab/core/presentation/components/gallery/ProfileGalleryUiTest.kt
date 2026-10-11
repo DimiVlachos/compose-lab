@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -10,7 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.TouchInjectionScope
@@ -18,7 +23,10 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -28,9 +36,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventInfo
@@ -145,7 +155,8 @@ class ProfileGalleryUiTest {
         go(GalleryScene(avatar = true, dialog = true))
         onNodeWithTag(FabDialogTag).assertExists()
         onNodeWithTag(FabSourceTag).assertDoesNotExist()
-        onNodeWithTag(DialogScrimTag).performClick()
+        // Beside the dialog: a tap on the dialog itself stays in it.
+        onNodeWithTag(DialogScrimTag).performTouchInput { click(Offset(10f, 10f)) }
         assertEquals(GalleryScene(avatar = true), reported.last(), "only the dialog closes")
         go(GalleryScene(avatar = true))
         onNodeWithTag(FabSourceTag).assertExists()
@@ -602,5 +613,41 @@ class ProfileGalleryUiTest {
         assertNull(requests.navigationDarkIcons, "the photo is closing")
         mainClock.advanceTimeBy(1_500)
         assertNull(requests.navigationDarkIcons, "and back to the theme's once it has gone")
+    }
+
+    @Test
+    fun onAPhoneOnItsSideAtTheLargestFontTheDialogScrollsToCancel() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        scene = GalleryScene(avatar = true, dialog = true)
+        setContent {
+            LabTheme {
+                val d = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(d.density, 2f)) {
+                    Box(Modifier.size(800.dp, 290.dp)) {
+                        ProfileGallery(
+                            name = "Alex Morgan",
+                            portrait = Res.drawable.portrait,
+                            photos = testIslands(),
+                            searchQuery = "xos",
+                            scene = scene,
+                            onSceneChange = { reported += it },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+        }
+        mainClock.advanceTimeBy(2_000)
+        val dialog = onNodeWithTag(FabDialogTag).getUnclippedBoundsInRoot()
+        assertTrue(dialog.top >= 0.dp && dialog.bottom <= 290.dp, "dialog $dialog spills out")
+        onNode(hasScrollAction() and hasAnyDescendant(hasText("Cancel"))).performSemanticsAction(
+            SemanticsActions.ScrollBy
+        ) {
+            it(0f, 10_000f)
+        }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText("Cancel").assertIsDisplayed()
+        val cancel = onNodeWithText("Cancel").getUnclippedBoundsInRoot()
+        assertTrue(cancel.bottom <= dialog.bottom, "Cancel $cancel is cut off by $dialog")
     }
 }

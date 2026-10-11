@@ -12,12 +12,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -73,7 +76,8 @@ class FabDialogMorphUiTest {
         onNodeWithText(runBlocking { getString(Res.string.add_image_camera) }).assertExists()
         onNodeWithText(runBlocking { getString(Res.string.action_cancel) }).performClick()
         assertEquals(1, closed)
-        onNodeWithTag(DialogScrimTag).performClick()
+        // Beside the dialog: a tap on the dialog itself stays in it.
+        onNodeWithTag(DialogScrimTag).performTouchInput { click(Offset(10f, 10f)) }
         assertEquals(2, closed)
         assertEquals(1, opened, "the scrim tap must not reach the FAB under it")
     }

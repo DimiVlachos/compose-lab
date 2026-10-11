@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -140,6 +142,9 @@ internal fun FabDialogTarget(
             counterpartRadius = FabRadius,
             modifier =
                 Modifier.align(Alignment.Center)
+                    // Never taller than the stage less a margin: on a phone on its side at a large
+                    // font size, its contents scroll instead.
+                    .padding(vertical = LabTheme.spacing.large)
                     .dialogWidth()
                     .wrapContentHeight()
                     .testTag(FabDialogTag),
@@ -150,7 +155,9 @@ internal fun FabDialogTarget(
         ) {
             // Inside the node, the contents ride the container and fade with its width.
             Column(
-                Modifier.morphWidthFraction(fraction).padding(LabTheme.spacing.large),
+                Modifier.morphWidthFraction(fraction)
+                    .verticalScroll(rememberScrollState())
+                    .padding(LabTheme.spacing.large),
                 verticalArrangement = Arrangement.spacedBy(LabTheme.spacing.small),
             ) {
                 Text(
