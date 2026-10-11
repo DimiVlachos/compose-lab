@@ -4,4 +4,7 @@
     <color name="lab_background">#F2F2F7</color>
     <!-- The launcher icon's backdrop: the dark background, whatever the theme. -->
     <color name="ic_launcher_background">#0B0D12</color>
+    <!-- Behind a recorded clip: the dark background whatever the app's night mode, since a clip is
+         always dark. -->
+    <color name="lab_record_background">#0B0D12</color>
 </resources>

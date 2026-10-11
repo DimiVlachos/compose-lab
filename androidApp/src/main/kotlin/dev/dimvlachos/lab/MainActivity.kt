@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab
 
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -32,6 +33,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun enterRecordMode() {
+        // A clip is always dark, even when the app was last left in light mode: the window
+        // behind Compose's first frame is dark too.
+        window.setBackgroundDrawable(ColorDrawable(getColor(R.color.lab_record_background)))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes =
             window.attributes.apply {
