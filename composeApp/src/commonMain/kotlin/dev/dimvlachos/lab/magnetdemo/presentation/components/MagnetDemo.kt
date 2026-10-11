@@ -7,6 +7,8 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -91,9 +94,16 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
     // Whether every magnet is in the strip: read as that, so a photo sticking recomposes nothing.
     val idle by remember(table) { derivedStateOf { table.results.isEmpty() } }
     val hintAlpha by animateFloatAsState(if (idle) 1f else 0f)
+    val hint = stringResource(Res.string.magnet_hint)
+    val tableModifier =
+        Modifier.onSizeChanged { stage.size = it }
+            .drawWithContent {
+                drawContent()
+                with(finger) { drawFinger(colors.touch) }
+            }
     // Clear of the navigation bar and the sides' cutouts; the screen it is shown in keeps it clear
     // of the status bar already.
-    Column(
+    BoxWithConstraints(
         Modifier.fillMaxSize()
             .background(colors.stripRail)
             .windowInsetsPadding(
@@ -102,29 +112,45 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
                 )
             )
     ) {
-        // The hint has a line of its own over the table, so no card ever lies under it. It gives
-        // way while a magnet is out, as by then it has been taken, but keeps its line, so the
-        // table doesn't jump.
-        Text(
-            stringResource(Res.string.magnet_hint),
-            style = LabTheme.typography.label,
-            color = colors.textMuted,
-            modifier =
-                Modifier.align(Alignment.CenterHorizontally)
-                    .padding(vertical = LabTheme.spacing.smallMedium)
-                    .graphicsLayer { alpha = hintAlpha }
-                    .then(if (idle) Modifier else Modifier.clearAndSetSemantics {}),
-        )
-        MagnetTable(
-            table,
-            Modifier.fillMaxWidth()
-                .weight(1f)
-                .onSizeChanged { stage.size = it }
-                .drawWithContent {
-                    drawContent()
-                    with(finger) { drawFinger(colors.touch) }
-                },
-        )
+        if (isWideStage(maxWidth, maxHeight)) {
+            // On a phone on its side every bit of height goes to the table: the hint lies over its
+            // top on a chip of the rail, as a magnet's label does over the cards.
+            Box(Modifier.fillMaxSize()) {
+                MagnetTable(table, Modifier.fillMaxSize().then(tableModifier))
+                Text(
+                    hint,
+                    style = LabTheme.typography.label,
+                    color = colors.textMuted,
+                    modifier =
+                        Modifier.align(Alignment.TopCenter)
+                            .padding(top = LabTheme.spacing.small)
+                            .graphicsLayer { alpha = hintAlpha }
+                            .background(colors.stripRail.copy(alpha = 0.8f), CircleShape)
+                            .padding(
+                                horizontal = LabTheme.spacing.smallMedium,
+                                vertical = LabTheme.spacing.extraSmall,
+                            )
+                            .then(if (idle) Modifier else Modifier.clearAndSetSemantics {}),
+                )
+            }
+            return@BoxWithConstraints
+        }
+        Column(Modifier.fillMaxSize()) {
+            // The hint has a line of its own over the table, so no card ever lies under it. It
+            // gives way while a magnet is out, as by then it has been taken, but keeps its line,
+            // so the table doesn't jump.
+            Text(
+                hint,
+                style = LabTheme.typography.label,
+                color = colors.textMuted,
+                modifier =
+                    Modifier.align(Alignment.CenterHorizontally)
+                        .padding(vertical = LabTheme.spacing.smallMedium)
+                        .graphicsLayer { alpha = hintAlpha }
+                        .then(if (idle) Modifier else Modifier.clearAndSetSemantics {}),
+            )
+            MagnetTable(table, Modifier.fillMaxWidth().weight(1f).then(tableModifier))
+        }
     }
 }
 

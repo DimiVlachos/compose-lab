@@ -398,7 +398,7 @@ internal class MagnetPainter {
         val tag = state.fanShown ?: return
         val t = smooth(state.fan)
         if (t <= 0f) return
-        val tableBottom = state.tableHeight * density
+        val tableBottom = state.overlayHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = ScrimAlpha * t)
         val scale = lerp(1f, state.fanScale(), t)
         val captionGap = MagnetDimens.FanCaptionGap.toPx()
@@ -569,7 +569,7 @@ internal class OpenPainter {
         val t = smooth(state.openness)
         if (t <= 0f) return
         val image = images[index]
-        val tableBottom = state.tableHeight * density
+        val tableBottom = state.overlayHeight * density
         drawRect(colors.fanScrim, size = Size(size.width, tableBottom), alpha = 0.85f * t)
         // From its card in the grid...
         // The card it grows from is as big as the grid draws it, folding or not.
@@ -584,10 +584,12 @@ internal class OpenPainter {
                 (caption?.size?.height ?: 0) +
                 MagnetDimens.OpenTextGap.toPx() * 2f
         val margin = MagnetDimens.OpenMargin.toPx()
+        // Short and wide, it keeps less room over and under it, so it opens as big as it can.
+        val marginY = if (state.wide) MagnetDimens.OpenTextGap.toPx() else margin
         val aspect = image.height.toFloat() / max(1, image.width)
         var toW = size.width - margin * 2f
         var toH = toW * aspect
-        val room = tableBottom - margin * 2f - words
+        val room = tableBottom - marginY * 2f - words
         if (toH > room) {
             toH = max(1f, room)
             toW = toH / aspect
@@ -599,6 +601,7 @@ internal class OpenPainter {
         val h = lerp(fromH, toH, t)
         val corner = lerp(MagnetDimens.CardCorner.toPx() * scale, MagnetDimens.OpenCorner.toPx(), t)
         val topLeft = Offset(centre.x - w / 2f, centre.y - h / 2f)
+        state.openedBounds = Rect(topLeft, Size(w, h))
         clip.rewind()
         clip.addRoundRect(
             RoundRect(topLeft.x, topLeft.y, topLeft.x + w, topLeft.y + h, CornerRadius(corner))

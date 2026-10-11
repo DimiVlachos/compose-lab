@@ -9,9 +9,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -124,6 +127,23 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
 
     internal val tableHeight: Float
         get() = (height - stripHeight).coerceAtLeast(0f)
+
+    /**
+     * Whether the table is wider than it is tall, as on a phone on its side: the table above the
+     * strip is then too short to fan its photos out in or open one, and they take the whole of it.
+     */
+    internal val wide: Boolean
+        get() = isWideStage(width.dp, height.dp)
+
+    /**
+     * How tall the grid and an opened photo may be, in dp, from the top: the table, or on a [wide]
+     * one, strip and all.
+     */
+    internal val overlayHeight: Float
+        get() = if (wide) height else tableHeight
+
+    /** Where the opened photo was last drawn, in px: for a test to measure. */
+    internal var openedBounds = Rect.Zero
 
     /** How tall the strip along the foot is, in dp: taller for large text, so its labels fit. */
     internal var stripHeight = MagnetDimens.StripHeight.value
@@ -419,7 +439,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
         return FanGrid(
             fanPhotos.size,
             width,
-            tableHeight,
+            overlayHeight,
             MagnetDimens.CardWidth.value,
             MagnetDimens.CardHeight.value,
             MagnetDimens.FanGap.value,
