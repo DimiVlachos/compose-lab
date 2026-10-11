@@ -455,7 +455,7 @@ internal class MagnetPainter {
         val border = MagnetDimens.CardBorder.toPx() * scale
         translate(centre.x, centre.y) {
             rotate(tilt * DegreesPerRadian, pivot = Offset.Zero) {
-                val shadow = 3.dp.toPx() * scale
+                val shadow = MagnetDimens.CardShadowDrop.toPx() * scale
                 drawRoundRect(
                     colors.cardShadow,
                     Offset(-w / 2f + shadow / 2f, -h / 2f + shadow),
@@ -540,6 +540,12 @@ internal fun leftAcross(centre: Float, width: Float, stage: Float): Float =
 // Eased in and out, so the grid starts and lands softly.
 internal fun smooth(t: Float): Float = t * t * (3f - 2f * t)
 
+/**
+ * How strong the card's shadow is under a photo opening from it, by how far it has opened: the
+ * card's own at the start, fading out as the photo grows, gone once it is fully open.
+ */
+internal fun openShadowAlpha(openness: Float): Float = (1f - openness).coerceIn(0f, 1f)
+
 // How dark the scrim behind a fanned-out grid is, fully out.
 private const val ScrimAlpha = 0.7f
 
@@ -602,6 +608,22 @@ internal class OpenPainter {
         val corner = lerp(MagnetDimens.CardCorner.toPx() * scale, MagnetDimens.OpenCorner.toPx(), t)
         val topLeft = Offset(centre.x - w / 2f, centre.y - h / 2f)
         state.openedBounds = Rect(topLeft, Size(w, h))
+        // On the light palette the card's shadow comes along and fades out as the photo grows, so
+        // it does not drop away on the first frame, nor come back all at once as the photo lands
+        // on its card again. The dark palette keeps the open photo as it always was.
+        if (!colors.isDark) {
+            val shadowAlpha = openShadowAlpha(t)
+            if (shadowAlpha > 0f) {
+                val drop = MagnetDimens.CardShadowDrop.toPx() * scale
+                drawRoundRect(
+                    colors.cardShadow,
+                    topLeft + Offset(drop / 2f, drop),
+                    Size(w, h),
+                    CornerRadius(corner),
+                    alpha = shadowAlpha,
+                )
+            }
+        }
         clip.rewind()
         clip.addRoundRect(
             RoundRect(topLeft.x, topLeft.y, topLeft.x + w, topLeft.y + h, CornerRadius(corner))

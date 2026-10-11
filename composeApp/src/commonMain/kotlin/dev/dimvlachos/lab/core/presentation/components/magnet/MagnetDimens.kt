@@ -9,6 +9,8 @@ internal object MagnetDimens {
     val CardWidth = 76.dp
     val CardHeight = 56.dp
     val CardCorner = 4.dp
+    // How far a card's shadow falls below it (half as far to the side), at the card's own size.
+    val CardShadowDrop = 3.dp
     val CardBorder = 3.dp
     val ClipWidth = 16.dp
     val ClipHeight = 7.dp
