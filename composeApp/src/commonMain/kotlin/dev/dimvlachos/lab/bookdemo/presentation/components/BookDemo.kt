@@ -2,8 +2,14 @@ package dev.dimvlachos.lab.bookdemo.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,7 +79,17 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
     Box(
         Modifier.fillMaxSize()
             .background(Brush.radialGradient(listOf(colors.tableLit, colors.table)))
-            .padding(horizontal = TableMarginX, vertical = TableMarginY),
+            // Beside the book, the margin or the camera's cutout, whichever is wider, so a phone
+            // turned on its side keeps the book clear of it. While recording, just the margin.
+            .then(
+                if (state.recording) Modifier.padding(horizontal = TableMarginX)
+                else
+                    Modifier.windowInsetsPadding(
+                        WindowInsets(left = TableMarginX, right = TableMarginX)
+                            .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                    )
+            )
+            .padding(vertical = TableMarginY),
         contentAlignment = Alignment.Center,
     ) {
         if (spreads == null) return@Box
