@@ -2,8 +2,10 @@ package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ComposeUiTest
@@ -12,6 +14,7 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.rememberMorphPainters
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
@@ -22,6 +25,8 @@ import kotlin.test.assertTrue
 class GalleryGridUiTest {
     private val query = mutableStateOf("")
     private val opened = mutableListOf<Int>()
+
+    private var width by mutableStateOf(412.dp)
 
     private fun ComposeUiTest.showGrid() {
         mainClock.autoAdvance = false
@@ -37,7 +42,7 @@ class GalleryGridUiTest {
                         openPhoto = 0,
                         sharedTransitionScope = this,
                         onOpen = { opened += it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.requiredWidth(width),
                     )
                 }
             }
@@ -98,6 +103,35 @@ class GalleryGridUiTest {
         assertTrue(
             onNodeWithText("Paxos").getBoundsInRoot().left < paxosBefore.left,
             "Paxos is already on its way to the first slot",
+        )
+    }
+
+    @Test
+    fun aWideStageFitsMoreColumns() = runComposeUiTest {
+        width = 820.dp
+        showGrid()
+        val corfu = onNodeWithText("Corfu").getBoundsInRoot()
+        val santorini = onNodeWithText("Santorini").getBoundsInRoot()
+        assertEquals(corfu.top, santorini.top, "the third card shares the first row")
+        assertTrue(santorini.left > corfu.left)
+    }
+
+    @Test
+    fun turningTheStageGlidesTheCardsIntoTheirNewColumns() = runComposeUiTest {
+        showGrid()
+        val corfu = onNodeWithText("Corfu").getBoundsInRoot()
+        val before = onNodeWithText("Santorini").getBoundsInRoot()
+        assertTrue(before.top > corfu.top, "two columns: the third card starts the second row")
+        runOnUiThread { width = 820.dp }
+        Snapshot.sendApplyNotifications()
+        mainClock.advanceTimeBy(64)
+        val midway = onNodeWithText("Santorini").getBoundsInRoot()
+        assertTrue(midway.top < before.top, "on its way up")
+        assertTrue(midway.top > corfu.top, "but not there yet: it glides")
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(
+            onNodeWithText("Corfu").getBoundsInRoot().top,
+            onNodeWithText("Santorini").getBoundsInRoot().top,
         )
     }
 }

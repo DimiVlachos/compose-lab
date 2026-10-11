@@ -1,13 +1,16 @@
 package dev.dimvlachos.lab.core.presentation.components.gallery
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.TouchInjectionScope
@@ -23,7 +26,6 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
@@ -52,6 +54,11 @@ import dev.dimvlachos.lab.resources.portrait
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+
+// A phone held upright, at the top start of the test window, which is wider than it is tall: the
+// grid's two columns and everything measured from the screen's edges are a phone's.
+private const val PhoneStageTag = "phoneStage"
+private val PhoneStage = Modifier.width(412.dp).testTag(PhoneStageTag)
 
 @OptIn(ExperimentalTestApi::class)
 class ProfileGalleryUiTest {
@@ -83,6 +90,7 @@ class ProfileGalleryUiTest {
                             recentSearches = listOf("Santorini", "Milos", "Hydra"),
                             scene = scene,
                             onSceneChange = { reported += it },
+                            modifier = PhoneStage,
                             scrollState = scroll,
                         )
                     }
@@ -246,7 +254,7 @@ class ProfileGalleryUiTest {
         showGallery()
         go(GalleryScene(avatar = true))
         val fab = onNodeWithTag(FabSourceTag).getBoundsInRoot()
-        val root = onRoot().getBoundsInRoot()
+        val root = onNodeWithTag(PhoneStageTag).getBoundsInRoot()
         assertEquals(36.dp, root.right - fab.right)
         assertEquals(36.dp, root.bottom - fab.bottom)
     }
@@ -258,7 +266,7 @@ class ProfileGalleryUiTest {
         onNodeWithTag(GalleryScrollTag).performTouchInput { repeat(4) { swipeUp() } }
         waitForIdle()
         val grid = onNodeWithTag(GalleryGridTag).getBoundsInRoot()
-        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - grid.bottom)
+        assertEquals(16.dp, onNodeWithTag(PhoneStageTag).getBoundsInRoot().bottom - grid.bottom)
     }
 
     @Test
@@ -266,7 +274,7 @@ class ProfileGalleryUiTest {
         showGallery()
         go(GalleryScene(photo = 3), thenMs = 2_000)
         val caption = onNodeWithText("Caption Santorini").getBoundsInRoot()
-        assertEquals(16.dp, onRoot().getBoundsInRoot().bottom - caption.bottom)
+        assertEquals(16.dp, onNodeWithTag(PhoneStageTag).getBoundsInRoot().bottom - caption.bottom)
     }
 
     @Test
@@ -312,6 +320,7 @@ class ProfileGalleryUiTest {
                     searchQuery = "xos",
                     scene = live,
                     onSceneChange = { live = it },
+                    modifier = PhoneStage,
                 )
             }
         }
@@ -390,12 +399,13 @@ class ProfileGalleryUiTest {
     fun searchNeverMovesTheHomeGrid() = runComposeUiTest {
         val scroll = ScrollState(0)
         showGallery(scroll = scroll)
-        runOnUiThread { scroll.dispatchRawDelta(400f) }
+        // Past the header's collapse, and short of the end on the phone's stage.
+        runOnUiThread { scroll.dispatchRawDelta(60f) }
         mainClock.advanceTimeBy(100)
         go(GalleryScene(search = true), thenMs = 2_500)
-        assertEquals(400, scroll.value)
+        assertEquals(60, scroll.value)
         go(GalleryScene(), thenMs = 2_500)
-        assertEquals(400, scroll.value)
+        assertEquals(60, scroll.value)
     }
 
     @Test
@@ -536,6 +546,7 @@ class ProfileGalleryUiTest {
                         searchQuery = "xos",
                         scene = scene,
                         onSceneChange = { reported += it },
+                        modifier = PhoneStage,
                     )
                 }
             }
@@ -550,7 +561,9 @@ class ProfileGalleryUiTest {
     fun tapsOnAnOpenPhotoNeverReachTheGridUnderIt() = runComposeUiTest {
         showGallery()
         go(GalleryScene(photo = 3))
-        onRoot().performTouchInput { click(Offset(centerX / 2, centerY)) } // a card lies below
+        onNodeWithTag(PhoneStageTag).performTouchInput {
+            click(Offset(centerX / 2, centerY))
+        } // a card lies below
         mainClock.advanceTimeBy(1_000)
         assertEquals(emptyList(), reported)
     }

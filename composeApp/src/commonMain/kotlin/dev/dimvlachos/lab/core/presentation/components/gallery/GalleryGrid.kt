@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphDimens
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphLayers
 import dev.dimvlachos.lab.core.presentation.components.imagemorph.MorphPhoto
@@ -32,13 +33,24 @@ import kotlin.math.roundToInt
 
 private const val CardAspect = 0.8f // width / height: the photos' own 4:5
 private const val FilterFadeMs = 200
+// The narrowest a card gets before the grid drops a column: two on any phone held upright, which
+// is every recording's frame, and four on one turned on its side.
+private val MinCardWidth = 160.dp
+
+/**
+ * How many columns of at least [minCellPx] fit across [widthPx] with [gapPx] between them, and
+ * never fewer than two.
+ */
+internal fun galleryColumns(widthPx: Int, minCellPx: Int, gapPx: Int): Int =
+    ((widthPx + gapPx) / (minCellPx + gapPx)).coerceAtLeast(2)
 
 /**
  * The photo grid, filtered by [query]. A card that stops matching gives up its slot at once and
  * fades out where it stands, under the cards gliding into the freed slots; clearing the query fades
  * the returning ones in at their slots while the others glide back. Nothing waits for anything, so
  * no photo is ever missing from a slot mid-reshuffle. Every card keeps one parent and one place in
- * the composition, so its shared node and its glide survive the reshuffle.
+ * the composition, so its shared node and its glide survive the reshuffle. The column count follows
+ * the grid's own width, so turning the phone glides the cards into their new slots the same way.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -106,7 +118,7 @@ internal fun GalleryGrid(
         },
     ) { measurables, constraints ->
         val gapPx = gap.roundToPx()
-        val columns = MorphDimens.Columns
+        val columns = galleryColumns(constraints.maxWidth, MinCardWidth.roundToPx(), gapPx)
         val cellWidth = (constraints.maxWidth - gapPx * (columns - 1)) / columns
         val cellHeight = (cellWidth / CardAspect).roundToInt()
         val cell = Constraints.fixed(cellWidth, cellHeight)
