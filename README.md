@@ -32,6 +32,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet) | `magnet` | `magnet.filter` | Drag tag magnets over photos to filter them; snap two together to search for both |
 | [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | A pull-to-refresh that isn't a boring spinner: cast a line, haul new cards up from the deep, reel in an empty hook, or snap the line |
 | [Pop-up book](#pop-up-book-corepresentationcomponentspopup) | `popup` | `tour.popup` | An onboarding as a pop-up book: paper scenery stands up as a spread opens, and pull tabs sail a boat and spin windmill sails |
+| [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter) | `typewriter` | `typewriter.composer` | A chat composer that is a typewriter with its own round keys: letters strike the paper, the bell rings at the margin, and you pull the sheet out to send |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -48,6 +49,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Magnet filter](#magnet-filter-corepresentationcomponentsmagnet)
 - [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing)
 - [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
+- [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -400,6 +402,52 @@ PopUpBook(
 // Next and Back buttons call book.next() and book.previous(); book.spread says where it is.
 ```
 
+## Typewriter composer (`core/presentation/components/typewriter/`)
+
+A chat composer that is a typewriter, typed on its own keys. Round, chrome-rimmed keys with glass tops sit in the machine's enamel body where the phone's keyboard would be, and every key strikes the sheet in the roller: the key dips on its lever, a type bar flies up from the basket, the ribbon lifts, the letter lands a moment later and the carriage steps on. Five letters before the margin the bell rings; at the margin, or at the next space once the bell has rung, the lever swings and the carriage returns by itself, banging into its stop. Delete runs the carriage back while the correction tape lifts the letter off the paper. To send, pull the sheet up out of the roller: it gives like a rubber band and the ratchet clicks under your finger. Let go too early and it slides back in; past the threshold, or flung, it zips out, trims down to its text and flies into the thread as a slip of paper. Replies come back as plain bubbles.
+
+- **Its own keyboard, never the phone's.** The keys are QWERTY with Shift (for one letter), Delete, New line, a space bar and a page of figures and stops (`. , ? ! ' - :` and more), ten across at up to 48 dp apart, so each is a thumb's width. A key strikes as it goes down, and holding one types it once; only Delete goes on, slowly. There is no text field to focus, so the phone's keyboard never opens. A hardware keyboard types too, through the composer's own key events, and Ctrl or ⌘ and Return sends. The text is a `TextFieldState` the keys edit, and the machine works out what changed: what is added strikes, what is gone is lifted off by the tape. A key that would type off a full sheet is refused, the carriage knocks and the hint says so.
+- **The sheet is a pure layout.** `layOutSheet(text)` lays the text out as the machine types it: 18 letters to a line, a new line at New line or the margin, and at a space once the bell has rung, so words are kept whole where they can be. Four lines fill a sheet. The same function gives the slip its lines, so it reads exactly as it was typed.
+- **Every letter is struck, not set.** Each letter is drawn a little off its place, a little turned and a little faint, seeded by its line, column and character, so the sheet, a recomposition and the slip in the thread all show it the same. The face is Special Elite, and each letter is drawn once into a small picture of its own and copied from there, so a frame of the machine shapes no text.
+- **A carriage on springs, in time with its sound.** The carriage is a spring stepped at a fixed 120 Hz: a stiff one with a little overshoot as the escapement steps it on, and, sent home, a loose one that aims past the stop and bangs into it. The return's sound is a zip of clicks and a bang 0.41 s in, so the lever is held over for as long as it takes for the carriage, let go, to bang home at that moment, however far it has to travel.
+- **Pull to send.** The pull is a rubber band that stiffens as the paper comes out, and a blank sheet barely moves. Let go past 62 units, or flung faster than 700 units a second once it has started to come out, it is sent; otherwise it springs back. The ratchet clicks each 7 units the paper moves, as a line feeds or the sheet is pulled.
+- **Touch for everyone, sound in the lab.** A light tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the ratchet ticks under a pulling finger. The sounds, three strikes chosen by key, the bell, the carriage return, the tape, the ratchet and the sheet coming free, are the lab's own synthesized clips, played through its internal `SoundPlayer`, so they come with an internal overload of the composer, not its public one. Nothing plays while the phone is on silent, and neither sound nor haptics while the screen is in the background.
+- **For a screen reader.** Every key is a button named for what it types ("q", or "Q" after Shift, "Space", "Delete", "New line"), so the machine can be typed key by key; the keys are disabled while the composer is. The machine is "Typewriter", with a Send action, so nobody needs the pull. Once the typing pauses, it hears what was typed or deleted, or that the sheet is full, never the whole sheet again. Each slip is read as its text, and new messages are announced politely.
+
+Nothing recomposes as the machine moves: the carriage, the paper, the bars, the ribbon and the lever are read only while drawing, the paper's feed only in layout, and each letter's strike is worked out once, as it is laid out. A change of the hint's wording, the keys' page or Shift recomposes only those. The frame loop sleeps once the machine is still, and a key's dip is its own small animation. What is typed is saved, so it outlives the screen being made again, as when a hardware keyboard is plugged in.
+
+The demo, `typewriter.composer`, is a chat with Eleni on Naxos. Its scripted fingertip taps out, on the machine's keys, a message that rings the bell and returns the carriage at the end of a word, tugs the sheet too little so it slides back, pulls it out, then a second with a typo that the tape takes off and a question mark from the figures, and takes both back once Eleni has answered. Its typing waits on frames, so behind another app it stops, and picks up where it was.
+
+```kotlin
+val machine = rememberTypewriterState() // what is typed is saved
+val flights = remember { SlipFlights() }
+val atlas = rememberGlyphAtlas(machine.unit) // the type, shared by the machine and the slips
+val slips = remember { mutableStateListOf<Slip>() }
+
+Column {
+    LazyColumn(Modifier.weight(1f), reverseLayout = true) {
+        items(slips.asReversed(), key = { it.id }) { slip ->
+            // Its place shows nothing until its sheet has flown in.
+            PaperSlip(slip.lines, slip.tilt, atlas, machine.unit, Modifier.slipLanding(flights, slip.id))
+        }
+    }
+    TypewriterComposer(
+        machine,
+        onSend = { sheet ->
+            val id = nextId++
+            // The flight first, undispatched, so the slip's place is never seen empty.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { flights.fly(id, sheet, slipTilt(id)) }
+            slips += Slip(id, sheet.lines, slipTilt(id))
+        },
+        badge = "CYCLADES 22",
+        model = "PORTABLE",
+        insets = WindowInsets.navigationBars, // its body, keys and all, runs down behind the bar
+        atlas = atlas,
+    )
+}
+SlipFlightStage(flights, atlas, machine.unit) // over both: where the sheets fly
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -558,6 +606,8 @@ Photos from [Pexels](https://www.pexels.com), used under the [Pexels licence](ht
 | [Houseplants in pots standing in a bathtub](https://www.pexels.com/photo/15618010/) (the bathroom in the fogged mirror: on its own, or behind you, cut out of the camera) | nana |
 | [Contemporary bathroom interior with mirror above washbasin at home](https://www.pexels.com/photo/7046159/) (the wall the fogged mirror hangs on, extended with more tiles above and a counter front below) | Max Vakhtbovych |
 | [Water droplets on foggy glass](https://www.pexels.com/photo/water-droplets-on-foggy-glass-8628343/) (the fog's condensation, via `scripts/fog-texture.py`) | Chris F |
+
+The typewriter composer's face is [Special Elite](https://fonts.google.com/specimen/Special+Elite), Copyright (c) 2010 Brian J. Bonislawsky DBA Astigmatic (AOETI) (Apache License 2.0, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/SpecialElite-Apache-2.0.txt`).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 
