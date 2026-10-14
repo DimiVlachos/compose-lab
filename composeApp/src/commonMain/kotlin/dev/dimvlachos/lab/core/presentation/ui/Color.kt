@@ -129,6 +129,26 @@ public data class AppColors(
     val fishingLine: Color = Color(0xFFE9EEF2),
     val bobberRed: Color = Color(0xFFE0402F),
     val bobberWhite: Color = Color(0xFFF7F4EE),
+    // Smoke delete. Themed: the smoke a burnt row turns to, pale on the dark screen and a sooty
+    // grey on the light one, and the cooler mist an archived row goes up in. Art: the ember at
+    // the burning edge, its white-hot core, the char just behind it and the sparks; the snackbar
+    // that offers Undo, dark on both screens, its text and its ember-orange action; and the chat
+    // avatars' island colours, deep enough for white initials (with the magnets' red and the
+    // Village tag's bougainvillea).
+    val smoke: Color = Color(0xFFCCD1D9),
+    val mist: Color = Color(0xFFC4DCEE),
+    val ember: Color = Color(0xFFFF9C47),
+    val emberCore: Color = Color(0xFFFFF3DC),
+    val emberChar: Color = Color(0xFF2E1204),
+    val emberSpark: Color = Color(0xFFFFE0B8),
+    val smokeSnackbar: Color = Color(0xFF1D2126),
+    val onSmokeSnackbar: Color = Color(0xFFF2F3F4),
+    val smokeSnackbarAction: Color = Color(0xFFFFB27A),
+    val chatGreen: Color = Color(0xFF23804B),
+    val chatBlue: Color = Color(0xFF1F5FA8),
+    val chatAmber: Color = Color(0xFFA86505),
+    val chatTeal: Color = Color(0xFF137482),
+    val chatViolet: Color = Color(0xFF6E40B8),
 ) {
     public companion object {
         /** The dark palette: the constructor's defaults. */
@@ -166,6 +186,8 @@ public data class AppColors(
                 rodBlank = Color(0xFF6B7682),
                 rodReel = Color(0xFF707884),
                 fishingLine = Color(0xFF4A535E),
+                smoke = Color(0xFF7D8591),
+                mist = Color(0xFF7D9DB8),
             )
     }
 }
