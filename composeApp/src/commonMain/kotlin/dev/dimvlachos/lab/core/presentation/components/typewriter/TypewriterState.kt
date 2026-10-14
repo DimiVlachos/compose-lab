@@ -106,8 +106,12 @@ internal class TypewriterState(text: String = "") {
     var phase by mutableStateOf(SheetPhase.Idle)
         private set
 
-    /** How big a machine unit is, as the composer last laid the machine out. */
-    internal var unit: Dp = 1.dp
+    /**
+     * How big a machine unit is, as the composer last laid the machine out: a thread its slips fly
+     * into draws them in the same size of type.
+     */
+    var unit: Dp by mutableStateOf(1.dp)
+        internal set
 
     /** Hears what is heard and felt. */
     internal var feel: TypewriterFeel = object : TypewriterFeel {}

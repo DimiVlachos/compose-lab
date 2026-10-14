@@ -167,7 +167,7 @@ internal fun TypewriterComposer(
     val badgeText = stringResource(Res.string.typewriter_badge)
     val modelText = stringResource(Res.string.typewriter_model)
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val unit = TypewriterDimens.unit(maxWidth)
+        val unit = TypewriterDimens.unit(maxWidth, maxHeight)
         SideEffect { state.unit = unit }
         val u = with(density) { unit.toPx() }
         val atlas = rememberGlyphAtlas(unit)

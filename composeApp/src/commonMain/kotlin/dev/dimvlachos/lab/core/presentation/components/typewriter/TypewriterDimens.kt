@@ -17,8 +17,15 @@ internal object TypewriterDimens {
     private val SmallestUnit = 0.85.dp
     private val BiggestUnit = 1.3.dp
 
-    /** How big a unit is on a stage [width] wide. */
-    fun unit(width: Dp): Dp = (width / StageUnits).coerceIn(SmallestUnit, BiggestUnit)
+    /**
+     * How big a unit is on a stage [width] wide and [height] tall: on a short one, as a phone on
+     * its side, the machine with a full sheet stays under half its height.
+     */
+    fun unit(width: Dp, height: Dp = Dp.Infinity): Dp =
+        minOf(width / StageUnits, height / ShortStageUnits).coerceIn(SmallestUnit, BiggestUnit)
+
+    // A stage is this many units tall at the least before the machine shrinks to fit it.
+    private const val ShortStageUnits = 440f
 
     // The sheet: this many letters to a line, each this wide, lines this far apart, with this
     // much paper either side of the text and above its first line. A sheet holds this many lines,

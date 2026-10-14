@@ -30,9 +30,11 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -60,7 +62,6 @@ import dev.dimvlachos.lab.core.presentation.components.typewriter.SentSheet
 import dev.dimvlachos.lab.core.presentation.components.typewriter.SlipFlightStage
 import dev.dimvlachos.lab.core.presentation.components.typewriter.SlipFlights
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterComposer
-import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterDimens
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterSounds
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterState
 import dev.dimvlachos.lab.core.presentation.components.typewriter.rememberGlyphAtlas
@@ -149,6 +150,12 @@ internal fun TypewriterDemo(state: DemoState) {
         thread.send(sheet.text, sheet.lines)
         list.requestScrollToItem(0)
     }
+    // A new message or Eleni typing comes in at the foot: kept in sight if the thread was there,
+    // rather than opening under it, as a list anchored to the item it showed would.
+    LaunchedEffect(thread, list) {
+        snapshotFlow { thread.messages.size to thread.typing }
+            .collect { if (list.firstVisibleItemIndex <= 1) list.animateScrollToItem(0) }
+    }
     DisposableEffect(state, machine, thread) {
         state.setSendHandler { text, typing ->
             val line = getString(text)
@@ -182,7 +189,7 @@ internal fun TypewriterDemo(state: DemoState) {
     val spacing = LabTheme.spacing
     val insets = demoInsets(state)
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
-        val unit = TypewriterDimens.unit(maxWidth)
+        val unit = machine.unit
         val atlas = rememberGlyphAtlas(unit)
         val side = max(spacing.medium, (maxWidth - ThreadMaxWidth) / 2)
         val bubbleWidth = (maxWidth - side * 2) * BubbleShare
