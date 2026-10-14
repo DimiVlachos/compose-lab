@@ -130,19 +130,24 @@ public data class AppColors(
     val bobberRed: Color = Color(0xFFE0402F),
     val bobberWhite: Color = Color(0xFFF7F4EE),
     // The typewriter composer. Themed: its sheet of paper and the slips sent from it, a shade
-    // dimmer on the dark screen, with the darker paper of its edges; and the machine's green
-    // enamel, lit at its top and deep at its foot. Art: the ink, the black platen and its sheen,
-    // and the ribbon's black and red halves.
+    // dimmer on the dark screen, with the darker paper of its edges; the machine's green enamel,
+    // lit at its top and deep at its foot, and the badge lettered on it. Art: the ink, the black
+    // platen and its sheen, the ribbon's black and red halves, the chrome of its rims, bars and
+    // lever, and the legends on its keys.
     val typePaper: Color = Color(0xFFE8E0CB),
     val typePaperEdge: Color = Color(0xFFCFC5AB),
-    val enamelLight: Color = Color(0xFF6F9A91),
-    val enamel: Color = Color(0xFF4F7A71),
-    val enamelDeep: Color = Color(0xFF335851),
+    val typeEnamelLight: Color = Color(0xFF6F9A91),
+    val typeEnamel: Color = Color(0xFF4A7369),
+    val typeEnamelDeep: Color = Color(0xFF335851),
     val typeInk: Color = Color(0xFF1F1D1B),
-    val platen: Color = Color(0xFF0C0D0F),
-    val platenSheen: Color = Color(0xFF5A6066),
-    val ribbonBlack: Color = Color(0xFF17181A),
-    val ribbonRed: Color = Color(0xFFA8141C),
+    val typePlaten: Color = Color(0xFF0C0D0F),
+    val typePlatenSheen: Color = Color(0xFF5A6066),
+    val typeRibbonBlack: Color = Color(0xFF17181A),
+    val typeRibbonRed: Color = Color(0xFFA8141C),
+    val typeChrome: Color = Color(0xFF9AA3AB),
+    val typeChromeSheen: Color = Color(0xFFE6EAEE),
+    val typeKeyLegend: Color = Color(0xFFF4F0E6),
+    val typeBadge: Color = Color(0xFFF4F6F8),
 ) {
     public companion object {
         /** The dark palette: the constructor's defaults. */
@@ -182,9 +187,10 @@ public data class AppColors(
                 fishingLine = Color(0xFF4A535E),
                 typePaper = Color(0xFFF8F3E6),
                 typePaperEdge = Color(0xFFE9E1CC),
-                enamelLight = Color(0xFFA3CDC3),
-                enamel = Color(0xFF78AA9F),
-                enamelDeep = Color(0xFF4E8075),
+                typeEnamelLight = Color(0xFFA3CDC3),
+                typeEnamel = Color(0xFF78AA9F),
+                typeEnamelDeep = Color(0xFF4E8075),
+                typeBadge = Color(0xFF0F1F1B),
             )
     }
 }

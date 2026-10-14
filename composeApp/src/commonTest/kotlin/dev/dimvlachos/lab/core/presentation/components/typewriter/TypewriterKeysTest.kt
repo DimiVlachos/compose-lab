@@ -53,6 +53,16 @@ class TypewriterKeysTest {
     }
 
     @Test
+    fun shiftHoldsThroughARefusedKey() {
+        val state = TypewriterState()
+        "a\nb\nc\n".forEach { state.type(it) }
+        repeat(18) { state.type('x') }
+        state.press(TypeKey(KeyAction.Shift))
+        state.press(TypeKey(KeyAction.Type('y')))
+        assertTrue(state.keyboard.shifted)
+    }
+
+    @Test
     fun aKeyOffAFullSheetJamsAndTypesNothing() {
         val state = TypewriterState()
         "a\nb\nc\n".forEach { state.type(it) }

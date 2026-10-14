@@ -30,22 +30,43 @@ import org.jetbrains.compose.resources.Font
  * draw from wherever it is struck, turned and as dark as it came out. Set from the layout every
  * frame, each letter would be shaped again; drawn from its picture it costs a copy.
  */
-internal class GlyphAtlas(
+public class GlyphAtlas
+internal constructor(
     private val measurer: TextMeasurer,
     private val style: TextStyle,
     private val ink: Color,
 ) {
     private class Picture(val image: ImageBitmap, val baseline: Float)
 
-    private val pictures = mutableMapOf<Char, Picture?>()
+    // The pictures of the plain letters, by character code, so a frame looks each up without
+    // boxing it; anything past them, by character.
+    private val plain = arrayOfNulls<Picture>(PlainChars)
+    private val drawnPlain = BooleanArray(PlainChars)
+    private val others = mutableMapOf<Char, Picture?>()
+
+    private fun DrawScope.pictureOf(char: Char): Picture? {
+        val code = char.code
+        if (code >= PlainChars) return others.getOrPut(char) { drawn(char) }
+        if (!drawnPlain[code]) {
+            plain[code] = drawn(char)
+            drawnPlain[code] = true
+        }
+        return plain[code]
+    }
 
     /**
      * Draws [char] with its middle at [x] and its foot on [baseline], turned [tilt] degrees about
      * its middle, at [alpha].
      */
-    fun DrawScope.drawGlyph(char: Char, x: Float, baseline: Float, tilt: Float, alpha: Float) {
+    internal fun DrawScope.drawGlyph(
+        char: Char,
+        x: Float,
+        baseline: Float,
+        tilt: Float,
+        alpha: Float,
+    ) {
         if (alpha <= 0f) return
-        val picture = pictures.getOrPut(char) { drawn(char) } ?: return
+        val picture = pictureOf(char) ?: return
         val image = picture.image
         val left = x - image.width / 2f
         val top = baseline - picture.baseline
@@ -83,6 +104,7 @@ internal class GlyphAtlas(
 
     private companion object {
         const val Overhang = 0.15f
+        const val PlainChars = 128
     }
 }
 
@@ -91,7 +113,7 @@ internal class GlyphAtlas(
  * [FontSize][TypewriterDimens.FontSize] tall, in the theme's ink.
  */
 @Composable
-internal fun rememberGlyphAtlas(unit: Dp): GlyphAtlas {
+public fun rememberGlyphAtlas(unit: Dp): GlyphAtlas {
     val font = Font(Res.font.special_elite)
     val family = remember(font) { FontFamily(font) }
     val measurer = rememberTextMeasurer(cacheSize = 0)

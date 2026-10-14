@@ -155,10 +155,10 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     }
 
     /** How far each pull of the typewriter's sheet went, in order. */
-    val sheetPulls = mutableListOf<Dp>()
+    val typewriterSheetPulls = mutableListOf<Dp>()
 
-    override suspend fun pullSheet(up: Dp, duration: Duration) {
-        sheetPulls += up
-        calls += now() to "pullSheet($up, $duration)"
+    override suspend fun pullTypewriterSheet(up: Dp, duration: Duration) {
+        typewriterSheetPulls += up
+        calls += now() to "pullTypewriterSheet($up, $duration)"
     }
 }

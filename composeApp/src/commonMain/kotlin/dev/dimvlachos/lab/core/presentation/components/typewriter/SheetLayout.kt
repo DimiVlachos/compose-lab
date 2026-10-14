@@ -24,10 +24,6 @@ internal class SheetLayout(
     val inked: Boolean
         get() = lines.any { it.isNotBlank() }
 
-    /** The longest line, less its trailing spaces: how wide a slip of it is. */
-    val widest: Int
-        get() = lines.maxOfOrNull { it.trimEnd().length } ?: 0
-
     /** The lines, less any blank ones at the foot: what is sent. */
     val sent: List<String>
         get() = lines.dropLastWhile { it.isBlank() }.ifEmpty { listOf("") }
@@ -98,8 +94,28 @@ internal fun layOutSheet(
     )
 }
 
-/** A letter on the sheet: its [index] in the text, its place and itself. */
-@Immutable internal data class Glyph(val index: Int, val line: Int, val column: Int, val char: Char)
+/**
+ * A letter on the sheet: its [index] in the text, its place and itself, and how it was struck,
+ * worked out once as it is laid out rather than every frame it is drawn.
+ */
+@Immutable
+internal data class Glyph(val index: Int, val line: Int, val column: Int, val char: Char) {
+    val strike: Strike = strikeOf(line, column, char)
+}
+
+/** The letters of [lines], as a slip lays them out: each line's letters at their columns. */
+internal fun glyphsOf(lines: List<String>): List<Glyph> {
+    val glyphs = mutableListOf<Glyph>()
+    var index = 0
+    for ((line, text) in lines.withIndex()) {
+        for ((column, char) in text.withIndex()) {
+            if (char != ' ') glyphs += Glyph(index, line, column, char)
+            index++
+        }
+        index++
+    }
+    return glyphs
+}
 
 /**
  * How a struck letter lies on the paper: [dx] and [dy] off its place, in units, turned [tilt]
@@ -123,7 +139,7 @@ internal fun strikeOf(line: Int, column: Int, char: Char): Strike {
 }
 
 /** A slip's turn, in degrees, for the message [id]: a little either way, never square. */
-internal fun slipTilt(id: Long): Float {
+public fun slipTilt(id: Long): Float {
     val seed = (id * 2_654_435_761L).toInt()
     val side = if (noise(seed, 5) < 0.5f) -1f else 1f
     val size =

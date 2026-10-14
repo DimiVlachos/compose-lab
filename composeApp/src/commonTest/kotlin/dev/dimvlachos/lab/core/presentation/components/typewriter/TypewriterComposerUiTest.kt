@@ -58,7 +58,7 @@ class TypewriterComposerUiTest {
     @Test
     fun theKeysTypeOnTheSheetAndThePhonesKeyboardHasNothingToOpen() = runComposeUiTest {
         val machine = machine()
-        press("Shift", "h", "i", "Space", "t", "h", "e", "r", "e")
+        press("Shift", "H", "i", "Space", "t", "h", "e", "r", "e")
         mainClock.advanceTimeBy(500)
         assertEquals(listOf("Hi there"), machine.state.sheet.lines)
         assertTrue(machine.state.inked)
@@ -95,6 +95,22 @@ class TypewriterComposerUiTest {
         node.performKeyInput { withKeyDown(Key.CtrlLeft) { pressKey(Key.Enter) } }
         mainClock.advanceTimeBy(1_000)
         assertEquals(listOf("hi"), machine.sent.map { it.text })
+    }
+
+    @Test
+    fun aHardwareKeyTheMachineHasNoKeyForTypesNothing() = runComposeUiTest {
+        val machine = machine()
+        val node = onNodeWithTag("machine")
+        node.performKeyInput {
+            pressKey(Key.Equals)
+            pressKey(Key.Grave)
+        }
+        mainClock.advanceTimeBy(300)
+        assertEquals("", machine.state.field.text.toString())
+        // And one it has a key for still types after them.
+        node.performKeyInput { pressKey(Key.A) }
+        mainClock.advanceTimeBy(300)
+        assertEquals("a", machine.state.field.text.toString())
     }
 
     @Test

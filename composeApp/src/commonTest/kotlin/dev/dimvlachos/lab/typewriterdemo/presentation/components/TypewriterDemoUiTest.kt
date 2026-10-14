@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -42,6 +44,8 @@ class TypewriterDemoUiTest {
         for (reply in replies) {
             assertEquals(1, onAllNodesWithText(reply).fetchSemanticsNodes().size, reply)
         }
+        // The last reply came in at the thread's foot, and the thread kept it in sight.
+        onNodeWithText(replies.last()).assertIsDisplayed()
         // The thread it began with is still there.
         assertEquals(
             1,

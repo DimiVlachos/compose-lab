@@ -6,8 +6,8 @@ import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.core.presentation.components.typewriter.PullToSend
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterDimens
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.typewriter_script_1
-import dev.dimvlachos.lab.resources.typewriter_script_2
+import dev.dimvlachos.lab.resources.typewriterchat_script_1
+import dev.dimvlachos.lab.resources.typewriterchat_script_2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,25 +30,30 @@ class TypewriterDemosTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf(Res.string.typewriter_script_1, Res.string.typewriter_script_2),
+            listOf(Res.string.typewriterchat_script_1, Res.string.typewriterchat_script_2),
             controller.sends,
         )
         assertEquals(
             listOf(TypewriterDemos.ShortPull, TypewriterDemos.FullPull, TypewriterDemos.FullPull),
-            controller.sheetPulls,
+            controller.typewriterSheetPulls,
         )
         val cleared = controller.calls.single { it.second == "clearMessages()" }.first
-        val lastPull = controller.calls.last { it.second.startsWith("pullSheet") }.first
+        val lastPull = controller.calls.last { it.second.startsWith("pullTypewriterSheet") }.first
         assertTrue(cleared > lastPull + 4_000, "the reply must be in before it is cleared")
         assertEquals(0, controller.messagesOut)
     }
 
     @Test
     fun theShortPullSlidesBackAndTheFullOneSends() {
-        // The biggest unit a stage gives: the fewest units for the same pull.
-        val most = 1.3f
-        val short = PullToSend.shown(TypewriterDemos.ShortPull.value / 0.85f, inked = true)
-        val full = PullToSend.shown(TypewriterDemos.FullPull.value / most, inked = true)
+        // The smallest unit gives the most units for the short pull, the biggest the fewest for
+        // the full one.
+        val short =
+            PullToSend.shown(
+                TypewriterDemos.ShortPull / TypewriterDimens.SmallestUnit,
+                inked = true,
+            )
+        val full =
+            PullToSend.shown(TypewriterDemos.FullPull / TypewriterDimens.BiggestUnit, inked = true)
         assertTrue(short < TypewriterDimens.SendPull, "the short pull sends at $short")
         assertTrue(full > TypewriterDimens.SendPull, "the full pull slides back at $full")
     }

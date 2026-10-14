@@ -21,8 +21,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -38,7 +40,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
@@ -59,7 +60,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -68,61 +69,114 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.typewriter_badge
 import dev.dimvlachos.lab.resources.typewriter_hint_full
 import dev.dimvlachos.lab.resources.typewriter_hint_pull
 import dev.dimvlachos.lab.resources.typewriter_hint_type
+import dev.dimvlachos.lab.resources.typewriter_key_new_line
+import dev.dimvlachos.lab.resources.typewriter_key_space
 import dev.dimvlachos.lab.resources.typewriter_label
-import dev.dimvlachos.lab.resources.typewriter_model
+import dev.dimvlachos.lab.resources.typewriter_said_deleted
 import dev.dimvlachos.lab.resources.typewriter_send
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * A chat composer that is a typewriter, typed on its own keys: round, chrome-rimmed keys with glass
- * tops, in a QWERTY layout, with Shift, Backspace, Return, a space bar and a page of figures and
+ * tops, in a QWERTY layout, with Shift, Delete, New line, a space bar and a page of figures and
  * stops. The phone's keyboard never opens. Every key dips as it is pressed and strikes the sheet: a
  * type bar flies up from the basket, the ribbon lifts, and the carriage steps on. The bell rings
  * five letters before the margin, and at the margin, or at a space once the bell has rung, the
- * lever swings and the carriage returns by itself; Return starts a new line too. Backspace runs the
+ * lever swings and the carriage returns by itself; New line starts a new line too. Delete runs the
  * carriage back and the correction tape lifts the letter off; held, it goes on, slowly. A hardware
- * keyboard types too, once the machine has focus, which it takes as it opens and on a tap on it.
+ * keyboard types too, once the machine has focus, which it takes as it opens and on a tap on it; a
+ * character the machine has no key for types nothing.
  *
  * To send, pull the sheet up out of the roller: it gives like a rubber band and the ratchet clicks
  * as it comes; let go short of the threshold and it slides back in, past it or flung, and it zips
  * out and [onSend] hears it, with where the whole sheet was in the root as it came free, for a
  * caller to fly it into its thread. Ctrl or ⌘ and Return, or a screen reader's Send action, pull it
- * out by themselves. A fresh sheet then feeds in as the carriage goes home.
+ * out by themselves. A fresh sheet then feeds in as the carriage goes home. A blank sheet is never
+ * sent.
  *
- * Its sounds play through [sound], and nothing plays while the phone is on silent; a tick of
- * haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the
- * ratchet ticks under the finger. The machine sits at the foot of the space it is given, the paper
- * standing up over it as lines feed, its keys in its body; its body runs on down behind [insets]'
- * foot. While not [enabled], as while a script plays, it takes neither keys nor touches. Nothing
- * recomposes as the machine moves: only a change of what the hint says, or of the keys' page.
+ * A tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and
+ * the ratchet ticks under the finger, none while the screen is in the background. The machine sits
+ * at the foot of the space it is given, the paper standing up over it as lines feed, its keys in
+ * its body; its body runs on down behind [insets]' foot. [badge] and [model] are lettered on its
+ * body. [atlas] is its type, which a thread showing its slips can share. While not [enabled], as
+ * while a script plays, it takes neither keys nor touches.
+ *
+ * A screen reader finds the machine as "Typewriter", with a Send action, and each key as a button
+ * named for what it types ("q", or "Q" after Shift, "Space", "Delete", "New line"); it hears what
+ * was typed or deleted once the typing pauses. Nothing recomposes as the machine moves; a change of
+ * what the hint says, of the keys' page or of Shift recomposes only those.
+ */
+@Composable
+public fun TypewriterComposer(
+    state: TypewriterState,
+    onSend: (SentSheet) -> Unit,
+    modifier: Modifier = Modifier,
+    badge: String = "",
+    model: String = "",
+    enabled: Boolean = true,
+    insets: WindowInsets = WindowInsets(0),
+    atlas: GlyphAtlas = rememberGlyphAtlas(state.unit),
+) {
+    TypewriterComposer(
+        state,
+        onSend,
+        SilentSoundPlayer,
+        modifier,
+        badge,
+        model,
+        enabled,
+        insets,
+        atlas,
+    )
+}
+
+/**
+ * The [TypewriterComposer], heard through [sound]: the lab's own hook for its synthesized clips,
+ * three strikes, the bell, the carriage return, the tape, the ratchet and the sheet coming free.
+ * Nothing plays while the phone is on silent, nor while the screen is in the background.
  */
 @Composable
 internal fun TypewriterComposer(
     state: TypewriterState,
     onSend: (SentSheet) -> Unit,
+    sound: SoundPlayer,
     modifier: Modifier = Modifier,
-    sound: SoundPlayer = SilentSoundPlayer,
+    badge: String = "",
+    model: String = "",
     enabled: Boolean = true,
     insets: WindowInsets = WindowInsets(0),
+    atlas: GlyphAtlas = rememberGlyphAtlas(state.unit),
 ) {
     ReportComposition()
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentSound by rememberUpdatedState(sound)
-    DisposableEffect(state, haptics) {
-        val feel = MachineFeel({ currentSound }, haptics)
+    DisposableEffect(state, haptics, lifecycle) {
+        val feel =
+            MachineFeel(
+                sound = { currentSound },
+                haptics = haptics,
+                // Heard and felt only while the screen is in front: a script typing on behind it
+                // stays silent.
+                active = { lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) },
+            )
         state.feel = feel
         onDispose { if (state.feel === feel) state.feel = object : TypewriterFeel {} }
     }
@@ -168,8 +222,7 @@ internal fun TypewriterComposer(
     }
     val label = stringResource(Res.string.typewriter_label)
     val sendLabel = stringResource(Res.string.typewriter_send)
-    val badgeText = stringResource(Res.string.typewriter_badge)
-    val modelText = stringResource(Res.string.typewriter_model)
+    val measurer = rememberTextMeasurer()
     BoxWithConstraints(
         modifier.fillMaxWidth().focusRequester(focus).focusable().onPreviewKeyEvent { event ->
             currentEnabled && event.type == KeyEventType.KeyDown && state.hardwareKey(event)
@@ -178,35 +231,13 @@ internal fun TypewriterComposer(
         val unit = TypewriterDimens.unit(maxWidth, maxHeight)
         SideEffect { state.unit = unit }
         val u = with(density) { unit.toPx() }
-        val pitch = keyPitch(maxWidth, maxHeight)
-        val keysHeight = pitch * KeyRowHeight * KeyRows + KeysPadding * 2
+        val pitch = TypewriterDimens.keyPitch(maxWidth, maxHeight)
+        val keysHeight = TypewriterDimens.keysHeight(pitch)
         val below = with(density) { keysHeight.toPx() }
-        val atlas = rememberGlyphAtlas(unit)
-        val measurer = rememberTextMeasurer()
-        val badgeSize = with(density) { (unit * BadgeSize).toSp() }
-        val badge =
-            remember(measurer, badgeText, badgeSize) {
-                measurer.measure(
-                    badgeText,
-                    TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = badgeSize,
-                        letterSpacing = 0.28.em,
-                    ),
-                )
-            }
-        val model =
-            remember(measurer, modelText, badgeSize) {
-                measurer.measure(
-                    modelText,
-                    TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = badgeSize * ModelShare,
-                        letterSpacing = 0.18.em,
-                    ),
-                )
-            }
+        val badgeText =
+            badge.takeIf { it.isNotEmpty() }?.let { lettering(measurer, it, unit, true) }
+        val modelText =
+            model.takeIf { it.isNotEmpty() }?.let { lettering(measurer, it, unit, false) }
         // On a stage wider than a phone, the machine keeps to the middle; the body runs across.
         val left = ((constraints.maxWidth - TypewriterDimens.StageUnits * u) / 2f).coerceAtLeast(0f)
         Box(
@@ -230,7 +261,7 @@ internal fun TypewriterComposer(
                 }
         ) {
             // The machine; a tap on it gives it focus, for a hardware keyboard, and a drag up on
-            // the sheet pulls it out. A screen reader hears what is on the sheet, and can send it.
+            // the sheet pulls it out. A screen reader finds it with a Send action.
             Spacer(
                 Modifier.matchParentSize()
                     .drawBehind {
@@ -248,12 +279,14 @@ internal fun TypewriterComposer(
                                         TypewriterDimens.MachineHeight * u,
                                 ),
                                 bottom = size.height,
-                                badge = badge,
-                                model = model,
+                                badge = badgeText,
+                                model = modelText,
                             )
                         }
                     }
-                    .pointerInput(state) {
+                    // Keyed by the machine's size and place, so a turned or resized stage pulls
+                    // the sheet where it now is.
+                    .pointerInput(state, u, left, below) {
                         awaitEachGesture {
                             val down = awaitFirstDown()
                             if (!currentEnabled) return@awaitEachGesture
@@ -300,7 +333,7 @@ internal fun TypewriterComposer(
                             listOf(CustomAccessibilityAction(sendLabel) { state.send() })
                     }
             )
-            SheetText(state, Modifier.align(Alignment.TopCenter))
+            Said(state, Modifier.align(Alignment.TopCenter))
             Hint(
                 state,
                 Modifier.align(Alignment.TopCenter)
@@ -310,34 +343,85 @@ internal fun TypewriterComposer(
                 state,
                 pitch,
                 enabled,
+                measurer,
                 Modifier.align(Alignment.BottomCenter)
                     .padding(bottom = with(density) { insets.getBottom(this).toDp() })
                     .height(keysHeight)
-                    .padding(vertical = KeysPadding),
+                    .padding(vertical = TypewriterDimens.KeysPadding),
             )
         }
     }
 }
 
-// What is on the sheet, for a screen reader: read with the machine, and live, so a key a screen
-// reader presses is heard landing.
+// The badge or the model line under it, set for the body.
 @Composable
-private fun SheetText(state: TypewriterState, modifier: Modifier = Modifier) {
-    val text = state.field.text.toString()
+private fun lettering(
+    measurer: TextMeasurer,
+    text: String,
+    unit: Dp,
+    name: Boolean,
+) =
+    with(LocalDensity.current) {
+        val size = (unit * (if (name) BadgeSize else BadgeSize * ModelShare)).toSp()
+        remember(measurer, text, size, name) {
+            measurer.measure(
+                text,
+                TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = if (name) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = size,
+                    letterSpacing = if (name) BadgeSpacing.em else ModelSpacing.em,
+                ),
+            )
+        }
+    }
+
+// What a screen reader hears of the typing: once it pauses, what was typed, or what was deleted,
+// or that the sheet is full; never the whole sheet again at every key.
+@Composable
+private fun Said(state: TypewriterState, modifier: Modifier = Modifier) {
+    var said by remember { mutableStateOf("") }
+    val space = stringResource(Res.string.typewriter_key_space)
+    val newLine = stringResource(Res.string.typewriter_key_new_line)
+    val full = stringResource(Res.string.typewriter_hint_full)
+    LaunchedEffect(state) {
+        snapshotFlow { state.speech }
+            .collectLatest { speech ->
+                if (speech.quiet) return@collectLatest
+                delay(TypewriterDimens.SpeechPauseMs)
+                fun spoken(text: String) =
+                    when (text) {
+                        " " -> space
+                        "\n" -> newLine
+                        else -> text.replace("\n", " $newLine ")
+                    }
+                said =
+                    listOfNotNull(
+                            speech.deleted
+                                .takeIf { it.isNotEmpty() }
+                                ?.let {
+                                    getString(Res.string.typewriter_said_deleted, spoken(it))
+                                },
+                            speech.typed.takeIf { it.isNotEmpty() }?.let(::spoken),
+                            full.takeIf { speech.jam },
+                        )
+                        .joinToString(". ")
+                state.speech = Speech.Quiet
+            }
+    }
+    // Heard; then gone, so the node holds no stale words for a screen reader to come upon.
+    LaunchedEffect(said) {
+        if (said.isNotEmpty()) {
+            delay(SaidForMs)
+            said = ""
+        }
+    }
     Spacer(
         modifier.size(1.dp).semantics {
-            stateDescription = text
+            if (said.isNotEmpty()) contentDescription = said
             liveRegion = LiveRegionMode.Polite
         }
     )
-}
-
-// How far apart the keys are: ten across the width, a thumb's width at the most, and on a short
-// stage, as a phone on its side, small enough to leave the thread some room.
-private fun keyPitch(width: Dp, height: Dp): Dp {
-    var pitch = minOf(MostKeyPitch, (width - KeysSide * 2) / KeysAcross)
-    if (height != Dp.Infinity) pitch = minOf(pitch, height * ShortStageKeyShare)
-    return pitch
 }
 
 // What the hint over the paper says: how to type, how to send, or that the sheet is full. Nothing
@@ -374,52 +458,61 @@ private class Placed {
     var unit = 1f
 }
 
-/** What the machine does, heard through [sound] and felt through [haptics]. */
+/** What the machine does, heard through [sound] and felt through [haptics], while [active]. */
 private class MachineFeel(
     private val sound: () -> SoundPlayer,
     private val haptics: HapticFeedback,
+    private val active: () -> Boolean,
 ) : TypewriterFeel {
+    private fun play(clip: Sound, volume: Float, rate: Float = 1f) {
+        if (active()) sound().play(clip, volume, rate)
+    }
+
+    private fun feel(type: HapticFeedbackType) {
+        if (active()) haptics.performHapticFeedback(type)
+    }
+
     override fun strike(variant: Int, space: Boolean) {
         val clip = Strikes[variant % Strikes.size]
         if (space) {
-            sound().play(clip, volume = SpaceVolume, rate = SpaceRate)
+            play(clip, volume = SpaceVolume, rate = SpaceRate)
         } else {
-            sound().play(clip, volume = StrikeVolume, rate = 1f + (variant - 1) * StrikeRateStep)
+            play(clip, volume = StrikeVolume, rate = 1f + (variant - 1) * StrikeRateStep)
         }
-        haptics.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+        feel(HapticFeedbackType.KeyboardTap)
     }
 
     override fun bell() {
-        sound().play(Sound.Bell, volume = BellVolume)
-        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+        play(Sound.Bell, volume = BellVolume)
+        feel(HapticFeedbackType.Confirm)
     }
 
     override fun carriageReturn() {
-        sound().play(Sound.CarriageReturn, volume = ReturnVolume)
+        play(Sound.CarriageReturn, volume = ReturnVolume)
     }
 
-    override fun bang(speed: Float) {
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    override fun bang() {
+        feel(HapticFeedbackType.LongPress)
     }
 
     override fun tape() {
-        sound().play(Sound.Tape, volume = TapeVolume)
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        play(Sound.Tape, volume = TapeVolume)
+        feel(HapticFeedbackType.TextHandleMove)
     }
 
     override fun ratchet(pulling: Boolean) {
-        sound().play(Sound.RatchetTick, volume = if (pulling) PullTickVolume else FeedTickVolume)
-        if (pulling) haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        play(Sound.RatchetTick, volume = if (pulling) PullTickVolume else FeedTickVolume)
+        if (pulling) feel(HapticFeedbackType.SegmentFrequentTick)
     }
 
     override fun release() {
-        sound().play(Sound.SheetRelease, volume = ReleaseVolume)
-        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+        play(Sound.SheetRelease, volume = ReleaseVolume)
+        feel(HapticFeedbackType.Confirm)
     }
 
     override fun jam() {
-        sound().play(Sound.Strike2, volume = JamVolume, rate = JamRate)
-        haptics.performHapticFeedback(HapticFeedbackType.Reject)
+        play(Sound.Strike2, volume = JamVolume, rate = JamRate)
+        feel(HapticFeedbackType.Reject)
     }
 
     private companion object {
@@ -454,9 +547,15 @@ internal val TypewriterSounds: Set<Sound> =
 
 private val HintShape = RoundedCornerShape(50)
 
-// The badge's lettering, in units, and the model line under it as a share of that.
+// The badge's lettering, in units, and the model line under it as a share of that; and how far
+// apart their letters are set.
 private const val BadgeSize = 10f
 private const val ModelShare = 0.8f
+private const val BadgeSpacing = 0.28f
+private const val ModelSpacing = 0.18f
+
+// What was last heard is kept on its node this long.
+private const val SaidForMs = 3_000L
 
 // The hint's top, in units down from the composer's top.
 private const val HintTop = 6f
@@ -464,21 +563,13 @@ private const val HintTop = 6f
 // A finger this many units off the sheet still takes it.
 private const val SheetReach = 14f
 
-// The keys: at most this far apart, ten across with this much room at either side, in four rows
-// each this many pitches tall, with this much room over and under them. On a short stage a pitch
-// is at most this share of its height.
-private val MostKeyPitch = 48.dp
-private val KeysSide = 6.dp
-private const val KeysAcross = 10
-private const val KeyRows = 4
-internal const val KeyRowHeight = 1.12f
-private val KeysPadding = 6.dp
-private const val ShortStageKeyShare = 0.075f
-
-// A key from a hardware keyboard: Ctrl or ⌘ and Return send, Return is a new line, Backspace runs
-// the tape, and a character types if the machine has a key for it, dipping that key. Says whether
-// the key was the machine's.
-private fun TypewriterState.hardwareKey(event: KeyEvent): Boolean {
+/**
+ * A key from a hardware keyboard: Ctrl or ⌘ and Return send, Return is a new line, Backspace runs
+ * the tape, and a character types if the machine has a key for it, dipping that key; one it has no
+ * key for types nothing. AltGr and Option characters count as characters. Says whether the key was
+ * the machine's.
+ */
+internal fun TypewriterState.hardwareKey(event: KeyEvent): Boolean {
     val command = event.isCtrlPressed || event.isMetaPressed
     when (event.key) {
         Key.Enter,
@@ -497,12 +588,12 @@ private fun TypewriterState.hardwareKey(event: KeyEvent): Boolean {
             return true
         }
     }
-    if (command || event.isAltPressed) return false
+    if (command) return false
     val code = event.utf16CodePoint
     if (code <= 0 || code > Char.MAX_VALUE.code) return false
     val char = code.toChar()
-    if (char.isISOControl()) return false
-    keyIdFor(char)?.let(keyboard::dipped)
+    val id = keyIdFor(char) ?: return false
+    keyboard.dipped(id)
     type(char)
     return true
 }

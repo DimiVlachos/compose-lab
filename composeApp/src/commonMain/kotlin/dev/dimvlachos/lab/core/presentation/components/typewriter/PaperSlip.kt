@@ -49,7 +49,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * just as they were struck on the sheet. [unit] is the composer's unit, so the type is its size.
  */
 @Composable
-internal fun PaperSlip(
+public fun PaperSlip(
     lines: List<String>,
     tilt: Float,
     atlas: GlyphAtlas,
@@ -59,6 +59,7 @@ internal fun PaperSlip(
     val colors = LabTheme.colors
     val shadow = remember { SoftShadow() }
     val size = slipSize(lines)
+    val glyphs = remember(lines) { glyphsOf(lines) }
     Spacer(
         modifier
             .size(unit * size.width, unit * size.height)
@@ -69,7 +70,7 @@ internal fun PaperSlip(
             .drawBehind {
                 val u = unit.toPx()
                 drawPaper(shadow, colors, this.size, u, lift = 0f)
-                drawTyped(atlas, lines, 0f, 0f, u)
+                drawGlyphs(atlas, glyphs, 0f, 0f, u)
             }
     )
 }
@@ -116,7 +117,7 @@ private fun DrawScope.drawPaper(
  * as it goes. A message's place shows nothing until its sheet has landed there.
  */
 @Stable
-internal class SlipFlights {
+public class SlipFlights {
     private class Flight(val sheet: SentSheet, val tilt: Float) {
         val progress = Animatable(0f)
         var to: Rect? by mutableStateOf(null)
@@ -125,7 +126,7 @@ internal class SlipFlights {
     private val flights = mutableStateMapOf<Long, Flight>()
 
     /** Whether message [id]'s sheet is still in the air. */
-    fun flying(id: Long): Boolean = id in flights
+    public fun flying(id: Long): Boolean = id in flights
 
     /** Message [id]'s place has been laid out at [bounds], in the root. */
     internal fun laidOut(id: Long, bounds: Rect) {
@@ -137,7 +138,7 @@ internal class SlipFlights {
      * laid out. Returns once it has landed; if the place is never laid out, it simply appears
      * there.
      */
-    suspend fun fly(id: Long, sheet: SentSheet, tilt: Float) {
+    public suspend fun fly(id: Long, sheet: SentSheet, tilt: Float) {
         val flight = Flight(sheet, tilt)
         flights[id] = flight
         try {
@@ -179,7 +180,7 @@ internal class SlipFlights {
                     scale(grow, grow, Offset.Zero) {
                         drawPaper(shadow, colors, size, u, lift = arc)
                         clipRect(0f, 0f, size.width, size.height) {
-                            drawTyped(atlas, flight.sheet.lines, 0f, 0f, u)
+                            drawGlyphs(atlas, flight.sheet.glyphs, 0f, 0f, u)
                         }
                     }
                 }
@@ -197,7 +198,7 @@ internal class SlipFlights {
  * The place in a thread where message [id]'s slip lands: it tells [flights] where it is, and shows
  * nothing while its sheet is still in the air.
  */
-internal fun Modifier.slipLanding(flights: SlipFlights, id: Long): Modifier = onGloballyPositioned {
+public fun Modifier.slipLanding(flights: SlipFlights, id: Long): Modifier = onGloballyPositioned {
     flights.laidOut(id, Rect(it.positionInRoot(), it.size.toSize()))
 }
     .drawWithContent { if (!flights.flying(id)) drawContent() }
@@ -207,7 +208,7 @@ internal fun Modifier.slipLanding(flights: SlipFlights, id: Long): Modifier = on
  * takes no touches.
  */
 @Composable
-internal fun SlipFlightStage(
+public fun SlipFlightStage(
     flights: SlipFlights,
     atlas: GlyphAtlas,
     unit: Dp,

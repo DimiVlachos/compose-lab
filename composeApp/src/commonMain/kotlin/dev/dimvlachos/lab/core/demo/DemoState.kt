@@ -43,7 +43,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var feedResetHandler: (suspend () -> Unit)? = null
     private var popUpPageHandler: (suspend (Offset, Offset, Duration) -> Unit)? = null
     private var popUpTabHandler: (suspend (Float, Duration) -> Unit)? = null
-    private var sheetPullHandler: (suspend (Dp, Duration) -> Unit)? = null
+    private var typewriterSheetPullHandler: (suspend (Dp, Duration) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -113,8 +113,8 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         popUpTabHandler?.invoke(out, duration)
     }
 
-    override suspend fun pullSheet(up: Dp, duration: Duration) {
-        sheetPullHandler?.invoke(up, duration)
+    override suspend fun pullTypewriterSheet(up: Dp, duration: Duration) {
+        typewriterSheetPullHandler?.invoke(up, duration)
     }
 
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
@@ -181,7 +181,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         popUpTabHandler = handler
     }
 
-    fun setSheetPullHandler(handler: (suspend (Dp, Duration) -> Unit)?) {
-        sheetPullHandler = handler
+    fun setTypewriterSheetPullHandler(handler: (suspend (Dp, Duration) -> Unit)?) {
+        typewriterSheetPullHandler = handler
     }
 }

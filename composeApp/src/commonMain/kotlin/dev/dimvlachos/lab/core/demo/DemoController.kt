@@ -101,5 +101,5 @@ internal interface DemoController {
      * The typewriter types with [sendMessage], which leaves the sheet in the roller. Returns once
      * the fingertip has lifted.
      */
-    suspend fun pullSheet(up: Dp, duration: Duration)
+    suspend fun pullTypewriterSheet(up: Dp, duration: Duration)
 }

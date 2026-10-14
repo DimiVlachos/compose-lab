@@ -17,12 +17,6 @@ class SheetLayoutTest {
     }
 
     @Test
-    fun theBellIsFiveLettersBeforeTheMargin() {
-        assertEquals(18, TypewriterDimens.Columns)
-        assertEquals(TypewriterDimens.Columns - 5, TypewriterDimens.BellColumn)
-    }
-
-    @Test
     fun atTheMarginTheCarriageReturnsByItself() {
         val sheet = layOutSheet("abcdefghijklmnopqr")
         assertEquals(listOf("abcdefghijklmnopqr", ""), sheet.lines)
@@ -56,7 +50,7 @@ class SheetLayoutTest {
     }
 
     @Test
-    fun theSeedSlipBreaksWhereThePrototypesDoes() {
+    fun aLongMessageBreaksAtTheEndsOfItsWords() {
         assertEquals(
             listOf("on the 07:25 from", "piraeus. window", "seat, left side."),
             layOutSheet("on the 07:25 from piraeus. window seat, left side.").sent,
@@ -83,6 +77,16 @@ class SheetLayoutTest {
         assertEquals(listOf("hi"), layOutSheet("hi\n\n").sent)
         assertFalse(layOutSheet("   ").inked)
         assertTrue(layOutSheet(" a ").inked)
+    }
+
+    @Test
+    fun aSlipLaysItsLettersOutWhereTheSheetHadThem() {
+        val sheet = layOutSheet("see you at the port")
+        assertEquals(
+            sheet.glyphs.map { it.line to it.column },
+            glyphsOf(sheet.sent).map { it.line to it.column },
+        )
+        assertEquals(sheet.glyphs.map { it.strike }, glyphsOf(sheet.sent).map { it.strike })
     }
 
     @Test

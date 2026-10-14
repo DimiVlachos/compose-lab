@@ -8,8 +8,8 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_typewriter
 import dev.dimvlachos.lab.resources.demo_typewriter_description
 import dev.dimvlachos.lab.resources.ic_demo_typewriter
-import dev.dimvlachos.lab.resources.typewriter_script_1
-import dev.dimvlachos.lab.resources.typewriter_script_2
+import dev.dimvlachos.lab.resources.typewriterchat_script_1
+import dev.dimvlachos.lab.resources.typewriterchat_script_2
 import dev.dimvlachos.lab.typewriterdemo.presentation.components.TypewriterDemo
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -26,14 +26,18 @@ internal object TypewriterDemos {
     private val thread =
         demoScript(holdEnd = 400.milliseconds) {
             at(0.6.seconds, lasts = 3.4.seconds) {
-                sendMessage(Res.string.typewriter_script_1, typing = 3.2.seconds)
+                sendMessage(Res.string.typewriterchat_script_1, typing = 3.2.seconds)
             }
-            at(4.4.seconds, lasts = 0.8.seconds) { pullSheet(ShortPull, 350.milliseconds) }
-            at(5.6.seconds, lasts = 0.9.seconds) { pullSheet(FullPull, 450.milliseconds) }
+            at(4.4.seconds, lasts = 0.8.seconds) {
+                pullTypewriterSheet(ShortPull, 350.milliseconds)
+            }
+            at(5.6.seconds, lasts = 0.9.seconds) { pullTypewriterSheet(FullPull, 450.milliseconds) }
             at(9.6.seconds, lasts = 3.2.seconds) {
-                sendMessage(Res.string.typewriter_script_2, typing = 3.seconds)
+                sendMessage(Res.string.typewriterchat_script_2, typing = 3.seconds)
             }
-            at(13.2.seconds, lasts = 0.9.seconds) { pullSheet(FullPull, 450.milliseconds) }
+            at(13.2.seconds, lasts = 0.9.seconds) {
+                pullTypewriterSheet(FullPull, 450.milliseconds)
+            }
             at(18.6.seconds, lasts = 0.6.seconds) { clearMessages() }
         }
 

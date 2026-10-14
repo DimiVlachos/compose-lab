@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -72,24 +74,28 @@ import dev.dimvlachos.lab.core.presentation.components.typewriter.slipLanding
 import dev.dimvlachos.lab.core.presentation.components.typewriter.slipTilt
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.typewriter_contact
-import dev.dimvlachos.lab.resources.typewriter_contact_status
-import dev.dimvlachos.lab.resources.typewriter_reply_1
-import dev.dimvlachos.lab.resources.typewriter_reply_2
-import dev.dimvlachos.lab.resources.typewriter_reply_3
-import dev.dimvlachos.lab.resources.typewriter_seed_1
-import dev.dimvlachos.lab.resources.typewriter_seed_2
-import dev.dimvlachos.lab.resources.typewriter_seed_3
-import dev.dimvlachos.lab.resources.typewriter_today
-import dev.dimvlachos.lab.resources.typewriter_typing
+import dev.dimvlachos.lab.resources.typewriterchat_badge
+import dev.dimvlachos.lab.resources.typewriterchat_contact
+import dev.dimvlachos.lab.resources.typewriterchat_contact_status
+import dev.dimvlachos.lab.resources.typewriterchat_model
+import dev.dimvlachos.lab.resources.typewriterchat_reply_1
+import dev.dimvlachos.lab.resources.typewriterchat_reply_2
+import dev.dimvlachos.lab.resources.typewriterchat_reply_3
+import dev.dimvlachos.lab.resources.typewriterchat_seed_1
+import dev.dimvlachos.lab.resources.typewriterchat_seed_2
+import dev.dimvlachos.lab.resources.typewriterchat_seed_3
+import dev.dimvlachos.lab.resources.typewriterchat_today
+import dev.dimvlachos.lab.resources.typewriterchat_typing
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -111,6 +117,9 @@ private const val TypingJitter = 0.35f
 // A sheet landing in the thread clicks this loud.
 private const val LandVolume = 0.5f
 
+// A frame longer than this is counted as this long by the scripted typing.
+private const val LongestFrameNanos = 50_000_000L
+
 /**
  * A chat with Eleni on Naxos, written on a typewriter typed on its own keys. Every letter strikes
  * the sheet in the roller, the bell rings near the margin and the carriage returns by itself; pull
@@ -126,15 +135,15 @@ internal fun TypewriterDemo(state: DemoState) {
     val flights = remember { SlipFlights() }
     val seed =
         listOf(
-            stringResource(Res.string.typewriter_seed_1) to false,
-            stringResource(Res.string.typewriter_seed_2) to true,
-            stringResource(Res.string.typewriter_seed_3) to false,
+            stringResource(Res.string.typewriterchat_seed_1) to false,
+            stringResource(Res.string.typewriterchat_seed_2) to true,
+            stringResource(Res.string.typewriterchat_seed_3) to false,
         )
     val replies =
         listOf(
-            stringResource(Res.string.typewriter_reply_1),
-            stringResource(Res.string.typewriter_reply_2),
-            stringResource(Res.string.typewriter_reply_3),
+            stringResource(Res.string.typewriterchat_reply_1),
+            stringResource(Res.string.typewriterchat_reply_2),
+            stringResource(Res.string.typewriterchat_reply_3),
         )
     val thread = remember { TypewriterThread(seed, replies) }
     val list = rememberLazyListState()
@@ -159,39 +168,31 @@ internal fun TypewriterDemo(state: DemoState) {
         snapshotFlow { thread.messages.size to thread.typing }
             .collect { if (list.firstVisibleItemIndex <= 1) list.animateScrollToItem(0) }
     }
+    // The script's steps take turns, in the order they started: in the background, where frames
+    // stop and so does the typing, a step that comes due waits for the one before it, so the run
+    // still types, sends and takes back in order, and ends where it began.
+    val turns = remember { Mutex() }
     DisposableEffect(state, machine, thread) {
         state.setSendHandler { text, typing ->
             val line = getString(text)
-            // A fingertip taps the machine's own keys, a character at a time: the page key and
-            // Shift first where a character needs them, Backspace for a struck-out letter.
-            val random = Random(line.hashCode())
-            val pace = typing / line.length.coerceAtLeast(1)
-            val keyboard = machine.keyboard
-            for (char in line) {
-                delay(pace * (1f + (random.nextFloat() * 2f - 1f) * TypingJitter).toDouble())
-                val keys =
-                    if (char == ScriptBackspace) listOf(TypeKey(KeyAction.Backspace))
-                    else keysFor(char, keyboard.figures, keyboard.shifted)
-                for ((i, key) in keys.withIndex()) {
-                    if (i > 0) delay(pace)
-                    machine.tap(key)
-                }
-            }
-            // Back to the letters, as a typist turns back after a stop.
-            if (keyboard.figures) {
-                delay(pace)
-                machine.tap(TypeKey(KeyAction.Page))
-            }
+            turns.withLock { tapOut(machine, line, typing) }
         }
-        state.setSheetPullHandler { up, duration -> pullSheet(machine, up, duration) }
+        state.setTypewriterSheetPullHandler { up, duration ->
+            turns.withLock { pullTypewriterSheet(machine, up, duration) }
+        }
         state.setClearHandler {
-            answers.forEach { it.cancel() }
-            answers.clear()
-            thread.clear()
+            turns.withLock {
+                // Once every sheet has landed, so none lands after its thread is put back.
+                snapshotFlow { thread.messages.none { flights.flying(it.id) } }.first { it }
+                answers.forEach { it.cancel() }
+                answers.clear()
+                thread.clear()
+                machine.field.clearText()
+            }
         }
         onDispose {
             state.setSendHandler(null)
-            state.setSheetPullHandler(null)
+            state.setTypewriterSheetPullHandler(null)
             state.setClearHandler(null)
         }
     }
@@ -225,16 +226,57 @@ internal fun TypewriterDemo(state: DemoState) {
                 machine,
                 onSend = onSend,
                 sound = sound,
+                badge = stringResource(Res.string.typewriterchat_badge),
+                model = stringResource(Res.string.typewriterchat_model),
                 enabled = !scripted,
                 insets = insets.only(WindowInsetsSides.Bottom),
+                atlas = atlas,
             )
         }
         SlipFlightStage(flights, atlas, unit)
     }
 }
 
+// A fingertip taps [line] out on the machine's own keys over about [typing], a character at a
+// time: the page key and Shift first where a character needs them, Delete for a struck-out letter.
+// It waits on frames, not the clock, so in the background, where frames stop, it stops too.
+private suspend fun tapOut(machine: TypewriterState, line: String, typing: Duration) {
+    val random = Random(line.hashCode())
+    val pace = typing / line.length.coerceAtLeast(1)
+    val keyboard = machine.keyboard
+    for (char in line) {
+        awaitFrames(pace * (1f + (random.nextFloat() * 2f - 1f) * TypingJitter).toDouble())
+        val keys =
+            if (char == ScriptBackspace) listOf(TypeKey(KeyAction.Backspace))
+            else keysFor(char, keyboard.figures, keyboard.shifted)
+        for ((i, key) in keys.withIndex()) {
+            if (i > 0) awaitFrames(pace)
+            machine.tap(key)
+        }
+    }
+    // Back to the letters, as a typist turns back after a stop.
+    if (keyboard.figures) {
+        awaitFrames(pace)
+        machine.tap(TypeKey(KeyAction.Page))
+    }
+}
+
+// Waits [duration] of frames: no time passes while no frames come.
+private suspend fun awaitFrames(duration: Duration) {
+    val wanted = duration.inWholeNanoseconds
+    var passed = 0L
+    var last = withFrameNanos { it }
+    while (passed < wanted) {
+        withFrameNanos { now ->
+            // A long gap between frames is the screen having been away: it counts as one frame.
+            passed += (now - last).coerceAtMost(LongestFrameNanos)
+            last = now
+        }
+    }
+}
+
 // The scripted fingertip pulls the sheet [up] over [duration]; the machine works in units.
-private suspend fun pullSheet(machine: TypewriterState, up: Dp, duration: Duration) {
+private suspend fun pullTypewriterSheet(machine: TypewriterState, up: Dp, duration: Duration) {
     machine.pullScripted(up / machine.unit, duration.inWholeMilliseconds / 1000f)
 }
 
@@ -285,7 +327,7 @@ private fun Message(
 private fun Header(modifier: Modifier = Modifier) {
     val colors = LabTheme.colors
     val spacing = LabTheme.spacing
-    val name = stringResource(Res.string.typewriter_contact)
+    val name = stringResource(Res.string.typewriterchat_contact)
     Row(
         modifier
             .fillMaxWidth()
@@ -319,7 +361,7 @@ private fun Header(modifier: Modifier = Modifier) {
                 modifier = Modifier.semantics { heading() },
             )
             Text(
-                stringResource(Res.string.typewriter_contact_status),
+                stringResource(Res.string.typewriterchat_contact_status),
                 style = LabTheme.typography.label,
                 color = colors.textMuted,
             )
@@ -331,7 +373,7 @@ private fun Header(modifier: Modifier = Modifier) {
 private fun Today() {
     Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
         Text(
-            stringResource(Res.string.typewriter_today).uppercase(),
+            stringResource(Res.string.typewriterchat_today).uppercase(),
             style = LabTheme.typography.label.copy(letterSpacing = 0.08.em),
             color = LabTheme.colors.textMuted,
         )
@@ -342,7 +384,7 @@ private fun Today() {
 @Composable
 private fun Typing(modifier: Modifier = Modifier) {
     val colors = LabTheme.colors
-    val label = stringResource(Res.string.typewriter_typing)
+    val label = stringResource(Res.string.typewriterchat_typing)
     val transition = rememberInfiniteTransition()
     val phase by
         transition.animateFloat(0f, 1f, infiniteRepeatable(tween(DotCycleMs), RepeatMode.Restart))

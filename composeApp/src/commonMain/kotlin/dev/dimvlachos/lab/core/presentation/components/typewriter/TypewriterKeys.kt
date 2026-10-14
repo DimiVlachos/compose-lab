@@ -3,9 +3,10 @@ package dev.dimvlachos.lab.core.presentation.components.typewriter
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 /** What a key on the typewriter's keyboard does. */
 @Immutable
@@ -89,9 +90,12 @@ internal object TypewriterLayout {
     }
 }
 
+/** A key pressed: [id] dips, with the scripted fingertip on it if [touched]. */
+@Immutable internal data class KeyPress(val id: String, val touched: Boolean)
+
 /**
- * The typewriter's keyboard: which page of keys shows, whether Shift is down, and the keys a
- * scripted fingertip has tapped, for each to dip and show the fingertip on it.
+ * The typewriter's keyboard: which page of keys shows, whether Shift is down, and the keys pressed
+ * by a scripted fingertip or a hardware keyboard, for each to dip, the fingertip shown on it.
  */
 @Stable
 internal class TypewriterKeyboard {
@@ -103,18 +107,21 @@ internal class TypewriterKeyboard {
     var shifted by mutableStateOf(false)
         internal set
 
-    /** Each key's scripted taps so far, by its id: a key dips and shows the fingertip on each. */
-    internal val taps = mutableStateMapOf<String, Int>()
+    private val pressed = MutableSharedFlow<KeyPress>(extraBufferCapacity = PressBuffer)
 
-    /** Each key's presses from a hardware keyboard so far, by its id: a key dips on each. */
-    internal val dips = mutableStateMapOf<String, Int>()
+    /** Every key pressed by a script or a hardware keyboard, as it is pressed. */
+    val presses: SharedFlow<KeyPress> = pressed
 
     internal fun tapped(id: String) {
-        taps[id] = (taps[id] ?: 0) + 1
+        pressed.tryEmit(KeyPress(id, touched = true))
     }
 
     internal fun dipped(id: String) {
-        dips[id] = (dips[id] ?: 0) + 1
+        pressed.tryEmit(KeyPress(id, touched = false))
+    }
+
+    private companion object {
+        const val PressBuffer = 32
     }
 }
 

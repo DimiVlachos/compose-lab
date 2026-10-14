@@ -26,7 +26,7 @@ class TypewriterStateTest {
             events += clock() to "return"
         }
 
-        override fun bang(speed: Float) {
+        override fun bang() {
             events += clock() to "bang"
         }
 
@@ -90,9 +90,10 @@ class TypewriterStateTest {
     fun aStruckLetterLandsOnThePaperAMomentAfterTheKey() {
         val (state, _) = machine()
         state.typedNow("a")
-        assertFalse(state.landed(0, 0))
+        val glyph = state.sheet.glyphs.single()
+        assertFalse(state.landed(glyph))
         state.run(TypewriterDimens.LandSeconds + 0.02f)
-        assertTrue(state.landed(0, 0))
+        assertTrue(state.landed(glyph))
     }
 
     @Test
@@ -128,7 +129,7 @@ class TypewriterStateTest {
         state.field.setTextAndPlaceCursorAtEnd("ca")
         state.typedNow("ca")
         assertEquals(1, heard.count("tape"))
-        assertEquals(listOf('t'), state.lifting.map { it.char })
+        assertEquals(listOf('t'), state.lifting.map { it.glyph.char })
         state.run(0.5f)
         assertTrue(state.lifting.isEmpty())
         assertEquals(TypewriterState.columnX(2), state.carriage, 0.05f)
@@ -236,6 +237,58 @@ class TypewriterStateTest {
         assertTrue(state.send())
         state.run(TypewriterDimens.AutoPullSeconds + TypewriterDimens.ZipSeconds + 0.1f)
         assertEquals("ok", sent?.text)
+    }
+
+    @Test
+    fun aBlankSheetCannotBeSentByDeletingWhileItIsPulledOut() {
+        val (state, _) = machine()
+        var sent: SentSheet? = null
+        state.onSent = { sent = it }
+        state.type('a')
+        assertTrue(state.send())
+        // Deleted as it starts out of the roller, by itself: refused, so what is sent is the
+        // letter.
+        state.backspace()
+        assertFalse(state.type('b'))
+        assertEquals("a", state.field.text.toString())
+        state.run(TypewriterDimens.AutoPullSeconds + TypewriterDimens.ZipSeconds + 0.1f)
+        assertEquals("a", sent?.text)
+    }
+
+    @Test
+    fun deletingASpaceOrALineStillRunsTheTape() {
+        val (state, heard) = machine()
+        state.type('a')
+        state.type(' ')
+        state.backspace()
+        assertEquals(1, heard.count("tape"))
+        state.type('\n')
+        state.backspace()
+        assertEquals(2, heard.count("tape"))
+        // The space the return took up at the margin, too.
+        "abcdefghijklmnopqr ".forEach { state.type(it) }
+        state.backspace()
+        assertEquals(3, heard.count("tape"))
+    }
+
+    @Test
+    fun aSecondFingerCannotTakeAHeldSheet() {
+        val (state, _) = machine()
+        state.type('a')
+        assertTrue(state.grab())
+        assertFalse(state.grab())
+    }
+
+    @Test
+    fun aScreenReaderHearsWhatWasTypedAndDeletedSinceItLastHeard() {
+        val (state, _) = machine()
+        "cat".forEach { state.type(it) }
+        state.backspace()
+        assertEquals(Speech("ca", "", jam = false), state.speech)
+        state.speech = Speech.Quiet
+        state.backspace()
+        state.backspace()
+        assertEquals(Speech("", "ca", jam = false), state.speech)
     }
 
     @Test

@@ -14,8 +14,8 @@ internal object TypewriterDimens {
 
     // A unit is never smaller than this, nor bigger: on a tablet or a phone on its side, the
     // machine stays a portable's size, in the middle of the stage.
-    private val SmallestUnit = 0.85.dp
-    private val BiggestUnit = 1.3.dp
+    val SmallestUnit = 0.85.dp
+    val BiggestUnit = 1.3.dp
 
     /**
      * How big a unit is on a stage [width] wide and [height] tall: on a short one, as a phone on
@@ -24,8 +24,8 @@ internal object TypewriterDimens {
     fun unit(width: Dp, height: Dp = Dp.Infinity): Dp =
         minOf(width / StageUnits, height / ShortStageUnits).coerceIn(SmallestUnit, BiggestUnit)
 
-    // A stage is this many units tall at the least before the machine shrinks to fit it.
-    private const val ShortStageUnits = 440f
+    /** A stage is this many units tall at the least before the machine shrinks to fit it. */
+    const val ShortStageUnits = 440f
 
     // The sheet: this many letters to a line, each this wide, lines this far apart, with this
     // much paper either side of the text and above its first line. A sheet holds this many lines,
@@ -174,4 +174,45 @@ internal object TypewriterDimens {
 
     /** A message's slip waits this long for its place in the thread before it simply appears. */
     const val SlotWaitMs = 600L
+
+    // The keys: at most this far apart, ten across with this much room at either side, in four
+    // rows each this many pitches tall, with this much room over and under them. On a short stage
+    // a pitch is at most this share of its height.
+    val MostKeyPitch = 48.dp
+    val KeysSide = 6.dp
+    const val KeysAcross = 10
+    const val KeyRows = 4
+    const val KeyRowHeight = 1.12f
+    val KeysPadding = 6.dp
+    const val ShortStageKeyShare = 0.075f
+
+    // A key's top is this share of its cell, stands this far up on its lever and goes this far
+    // down when pressed; its chrome rim is this wide, and its lever this share of its top's width.
+    const val CapShare = 0.78f
+    val KeyLift = 1.5.dp
+    val KeyTravel = 3.dp
+    val RimWidth = 2.dp
+    const val StemShare = 0.18f
+
+    // A key's legend is this share of its pitch tall, smaller for a word than a letter.
+    const val LegendShare = 0.36f
+    const val WordLegendShare = 0.26f
+
+    // A key goes down in this long, and Delete held goes on after this long, this often.
+    const val DipMs = 35
+    const val RepeatAfterMs = 450L
+    const val RepeatEveryMs = 140L
+
+    /** A screen reader hears the typing once it has paused this long. */
+    const val SpeechPauseMs = 600L
+
+    /** How far apart the keys are on a stage [width] wide and [height] tall. */
+    fun keyPitch(width: Dp, height: Dp): Dp {
+        var pitch = minOf(MostKeyPitch, (width - KeysSide * 2) / KeysAcross)
+        if (height != Dp.Infinity) pitch = minOf(pitch, height * ShortStageKeyShare)
+        return pitch
+    }
+
+    /** How tall the keys are in all, [pitch] apart. */
+    fun keysHeight(pitch: Dp): Dp = pitch * KeyRowHeight * KeyRows + KeysPadding * 2
 }

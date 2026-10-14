@@ -10,7 +10,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
@@ -37,8 +38,8 @@ internal interface TypewriterFeel {
     /** The lever is pushed: the paper feeds a line and the carriage is sent home. */
     fun carriageReturn() = Unit
 
-    /** The carriage bangs into its stop, at [speed] units a second. */
-    fun bang(speed: Float) = Unit
+    /** The carriage bangs into its stop. */
+    fun bang() = Unit
 
     /** The correction tape lifts a letter off. */
     fun tape() = Unit
@@ -53,16 +54,22 @@ internal interface TypewriterFeel {
     fun jam() = Unit
 }
 
-/** Where a sheet sent from the machine was as it came free, and what was on it. */
+/**
+ * A sheet sent from the machine: what was on it, and where it was as it came free. The composer
+ * hands it over with [bounds] in the root, for a thread to fly it into its place.
+ */
 @Immutable
-internal class SentSheet(
+public class SentSheet(
     /** The message, as typed, without the spaces round it. */
-    val text: String,
+    public val text: String,
     /** The sheet's lines, as they were typed on it, blank ones at the foot left off. */
-    val lines: List<String>,
-    /** The whole sheet, in units from the machine's top left. */
-    val bounds: Rect,
-)
+    public val lines: List<String>,
+    /** The whole sheet, in px in the root (in units from the machine's top left, inside it). */
+    public val bounds: Rect,
+) {
+    /** Its letters, each where it was struck. */
+    internal val glyphs: List<Glyph> = glyphsOf(lines)
+}
 
 /** Where the sheet is in being sent. */
 internal enum class SheetPhase {
@@ -87,11 +94,11 @@ internal enum class SheetPhase {
  * recomposes.
  */
 @Stable
-internal class TypewriterState(text: String = "") {
+public class TypewriterState(text: String = "") {
     /**
      * What is typed: edited only by the machine's keys and a hardware keyboard, never the phone's.
      */
-    val field = TextFieldState(text)
+    public val field: TextFieldState = TextFieldState(text)
 
     /** What is typed, as the machine last saw it, and as it lies on the sheet. */
     private var typed = text
@@ -99,25 +106,31 @@ internal class TypewriterState(text: String = "") {
         private set
 
     /** Whether there is anything on the sheet to send. */
-    var inked by mutableStateOf(sheet.inked)
+    public var inked: Boolean by mutableStateOf(sheet.inked)
         private set
+
+    /**
+     * What a screen reader should hear of the typing since it last heard: letters struck, letters
+     * deleted, a refused key. The composer reads it out once the typing pauses.
+     */
+    internal var speech by mutableStateOf(Speech.Quiet)
 
     /** Whether a key was just refused for want of room: the hint says the sheet is full. */
-    var jammed by mutableStateOf(false)
+    public var jammed: Boolean by mutableStateOf(false)
         private set
 
-    var phase by mutableStateOf(SheetPhase.Idle)
+    internal var phase by mutableStateOf(SheetPhase.Idle)
         private set
 
     /**
      * How big a machine unit is, as the composer last laid the machine out: a thread its slips fly
      * into draws them in the same size of type.
      */
-    var unit: Dp by mutableStateOf(1.dp)
+    public var unit: Dp by mutableStateOf(1.dp)
         internal set
 
     /** The keyboard the machine is typed on. */
-    val keyboard = TypewriterKeyboard()
+    internal val keyboard = TypewriterKeyboard()
 
     /** Hears what is heard and felt. */
     internal var feel: TypewriterFeel = object : TypewriterFeel {}
@@ -205,8 +218,13 @@ internal class TypewriterState(text: String = "") {
 
     // Letters struck but not yet on the paper, by place, with when each lands; and letters being
     // lifted off by the tape, with when the tape took each.
-    private val landing = mutableMapOf<Long, Float>()
+    private val landing = FloatArray(TypewriterDimens.MaxLines * TypewriterDimens.Columns)
+    private var lastLanding = Float.NEGATIVE_INFINITY
     internal val lifting = mutableListOf<Lifted>()
+
+    init {
+        landing.fill(Float.NEGATIVE_INFINITY)
+    }
 
     private var accumulated = 0f
 
@@ -237,9 +255,8 @@ internal class TypewriterState(text: String = "") {
             return exp(-(t - leverHold) * LeverEase)
         }
 
-    /** Whether the letter at [column] of [line] has landed on the paper. */
-    internal fun landed(line: Int, column: Int): Boolean =
-        landing[place(line, column)]?.let { now >= it } ?: true
+    /** Whether [glyph] has landed on the paper. */
+    internal fun landed(glyph: Glyph): Boolean = now >= landing[place(glyph.line, glyph.column)]
 
     /** Whether the hint should show: the sheet is in, and not pulled out to read it. */
     internal val hintShown: Float
@@ -250,7 +267,7 @@ internal class TypewriterState(text: String = "") {
      * letter, what is gone from the end is lifted off by the tape, and the carriage and the paper
      * go where the text now ends.
      */
-    fun typedNow(text: CharSequence) {
+    internal fun typedNow(text: CharSequence) {
         val now = text.toString()
         if (now == typed) return
         val before = sheet
@@ -258,19 +275,25 @@ internal class TypewriterState(text: String = "") {
         val kept = typed.commonPrefixWith(now).length
         val gone = before.glyphs.filter { it.index >= kept }
         val added = after.glyphs.filter { it.index >= kept }
+        val deleted = typed.substring(kept)
+        speech = speech.said(typed = now.substring(kept), deleted = deleted)
         typed = now
         sheet = after
         inked = after.inked
         if (gone.isNotEmpty()) {
-            for (glyph in gone) lifting += Lifted(glyph.line, glyph.column, glyph.char, this.now)
+            for (glyph in gone) lifting += Lifted(glyph, this.now)
             ribbonAt = this.now
             taping = true
+            feel.tape()
+        } else if (deleted.isNotEmpty()) {
+            // Only a space or a line went, or a space the return took up: the tape still runs.
             feel.tape()
         }
         if (added.isNotEmpty()) {
             for (glyph in added) {
                 landing[place(glyph.line, glyph.column)] = this.now + TypewriterDimens.LandSeconds
-                lifting.removeAll { it.line == glyph.line && it.column == glyph.column }
+                lastLanding = this.now + TypewriterDimens.LandSeconds
+                lifting.removeAll { it.glyph.line == glyph.line && it.glyph.column == glyph.column }
             }
             val last = added.last()
             barAt = this.now
@@ -278,8 +301,8 @@ internal class TypewriterState(text: String = "") {
             ribbonAt = this.now
             taping = false
             feel.strike(last.char.lowercaseChar().code % StrikeVariants, space = false)
-        } else if (gone.isEmpty() && after.line == before.line) {
-            // Only spaces came or went: the carriage steps without a letter.
+        } else if (deleted.isEmpty() && after.line == before.line) {
+            // Only a space came: the carriage steps without a letter.
             feel.strike(0, space = true)
         }
         if (
@@ -312,11 +335,12 @@ internal class TypewriterState(text: String = "") {
      * runs the tape, Shift holds for the next letter, and the page key turns to the figures and
      * back.
      */
-    fun press(key: TypeKey) {
+    internal fun press(key: TypeKey) {
         when (val action = key.action) {
             is KeyAction.Type -> {
-                type(if (keyboard.shifted) action.char.uppercaseChar() else action.char)
-                keyboard.shifted = false
+                val typedIt =
+                    type(if (keyboard.shifted) action.char.uppercaseChar() else action.char)
+                if (typedIt) keyboard.shifted = false
             }
             KeyAction.Space -> type(' ')
             KeyAction.Return -> type('\n')
@@ -330,11 +354,12 @@ internal class TypewriterState(text: String = "") {
     }
 
     /**
-     * Types [char] at the end of the text, and says whether it did: not while the sheet is coming
-     * out, and not off the foot of a full sheet, which jams instead.
+     * Types [char] at the end of the text, and says whether it did: not while the sheet is being
+     * pulled out by itself or is coming free, and not off the foot of a full sheet, which jams
+     * instead.
      */
-    fun type(char: Char): Boolean {
-        if (phase == SheetPhase.Zipping) return false
+    public fun type(char: Char): Boolean {
+        if (sending) return false
         val next = field.text.toString() + char
         if (layOutSheet(next).overflow) {
             jam()
@@ -345,21 +370,25 @@ internal class TypewriterState(text: String = "") {
         return true
     }
 
-    /** Deletes the last character typed: the carriage runs back and the tape lifts it off. */
-    fun backspace() {
-        if (phase == SheetPhase.Zipping || field.text.isEmpty()) return
+    /**
+     * Deletes the last character typed: the carriage runs back and the tape lifts it off. Not while
+     * the sheet is being pulled out by itself or is coming free, so what is sent is what was there.
+     */
+    public fun backspace() {
+        if (sending || field.text.isEmpty()) return
         field.edit { delete(length - 1, length) }
         typedNow(field.text)
     }
 
     /** A scripted fingertip taps [key]: it dips under the fingertip and is pressed. */
-    fun tap(key: TypeKey) {
+    internal fun tap(key: TypeKey) {
         keyboard.tapped(key.id)
         press(key)
     }
 
     /** A key that would have typed off a full sheet was refused. */
-    fun jam() {
+    internal fun jam() {
+        speech = speech.jammed()
         jamAt = now
         jammed = true
         carriageSpeed -= JamKnock
@@ -380,9 +409,12 @@ internal class TypewriterState(text: String = "") {
         feel.carriageReturn()
     }
 
-    /** Takes the sheet with a finger, and says whether it did: not while it is being sent. */
-    fun grab(): Boolean {
-        if (phase != SheetPhase.Idle || autoPulling) return false
+    /**
+     * Takes the sheet with a finger, and says whether it did: not while another finger has it, nor
+     * while it is being sent.
+     */
+    public fun grab(): Boolean {
+        if (held || phase != SheetPhase.Idle || autoPulling) return false
         held = true
         pullSpeed = 0f
         wake()
@@ -390,7 +422,7 @@ internal class TypewriterState(text: String = "") {
     }
 
     /** Moves the finger holding the sheet [up] units up (negative is down). */
-    fun drag(up: Float) {
+    public fun drag(up: Float) {
         if (!held) return
         pull = (pull + up).coerceAtLeast(0f)
         wake()
@@ -400,7 +432,7 @@ internal class TypewriterState(text: String = "") {
      * Lets go of the sheet, the finger moving up at [speed] units a second: pulled out far enough,
      * or flung, it is sent; otherwise it springs back into the roller.
      */
-    fun release(speed: Float) {
+    public fun release(speed: Float) {
         if (!held) return
         held = false
         if (PullToSend.sends(shown, speed, sheet.inked)) pullOut()
@@ -411,7 +443,7 @@ internal class TypewriterState(text: String = "") {
      * Sends what is typed without a finger: the sheet is pulled out by itself, as Ctrl or ⌘ and
      * Return, or a screen reader's Send, ask. Nothing for a blank sheet, or one already on its way.
      */
-    fun send(): Boolean {
+    public fun send(): Boolean {
         if (phase != SheetPhase.Idle || autoPulling || !sheet.inked) return false
         held = false
         autoPulling = true
@@ -424,7 +456,7 @@ internal class TypewriterState(text: String = "") {
      * A scripted fingertip takes the sheet, pulls it [up] units up over [seconds] and lets go, as a
      * finger would. Returns once the fingertip has lifted.
      */
-    suspend fun pullScripted(up: Float, seconds: Float) {
+    internal suspend fun pullScripted(up: Float, seconds: Float) {
         try {
             touch = Offset(carriage + SheetGrabX, sheetTop + SheetGrabY)
             fade(to = 1f, seconds = TouchDown)
@@ -469,6 +501,8 @@ internal class TypewriterState(text: String = "") {
     private fun pullOut() {
         autoPulling = false
         held = false
+        // A blank sheet is never sent: it slides back in.
+        if (!sheet.inked) return
         zipFrom = TypewriterDimens.SheetTop - feed - shown
         phase = SheetPhase.Zipping
         phaseAt = now
@@ -493,7 +527,6 @@ internal class TypewriterState(text: String = "") {
             feel.ratchet(pulling = held || autoPulling)
             ratchetAt = travel
         }
-        landing.entries.removeAll { now >= it.value }
         lifting.removeAll { now - it.at >= TypewriterDimens.TapeSeconds }
         if (jammed && now - jamAt >= TypewriterDimens.JamSeconds) jammed = false
         if (abs(feed - fed) > FedStep) fed = feed
@@ -527,7 +560,7 @@ internal class TypewriterState(text: String = "") {
             if (homing && now >= heldUntil) {
                 homing = false
                 carriageSpeed = -speed * TypewriterDimens.Bounce
-                if (speed > BangSpeed) feel.bang(speed)
+                if (speed > BangSpeed) feel.bang()
             } else {
                 carriageSpeed = min(0f, carriageSpeed)
             }
@@ -576,6 +609,11 @@ internal class TypewriterState(text: String = "") {
     // Out of the roller: the sheet goes to whoever is listening, and a fresh one feeds in as the
     // carriage goes home.
     private fun sent() {
+        if (!sheet.inked) {
+            zip = 0f
+            phase = SheetPhase.Idle
+            return
+        }
         val bounds =
             Rect(
                 Offset(carriage, sheetTop),
@@ -588,7 +626,8 @@ internal class TypewriterState(text: String = "") {
         inked = false
         jammed = false
         lifting.clear()
-        landing.clear()
+        landing.fill(Float.NEGATIVE_INFINITY)
+        lastLanding = Float.NEGATIVE_INFINITY
         feed = 0f
         feedSpeed = 0f
         pull = 0f
@@ -613,6 +652,10 @@ internal class TypewriterState(text: String = "") {
 
     private fun paperTravel(): Float = feed + shown - feedIn
 
+    // Whether the sheet is on its way out, by itself or freed: no key changes it then.
+    private val sending: Boolean
+        get() = autoPulling || phase == SheetPhase.Zipping
+
     private fun moving(): Boolean =
         held ||
             autoPulling ||
@@ -624,7 +667,7 @@ internal class TypewriterState(text: String = "") {
             abs(sheet.line * TypewriterDimens.LineHeight - feed) > Still ||
             abs(feedSpeed) > Still ||
             pull > 0f ||
-            landing.isNotEmpty() ||
+            now < lastLanding ||
             lifting.isNotEmpty() ||
             touchAlpha > 0f ||
             now - barAt < TypewriterDimens.TypebarSeconds ||
@@ -706,12 +749,41 @@ internal class TypewriterState(text: String = "") {
             return if (i < 0) 0.5f else i / (KeyOrder.length - 1f)
         }
 
-        private fun place(line: Int, column: Int): Long = line * 1000L + column
+        private fun place(line: Int, column: Int): Int =
+            (line * TypewriterDimens.Columns + column).coerceIn(
+                0,
+                TypewriterDimens.MaxLines * TypewriterDimens.Columns - 1,
+            )
+
+        /** Saves what is typed on the sheet, so it outlives the screen being made again. */
+        val Saver: Saver<TypewriterState, String> =
+            Saver(save = { it.field.text.toString() }, restore = { TypewriterState(it) })
     }
 }
 
-/** A letter the tape is lifting off: where it was, and when the tape took it. */
-@Immutable internal class Lifted(val line: Int, val column: Int, val char: Char, val at: Float)
+/** What has been typed and deleted since a screen reader last heard, and whether a key jammed. */
+@Immutable
+internal data class Speech(val typed: String, val deleted: String, val jam: Boolean) {
+    val quiet: Boolean
+        get() = typed.isEmpty() && deleted.isEmpty() && !jam
+
+    // What was typed and deleted again before it was heard cancels out; the rest of what was
+    // deleted was there before, and goes before what was deleted since, as it lay in the text.
+    fun said(typed: String, deleted: String): Speech {
+        val kept = this.typed.dropLast(deleted.length)
+        val alsoDeleted = deleted.dropLast(this.typed.length)
+        return copy(typed = kept + typed, deleted = alsoDeleted + this.deleted)
+    }
+
+    fun jammed(): Speech = copy(jam = true)
+
+    companion object {
+        val Quiet = Speech("", "", jam = false)
+    }
+}
+
+/** A letter the tape is lifting off, and when the tape took it. */
+@Immutable internal class Lifted(val glyph: Glyph, val at: Float)
 
 /** Quick out, slow in: a cubic ease out. */
 internal fun easeOut(t: Float): Float = 1f - (1f - t.coerceIn(0f, 1f)).pow(3)
@@ -722,8 +794,10 @@ internal fun ease(t: Float): Float {
     return if (p < 0.5f) 2f * p * p else 1f - (-2f * p + 2f).pow(2) / 2f
 }
 
-/** Remembers a [TypewriterState], [text] typed to begin with. */
+/**
+ * Remembers a [TypewriterState], [text] typed to begin with. What is typed is saved, so it outlives
+ * the screen being made again, as when a hardware keyboard is plugged in or the phone turns.
+ */
 @Composable
-internal fun rememberTypewriterState(text: String = ""): TypewriterState = remember {
-    TypewriterState(text)
-}
+public fun rememberTypewriterState(text: String = ""): TypewriterState =
+    rememberSaveable(saver = TypewriterState.Saver) { TypewriterState(text) }
