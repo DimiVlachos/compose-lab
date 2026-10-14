@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.typewriter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -12,11 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.InputTransformation
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,18 +32,19 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -54,17 +53,19 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
@@ -85,12 +86,14 @@ import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * A chat composer that is a typewriter. What is typed goes into a real text field under the paper,
- * through the keyboard, and every letter strikes the sheet: a type bar flies up from the basket,
- * the ribbon lifts, and the carriage steps on. The bell rings five letters before the margin, and
- * at the margin, or at a space once the bell has rung, the lever swings and the carriage returns by
- * itself; Return starts a new line too. Deleting runs the carriage back and the correction tape
- * lifts the letter off.
+ * A chat composer that is a typewriter, typed on its own keys: round, chrome-rimmed keys with glass
+ * tops, in a QWERTY layout, with Shift, Backspace, Return, a space bar and a page of figures and
+ * stops. The phone's keyboard never opens. Every key dips as it is pressed and strikes the sheet: a
+ * type bar flies up from the basket, the ribbon lifts, and the carriage steps on. The bell rings
+ * five letters before the margin, and at the margin, or at a space once the bell has rung, the
+ * lever swings and the carriage returns by itself; Return starts a new line too. Backspace runs the
+ * carriage back and the correction tape lifts the letter off; held, it goes on, slowly. A hardware
+ * keyboard types too, once the machine has focus, which it takes as it opens and on a tap on it.
  *
  * To send, pull the sheet up out of the roller: it gives like a rubber band and the ratchet clicks
  * as it comes; let go short of the threshold and it slides back in, past it or flung, and it zips
@@ -101,10 +104,9 @@ import org.jetbrains.compose.resources.stringResource
  * Its sounds play through [sound], and nothing plays while the phone is on silent; a tick of
  * haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the
  * ratchet ticks under the finger. The machine sits at the foot of the space it is given, the paper
- * standing up over it as lines feed; it is as tall as it needs to be, plus [insets]' foot, which
- * its body runs down behind, as behind a keyboard. While not [enabled], as while a script plays, it
- * takes neither keys nor touches. Nothing recomposes as the machine moves: only a change of what
- * the hint says.
+ * standing up over it as lines feed, its keys in its body; its body runs on down behind [insets]'
+ * foot. While not [enabled], as while a script plays, it takes neither keys nor touches. Nothing
+ * recomposes as the machine moves: only a change of what the hint says, or of the keys' page.
  */
 @Composable
 internal fun TypewriterComposer(
@@ -124,7 +126,7 @@ internal fun TypewriterComposer(
         state.feel = feel
         onDispose { if (state.feel === feel) state.feel = object : TypewriterFeel {} }
     }
-    // The machine follows the field: what is typed strikes, what is deleted is lifted off.
+    // The machine follows the text: what is typed strikes, what is deleted is lifted off.
     LaunchedEffect(state) { snapshotFlow { state.field.text.toString() }.collect(state::typedNow) }
     // The carriage, the paper and the bars step on a frame at a time while anything moves; the
     // loop sleeps once the machine is still.
@@ -143,8 +145,10 @@ internal fun TypewriterComposer(
     val painter = remember { TypewriterPainter() }
     val colors = LabTheme.colors
     val focus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
     val currentEnabled by rememberUpdatedState(enabled)
+    // Focused as it opens, so a hardware keyboard types straight away; it is no text field, so
+    // the phone's keyboard stays down.
+    LaunchedEffect(enabled) { if (enabled) runCatching { focus.requestFocus() } }
     // Where the machine lies in the root, and how big a unit is, for a sent sheet's bounds.
     val placed = remember { Placed() }
     val currentOnSend by rememberUpdatedState(onSend)
@@ -166,10 +170,17 @@ internal fun TypewriterComposer(
     val sendLabel = stringResource(Res.string.typewriter_send)
     val badgeText = stringResource(Res.string.typewriter_badge)
     val modelText = stringResource(Res.string.typewriter_model)
-    BoxWithConstraints(modifier.fillMaxWidth()) {
+    BoxWithConstraints(
+        modifier.fillMaxWidth().focusRequester(focus).focusable().onPreviewKeyEvent { event ->
+            currentEnabled && event.type == KeyEventType.KeyDown && state.hardwareKey(event)
+        }
+    ) {
         val unit = TypewriterDimens.unit(maxWidth, maxHeight)
         SideEffect { state.unit = unit }
         val u = with(density) { unit.toPx() }
+        val pitch = keyPitch(maxWidth, maxHeight)
+        val keysHeight = pitch * KeyRowHeight * KeyRows + KeysPadding * 2
+        val below = with(density) { keysHeight.toPx() }
         val atlas = rememberGlyphAtlas(unit)
         val measurer = rememberTextMeasurer()
         val badgeSize = with(density) { (unit * BadgeSize).toSp() }
@@ -204,7 +215,7 @@ internal fun TypewriterComposer(
                     val foot = insets.getBottom(this)
                     val height =
                         ((TypewriterDimens.HintRoom + state.fed + TypewriterDimens.MachineHeight) *
-                                u)
+                                u + below)
                             .roundToInt() + foot
                     val placeable =
                         measurable.measure(Constraints.fixed(constraints.maxWidth, height))
@@ -212,59 +223,14 @@ internal fun TypewriterComposer(
                 }
                 .onGloballyPositioned { coordinates ->
                     val foot = insets.getBottom(density)
-                    val top = coordinates.size.height - foot - TypewriterDimens.MachineHeight * u
+                    val top =
+                        coordinates.size.height - foot - below - TypewriterDimens.MachineHeight * u
                     placed.machine = coordinates.positionInRoot() + Offset(left, top)
                     placed.unit = u
                 }
         ) {
-            // The real field: under the paper, unseen, holding what is typed for the keyboard and a
-            // screen reader, which can send it with a custom action.
-            BasicTextField(
-                state = state.field,
-                modifier =
-                    Modifier.align(Alignment.BottomCenter)
-                        .padding(bottom = with(density) { insets.getBottom(this).toDp() })
-                        .fillMaxWidth()
-                        .height(with(density) { (TypewriterDimens.MachineHeight * u).toDp() })
-                        .focusRequester(focus)
-                        .onPreviewKeyEvent { event ->
-                            val send =
-                                event.key == Key.Enter &&
-                                    (event.isCtrlPressed || event.isMetaPressed)
-                            if (send && event.type == KeyEventType.KeyDown && currentEnabled) {
-                                state.send()
-                            }
-                            send
-                        }
-                        .semantics {
-                            contentDescription = label
-                            customActions =
-                                listOf(CustomAccessibilityAction(sendLabel) { state.send() })
-                        },
-                readOnly = !enabled,
-                inputTransformation =
-                    remember(state) {
-                        InputTransformation {
-                            // Not while the sheet is coming out; and never off the sheet's foot.
-                            if (state.phase == SheetPhase.Zipping) {
-                                revertAllChanges()
-                            } else if (layOutSheet(asCharSequence()).overflow) {
-                                revertAllChanges()
-                                state.jam()
-                            }
-                        }
-                    },
-                textStyle = TextStyle(color = Color.Transparent),
-                cursorBrush = SolidColor(Color.Transparent),
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        autoCorrectEnabled = false,
-                    ),
-                lineLimits = TextFieldLineLimits.MultiLine(),
-            )
-            // The machine, drawn over the field; a tap on it brings the keyboard up, and a drag up
-            // on the sheet pulls it out.
+            // The machine; a tap on it gives it focus, for a hardware keyboard, and a drag up on
+            // the sheet pulls it out. A screen reader hears what is on the sheet, and can send it.
             Spacer(
                 Modifier.matchParentSize()
                     .drawBehind {
@@ -278,6 +244,7 @@ internal fun TypewriterComposer(
                                     left,
                                     size.height -
                                         insets.getBottom(this@drawBehind) -
+                                        below -
                                         TypewriterDimens.MachineHeight * u,
                                 ),
                                 bottom = size.height,
@@ -293,6 +260,7 @@ internal fun TypewriterComposer(
                             val machineTop =
                                 size.height -
                                     insets.getBottom(this@pointerInput) -
+                                    below -
                                     TypewriterDimens.MachineHeight * u
                             val at = (down.position - Offset(left, machineTop)) / u
                             val onSheet =
@@ -322,19 +290,54 @@ internal fun TypewriterComposer(
                             if (pulling) {
                                 state.release(-tracker.calculateVelocity().y / u)
                             } else if (travel <= viewConfiguration.touchSlop) {
-                                focus.requestFocus()
-                                keyboard?.show()
+                                runCatching { focus.requestFocus() }
                             }
                         }
                     }
+                    .semantics {
+                        contentDescription = label
+                        customActions =
+                            listOf(CustomAccessibilityAction(sendLabel) { state.send() })
+                    }
             )
+            SheetText(state, Modifier.align(Alignment.TopCenter))
             Hint(
                 state,
                 Modifier.align(Alignment.TopCenter)
                     .offset(y = with(density) { (HintTop * u).toDp() }),
             )
+            TypewriterKeys(
+                state,
+                pitch,
+                enabled,
+                Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = with(density) { insets.getBottom(this).toDp() })
+                    .height(keysHeight)
+                    .padding(vertical = KeysPadding),
+            )
         }
     }
+}
+
+// What is on the sheet, for a screen reader: read with the machine, and live, so a key a screen
+// reader presses is heard landing.
+@Composable
+private fun SheetText(state: TypewriterState, modifier: Modifier = Modifier) {
+    val text = state.field.text.toString()
+    Spacer(
+        modifier.size(1.dp).semantics {
+            stateDescription = text
+            liveRegion = LiveRegionMode.Polite
+        }
+    )
+}
+
+// How far apart the keys are: ten across the width, a thumb's width at the most, and on a short
+// stage, as a phone on its side, small enough to leave the thread some room.
+private fun keyPitch(width: Dp, height: Dp): Dp {
+    var pitch = minOf(MostKeyPitch, (width - KeysSide * 2) / KeysAcross)
+    if (height != Dp.Infinity) pitch = minOf(pitch, height * ShortStageKeyShare)
+    return pitch
 }
 
 // What the hint over the paper says: how to type, how to send, or that the sheet is full. Nothing
@@ -460,3 +463,46 @@ private const val HintTop = 6f
 
 // A finger this many units off the sheet still takes it.
 private const val SheetReach = 14f
+
+// The keys: at most this far apart, ten across with this much room at either side, in four rows
+// each this many pitches tall, with this much room over and under them. On a short stage a pitch
+// is at most this share of its height.
+private val MostKeyPitch = 48.dp
+private val KeysSide = 6.dp
+private const val KeysAcross = 10
+private const val KeyRows = 4
+internal const val KeyRowHeight = 1.12f
+private val KeysPadding = 6.dp
+private const val ShortStageKeyShare = 0.075f
+
+// A key from a hardware keyboard: Ctrl or ⌘ and Return send, Return is a new line, Backspace runs
+// the tape, and a character types if the machine has a key for it, dipping that key. Says whether
+// the key was the machine's.
+private fun TypewriterState.hardwareKey(event: KeyEvent): Boolean {
+    val command = event.isCtrlPressed || event.isMetaPressed
+    when (event.key) {
+        Key.Enter,
+        Key.NumPadEnter -> {
+            if (command) {
+                send()
+            } else {
+                keyboard.dipped(TypeKey(KeyAction.Return).id)
+                type('\n')
+            }
+            return true
+        }
+        Key.Backspace -> {
+            keyboard.dipped(TypeKey(KeyAction.Backspace).id)
+            backspace()
+            return true
+        }
+    }
+    if (command || event.isAltPressed) return false
+    val code = event.utf16CodePoint
+    if (code <= 0 || code > Char.MAX_VALUE.code) return false
+    val char = code.toChar()
+    if (char.isISOControl()) return false
+    keyIdFor(char)?.let(keyboard::dipped)
+    type(char)
+    return true
+}

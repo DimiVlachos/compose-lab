@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.typewriter
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -87,7 +88,9 @@ internal enum class SheetPhase {
  */
 @Stable
 internal class TypewriterState(text: String = "") {
-    /** What is typed. A real text field, so the keyboard and a screen reader see it as one. */
+    /**
+     * What is typed: edited only by the machine's keys and a hardware keyboard, never the phone's.
+     */
     val field = TextFieldState(text)
 
     /** What is typed, as the machine last saw it, and as it lies on the sheet. */
@@ -112,6 +115,9 @@ internal class TypewriterState(text: String = "") {
      */
     var unit: Dp by mutableStateOf(1.dp)
         internal set
+
+    /** The keyboard the machine is typed on. */
+    val keyboard = TypewriterKeyboard()
 
     /** Hears what is heard and felt. */
     internal var feel: TypewriterFeel = object : TypewriterFeel {}
@@ -202,7 +208,6 @@ internal class TypewriterState(text: String = "") {
     private val landing = mutableMapOf<Long, Float>()
     internal val lifting = mutableListOf<Lifted>()
 
-    private var strikes = 0
     private var accumulated = 0f
 
     /**
@@ -272,10 +277,10 @@ internal class TypewriterState(text: String = "") {
             barFrom = basketPlace(last.char)
             ribbonAt = this.now
             taping = false
-            feel.strike(strikes++ % StrikeVariants, space = false)
+            feel.strike(last.char.lowercaseChar().code % StrikeVariants, space = false)
         } else if (gone.isEmpty() && after.line == before.line) {
             // Only spaces came or went: the carriage steps without a letter.
-            feel.strike(strikes++ % StrikeVariants, space = true)
+            feel.strike(0, space = true)
         }
         if (
             after.line == before.line &&
@@ -300,6 +305,57 @@ internal class TypewriterState(text: String = "") {
         }
         if (jammed && !after.full) jammed = false
         wake()
+    }
+
+    /**
+     * Presses [key]: a letter (a capital after Shift), a space or a new line strikes, Backspace
+     * runs the tape, Shift holds for the next letter, and the page key turns to the figures and
+     * back.
+     */
+    fun press(key: TypeKey) {
+        when (val action = key.action) {
+            is KeyAction.Type -> {
+                type(if (keyboard.shifted) action.char.uppercaseChar() else action.char)
+                keyboard.shifted = false
+            }
+            KeyAction.Space -> type(' ')
+            KeyAction.Return -> type('\n')
+            KeyAction.Backspace -> backspace()
+            KeyAction.Shift -> keyboard.shifted = !keyboard.shifted
+            KeyAction.Page -> {
+                keyboard.figures = !keyboard.figures
+                keyboard.shifted = false
+            }
+        }
+    }
+
+    /**
+     * Types [char] at the end of the text, and says whether it did: not while the sheet is coming
+     * out, and not off the foot of a full sheet, which jams instead.
+     */
+    fun type(char: Char): Boolean {
+        if (phase == SheetPhase.Zipping) return false
+        val next = field.text.toString() + char
+        if (layOutSheet(next).overflow) {
+            jam()
+            return false
+        }
+        field.edit { append(char) }
+        typedNow(field.text)
+        return true
+    }
+
+    /** Deletes the last character typed: the carriage runs back and the tape lifts it off. */
+    fun backspace() {
+        if (phase == SheetPhase.Zipping || field.text.isEmpty()) return
+        field.edit { delete(length - 1, length) }
+        typedNow(field.text)
+    }
+
+    /** A scripted fingertip taps [key]: it dips under the fingertip and is pressed. */
+    fun tap(key: TypeKey) {
+        keyboard.tapped(key.id)
+        press(key)
     }
 
     /** A key that would have typed off a full sheet was refused. */

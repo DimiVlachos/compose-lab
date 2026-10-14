@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.delete
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -57,13 +56,16 @@ import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.rememberSoundPlayer
 import dev.dimvlachos.lab.core.presentation.components.typewriter.GlyphAtlas
+import dev.dimvlachos.lab.core.presentation.components.typewriter.KeyAction
 import dev.dimvlachos.lab.core.presentation.components.typewriter.PaperSlip
 import dev.dimvlachos.lab.core.presentation.components.typewriter.SentSheet
 import dev.dimvlachos.lab.core.presentation.components.typewriter.SlipFlightStage
 import dev.dimvlachos.lab.core.presentation.components.typewriter.SlipFlights
+import dev.dimvlachos.lab.core.presentation.components.typewriter.TypeKey
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterComposer
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterSounds
 import dev.dimvlachos.lab.core.presentation.components.typewriter.TypewriterState
+import dev.dimvlachos.lab.core.presentation.components.typewriter.keysFor
 import dev.dimvlachos.lab.core.presentation.components.typewriter.rememberGlyphAtlas
 import dev.dimvlachos.lab.core.presentation.components.typewriter.rememberTypewriterState
 import dev.dimvlachos.lab.core.presentation.components.typewriter.slipLanding
@@ -110,11 +112,12 @@ private const val TypingJitter = 0.35f
 private const val LandVolume = 0.5f
 
 /**
- * A chat with Eleni on Naxos, written on a typewriter. Every letter strikes the sheet in the
- * roller, the bell rings near the margin and the carriage returns by itself; pull the sheet up out
- * of the roller and it trims down to a paper slip that flies up into the thread. Eleni answers in
- * plain bubbles. The script types two messages, a typo struck out on the way, pulls each out, the
- * first after a pull too short that slides back, and takes them back at the end.
+ * A chat with Eleni on Naxos, written on a typewriter typed on its own keys. Every letter strikes
+ * the sheet in the roller, the bell rings near the margin and the carriage returns by itself; pull
+ * the sheet up out of the roller and it trims down to a paper slip that flies up into the thread.
+ * Eleni answers in plain bubbles. The script taps out two messages on the keys, a typo struck out
+ * on the way, pulls each out, the first after a pull too short that slides back, and takes them
+ * back at the end.
  */
 @Composable
 internal fun TypewriterDemo(state: DemoState) {
@@ -159,18 +162,25 @@ internal fun TypewriterDemo(state: DemoState) {
     DisposableEffect(state, machine, thread) {
         state.setSendHandler { text, typing ->
             val line = getString(text)
-            val keys = line.length.coerceAtLeast(1)
+            // A fingertip taps the machine's own keys, a character at a time: the page key and
+            // Shift first where a character needs them, Backspace for a struck-out letter.
             val random = Random(line.hashCode())
-            for (key in line) {
-                val pace = typing / keys
+            val pace = typing / line.length.coerceAtLeast(1)
+            val keyboard = machine.keyboard
+            for (char in line) {
                 delay(pace * (1f + (random.nextFloat() * 2f - 1f) * TypingJitter).toDouble())
-                machine.field.edit {
-                    if (key == ScriptBackspace) {
-                        if (length > 0) delete(length - 1, length)
-                    } else {
-                        append(key)
-                    }
+                val keys =
+                    if (char == ScriptBackspace) listOf(TypeKey(KeyAction.Backspace))
+                    else keysFor(char, keyboard.figures, keyboard.shifted)
+                for ((i, key) in keys.withIndex()) {
+                    if (i > 0) delay(pace)
+                    machine.tap(key)
                 }
+            }
+            // Back to the letters, as a typist turns back after a stop.
+            if (keyboard.figures) {
+                delay(pace)
+                machine.tap(TypeKey(KeyAction.Page))
             }
         }
         state.setSheetPullHandler { up, duration -> pullSheet(machine, up, duration) }

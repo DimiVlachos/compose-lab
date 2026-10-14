@@ -9,10 +9,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -48,23 +48,63 @@ class TypewriterComposerUiTest {
         return Machine(state, sent)
     }
 
+    private fun androidx.compose.ui.test.ComposeUiTest.press(vararg names: String) {
+        for (name in names) {
+            onNodeWithContentDescription(name, useUnmergedTree = true).performClick()
+            mainClock.advanceTimeBy(60)
+        }
+    }
+
     @Test
-    fun whatIsTypedInTheFieldIsStruckOnTheSheet() = runComposeUiTest {
+    fun theKeysTypeOnTheSheetAndThePhonesKeyboardHasNothingToOpen() = runComposeUiTest {
         val machine = machine()
-        onAllNodes(hasSetTextAction()).onFirst().performTextInput("hello there")
+        press("Shift", "h", "i", "Space", "t", "h", "e", "r", "e")
         mainClock.advanceTimeBy(500)
-        assertEquals(listOf("hello there"), machine.state.sheet.lines)
+        assertEquals(listOf("Hi there"), machine.state.sheet.lines)
         assertTrue(machine.state.inked)
+        // No text field: nothing the phone's keyboard could open for.
+        assertEquals(0, onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun deleteRunsTheTapeAndNewLineFeedsALine() = runComposeUiTest {
+        val machine = machine()
+        press("o", "k", "Delete", "Delete", "n", "o", "New line", "y", "e", "s")
+        mainClock.advanceTimeBy(500)
+        assertEquals(listOf("no", "yes"), machine.state.sheet.lines)
+    }
+
+    @Test
+    fun theFiguresPageTypesStopsAndTurnsBack() = runComposeUiTest {
+        val machine = machine()
+        press("o", "k", "Numbers and punctuation", "?", "Letters", "a")
+        mainClock.advanceTimeBy(500)
+        assertEquals(listOf("ok?a"), machine.state.sheet.lines)
+    }
+
+    @Test
+    fun aHardwareKeyboardTypesAndCtrlReturnSends() = runComposeUiTest {
+        val machine = machine()
+        val node = onNodeWithTag("machine")
+        node.performKeyInput {
+            pressKey(Key.H)
+            pressKey(Key.I)
+        }
+        mainClock.advanceTimeBy(300)
+        assertEquals("hi", machine.state.field.text.toString())
+        node.performKeyInput { withKeyDown(Key.CtrlLeft) { pressKey(Key.Enter) } }
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(listOf("hi"), machine.sent.map { it.text })
     }
 
     @Test
     fun aScreenReadersSendActionSendsTheSheet() = runComposeUiTest {
         val machine = machine()
-        val field = onAllNodes(hasSetTextAction()).onFirst()
-        field.performTextInput("see you")
+        press("s", "e", "e", "Space", "y", "o", "u")
         mainClock.advanceTimeBy(300)
+        val sheet = onNodeWithContentDescription("Typewriter")
         val send =
-            field.fetchSemanticsNode().config[SemanticsActions.CustomActions].first {
+            sheet.fetchSemanticsNode().config[SemanticsActions.CustomActions].first {
                 it.label == "Send"
             }
         runOnUiThread { send.action() }
@@ -74,33 +114,27 @@ class TypewriterComposerUiTest {
     }
 
     @Test
-    fun ctrlAndReturnSendsAndReturnAloneStartsALine() = runComposeUiTest {
-        val machine = machine()
-        val field = onAllNodes(hasSetTextAction()).onFirst()
-        field.performTextInput("hi")
-        mainClock.advanceTimeBy(300)
-        field.performKeyInput { withKeyDown(Key.CtrlLeft) { pressKey(Key.Enter) } }
-        mainClock.advanceTimeBy(1_000)
-        assertEquals(listOf("hi"), machine.sent.map { it.text })
-    }
-
-    @Test
     fun aDragUpTheSheetPullsItOutAndAShortOneSlidesBack() = runComposeUiTest {
         val machine = machine()
-        onAllNodes(hasSetTextAction()).onFirst().performTextInput("ahoy")
+        runOnUiThread { "ahoy".forEach { machine.state.type(it) } }
         mainClock.advanceTimeBy(500)
         val unit = 400f / TypewriterDimens.StageUnits
-        // On the sheet, just over the platen, where the paper shows.
-        fun onSheet(height: Float, density: Float): androidx.compose.ui.geometry.Offset {
+        // On the sheet, just over the platen, where the paper shows, over the keys.
+        fun onSheet(density: Float): androidx.compose.ui.geometry.Offset {
             val u = unit * density
-            val machineTop = height - TypewriterDimens.MachineHeight * u
+            // The machine stands on the keys, which start just over the first row.
+            val keysTop =
+                onNodeWithContentDescription("q").fetchSemanticsNode().positionInRoot.y -
+                    onNodeWithTag("machine").fetchSemanticsNode().positionInRoot.y -
+                    6f * density
+            val machineTop = keysTop - TypewriterDimens.MachineHeight * u
             return androidx.compose.ui.geometry.Offset(
                 (machine.state.carriage + 40f) * u,
                 machineTop + (TypewriterDimens.StrikeY - 10f) * u,
             )
         }
         onNodeWithTag("machine").performTouchInput {
-            val from = onSheet(height.toFloat(), density)
+            val from = onSheet(density)
             down(from)
             for (i in 1..6) moveTo(from.copy(y = from.y - i * 4.dp.toPx()))
             up()
@@ -109,7 +143,7 @@ class TypewriterComposerUiTest {
         assertTrue(machine.sent.isEmpty(), "a short pull sent the sheet")
         assertEquals(0f, machine.state.shown, 0.5f)
         onNodeWithTag("machine").performTouchInput {
-            val from = onSheet(height.toFloat(), density)
+            val from = onSheet(density)
             down(from)
             for (i in 1..20) {
                 advanceEventTime(30)
@@ -126,8 +160,7 @@ class TypewriterComposerUiTest {
         var compositions = 0
         val machine = machine { compositions++ }
         val before = compositions
-        val field = onAllNodes(hasSetTextAction()).onFirst()
-        field.performTextInput("abcdefghijklmnopqrstuvw")
+        runOnUiThread { "abcdefghijklmnopqrstuvw".forEach { machine.state.type(it) } }
         mainClock.advanceTimeBy(2_000)
         assertEquals(before, compositions)
         assertNull(machine.sent.firstOrNull())

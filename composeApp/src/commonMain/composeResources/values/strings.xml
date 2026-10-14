@@ -142,7 +142,13 @@
     <string name="demo_typewriter">Typewriter composer</string>
     <string name="typewriter_label">Typewriter</string>
     <string name="typewriter_send">Send</string>
-    <string name="typewriter_hint_type">Tap the paper and type</string>
+    <string name="typewriter_hint_type">Type on the keys</string>
+    <string name="typewriter_key_space">Space</string>
+    <string name="typewriter_key_shift">Shift</string>
+    <string name="typewriter_key_delete">Delete</string>
+    <string name="typewriter_key_new_line">New line</string>
+    <string name="typewriter_key_figures">Numbers and punctuation</string>
+    <string name="typewriter_key_letters">Letters</string>
     <string name="typewriter_hint_pull">Pull the sheet up to send ↑</string>
     <string name="typewriter_hint_full">The sheet’s full. Pull it out to send</string>
     <string name="typewriter_badge">CYCLADES 22</string>
