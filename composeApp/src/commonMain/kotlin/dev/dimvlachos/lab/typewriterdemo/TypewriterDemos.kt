@@ -1,0 +1,56 @@
+package dev.dimvlachos.lab.typewriterdemo
+
+import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoTag
+import dev.dimvlachos.lab.core.demo.demoScript
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_typewriter
+import dev.dimvlachos.lab.resources.demo_typewriter_description
+import dev.dimvlachos.lab.resources.ic_demo_typewriter
+import dev.dimvlachos.lab.resources.typewriter_script_1
+import dev.dimvlachos.lab.resources.typewriter_script_2
+import dev.dimvlachos.lab.typewriterdemo.presentation.components.TypewriterDemo
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+internal object TypewriterDemos {
+    // A pull too short to send, which slides back in, and a pull well past the threshold.
+    val ShortPull = 34.dp
+    val FullPull = 150.dp
+
+    // Two messages, each typed and pulled out: the first rings the bell and returns the carriage
+    // at the end of a word, after a short pull that slides back; the second strikes out a typo
+    // with the tape. Eleni answers each. Once both answers are in, everything sent is taken back,
+    // so the next run starts from the same thread.
+    private val thread =
+        demoScript(holdEnd = 400.milliseconds) {
+            at(0.6.seconds, lasts = 3.4.seconds) {
+                sendMessage(Res.string.typewriter_script_1, typing = 3.2.seconds)
+            }
+            at(4.4.seconds, lasts = 0.8.seconds) { pullSheet(ShortPull, 350.milliseconds) }
+            at(5.6.seconds, lasts = 0.9.seconds) { pullSheet(FullPull, 450.milliseconds) }
+            at(9.6.seconds, lasts = 3.2.seconds) {
+                sendMessage(Res.string.typewriter_script_2, typing = 3.seconds)
+            }
+            at(13.2.seconds, lasts = 0.9.seconds) { pullSheet(FullPull, 450.milliseconds) }
+            at(18.6.seconds, lasts = 0.6.seconds) { clearMessages() }
+        }
+
+    // A chat is to type into: the script would type over the hand, so on the phone it waits for
+    // Replay.
+    val all =
+        listOf(
+            Demo(
+                "typewriter.composer",
+                Res.string.demo_typewriter,
+                thread,
+                description = Res.string.demo_typewriter_description,
+                icon = Res.drawable.ic_demo_typewriter,
+                tags = setOf(DemoTag.Text, DemoTag.Gesture, DemoTag.Physics, DemoTag.Canvas),
+                autoplay = false,
+            ) {
+                TypewriterDemo(it)
+            }
+        )
+}

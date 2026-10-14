@@ -94,4 +94,12 @@ internal interface DemoController {
      * Returns once the finger has lifted; the tab springs back by itself.
      */
     suspend fun pullPopUpTab(out: Float, duration: Duration)
+
+    /**
+     * Takes the typewriter's sheet with a fingertip, pulls it [up] out of the roller over
+     * [duration] and lets go: pulled far enough it is sent, and short of that it slides back in.
+     * The typewriter types with [sendMessage], which leaves the sheet in the roller. Returns once
+     * the fingertip has lifted.
+     */
+    suspend fun pullSheet(up: Dp, duration: Duration)
 }

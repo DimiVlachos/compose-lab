@@ -153,4 +153,12 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun pullPopUpTab(out: Float, duration: Duration) {
         calls += now() to "pullPopUpTab($out, $duration)"
     }
+
+    /** How far each pull of the typewriter's sheet went, in order. */
+    val sheetPulls = mutableListOf<Dp>()
+
+    override suspend fun pullSheet(up: Dp, duration: Duration) {
+        sheetPulls += up
+        calls += now() to "pullSheet($up, $duration)"
+    }
 }
