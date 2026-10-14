@@ -60,7 +60,8 @@ internal class MachineShell {
         badge: TextLayoutResult?,
         model: TextLayoutResult?,
     ) {
-        val cx = origin.x + TypewriterDimens.StrikeX * u
+        // The shell stands in the middle of the stage; the basket under the printing point.
+        val cx = origin.x + TypewriterDimens.StageUnits / 2f * u
         val side = TypewriterDimens.ShellSide.toPx()
         val front =
             minOf(

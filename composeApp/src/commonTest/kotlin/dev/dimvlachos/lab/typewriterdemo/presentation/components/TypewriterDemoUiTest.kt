@@ -37,7 +37,7 @@ class TypewriterDemoUiTest {
         val slips = listOf("see you at the port at nine.", "sunset at the portara?")
         val replies =
             listOf("Perfect. I’ll bring the graviera.", "Deal. Sunset at the Portara it is.")
-        mainClock.advanceTimeBy(18_400)
+        mainClock.advanceTimeBy(19_100)
         for (slip in slips) {
             assertEquals(1, onAllNodesWithContentDescription(slip).fetchSemanticsNodes().size, slip)
         }
@@ -53,7 +53,7 @@ class TypewriterDemoUiTest {
                 .fetchSemanticsNodes()
                 .size,
         )
-        mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 18_400 + 2_000)
+        mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 19_100 + 2_000)
         assertEquals(true, finished)
         for (text in slips) {
             assertEquals(0, onAllNodesWithContentDescription(text).fetchSemanticsNodes().size, text)

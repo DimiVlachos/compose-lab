@@ -142,6 +142,7 @@
     <string name="demo_typewriter">Typewriter composer</string>
     <string name="typewriter_label">Typewriter</string>
     <string name="typewriter_send">Send</string>
+    <string name="typewriter_lever">Carriage return lever</string>
     <string name="typewriter_hint_type">Type on the keys</string>
     <string name="typewriter_key_space">Space</string>
     <string name="typewriter_key_shift">Shift</string>
@@ -161,7 +162,8 @@
     <string name="typewriterchat_seed_1">The Aegean ferry gets into Naxos at 13:10 tomorrow.</string>
     <string name="typewriterchat_seed_2">on the 07:25 from piraeus. window seat, left side.</string>
     <string name="typewriterchat_seed_3">Meet you at the port? Portara for sunset after.</string>
-    <string name="typewriterchat_script_1">see you at the port at nine.</string>
+    <string name="typewriterchat_script_1">see you at the</string>
+    <string name="typewriterchat_script_1b">port at nine.</string>
     <string name="typewriterchat_script_2">sunset at the potr⌫⌫rtara?</string>
     <string name="typewriterchat_reply_1">Perfect. I’ll bring the graviera.</string>
     <string name="typewriterchat_reply_2">Deal. Sunset at the Portara it is.</string>

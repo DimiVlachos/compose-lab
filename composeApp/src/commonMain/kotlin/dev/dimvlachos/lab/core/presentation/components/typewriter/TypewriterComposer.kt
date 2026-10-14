@@ -47,6 +47,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.lifecycle.Lifecycle
@@ -75,6 +78,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.keepSystemGesturesOff
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.typewriter_hint_full
@@ -83,6 +87,7 @@ import dev.dimvlachos.lab.resources.typewriter_hint_type
 import dev.dimvlachos.lab.resources.typewriter_key_new_line
 import dev.dimvlachos.lab.resources.typewriter_key_space
 import dev.dimvlachos.lab.resources.typewriter_label
+import dev.dimvlachos.lab.resources.typewriter_lever
 import dev.dimvlachos.lab.resources.typewriter_said_deleted
 import dev.dimvlachos.lab.resources.typewriter_send
 import kotlin.math.abs
@@ -224,6 +229,8 @@ internal fun TypewriterComposer(
     }
     val label = stringResource(Res.string.typewriter_label)
     val sendLabel = stringResource(Res.string.typewriter_send)
+    val leverLabel = stringResource(Res.string.typewriter_lever)
+    val newLineLabel = stringResource(Res.string.typewriter_key_new_line)
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(
         modifier.fillMaxWidth().focusRequester(focus).focusable().onPreviewKeyEvent { event ->
@@ -333,6 +340,13 @@ internal fun TypewriterComposer(
                                     below -
                                     TypewriterDimens.MachineHeight * u
                             val at = (down.position - Offset(left, machineTop)) / u
+                            // The lever first: a finger on it, or a thumb's width from it all
+                            // along its arm, pushes it rather than pulling the sheet.
+                            val reach = TypewriterDimens.LeverReach.toPx() / u
+                            if (nearSegment(at, state.leverPivot, state.leverKnob, reach)) {
+                                if (state.grabLever()) pushTheLever(state, down, u)
+                                return@awaitEachGesture
+                            }
                             val onSheet =
                                 at.y < TypewriterDimens.BodyTop &&
                                     at.y > state.sheetTop - SheetReach &&
@@ -368,6 +382,43 @@ internal fun TypewriterComposer(
                         contentDescription = label
                         customActions =
                             listOf(CustomAccessibilityAction(sendLabel) { state.send() })
+                    }
+            )
+            // The band the lever swings in, kept from the system's edge swipes: at the end of a
+            // long
+            // line the lever is at the screen's left edge, where a push would otherwise go back.
+            Spacer(
+                Modifier.align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .offset {
+                        val top =
+                            TypewriterDimens.HintRoom + state.fed + TypewriterDimens.LeverPivotY -
+                                TypewriterDimens.LeverLength
+                        IntOffset(0, (top * u - TypewriterDimens.LeverReach.toPx()).roundToInt())
+                    }
+                    .height(
+                        with(density) { (TypewriterDimens.LeverLength * u).toDp() } +
+                            TypewriterDimens.LeverReach * 2
+                    )
+                    .keepSystemGesturesOff()
+            )
+            // The lever, for a screen reader: where it stands with the carriage home, so its focus
+            // doesn't chase the carriage, with a New line action.
+            Spacer(
+                Modifier.align(Alignment.TopStart)
+                    .offset {
+                        val reach = TypewriterDimens.LeverReach.toPx()
+                        val x = left + (TypewriterDimens.HomeX - TypewriterDimens.LeverOffset) * u
+                        val y =
+                            (TypewriterDimens.HintRoom + state.fed + TypewriterDimens.LeverPivotY -
+                                TypewriterDimens.LeverLength / 2f) * u
+                        IntOffset((x - reach).roundToInt(), (y - reach).roundToInt())
+                    }
+                    .size(TypewriterDimens.LeverReach * 2)
+                    .semantics {
+                        contentDescription = leverLabel
+                        customActions =
+                            listOf(CustomAccessibilityAction(newLineLabel) { state.newLine() })
                     }
             )
             Said(state, Modifier.align(Alignment.TopCenter))
@@ -600,6 +651,41 @@ private const val SaidForMs = 3_000L
 
 // The hint's top, in units down from the composer's top.
 private const val HintTop = 6f
+
+// Pushes the held lever with the finger that went [down]: the lever goes over as far as the
+// finger moves right, and is let go, at the finger's speed, as it lifts.
+private suspend fun AwaitPointerEventScope.pushTheLever(
+    state: TypewriterState,
+    down: PointerInputChange,
+    u: Float,
+) {
+    down.consume()
+    val tracker = VelocityTracker()
+    tracker.addPosition(down.uptimeMillis, down.position)
+    val travel = TypewriterDimens.LeverThrow * u
+    try {
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            change.consume()
+            tracker.addPosition(change.uptimeMillis, change.position)
+            state.pushLever((change.position.x - down.position.x) / travel)
+            if (!change.pressed) break
+        }
+    } finally {
+        state.releaseLever(tracker.calculateVelocity().x / travel)
+    }
+}
+
+// Whether [at] is within [reach] of the segment from [from] to [to].
+internal fun nearSegment(at: Offset, from: Offset, to: Offset, reach: Float): Boolean {
+    val along = to - from
+    val length = along.getDistanceSquared()
+    val t =
+        if (length == 0f) 0f
+        else (((at - from).x * along.x + (at - from).y * along.y) / length).coerceIn(0f, 1f)
+    return (at - (from + along * t)).getDistance() <= reach
+}
 
 // A finger this many units off the sheet still takes it.
 private const val SheetReach = 14f

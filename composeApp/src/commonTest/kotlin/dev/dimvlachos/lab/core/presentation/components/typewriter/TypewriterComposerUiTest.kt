@@ -129,6 +129,52 @@ class TypewriterComposerUiTest {
         assertEquals("", machine.state.field.text.toString())
     }
 
+    // Where the machine's top is in the composer, [density] px to the dp: it stands on its keys,
+    // which start just over their first row.
+    private fun androidx.compose.ui.test.ComposeUiTest.machineTop(density: Float): Float {
+        val u = 400f / TypewriterDimens.StageUnits * density
+        val keysTop =
+            onNodeWithContentDescription("q").fetchSemanticsNode().positionInRoot.y -
+                onNodeWithTag("machine").fetchSemanticsNode().positionInRoot.y -
+                6f * density
+        return keysTop - TypewriterDimens.MachineHeight * u
+    }
+
+    @Test
+    fun pushingTheLeverStartsANewLineAndLeavesTheSheetAlone() = runComposeUiTest {
+        val machine = machine()
+        runOnUiThread { "ok".forEach { machine.state.type(it) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithTag("machine").performTouchInput {
+            val u = 400f / TypewriterDimens.StageUnits * density
+            val knob =
+                machine.state.leverKnob * u +
+                    androidx.compose.ui.geometry.Offset(0f, machineTop(density))
+            down(knob)
+            for (i in 1..10) moveTo(
+                knob.copy(x = knob.x + i * TypewriterDimens.LeverThrow / 10f * u)
+            )
+            up()
+        }
+        mainClock.advanceTimeBy(1_500)
+        assertEquals("ok\n", machine.state.field.text.toString())
+        assertTrue(machine.sent.isEmpty())
+        assertEquals(0f, machine.state.shown, 0.01f)
+    }
+
+    @Test
+    fun aScreenReadersNewLineActionOnTheLeverStartsALine() = runComposeUiTest {
+        val machine = machine()
+        val lever = onNodeWithContentDescription("Carriage return lever")
+        val newLine =
+            lever.fetchSemanticsNode().config[SemanticsActions.CustomActions].first {
+                it.label == "New line"
+            }
+        runOnUiThread { newLine.action() }
+        mainClock.advanceTimeBy(500)
+        assertEquals("\n", machine.state.field.text.toString())
+    }
+
     @Test
     fun aDragUpTheSheetPullsItOutAndAShortOneSlidesBack() = runComposeUiTest {
         val machine = machine()

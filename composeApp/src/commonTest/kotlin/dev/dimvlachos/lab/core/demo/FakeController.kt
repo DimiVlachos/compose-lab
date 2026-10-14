@@ -161,4 +161,8 @@ internal class FakeController(private val now: () -> Long) : DemoController {
         typewriterSheetPulls += up
         calls += now() to "pullTypewriterSheet($up, $duration)"
     }
+
+    override suspend fun pushTypewriterLever(duration: Duration) {
+        calls += now() to "pushTypewriterLever($duration)"
+    }
 }

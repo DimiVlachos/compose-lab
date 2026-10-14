@@ -102,4 +102,11 @@ internal interface DemoController {
      * the fingertip has lifted.
      */
     suspend fun pullTypewriterSheet(up: Dp, duration: Duration)
+
+    /**
+     * Takes the typewriter's carriage-return lever with a fingertip, pushes it all the way over in
+     * [duration] and lets go: the paper feeds a line and the carriage bangs home. Returns once the
+     * fingertip has lifted.
+     */
+    suspend fun pushTypewriterLever(duration: Duration)
 }

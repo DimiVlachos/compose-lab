@@ -47,9 +47,10 @@ internal object TypewriterDimens {
     const val BellWarning = 5
     const val BellColumn = Columns - BellWarning
 
-    // Where the type bars strike, in the middle of the stage, and down from the machine's top:
-    // the current line's foot. The platen's top is just under it; its knobs stand out at its ends.
-    const val StrikeX = 180f
+    // Where the type bars strike, a little right of the stage's middle, so the return lever on the
+    // carriage's left stays in reach at the end of a line; and down from the machine's top: the
+    // current line's foot. The platen's top is just under it; its knobs stand out at its ends.
+    const val StrikeX = 208f
     const val StrikeY = 34f
     const val PlatenTop = 38f
     const val PlatenHeight = 30f
@@ -101,7 +102,7 @@ internal object TypewriterDimens {
     const val VibratorY = 71f
 
     // The margin bell, a brass dome on the deck, and the hammer that taps it.
-    const val BellX = 246f
+    const val BellX = StrikeX + 70f
     const val BellY = 122f
     const val BellRadius = 6.5f
 
@@ -115,11 +116,21 @@ internal object TypewriterDimens {
 
     // The return lever: it pivots this far left of the carriage, this far down from the machine's
     // top, and points up and to the left; pushed, it swings this much to the right.
-    const val LeverOffset = 27f
+    const val LeverOffset = 12f
     const val LeverPivotY = 53f
-    const val LeverAngle = -102f
-    const val LeverSwing = 16f
+    const val LeverAngle = -95f
+    const val LeverSwing = 24f
     const val LeverLength = 46f
+
+    // Pushed by hand: a finger this far to the right pushes the lever all the way over; the
+    // line-space pawl catches, feeding a line, this share of the way, and let go past this share,
+    // or flung right faster than this many travels a second, the return goes through. A finger
+    // this near the lever, all along it, takes it.
+    const val LeverThrow = 56f
+    const val LeverPawl = 0.35f
+    const val LeverCommit = 0.6f
+    const val LeverFling = 3f
+    val LeverReach = 24.dp
 
     // The carriage is a spring towards the column it should be at, stepped at a fixed rate:
     // stiff with a small overshoot as the escapement steps it on, and, sent home, a loose one that

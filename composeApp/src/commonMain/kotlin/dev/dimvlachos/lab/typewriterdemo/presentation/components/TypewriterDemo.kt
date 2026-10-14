@@ -185,6 +185,9 @@ internal fun TypewriterDemo(state: DemoState) {
             val line = getString(text)
             turns.withLock { tapOut(machine, line, typing) }
         }
+        state.setTypewriterLeverHandler { duration ->
+            turns.withLock { machine.pushLeverScripted(duration.inWholeMilliseconds / 1000f) }
+        }
         state.setTypewriterSheetPullHandler { up, duration ->
             turns.withLock { pullTypewriterSheet(machine, up, duration) }
         }
@@ -201,6 +204,7 @@ internal fun TypewriterDemo(state: DemoState) {
         onDispose {
             state.setSendHandler(null)
             state.setTypewriterSheetPullHandler(null)
+            state.setTypewriterLeverHandler(null)
             state.setClearHandler(null)
         }
     }
@@ -336,7 +340,8 @@ private fun Message(
                     atlas,
                     unit,
                     Modifier.slipLanding(flights, message.id).then(announced).clearAndSetSemantics {
-                        contentDescription = message.text
+                        // Read as one message, however its lines broke on the sheet.
+                        contentDescription = message.text.replace('\n', ' ')
                     },
                 )
             }

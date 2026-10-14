@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -216,6 +217,19 @@ public class TypewriterState(text: String = "") {
 
     private var leverHold = TypewriterDimens.LeverShortest
 
+    // The lever by hand: whether a finger has it, how far over it is pushed (0 to 1), whether the
+    // pawl has caught and fed a line, and where the carriage was as the push began. Let go, the
+    // lever goes on, or springs back, from where the hand left it.
+    private var handHeld = false
+    private var handPush = 0f
+    private var handFed = false
+    private var handFrom = 0f
+    private var leverFrom = 0f
+
+    // While the hand feeds or takes back a line, the machine doesn't return the carriage or run
+    // the tape by itself.
+    private var byHand = false
+
     private var jamAt = Float.NEGATIVE_INFINITY
 
     // The whole machine shakes a little at each strike, harder at the carriage's bang; the bell's
@@ -262,11 +276,29 @@ public class TypewriterState(text: String = "") {
     /** How far the lever is pushed over, 0 at rest to 1 as far as it goes. */
     internal val leverPush: Float
         get() {
+            if (handHeld) return handPush
             val t = now - leverAt
             if (t < 0f) return 0f
-            if (t < leverHold) return easeOut(t / leverHold)
-            return exp(-(t - leverHold) * LeverEase)
+            if (t < leverHold) return leverFrom + (1f - leverFrom) * easeOut(t / leverHold)
+            val from = if (leverHold > 0f) 1f else leverFrom
+            return from * exp(-(t - leverHold) * LeverEase)
         }
+
+    /** Where the lever's knob is, in units from the machine's top left. */
+    internal val leverKnob: Offset
+        get() {
+            val angle =
+                (TypewriterDimens.LeverAngle + TypewriterDimens.LeverSwing * leverPush) * PI / 180.0
+            return leverPivot +
+                Offset(
+                    (cos(angle) * TypewriterDimens.LeverLength).toFloat(),
+                    (sin(angle) * TypewriterDimens.LeverLength).toFloat(),
+                )
+        }
+
+    /** Where the lever pivots, in units from the machine's top left. */
+    internal val leverPivot: Offset
+        get() = Offset(carriage - TypewriterDimens.LeverOffset, TypewriterDimens.LeverPivotY)
 
     /** Whether [glyph] has landed on the paper. */
     internal fun landed(glyph: Glyph): Boolean = now >= landing[place(glyph.line, glyph.column)]
@@ -298,7 +330,7 @@ public class TypewriterState(text: String = "") {
             ribbonAt = this.now
             taping = true
             feel.tape()
-        } else if (deleted.isNotEmpty()) {
+        } else if (deleted.isNotEmpty() && !byHand) {
             // Only a space or a line went, or a space the return took up: the tape still runs.
             feel.tape()
         }
@@ -330,7 +362,7 @@ public class TypewriterState(text: String = "") {
         }
         target = columnX(after.column)
         when {
-            after.line > before.line -> returnCarriage(after)
+            after.line > before.line -> if (!byHand) returnCarriage(after)
             after.line < before.line -> {
                 // Back up a line: the paper rolls back, and the carriage steps to the end of it.
                 homing = false
@@ -396,6 +428,121 @@ public class TypewriterState(text: String = "") {
         typedNow(field.text)
     }
 
+    /**
+     * Takes the carriage-return lever with a finger, and says whether it did: not while another
+     * finger has it or the sheet, nor while the sheet is being sent.
+     */
+    public fun grabLever(): Boolean {
+        if (handHeld || held || sending || phase != SheetPhase.Idle) return false
+        handHeld = true
+        handPush = 0f
+        handFed = false
+        handFrom = carriage
+        wake()
+        return true
+    }
+
+    /**
+     * Pushes the held lever [push] of the way over (0 to 1). A third of the way, the line-space
+     * pawl catches with a click and the paper feeds a line, or, on a full sheet, the lever jams;
+     * further, the lever drags the carriage home.
+     */
+    public fun pushLever(push: Float) {
+        if (!handHeld) return
+        handPush = push.coerceIn(0f, 1f)
+        if (!handFed && handPush >= TypewriterDimens.LeverPawl) catchPawl()
+        if (handFed && feedTaken) {
+            val drag =
+                ((handPush - TypewriterDimens.LeverPawl) / (1f - TypewriterDimens.LeverPawl))
+                    .coerceIn(0f, 1f)
+            heldAt = handFrom + (TypewriterDimens.HomeX - handFrom) * drag
+            heldUntil = Float.POSITIVE_INFINITY
+            homing = false
+        }
+        wake()
+    }
+
+    /**
+     * Lets go of the lever, the finger moving right at [speed] travels a second. Pushed past the
+     * threshold, or flung, the return goes through: the carriage is let go to bang home as the
+     * return's sound does. Short of it, the lever springs back and a line it fed is taken back.
+     */
+    public fun releaseLever(speed: Float) {
+        if (!handHeld) return
+        handHeld = false
+        val goes =
+            handPush >= TypewriterDimens.LeverCommit ||
+                (speed > TypewriterDimens.LeverFling && handPush > 0f)
+        leverFrom = handPush
+        leverAt = now
+        if (goes) {
+            if (!handFed) catchPawl()
+            if (feedTaken) {
+                heldAt = min(carriage, TypewriterDimens.HomeX)
+                val travel = travelTime(TypewriterDimens.HomeX - heldAt)
+                leverHold =
+                    max(TypewriterDimens.LeverShortest, TypewriterDimens.ReturnBang - travel)
+                heldUntil = now + leverHold
+                homing = true
+                feel.carriageReturn()
+            } else {
+                leverHold = 0f
+                heldUntil = Float.NEGATIVE_INFINITY
+            }
+        } else {
+            leverHold = 0f
+            heldUntil = Float.NEGATIVE_INFINITY
+            homing = false
+            if (handFed && feedTaken) {
+                byHand = true
+                backspace()
+                byHand = false
+            }
+        }
+        handFed = false
+        wake()
+    }
+
+    // Whether the pawl's line feed went onto the sheet: a full sheet refuses it.
+    private var feedTaken = false
+
+    // The line-space pawl catches: a click under the finger, and a line fed.
+    private fun catchPawl() {
+        handFed = true
+        feel.ratchet(pulling = true)
+        byHand = true
+        feedTaken = type('\n')
+        byHand = false
+    }
+
+    /** Starts a new line, as the New line key does: the lever swings over by itself. */
+    public fun newLine(): Boolean = type('\n')
+
+    /**
+     * A scripted fingertip takes the lever's knob, pushes it all the way over in [seconds] and lets
+     * go. Returns once the fingertip has lifted.
+     */
+    internal suspend fun pushLeverScripted(seconds: Float) {
+        try {
+            touch = leverKnob
+            fade(to = 1f, seconds = TouchDown)
+            if (!grabLever()) return
+            val start = withFrameNanos { it }
+            while (true) {
+                val t = withFrameNanos { ((it - start) / 1e9f / seconds).coerceIn(0f, 1f) }
+                pushLever(ease(t))
+                touch = leverKnob
+                if (t >= 1f) break
+            }
+            releaseLever(0f)
+        } finally {
+            withContext(NonCancellable) {
+                if (handHeld) releaseLever(0f)
+                fade(to = 0f, seconds = TouchUp)
+            }
+        }
+    }
+
     /** A scripted fingertip taps [key]: it dips under the fingertip and is pressed. */
     internal fun tap(key: TypeKey) {
         keyboard.tapped(key.id)
@@ -419,6 +566,7 @@ public class TypewriterState(text: String = "") {
         heldAt = min(carriage, margin)
         val travel = travelTime(TypewriterDimens.HomeX - heldAt)
         leverHold = max(TypewriterDimens.LeverShortest, TypewriterDimens.ReturnBang - travel)
+        leverFrom = 0f
         leverAt = now
         heldUntil = now + leverHold
         homing = true
@@ -430,7 +578,7 @@ public class TypewriterState(text: String = "") {
      * while it is being sent.
      */
     public fun grab(): Boolean {
-        if (held || phase != SheetPhase.Idle || autoPulling) return false
+        if (held || handHeld || phase != SheetPhase.Idle || autoPulling) return false
         held = true
         pullSpeed = 0f
         wake()
@@ -663,6 +811,7 @@ public class TypewriterState(text: String = "") {
             heldUntil = now
             homing = true
             leverAt = now
+            leverFrom = 0f
             leverHold = TypewriterDimens.LeverShortest
             feel.carriageReturn()
         }
@@ -702,6 +851,7 @@ public class TypewriterState(text: String = "") {
 
     private fun moving(): Boolean =
         held ||
+            handHeld ||
             autoPulling ||
             phase != SheetPhase.Idle ||
             homing ||
