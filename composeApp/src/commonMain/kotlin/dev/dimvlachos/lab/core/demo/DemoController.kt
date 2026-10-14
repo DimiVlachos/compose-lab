@@ -94,4 +94,14 @@ internal interface DemoController {
      * Returns once the finger has lifted; the tab springs back by itself.
      */
     suspend fun pullPopUpTab(out: Float, duration: Duration)
+
+    /**
+     * Swipes the chat [id] across by [by] of its width (negative is left) over [duration] with a
+     * fingertip, and lets go. Returns once the finger has lifted; the chat burns, mists or is drawn
+     * back in by itself.
+     */
+    suspend fun swipeChat(id: String, by: Float, duration: Duration)
+
+    /** Taps the demo's control [id], such as Undo on a snackbar, if it shows. */
+    suspend fun tapControl(id: String)
 }
