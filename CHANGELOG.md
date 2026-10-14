@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- **Sound** (`core/platform/SoundPlayer`): demos can play short clips, synthesized by `scripts/synth-sounds.py` (no recordings, so no licences), through SoundPool on Android and AVAudioPlayer on iOS. Nothing plays while the phone is on silent.
 - **Pop-up book** (`popup`): a pop-up book whose paper scenery stands up in perspective as a spread opens, with soft shadows and pull tabs that move its pieces; its demo is a Cyclades travel onboarding. The page-turn book's projection moved into a shared `perspective/Homography`.
 - **Fishing refresh** (`fishing`): pull-to-refresh where refreshing is fishing: the pull bends a rod, release casts a bobber into a band of water where it floats while the refresh loads, and the outcome plays out on the water, a catch hauled up from the deep on the line into the list, an empty hook, or a snapped line. Built on Material's `pullToRefresh`; the caller hoists a sealed `FishingStatus`.
 - **App shell**: a shadowed top bar on every screen; search from home's bar that also finds the versions inside a folder; tag chips to filter the catalog; an adaptive grid of cards, each with an icon and a one-line description.
