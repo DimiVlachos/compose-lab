@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.demoInsets
@@ -73,6 +76,7 @@ import dev.dimvlachos.lab.core.presentation.components.typewriter.rememberTypewr
 import dev.dimvlachos.lab.core.presentation.components.typewriter.slipLanding
 import dev.dimvlachos.lab.core.presentation.components.typewriter.slipTilt
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.isWideStage
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.typewriterchat_badge
 import dev.dimvlachos.lab.resources.typewriterchat_contact
@@ -101,6 +105,10 @@ import org.jetbrains.compose.resources.stringResource
 
 // The thread keeps to this width in the middle of a wide stage.
 private val ThreadMaxWidth = 640.dp
+
+// Side by side, the machine takes this share of the stage's width, and no more than this.
+private const val WideMachineShare = 0.5f
+private val WideMachineWidth = 440.dp
 
 // A reply's bubble is at most this share of the thread's width, and this round, tailed at its foot
 // on the sender's side.
@@ -145,34 +153,34 @@ internal fun TypewriterDemo(state: DemoState) {
             stringResource(Res.string.typewriterchat_reply_2),
             stringResource(Res.string.typewriterchat_reply_3),
         )
-    val thread = remember { TypewriterThread(seed, replies) }
+    val chat = remember { TypewriterThread(seed, replies) }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val answers = remember { mutableListOf<Job>() }
     // A replay or a recording is the script's to play: a hand on the keys would type over it.
     val scripted = state.replay || state.recording
     val onSend: (SentSheet) -> Unit = { sheet ->
-        val id = thread.nextId()
+        val id = chat.nextId()
         // Its flight is under way before its place opens, so the place is never seen empty-handed.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             flights.fly(id, sheet, slipTilt(id))
             sound.play(Sound.RatchetTick, volume = LandVolume)
-            answers += scope.launch { thread.answer() }
+            answers += scope.launch { chat.answer() }
         }
-        thread.send(sheet.text, sheet.lines)
+        chat.send(sheet.text, sheet.lines)
         list.requestScrollToItem(0)
     }
     // A new message or Eleni typing comes in at the foot: kept in sight if the thread was there,
     // rather than opening under it, as a list anchored to the item it showed would.
-    LaunchedEffect(thread, list) {
-        snapshotFlow { thread.messages.size to thread.typing }
+    LaunchedEffect(chat, list) {
+        snapshotFlow { chat.messages.size to chat.typing }
             .collect { if (list.firstVisibleItemIndex <= 1) list.animateScrollToItem(0) }
     }
     // The script's steps take turns, in the order they started: in the background, where frames
     // stop and so does the typing, a step that comes due waits for the one before it, so the run
     // still types, sends and takes back in order, and ends where it began.
     val turns = remember { Mutex() }
-    DisposableEffect(state, machine, thread) {
+    DisposableEffect(state, machine, chat) {
         state.setSendHandler { text, typing ->
             val line = getString(text)
             turns.withLock { tapOut(machine, line, typing) }
@@ -183,10 +191,10 @@ internal fun TypewriterDemo(state: DemoState) {
         state.setClearHandler {
             turns.withLock {
                 // Once every sheet has landed, so none lands after its thread is put back.
-                snapshotFlow { thread.messages.none { flights.flying(it.id) } }.first { it }
+                snapshotFlow { chat.messages.none { flights.flying(it.id) } }.first { it }
                 answers.forEach { it.cancel() }
                 answers.clear()
-                thread.clear()
+                chat.clear()
                 machine.field.clearText()
             }
         }
@@ -204,34 +212,61 @@ internal fun TypewriterDemo(state: DemoState) {
         val atlas = rememberGlyphAtlas(unit)
         val side = max(spacing.medium, (maxWidth - ThreadMaxWidth) / 2)
         val bubbleWidth = (maxWidth - side * 2) * BubbleShare
-        Column(Modifier.fillMaxSize()) {
-            Header(Modifier.windowInsetsPadding(insets.only(WindowInsetsSides.Horizontal)))
+        // Wide, as a phone on its side, the thread and the machine stand side by side, so each
+        // keeps its height; otherwise the thread sits over the machine.
+        val wide = isWideStage(maxWidth, maxHeight)
+        val machineWidth = min(maxWidth * WideMachineShare, WideMachineWidth)
+        val thread: @Composable (Modifier) -> Unit = { modifier ->
             // Newest at the foot, just over the paper: a new message pushes the others up.
             LazyColumn(
-                Modifier.weight(1f).fillMaxWidth(),
+                modifier,
                 state = list,
                 reverseLayout = true,
-                contentPadding = PaddingValues(horizontal = side, vertical = spacing.small),
+                contentPadding =
+                    PaddingValues(
+                        horizontal = if (wide) spacing.medium else side,
+                        vertical = spacing.small,
+                    ),
                 verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.Bottom),
             ) {
-                if (thread.typing) {
+                if (chat.typing) {
                     item(key = "typing") { Typing(Modifier.animateItem()) }
                 }
-                items(thread.messages.asReversed(), key = { it.id }) { message ->
+                items(chat.messages.asReversed(), key = { it.id }) { message ->
                     Message(message, flights, atlas, unit, bubbleWidth, Modifier.animateItem())
                 }
                 item(key = "today") { Today() }
             }
+        }
+        val composer: @Composable (Modifier) -> Unit = { modifier ->
             TypewriterComposer(
                 machine,
                 onSend = onSend,
                 sound = sound,
+                modifier = modifier,
                 badge = stringResource(Res.string.typewriterchat_badge),
                 model = stringResource(Res.string.typewriterchat_model),
                 enabled = !scripted,
                 insets = insets.only(WindowInsetsSides.Bottom),
                 atlas = atlas,
             )
+        }
+        Column(Modifier.fillMaxSize()) {
+            Header(Modifier.windowInsetsPadding(insets.only(WindowInsetsSides.Horizontal)))
+            if (wide) {
+                Row(
+                    Modifier.weight(1f)
+                        .fillMaxWidth()
+                        .windowInsetsPadding(insets.only(WindowInsetsSides.Horizontal)),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    thread(Modifier.weight(1f).fillMaxHeight())
+                    composer(Modifier.width(machineWidth))
+                }
+            } else {
+                thread(Modifier.weight(1f).fillMaxWidth())
+                composer(Modifier)
+            }
         }
         SlipFlightStage(flights, atlas, unit)
     }

@@ -30,6 +30,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -197,6 +198,7 @@ internal fun TypewriterComposer(
         }
     }
     val painter = remember { TypewriterPainter() }
+    val shell = remember { MachineShell() }
     val colors = LabTheme.colors
     val focus = remember { FocusRequester() }
     val currentEnabled by rememberUpdatedState(enabled)
@@ -233,7 +235,8 @@ internal fun TypewriterComposer(
         val u = with(density) { unit.toPx() }
         val pitch = TypewriterDimens.keyPitch(maxWidth, maxHeight)
         val keysHeight = TypewriterDimens.keysHeight(pitch)
-        val below = with(density) { keysHeight.toPx() }
+        val lip = TypewriterDimens.FrontLip
+        val below = with(density) { (keysHeight + lip).toPx() }
         val badgeText =
             badge.takeIf { it.isNotEmpty() }?.let { lettering(measurer, it, unit, true) }
         val modelText =
@@ -260,10 +263,47 @@ internal fun TypewriterComposer(
                     placed.unit = u
                 }
         ) {
-            // The machine; a tap on it gives it focus, for a hardware keyboard, and a drag up on
-            // the sheet pulls it out. A screen reader finds it with a Send action.
+            // The parts that never move, drawn once in a layer of their own: the shell, the keys'
+            // well, the basket's opening and the bell.
+            val foot = with(density) { insets.getBottom(this).toDp() }
+            val machineHeight = with(density) { (TypewriterDimens.MachineHeight * u).toDp() }
+            Spacer(
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(machineHeight + keysHeight + lip + foot)
+                    .graphicsLayer {
+                        state.frame
+                        translationY = state.shudder * TypewriterDimens.Shudder.toPx()
+                    }
+                    .drawWithCache {
+                        val keysTop = TypewriterDimens.MachineHeight * u
+                        val padding = TypewriterDimens.KeysPadding.toPx()
+                        val keysWidth = pitch.toPx() * TypewriterDimens.KeysAcross
+                        onDrawBehind {
+                            with(shell) {
+                                drawShell(
+                                    colors,
+                                    u,
+                                    Offset(left, 0f),
+                                    keysTop + padding,
+                                    keysTop + keysHeight.toPx() - padding,
+                                    keysWidth,
+                                    TypewriterDimens.KeyRows,
+                                    badgeText,
+                                    modelText,
+                                )
+                            }
+                        }
+                    }
+            )
+            // The moving parts; a tap on them gives the machine focus, for a hardware keyboard,
+            // and a drag up on the sheet pulls it out. A screen reader finds it with a Send action.
             Spacer(
                 Modifier.matchParentSize()
+                    .graphicsLayer {
+                        state.frame
+                        translationY = state.shudder * TypewriterDimens.Shudder.toPx()
+                    }
                     .drawBehind {
                         with(painter) {
                             drawMachine(
@@ -278,9 +318,6 @@ internal fun TypewriterComposer(
                                         below -
                                         TypewriterDimens.MachineHeight * u,
                                 ),
-                                bottom = size.height,
-                                badge = badgeText,
-                                model = modelText,
                             )
                         }
                     }
@@ -345,7 +382,11 @@ internal fun TypewriterComposer(
                 enabled,
                 measurer,
                 Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom = with(density) { insets.getBottom(this).toDp() })
+                    .graphicsLayer {
+                        state.frame
+                        translationY = state.shudder * TypewriterDimens.Shudder.toPx()
+                    }
+                    .padding(bottom = foot + lip)
                     .height(keysHeight)
                     .padding(vertical = TypewriterDimens.KeysPadding),
             )

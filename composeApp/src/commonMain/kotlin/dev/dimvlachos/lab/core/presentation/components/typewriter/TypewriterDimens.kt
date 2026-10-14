@@ -47,23 +47,32 @@ internal object TypewriterDimens {
     const val BellWarning = 5
     const val BellColumn = Columns - BellWarning
 
-    // Where the type bars strike, across the stage and down from the machine's top: the current
-    // line's foot. The platen's top is just under it, and the enamel body under that.
-    const val StrikeX = 232f
+    // Where the type bars strike, in the middle of the stage, and down from the machine's top:
+    // the current line's foot. The platen's top is just under it; its knobs stand out at its ends.
+    const val StrikeX = 180f
     const val StrikeY = 34f
     const val PlatenTop = 38f
     const val PlatenHeight = 30f
     const val PlatenOverhang = 16f
-    const val PlatenCorner = 7f
-    const val KnobWidth = 22f
-    const val KnobHeight = 40f
-    const val KnobRise = 5f
-    const val BodyTop = 48f
-    const val BodyHeight = 64f
-    const val BodyCorner = 26f
+    const val KnobWidth = 20f
+    const val KnobHeight = 34f
+    const val KnobRise = 2f
 
-    /** How tall the machine is, from the top of the lever's paddle to the foot of the body. */
-    const val MachineHeight = BodyTop + BodyHeight
+    // The body: its deck runs from just under the platen to the keys, as wide as this at its back
+    // and widening towards the front, its shoulders this round; its front lip under the keys is
+    // this tall, and the keys sit in a well this round at its corners.
+    const val BodyTop = 50f
+    const val DeckBottom = 134f
+    const val DeckWidth = 330f
+    const val ShoulderCorner = 34f
+    val FrontLip = 22.dp
+    val WellCorner = 14.dp
+    val ShellSide = 6.dp
+
+    /**
+     * How tall the machine is over its keys, from the top of the lever's paddle to its deck's foot.
+     */
+    const val MachineHeight = DeckBottom
 
     /** Room over the paper for the hint. */
     const val HintRoom = 34f
@@ -74,13 +83,35 @@ internal object TypewriterDimens {
     /** Where the carriage is, the sheet's left edge, with the carriage at the first column. */
     const val HomeX = StrikeX - Margin
 
-    // The basket of type bars, a fan in the body behind the platen, and the badge on the left.
-    const val BasketLeft = 152f
-    const val BasketTop = 6f
-    const val BasketWidth = 160f
-    const val BasketHeight = 32f
-    const val BadgeLeft = 22f
-    const val BadgeTop = 27f
+    // The type basket: its bars lie in a fan about the printing point, from this far out to this
+    // far, between these angles, seen through an opening in the deck this wide and deep.
+    const val BasketY = 68f
+    const val BasketInner = 18f
+    const val BasketOuter = 50f
+    const val BasketFrom = 18f
+    const val BasketTo = 162f
+    const val BasketBars = 34
+    const val OpeningWidth = 124f
+    const val OpeningDepth = 54f
+
+    // The ribbon spools either side of the basket, and the ribbon's vibrator at the printing point.
+    const val SpoolX = 106f
+    const val SpoolY = 98f
+    const val SpoolRadius = 21f
+    const val VibratorY = 71f
+
+    // The margin bell, a brass dome on the deck, and the hammer that taps it.
+    const val BellX = 246f
+    const val BellY = 122f
+    const val BellRadius = 6.5f
+
+    // The paper bail across the sheet over the line, with its scale and its two rollers.
+    const val BailY = StrikeY - 19f
+    const val BailHeight = 3.5f
+
+    /** A strike shakes the whole machine this far, for this long. */
+    val Shudder = 0.8.dp
+    const val ShudderSeconds = 0.09f
 
     // The return lever: it pivots this far left of the carriage, this far down from the machine's
     // top, and points up and to the left; pushed, it swings this much to the right.
@@ -184,15 +215,23 @@ internal object TypewriterDimens {
     const val KeyRows = 4
     const val KeyRowHeight = 1.12f
     val KeysPadding = 6.dp
-    const val ShortStageKeyShare = 0.075f
+    const val ShortStageKeyShare = 0.09f
 
     // A key's top is this share of its cell, stands this far up on its lever and goes this far
     // down when pressed; its chrome rim is this wide, and its lever this share of its top's width.
-    const val CapShare = 0.78f
+    const val CapShare = 0.8f
     val KeyLift = 1.5.dp
     val KeyTravel = 3.dp
     val RimWidth = 2.dp
-    const val StemShare = 0.18f
+    const val StemShare = 0.13f
+
+    // Seen a little from above, a key's round top is squashed to this share as tall as it is
+    // wide, its top this share down its cell, and its stem goes into a slot this far down. Each
+    // row further back looks this much smaller.
+    const val CapSquash = 0.84f
+    const val CapRise = 0.03f
+    const val SlotAt = 0.98f
+    const val TierShrink = 0.035f
 
     // A key's legend is this share of its pitch tall, smaller for a word than a letter.
     const val LegendShare = 0.36f

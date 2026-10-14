@@ -43,7 +43,7 @@ class AppColorsArtTokensTest {
     }
 
     private companion object {
-        const val TokenCount = 81
+        const val TokenCount = 82
 
         val PropertyName = Regex("""(\w+)=""")
 
@@ -137,6 +137,7 @@ class AppColorsArtTokensTest {
                 AppColors::typeChrome,
                 AppColors::typeChromeSheen,
                 AppColors::typeKeyLegend,
+                AppColors::typeBrass,
             )
     }
 }

@@ -87,7 +87,9 @@ internal fun TypewriterKeys(
     }
     val shadow = remember { SoftShadow() }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.SpaceEvenly) {
-        for (row in rows) {
+        for ((index, row) in rows.withIndex()) {
+            // The rows further back stand a tier higher and look a little smaller from here.
+            val depth = (rows.size - 1 - index).toFloat()
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -102,7 +104,7 @@ internal fun TypewriterKeys(
                             motions[key.id] = motion
                             onDispose { if (motions[key.id] === motion) motions -= key.id }
                         }
-                        KeyCap(state, key, motion, pitch, enabled, measurer, shadow)
+                        KeyCap(state, key, motion, pitch, enabled, measurer, shadow, depth)
                     }
                 }
             }
@@ -138,6 +140,7 @@ private fun KeyCap(
     enabled: Boolean,
     measurer: TextMeasurer,
     shadow: SoftShadow,
+    depth: Float,
 ) {
     val colors = LabTheme.colors
     val scope = rememberCoroutineScope()
@@ -211,77 +214,120 @@ private fun KeyCap(
             }
             .drawWithCache {
                 // The key's shape and gradients, made once for its size; it is moved down under
-                // them as it dips.
+                // them as it dips. Seen a little from above: its top is a flattened round, on a
+                // chrome stem that goes down into a slot in the well.
+                val scale = 1f - TypewriterDimens.TierShrink * depth
                 val wide = key.action == KeyAction.Space
-                val height = size.height * TypewriterDimens.CapShare
+                val across = size.height * TypewriterDimens.CapShare * scale
+                val height = across * TypewriterDimens.CapSquash
                 val width =
                     if (wide) size.width - size.height * (1f - TypewriterDimens.CapShare)
-                    else height
-                val capTop = (size.height - height) / 2f - TypewriterDimens.KeyLift.toPx()
+                    else across
+                val capTop = size.height * TypewriterDimens.CapRise
                 val capLeft = (size.width - width) / 2f
-                val radius = CornerRadius(height / 2f)
-                val rim = TypewriterDimens.RimWidth.toPx()
-                val stem = minOf(width, height) * TypewriterDimens.StemShare
+                val ring = TypewriterDimens.RimWidth.toPx()
+                val stem = across * TypewriterDimens.StemShare
+                val slot = Offset(size.width / 2f, size.height * TypewriterDimens.SlotAt)
                 val travel = TypewriterDimens.KeyTravel.toPx()
-                val lift = TypewriterDimens.KeyLift.toPx() + 2.dp.toPx()
+                val chromeDark = lerp(colors.typeChrome, colors.typePlaten, 0.45f)
+                val stemBrush =
+                    Brush.horizontalGradient(
+                        listOf(chromeDark, colors.typeChromeSheen, colors.typeChrome, chromeDark),
+                        startX = -stem / 2f,
+                        endX = stem / 2f,
+                    )
                 val chrome =
                     Brush.verticalGradient(
-                        listOf(
-                            colors.typeChromeSheen,
-                            colors.typeChrome,
-                            lerp(colors.typeChrome, colors.typePlaten, 0.35f),
-                        ),
+                        listOf(Color.White, colors.typeChromeSheen, colors.typeChrome, chromeDark),
                         startY = 0f,
                         endY = height,
                     )
                 val glassColor =
                     if (lit) lerp(colors.typePlatenSheen, colors.typePaper, LitGlass)
                     else colors.typePlatenSheen
+                // Celluloid over a dark face: lighter towards its rim, deep in the middle.
                 val glass =
-                    Brush.radialGradient(
-                        listOf(glassColor, colors.typePlaten),
-                        center = Offset(width * 0.4f, height * 0.32f),
-                        radius = maxOf(width, height) * 0.62f,
-                    )
+                    if (wide) {
+                        Brush.verticalGradient(
+                            listOf(colors.typeChromeSheen, colors.typeChrome, chromeDark),
+                            startY = 0f,
+                            endY = height,
+                        )
+                    } else {
+                        Brush.radialGradient(
+                            0f to colors.typePlaten,
+                            0.7f to lerp(colors.typePlaten, glassColor, 0.5f),
+                            1f to glassColor,
+                            center = Offset(width / 2f, height * 0.45f),
+                            radius = width * 0.55f,
+                        )
+                    }
                 val legendAt =
                     Offset((width - label.size.width) / 2f, (height - label.size.height) / 2f)
+                val stems = if (wide) listOf(width * 0.2f, width * 0.8f) else listOf(width / 2f)
                 onDrawBehind {
                     val d = motion.dip.value
                     val top = capTop + travel * d
-                    // The lever under the key, shorter as the key goes down.
-                    drawRect(
-                        colors.typePlaten.copy(alpha = StemAlpha),
-                        Offset(size.width / 2f - stem / 2f, top + height / 2f),
-                        Size(stem, size.height - top - height / 2f),
-                    )
+                    // The slot the stem goes down into, a dark notch in the well.
+                    for (x in stems) {
+                        drawOval(
+                            Color.Black.copy(alpha = SlotAlpha),
+                            Offset(capLeft + x - stem * 1.6f, slot.y - stem * 0.6f),
+                            Size(stem * 3.2f, stem * 1.2f),
+                        )
+                    }
+                    // The stem, from under the key down into its slot, shorter as it goes down.
+                    for (x in stems) {
+                        translate(capLeft + x, 0f) {
+                            drawRect(
+                                stemBrush,
+                                Offset(-stem / 2f, top + height / 2f),
+                                Size(stem, (slot.y - top - height / 2f).coerceAtLeast(0f)),
+                            )
+                        }
+                    }
                     with(shadow) {
-                        val drop = lift * (1f - d) + 1.dp.toPx()
+                        val drop = (TypewriterDimens.KeyLift.toPx() + 3.dp.toPx()) * (1f - d)
                         drawSoftShadow(
-                            capLeft,
-                            top + drop,
-                            capLeft + width,
+                            capLeft + width * 0.08f,
+                            top + drop + height * 0.3f,
+                            capLeft + width * 0.92f,
                             top + height + drop,
-                            3.dp.toPx(),
+                            4.dp.toPx(),
                             KeyShadow - KeyShadowPressed * d,
                         )
                     }
                     translate(capLeft, top) {
-                        // The chrome rim, lit from above, and the glass top inside it.
-                        drawRoundRect(chrome, size = Size(width, height), cornerRadius = radius)
+                        val corner =
+                            if (wide) CornerRadius(height / 2f)
+                            else CornerRadius(width / 2f, height / 2f)
+                        // The thin chrome ring, lit from above, and the face inside it.
+                        drawRoundRect(chrome, size = Size(width, height), cornerRadius = corner)
                         drawRoundRect(
                             glass,
-                            Offset(rim, rim),
-                            Size(width - rim * 2f, height - rim * 2f),
-                            CornerRadius(height / 2f - rim),
+                            Offset(ring, ring),
+                            Size(width - ring * 2f, height - ring * 2f),
+                            CornerRadius(corner.x - ring, corner.y - ring),
                         )
-                        // The glass catching the light, a crescent along its top.
-                        drawRoundRect(
+                        // The studio light on the celluloid, a soft crescent at its top left,
+                        // and a faint reflection along its foot.
+                        drawOval(
                             Color.White.copy(alpha = GlassGlint),
-                            Offset(rim * 2.2f, rim * 1.6f),
-                            Size(width - rim * 4.4f, height * 0.28f),
-                            CornerRadius(height / 2f),
+                            Offset(width * 0.18f, height * 0.12f),
+                            Size(width * 0.5f, height * 0.26f),
                         )
-                        drawText(label, colors.typeKeyLegend, legendAt)
+                        drawOval(
+                            Color.White.copy(alpha = GlassGlint * 0.4f),
+                            Offset(width * 0.25f, height * 0.74f),
+                            Size(width * 0.5f, height * 0.12f),
+                        )
+                        // The legend, worn a little soft.
+                        drawText(
+                            label,
+                            colors.typeKeyLegend.copy(alpha = LegendWear),
+                            legendAt + Offset(0.4f, 0.3f),
+                        )
+                        drawText(label, colors.typeKeyLegend.copy(alpha = LegendInk), legendAt)
                         drawTouch(
                             colors.touch,
                             Offset(width / 2f, height / 2f),
@@ -324,8 +370,11 @@ private val KeyUp = spring<Float>(Spring.DampingRatioMediumBouncy, Spring.Stiffn
 
 // How lit Shift's glass is while it is down, how dark a key's lever and its shadow are, up and
 // pressed, and how bright the glint on its glass.
-private const val LitGlass = 0.35f
+private const val LitGlass = 0.45f
+private const val SlotAlpha = 0.6f
+private const val LegendWear = 0.25f
+private const val LegendInk = 0.88f
 private const val StemAlpha = 0.5f
 private const val KeyShadow = 0.45f
 private const val KeyShadowPressed = 0.2f
-private const val GlassGlint = 0.16f
+private const val GlassGlint = 0.3f

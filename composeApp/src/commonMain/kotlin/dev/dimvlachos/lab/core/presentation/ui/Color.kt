@@ -133,7 +133,7 @@ public data class AppColors(
     // dimmer on the dark screen, with the darker paper of its edges; the machine's green enamel,
     // lit at its top and deep at its foot, and the badge lettered on it. Art: the ink, the black
     // platen and its sheen, the ribbon's black and red halves, the chrome of its rims, bars and
-    // lever, and the legends on its keys.
+    // lever, the legends on its keys and the brass of its bell.
     val typePaper: Color = Color(0xFFE8E0CB),
     val typePaperEdge: Color = Color(0xFFCFC5AB),
     val typeEnamelLight: Color = Color(0xFF6F9A91),
@@ -147,6 +147,7 @@ public data class AppColors(
     val typeChrome: Color = Color(0xFF9AA3AB),
     val typeChromeSheen: Color = Color(0xFFE6EAEE),
     val typeKeyLegend: Color = Color(0xFFF4F0E6),
+    val typeBrass: Color = Color(0xFFC9A55A),
     val typeBadge: Color = Color(0xFFF4F6F8),
 ) {
     public companion object {

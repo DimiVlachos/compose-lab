@@ -19,11 +19,13 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -216,6 +218,17 @@ public class TypewriterState(text: String = "") {
 
     private var jamAt = Float.NEGATIVE_INFINITY
 
+    // The whole machine shakes a little at each strike, harder at the carriage's bang; the bell's
+    // hammer taps its dome; and the ribbon spools turn on a little with every letter.
+    private var shudderAt = Float.NEGATIVE_INFINITY
+    private var shudderPower = 1f
+
+    internal var bellAt = Float.NEGATIVE_INFINITY
+        private set
+
+    internal var struck = 0
+        private set
+
     // Letters struck but not yet on the paper, by place, with when each lands; and letters being
     // lifted off by the tape, with when the tape took each.
     private val landing = FloatArray(TypewriterDimens.MaxLines * TypewriterDimens.Columns)
@@ -300,6 +313,8 @@ public class TypewriterState(text: String = "") {
             barFrom = basketPlace(last.char)
             ribbonAt = this.now
             taping = false
+            struck += added.size
+            shake(StrikeShudder)
             feel.strike(last.char.lowercaseChar().code % StrikeVariants, space = false)
         } else if (deleted.isEmpty() && after.line == before.line) {
             // Only a space came: the carriage steps without a letter.
@@ -310,6 +325,7 @@ public class TypewriterState(text: String = "") {
                 before.column < TypewriterDimens.BellColumn &&
                 after.column >= TypewriterDimens.BellColumn
         ) {
+            bellAt = this.now
             feel.bell()
         }
         target = columnX(after.column)
@@ -560,7 +576,10 @@ public class TypewriterState(text: String = "") {
             if (homing && now >= heldUntil) {
                 homing = false
                 carriageSpeed = -speed * TypewriterDimens.Bounce
-                if (speed > BangSpeed) feel.bang()
+                if (speed > BangSpeed) {
+                    shake(BangShudder)
+                    feel.bang()
+                }
             } else {
                 carriageSpeed = min(0f, carriageSpeed)
             }
@@ -652,6 +671,31 @@ public class TypewriterState(text: String = "") {
 
     private fun paperTravel(): Float = feed + shown - feedIn
 
+    private fun shake(power: Float) {
+        shudderAt = now
+        shudderPower = power
+    }
+
+    /**
+     * How far the whole machine is shaken off its place, as a share of
+     * [Shudder][TypewriterDimens.Shudder] down (negative is up): a quick, dying jolt.
+     */
+    internal val shudder: Float
+        get() {
+            val t = (now - shudderAt) / TypewriterDimens.ShudderSeconds
+            if (t < 0f || t >= 1f) return 0f
+            return shudderPower * sin(t * ShudderWaves * PI.toFloat()) * (1f - t)
+        }
+
+    /** How far the bell's hammer is swung onto the dome, 0 at rest to 1 striking it. */
+    internal val hammer: Float
+        get() {
+            val t = (now - bellAt) / HammerSeconds
+            if (t < 0f || t >= 1f) return 0f
+            return if (t < HammerStrike) t / HammerStrike
+            else 1f - ease((t - HammerStrike) / (1f - HammerStrike))
+        }
+
     // Whether the sheet is on its way out, by itself or freed: no key changes it then.
     private val sending: Boolean
         get() = autoPulling || phase == SheetPhase.Zipping
@@ -673,6 +717,8 @@ public class TypewriterState(text: String = "") {
             now - barAt < TypewriterDimens.TypebarSeconds ||
             now - ribbonAt < TypewriterDimens.RibbonSeconds ||
             now - leverAt < leverHold + LeverSettle ||
+            now - shudderAt < TypewriterDimens.ShudderSeconds ||
+            now - bellAt < HammerSeconds ||
             jammed
 
     private fun wake() {
@@ -701,6 +747,16 @@ public class TypewriterState(text: String = "") {
         // How quickly the lever falls back once let go, and for how long after that it is awake.
         private const val LeverEase = 18f
         private const val LeverSettle = 0.35f
+
+        // A strike shakes the machine this hard, and the carriage's bang harder, as shares of
+        // the most it shakes, in this many half waves.
+        private const val StrikeShudder = 0.6f
+        private const val BangShudder = 1f
+        private const val ShudderWaves = 3f
+
+        // The bell's hammer swings onto the dome in this share of this long, and back.
+        private const val HammerSeconds = 0.32f
+        private const val HammerStrike = 0.2f
 
         // A refused key knocks the carriage this hard, in units a second.
         private const val JamKnock = 140f
