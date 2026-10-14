@@ -43,7 +43,7 @@ class AppColorsArtTokensTest {
     }
 
     private companion object {
-        const val TokenCount = 67
+        const val TokenCount = 77
 
         val PropertyName = Regex("""(\w+)=""")
 
@@ -77,6 +77,11 @@ class AppColorsArtTokensTest {
                 AppColors::rodBlank,
                 AppColors::rodReel,
                 AppColors::fishingLine,
+                AppColors::typePaper,
+                AppColors::typePaperEdge,
+                AppColors::enamelLight,
+                AppColors::enamel,
+                AppColors::enamelDeep,
             )
 
         // Themed, but the same in both: white on the accent, and a black shadow under the bar.
@@ -123,6 +128,11 @@ class AppColorsArtTokensTest {
                 AppColors::mirrorGlass,
                 AppColors::onPhoto,
                 AppColors::onPhotoMuted,
+                AppColors::typeInk,
+                AppColors::platen,
+                AppColors::platenSheen,
+                AppColors::ribbonBlack,
+                AppColors::ribbonRed,
             )
     }
 }
