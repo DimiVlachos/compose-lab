@@ -56,6 +56,12 @@ internal class TypewriterThread(
     var typingId by mutableStateOf(-1L)
         private set
 
+    /**
+     * Hears that something is about to come in at the foot of the thread, just before it does, in
+     * the same frame: a list showing the foot can make room for it there.
+     */
+    var onArrival: (() -> Unit)? = null
+
     private var nextId = 0L
     private var replied = 0
 
@@ -75,6 +81,7 @@ internal class TypewriterThread(
     /** Adds a slip of [lines], [text] sent from the typewriter, to the foot of the thread. */
     fun send(text: String, lines: List<String>): ThreadMessage.Slip {
         val id = nextId++
+        onArrival?.invoke()
         return ThreadMessage.Slip(id, text, lines, slipTilt(id)).also { messages += it }
     }
 
@@ -84,6 +91,7 @@ internal class TypewriterThread(
         try {
             delay(ReplyWaitMs)
             typingId = nextId++
+            onArrival?.invoke()
             typing = true
             delay(ReplyTypingMs)
             messages += ThreadMessage.Reply(typingId, replies[replied++ % replies.size])

@@ -28,4 +28,17 @@ class TypewriterThreadTest {
         assertTrue(thread.isNew(reply.id))
         assertFalse(thread.isNew(thread.messages.first().id))
     }
+
+    @Test
+    fun aListHearsOfEachArrivalJustBeforeItComes() = runTest {
+        val thread = TypewriterThread(listOf("hi" to false), listOf("hello"))
+        val heard = mutableListOf<Pair<Int, Boolean>>()
+        thread.onArrival = { heard += thread.messages.size to thread.typing }
+        thread.send("yo", listOf("yo"))
+        launch { thread.answer() }
+        advanceTimeBy(3_000)
+        // Before the slip, and before the typing bubble; the reply takes the bubble's place.
+        assertEquals(listOf(1 to false, 2 to false), heard)
+        assertEquals(3, thread.messages.size)
+    }
 }

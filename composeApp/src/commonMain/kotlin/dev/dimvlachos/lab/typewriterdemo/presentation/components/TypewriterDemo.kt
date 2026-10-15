@@ -181,14 +181,17 @@ internal fun TypewriterDemo(state: DemoState) {
             answers += answer
             answer.invokeOnCompletion { answers -= answer }
         }
-        chat.send(sheet.text, sheet.lines)
+        // Sent from here, it is always shown landing.
         list.requestScrollToItem(0)
+        chat.send(sheet.text, sheet.lines)
     }
-    // A new message or Jess typing comes in at the foot: kept in sight if the thread was there,
-    // rather than opening under it, as a list anchored to the item it showed would.
-    LaunchedEffect(chat, list) {
-        snapshotFlow { chat.messages.size to chat.typing }
-            .collect { if (list.firstVisibleItemIndex <= 1) list.animateScrollToItem(0) }
+    // A new message or Jess typing comes in at the foot, in sight if the thread was there: asked
+    // for in the same frame as it comes, so the list makes room for it in one go and everything
+    // over it glides up, rather than opening under it, as a list anchored to the item it showed
+    // would, and then jumping to it.
+    DisposableEffect(chat, list) {
+        chat.onArrival = { if (list.firstVisibleItemIndex == 0) list.requestScrollToItem(0) }
+        onDispose { chat.onArrival = null }
     }
     // The script's steps take turns, in the order they started: in the background, where frames
     // stop and so does the typing, a step that comes due waits for the one before it, so the run
