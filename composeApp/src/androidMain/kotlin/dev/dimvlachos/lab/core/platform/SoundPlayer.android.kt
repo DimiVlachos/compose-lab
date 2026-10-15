@@ -26,7 +26,9 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
 
 /**
  * Plays clips through a [SoundPool]. The pool loads from files, so each clip's bytes are copied out
- * of the app's resources into the cache once, the first time it is wanted.
+ * of the app's resources into the cache, under a name that follows the bytes ([soundCacheName]), so
+ * a clip changed by an update gets a fresh copy. A copy is written beside its name and moved into
+ * place, so one cut short by the app being killed is never played.
  */
 private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val pool =
@@ -62,10 +64,19 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     }
 
     private suspend fun cacheFile(sound: Sound): File {
-        val file = File(context.cacheDir, "sounds/${sound.file}.wav")
+        val bytes = Res.readBytes(sound.path)
+        val dir = File(context.cacheDir, "sounds").apply { mkdirs() }
+        val name = soundCacheName(sound, bytes)
+        val file = File(dir, name)
         if (!file.exists()) {
-            file.parentFile?.mkdirs()
-            file.writeBytes(Res.readBytes(sound.path))
+            val part = File.createTempFile(sound.file, ".part", dir)
+            try {
+                part.writeBytes(bytes)
+                check(part.renameTo(file) || file.exists()) { "Could not move $part to $file" }
+            } finally {
+                part.delete()
+            }
+            dir.listFiles { f -> isStaleSoundCopy(sound, f.name, name) }?.forEach { it.delete() }
         }
         return file
     }
