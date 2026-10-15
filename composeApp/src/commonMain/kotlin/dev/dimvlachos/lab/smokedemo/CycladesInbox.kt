@@ -107,7 +107,7 @@ internal object CycladesChats {
             Chat(
                 "ferry",
                 Res.string.smoke_chat_ferry_name,
-                "AF",
+                "KL",
                 Res.string.smoke_chat_ferry_preview,
                 time = "17:05",
                 avatar = Avatar.Blue,
@@ -131,7 +131,7 @@ internal object CycladesChats {
             Chat(
                 "taxi",
                 Res.string.smoke_chat_taxi_name,
-                "HW",
+                "GW",
                 Res.string.smoke_chat_taxi_preview,
                 time = "09:48",
                 avatar = Avatar.Teal,
@@ -140,7 +140,7 @@ internal object CycladesChats {
             Chat(
                 "dive",
                 Res.string.smoke_chat_dive_name,
-                "MD",
+                "GD",
                 Res.string.smoke_chat_dive_preview,
                 day = Res.string.smoke_chat_time_mon,
                 avatar = Avatar.Violet,
@@ -156,7 +156,7 @@ internal object CycladesChats {
             Chat(
                 "pottery",
                 Res.string.smoke_chat_pottery_name,
-                "SP",
+                "PP",
                 Res.string.smoke_chat_pottery_preview,
                 day = Res.string.smoke_chat_time_sun,
                 avatar = Avatar.Amber,
@@ -164,7 +164,7 @@ internal object CycladesChats {
             Chat(
                 "kite",
                 Res.string.smoke_chat_kite_name,
-                "PK",
+                "MK",
                 Res.string.smoke_chat_kite_preview,
                 day = Res.string.smoke_chat_time_sun,
                 avatar = Avatar.Blue,

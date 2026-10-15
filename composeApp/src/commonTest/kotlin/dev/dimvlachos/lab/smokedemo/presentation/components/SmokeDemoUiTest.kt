@@ -137,7 +137,7 @@ class SmokeDemoUiTest {
     fun aShortSwipeDrawsTheSmokeBackIn() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        swipe("Aegean Ferries", -0.15f)
+        swipe("Kyma Lines", -0.15f)
         advanceUntil("the smoke to settle", most = 8_000) { !smoke!!.awake }
         assertEquals(ChatPlace.Inbox, inbox!!.placeOf("ferry"))
     }
@@ -332,7 +332,7 @@ class SmokeDemoUiTest {
         mainClock.autoAdvance = false
         onNodeWithText("Archived · 2").performClick()
         mainClock.advanceTimeBy(500)
-        chat("Paros Kite Club").performCustomAccessibilityActionWithLabel("Restore")
+        chat("Meltemaki Kite Club").performCustomAccessibilityActionWithLabel("Restore")
         advanceUntil("the chat to be restored") { inbox!!.placeOf("kite") == ChatPlace.Inbox }
         onNodeWithContentDescription("Back to messages").performClick()
         mainClock.advanceTimeBy(500)
@@ -370,7 +370,7 @@ class SmokeDemoUiTest {
         mainClock.autoAdvance = false
         chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
         mainClock.advanceTimeByFrame()
-        chat("Hydra Water Taxi").assertIsFocused()
+        chat("Glaros Water Taxi").assertIsFocused()
     }
 
     @Test
