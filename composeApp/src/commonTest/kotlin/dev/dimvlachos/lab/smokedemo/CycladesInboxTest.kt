@@ -113,4 +113,27 @@ class CycladesInboxTest {
         assertEquals(ChatChange.Cleared, inbox.last!!.change)
         assertEquals(read.dropLast(1), inbox.last!!.ids)
     }
+
+    @Test
+    fun aClearChatLeftOutBeforeItsTurnLeavesTheClearAndTheRestSettleIt() {
+        val inbox = CycladesInbox()
+        val read = inbox.readInInbox().map { it.id }
+        inbox.clearing(read)
+        read.take(2).forEach(inbox::deleted)
+        // The rest are dropped: the screen they were on went before their turn.
+        read.drop(2).forEach(inbox::leaveClear)
+        assertFalse(inbox.isClearing, "the clear is over")
+        assertEquals(ChatChange.Cleared, inbox.last!!.change)
+        assertEquals(read.take(2), inbox.last!!.ids, "what did burn can be undone")
+    }
+
+    @Test
+    fun aClearWithNothingBurntEndsWithNothingToUndo() {
+        val inbox = CycladesInbox()
+        val read = inbox.readInInbox().map { it.id }
+        inbox.clearing(read)
+        read.forEach(inbox::leaveClear)
+        assertFalse(inbox.isClearing)
+        assertNull(inbox.last)
+    }
 }

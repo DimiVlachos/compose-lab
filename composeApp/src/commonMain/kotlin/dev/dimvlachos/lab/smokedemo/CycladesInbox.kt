@@ -260,9 +260,12 @@ internal class CycladesInbox {
         clearingNow = true
     }
 
-    // A chat of the clear went another way, to the archive by a screen reader's action before its
-    // turn: the clear is the rest of them.
-    private fun leaveClear(id: String) {
+    /**
+     * Chat [id] of a clear won't burn with it: it went another way, to the archive by a screen
+     * reader's action before its turn, or its turn found it off the screen, in the archive. The
+     * clear is the rest of them.
+     */
+    fun leaveClear(id: String) {
         if (id !in clearing) return
         clearing = clearing - id
         settleClear()

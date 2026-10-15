@@ -96,7 +96,12 @@ public class SmokeState internal constructor() {
     private var inhaledAt = Float.NEGATIVE_INFINITY
 
     // Programmed burns, waiting their turn: a wave clearing several rows starts them in turn.
-    private class Queued(val at: Float, val key: Any, val side: SmokeSide)
+    private class Queued(
+        val at: Float,
+        val key: Any,
+        val side: SmokeSide,
+        val onDropped: () -> Unit,
+    )
 
     private val queued = mutableListOf<Queued>()
 
@@ -119,14 +124,20 @@ public class SmokeState internal constructor() {
      * Burns the row [key] away to [side], as a swipe all the way would, after [delay] seconds: the
      * row's action for that side runs once it is all smoke. Returns whether the row stands, has an
      * action that way and isn't already going, or waiting to. Burning a row now takes the place of
-     * a burn it was waiting for.
+     * a burn it was waiting for. A burn put off that finds the row gone or taken when its turn
+     * comes, as a row whose screen has gone does, is dropped, and [onDropped] runs instead.
      */
-    public fun swipeAway(key: Any, side: SmokeSide, delay: Float = 0f): Boolean {
+    public fun swipeAway(
+        key: Any,
+        side: SmokeSide,
+        delay: Float = 0f,
+        onDropped: () -> Unit = {},
+    ): Boolean {
         val row = rows[key] ?: return false
         if (!row.present || row.actionFor(side) == null || busy(row)) return false
         if (delay > 0f) {
             if (queued.any { it.key == key }) return false
-            queued += Queued(now + delay, key, side)
+            queued += Queued(now + delay, key, side, onDropped)
             awake = true
             return true
         }
@@ -509,7 +520,7 @@ public class SmokeState internal constructor() {
             val next = queued[i]
             if (next.at <= now) {
                 queued.removeAt(i)
-                startAuto(next.key, next.side)
+                if (!startAuto(next.key, next.side)) next.onDropped()
             } else i++
         }
     }

@@ -15,9 +15,11 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTextExactly
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
@@ -293,5 +295,46 @@ class SmokeDemoUiTest {
         runOnUiThread { backInput.backCompleted() }
         waitForIdle()
         assertEquals(1, left, "in the inbox, back is the screen's")
+    }
+
+    @Test
+    fun openingTheArchiveMidWaveEndsTheClearWithWhatBurnt() = runComposeUiTest {
+        show()
+        mainClock.autoAdvance = false
+        onNodeWithText("Clear read").performClick()
+        mainClock.advanceTimeBy(150)
+        // The rest of the wave's turns come with the inbox off the screen.
+        onNodeWithText("Archived · 2").performClick()
+        advanceUntil("the clear to end") { !inbox!!.isClearing }
+        val cleared = inbox!!.last!!
+        assertEquals(ChatChange.Cleared, cleared.change)
+        assertTrue(cleared.ids.size in 1..4, "only what burnt: ${cleared.ids}")
+        for (id in cleared.ids) assertEquals(ChatPlace.Deleted, inbox!!.placeOf(id), id)
+        onNodeWithContentDescription("Back to messages").performClick()
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Clear read").assertIsEnabled()
+        onNodeWithText("Undo").performClick()
+        advanceUntil("the chats to come back") { inbox!!.readInInbox().size == 5 }
+    }
+
+    @Test
+    fun undoingARestoreMidWaveEndsTheClearWithoutIt() = runComposeUiTest {
+        show()
+        mainClock.autoAdvance = false
+        onNodeWithText("Archived · 2").performClick()
+        mainClock.advanceTimeBy(500)
+        chat("Paros Kite Club").performCustomAccessibilityActionWithLabel("Restore")
+        advanceUntil("the chat to be restored") { inbox!!.placeOf("kite") == ChatPlace.Inbox }
+        onNodeWithContentDescription("Back to messages").performClick()
+        mainClock.advanceTimeBy(500)
+        onNodeWithText("Clear read").performClick()
+        mainClock.advanceTimeByFrame()
+        // The restore's Undo sends the kite club back to the archive before its turn in the wave.
+        onNodeWithText("Undo").performClick()
+        assertEquals(ChatPlace.Archived, inbox!!.placeOf("kite"))
+        advanceUntil("the clear to end") { !inbox!!.isClearing }
+        assertEquals(ChatChange.Cleared, inbox!!.last!!.change)
+        assertEquals(5, inbox!!.last!!.ids.size)
+        assertTrue("kite" !in inbox!!.last!!.ids)
     }
 }

@@ -175,7 +175,9 @@ internal fun SmokeDemo(
         // Only the chats the smoke takes are in the clear: one already burning isn't.
         val going = mutableListOf<String>()
         for (chat in inbox.readInInbox()) {
-            if (smoke.swipeAway(chat.id, SmokeSide.Left, delay = going.size * WaveSeconds)) {
+            val delay = going.size * WaveSeconds
+            // A chat whose turn finds it gone from the screen is left out of the clear.
+            if (smoke.swipeAway(chat.id, SmokeSide.Left, delay) { inbox.leaveClear(chat.id) }) {
                 going += chat.id
             }
         }

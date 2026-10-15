@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.smoke
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -132,11 +133,23 @@ class SmokeStateTest {
     @Test
     fun aQueuedBurnFindsTheRowGoneAndLetsItBe() {
         val smoke = state()
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f))
+        var dropped = 0
+        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f) { dropped++ })
         smoke.rows["a"]!!.present = false
         smoke.run(0.5f)
         assertNull(smoke.plumeOf("a"))
         assertEquals(0, deleted)
+        assertEquals(1, dropped, "the caller hears that its burn was dropped")
+    }
+
+    @Test
+    fun aQueuedBurnThatStartsIsntDropped() {
+        val smoke = state()
+        var dropped = 0
+        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f) { dropped++ })
+        smoke.run(0.3f)
+        assertNotNull(smoke.plumeOf("a"), "its turn came and it burns")
+        assertEquals(0, dropped)
     }
 
     @Test
