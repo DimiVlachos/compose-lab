@@ -77,8 +77,9 @@ internal interface DemoController {
     suspend fun pullToRefresh(distance: Dp, duration: Duration)
 
     /**
-     * Puts a refreshing feed back as it began, with only the items it started with, so a script
-     * that refreshed it ends where it started and loops.
+     * Puts the demo's list back as it began, a refreshing feed with only the items it started with
+     * or a chat list with every chat in its place, so a script that changed it ends where it
+     * started and loops.
      */
     suspend fun resetFeed()
 
