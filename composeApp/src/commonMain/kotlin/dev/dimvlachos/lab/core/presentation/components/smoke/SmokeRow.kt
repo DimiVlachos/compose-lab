@@ -98,7 +98,6 @@ public fun SmokeRow(
     val currentLeft by rememberUpdatedState(left)
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
-    val keyHeld = remember { KeyHeld() }
     val colors = LabTheme.colors
     val edge = remember { EdgePainter() }
     val ring = colors.accent
@@ -133,15 +132,11 @@ public fun SmokeRow(
             )
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { event ->
-                val delete = event.key == Key.Delete || event.key == Key.Backspace
-                if (!delete || currentLeft == null) return@onKeyEvent false
-                // A held key repeats its downs: only the first, until it is let up, burns.
-                if (event.type == KeyEventType.KeyUp) {
-                    keyHeld.value = false
-                    return@onKeyEvent true
-                }
-                if (event.type != KeyEventType.KeyDown || keyHeld.value) return@onKeyEvent true
-                keyHeld.value = true
+                if (!isDelete(event.key) || currentLeft == null) return@onKeyEvent false
+                // A held key repeats its downs, on whichever row focus has moved on to: only the
+                // first, until the key is let up anywhere in the overlay, burns.
+                if (event.type != KeyEventType.KeyDown || state.deleteHeld) return@onKeyEvent true
+                state.deleteHeld = true
                 if (state.swipeAway(key, SmokeSide.Left)) {
                     // On to the next row, or the one before at the end of the list.
                     if (!focusManager.moveFocus(FocusDirection.Down)) {
@@ -172,6 +167,9 @@ public fun SmokeRow(
         content()
     }
 }
+
+/** Whether [key] deletes: Delete, or Backspace. */
+internal fun isDelete(key: Key): Boolean = key == Key.Delete || key == Key.Backspace
 
 // The swipe: once a finger has gone far enough across, and more across than up, it holds the row;
 // before that the list's scroll may take it, and a row that can't go that way lets it.
@@ -219,12 +217,6 @@ private suspend fun PointerInputScope.swipes(
             if (holding) state.release(key, 0f)
         }
     }
-}
-
-// Whether Delete is held down on the row, so its repeats are let by. Not state: nothing reads it
-// but the key handler.
-private class KeyHeld {
-    var value = false
 }
 
 /** The burning edge's colours: the ember, its core, the char behind it, and the mist's edge. */

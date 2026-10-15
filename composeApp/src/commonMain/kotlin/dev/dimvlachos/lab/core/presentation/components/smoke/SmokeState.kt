@@ -100,6 +100,12 @@ public class SmokeState internal constructor() {
 
     private val queued = mutableListOf<Queued>()
 
+    /**
+     * Whether Delete is held down, so its repeats are let by: shared by the rows, as focus moves on
+     * from the row it burnt while the key is still down.
+     */
+    internal var deleteHeld = false
+
     /** The plume of the row [key], if it has one. */
     internal fun plumeOf(key: Any): SmokePlume? = plumes[key]
 
@@ -199,6 +205,7 @@ public class SmokeState internal constructor() {
         fading.clear()
         queued.clear()
         drawn.clear()
+        deleteHeld = false
         for (row in rows.values) {
             row.gone = false
             row.dragging = false

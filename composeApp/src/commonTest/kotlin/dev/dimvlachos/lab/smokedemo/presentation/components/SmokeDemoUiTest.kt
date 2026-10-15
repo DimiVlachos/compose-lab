@@ -232,4 +232,27 @@ class SmokeDemoUiTest {
         onNodeWithText("Undo").performClick()
         advanceUntil("the chats to come back") { inbox!!.readInInbox().size == 5 }
     }
+
+    @Test
+    fun holdingDeleteBurnsOneChatAndTheNextPressBurnsAgain() = runComposeUiTest {
+        show()
+        mainClock.autoAdvance = false
+        chat("Kyria Maria").performSemanticsAction(SemanticsActions.RequestFocus)
+        // Held a second and a half: the key repeats, on whichever row focus has moved on to.
+        chat("Kyria Maria").performKeyInput {
+            keyDown(Key.Delete)
+            advanceEventTime(1_500)
+            keyUp(Key.Delete)
+        }
+        advanceUntil("the held key to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        mainClock.advanceTimeBy(1_500)
+        val deleted = CycladesChats.all.filter { inbox!!.placeOf(it.id) == ChatPlace.Deleted }
+        assertEquals(listOf("maria"), deleted.map { it.id }, "one press, one chat")
+        onNodeWithText("Undo").performClick()
+        advanceUntil("the chat to come back") { inbox!!.placeOf("maria") == ChatPlace.Inbox }
+        advanceUntil("the smoke to settle", most = 8_000) { !smoke!!.awake }
+        chat("Kyria Maria").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Kyria Maria").performKeyInput { pressKey(Key.Delete) }
+        advanceUntil("the next press to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+    }
 }

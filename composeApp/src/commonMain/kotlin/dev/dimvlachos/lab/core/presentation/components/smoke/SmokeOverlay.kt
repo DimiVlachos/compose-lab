@@ -13,10 +13,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -93,7 +98,17 @@ public fun SmokeOverlay(
                 glowAdds = colors.isDark,
             )
         }
-    Box(modifier.onPlaced { state.overlay = it }) {
+    Box(
+        modifier
+            .onPlaced { state.overlay = it }
+            // Delete let up on any row, or focus gone from the list, ends a held Delete: the next
+            // press burns again.
+            .onPreviewKeyEvent {
+                if (it.type == KeyEventType.KeyUp && isDelete(it.key)) state.deleteHeld = false
+                false
+            }
+            .onFocusChanged { if (!it.hasFocus) state.deleteHeld = false }
+    ) {
         content()
         SmokeLayerOf(state, SmokeLayer.Haze, smokeColors, blur = SmokeDimens.HazeBlur)
         SmokeLayerOf(state, SmokeLayer.Soft, smokeColors, blur = SmokeDimens.SoftBlur)
