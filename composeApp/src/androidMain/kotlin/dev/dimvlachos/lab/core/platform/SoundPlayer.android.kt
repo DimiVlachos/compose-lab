@@ -30,10 +30,13 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
 }
 
 /**
- * Plays clips through a [SoundPool]. The pool loads from files, so each clip's bytes are copied out
- * of the app's resources into the cache, under a name that follows the bytes ([soundCacheName]), so
- * a clip changed by an update gets a fresh copy. A copy is written beside its name and moved into
- * place, so one cut short by the app being killed is never played.
+ * Plays clips through a [SoundPool]. Loops are [LiveLoop]s, started once their clip has loaded and
+ * paused while the ringer is on silent or vibrate, as [ringer] reports it.
+ *
+ * The pool loads from files, so each clip's bytes are copied out of the app's resources into the
+ * cache, under a name that follows the bytes ([soundCacheName]), so a clip changed by an update
+ * gets a fresh copy. A copy is written beside its name and moved into place, so one cut short by
+ * the app being killed is never played.
  */
 private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val pool =
@@ -49,6 +52,7 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val ids = mutableMapOf<Sound, Int>()
     private val ready = mutableSetOf<Int>()
+    private val loops = mutableMapOf<LiveLoop, Sound>()
     private var released = false
 
     /**
@@ -66,11 +70,16 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
                         AudioManager.RINGER_MODE_NORMAL,
                     )
                 audible = mode == AudioManager.RINGER_MODE_NORMAL
+                loops.keys.forEach { it.audible = audible }
             }
         }
 
     init {
-        pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) ready += id }
+        pool.setOnLoadCompleteListener { _, id, status ->
+            if (status != 0) return@setOnLoadCompleteListener
+            ready += id
+            loops.forEach { (loop, sound) -> if (ids[sound] == id) loop.ready = true }
+        }
         ContextCompat.registerReceiver(
             context,
             ringer,
@@ -115,37 +124,55 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         return file
     }
 
-    private fun readyId(sound: Sound): Int? = ids[sound]?.takeIf { it in ready && audible }
+    private fun readyId(sound: Sound): Int? = ids[sound]?.takeIf { it in ready }
 
     override fun play(sound: Sound, volume: Float, rate: Float) {
+        if (!audible) return
         val id = readyId(sound) ?: return
         val v = volume.coerceIn(0f, 1f)
-        pool.play(id, v, v, 1, 0, rate.coerceIn(0.5f, 2f))
+        pool.play(id, v, v, OneShotPriority, 0, rate.coerceIn(0.5f, 2f))
     }
 
     override fun loop(sound: Sound, volume: Float): SoundLoop {
-        val id = readyId(sound) ?: return SilentSoundPlayer.loop(sound, volume)
-        val v = volume.coerceIn(0f, 1f)
-        val stream = pool.play(id, v, v, 1, -1, 1f)
-        return object : SoundLoop {
-            override fun setVolume(volume: Float) {
-                val w = volume.coerceIn(0f, 1f)
-                pool.setVolume(stream, w, w)
-            }
-
-            override fun stop() = pool.stop(stream)
-        }
+        if (released) return SilentSoundPlayer.loop(sound, volume)
+        val loop = LiveLoop(StreamVoice(sound), volume, onStop = { loops -= it })
+        loops[loop] = sound
+        loop.audible = audible
+        loop.ready = readyId(sound) != null
+        return loop
     }
 
     fun release() {
         if (released) return
+        loops.keys.toList().forEach { it.stop() }
         released = true
         context.unregisterReceiver(ringer)
         pool.release()
     }
 
+    /** A looping stream of [sound]. It outranks one-shots, so a burst of clicks never takes it. */
+    private inner class StreamVoice(private val sound: Sound) : LoopVoice {
+        private var stream = 0
+
+        override fun start(volume: Float) {
+            val id = ids[sound] ?: return
+            if (stream != 0) pool.stop(stream)
+            stream = pool.play(id, volume, volume, LoopPriority, -1, 1f)
+        }
+
+        override fun setVolume(volume: Float) = pool.setVolume(stream, volume, volume)
+
+        override fun pause() = pool.pause(stream)
+
+        override fun resume() = pool.resume(stream)
+
+        override fun stop() = pool.stop(stream)
+    }
+
     private companion object {
         const val MaxStreams = 8
+        const val OneShotPriority = 1
+        const val LoopPriority = 2
         val log = Logger.withTag("SoundPlayer")
     }
 }

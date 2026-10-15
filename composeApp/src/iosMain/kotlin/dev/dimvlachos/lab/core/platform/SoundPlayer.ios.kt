@@ -40,7 +40,8 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
  *
  * One-shots take turns on a few voices per clip format, each a player node through a varispeed, so
  * the rate resamples (pitch moves with speed) as SoundPool's does on Android, and clicks overlap
- * when typing fast. A loop gets a voice of its own, which no later sound can take from it.
+ * when typing fast. A loop is a [LiveLoop] with a voice of its own, which no later sound can take
+ * from it.
  *
  * The engine stops when the audio route changes or a call interrupts it; it is started again then,
  * and before anything plays, and the loops that were sounding start over.
@@ -50,7 +51,7 @@ internal class EngineSoundPlayer : SoundPlayer {
     private val engine = AVAudioEngine()
     private val clips = mutableMapOf<Sound, AVAudioPCMBuffer>()
     private val voices = mutableMapOf<ClipFormat, VoicePool>()
-    private val loops = mutableListOf<EngineLoop>()
+    private val loops = mutableMapOf<LiveLoop, Sound>()
     private var released = false
     private val observers: List<NSObjectProtocol>
 
@@ -92,6 +93,7 @@ internal class EngineSoundPlayer : SoundPlayer {
             if (released) return
             voices.getOrPut(ClipFormat(buffer)) { VoicePool(buffer.format) }
             clips[sound] = buffer
+            loops.forEach { (loop, s) -> if (s == sound) loop.ready = true }
         }
         if (clips.isNotEmpty()) start()
     }
@@ -106,7 +108,7 @@ internal class EngineSoundPlayer : SoundPlayer {
         AVAudioSession.sharedInstance().setActive(true, error = null)
         engine.prepare()
         if (!engine.startAndReturnError(null)) return false
-        loops.forEach { it.restart() }
+        loops.keys.forEach { it.restart() }
         return true
     }
 
@@ -128,16 +130,16 @@ internal class EngineSoundPlayer : SoundPlayer {
 
     override fun loop(sound: Sound, volume: Float): SoundLoop {
         if (released) return SilentSoundPlayer.loop(sound, volume)
-        val buffer = clips[sound] ?: return SilentSoundPlayer.loop(sound, volume)
-        return EngineLoop(buffer, volume.coerceIn(0f, 1f)).also {
-            loops += it
-            if (start()) it.restart()
-        }
+        val loop = LiveLoop(NodeVoice(sound), volume, onStop = { loops -= it })
+        loops[loop] = sound
+        if (sound in clips) start()
+        loop.ready = sound in clips
+        return loop
     }
 
     fun release() {
         if (released) return
-        loops.toList().forEach { it.stop() }
+        loops.keys.toList().forEach { it.stop() }
         released = true
         observers.forEach { NSNotificationCenter.defaultCenter.removeObserver(it) }
         engine.stop()
@@ -145,35 +147,49 @@ internal class EngineSoundPlayer : SoundPlayer {
         voices.clear()
     }
 
-    /** A loop on a player node of its own, wired straight to the mixer. */
-    private inner class EngineLoop(private val buffer: AVAudioPCMBuffer, volume: Float) :
-        SoundLoop {
-        private val node = AVAudioPlayerNode()
+    /**
+     * A player node of one loop's own, wired straight to the mixer when [sound] first starts. The
+     * ring/silent switch mutes the session, so the loop is never paused for it.
+     */
+    private inner class NodeVoice(private val sound: Sound) : LoopVoice {
+        private var node: AVAudioPlayerNode? = null
 
-        init {
-            engine.attachNode(node)
-            engine.connect(node, to = engine.mainMixerNode, format = buffer.format)
+        override fun start(volume: Float) {
+            val buffer = clips[sound] ?: return
+            val node =
+                this.node
+                    ?: AVAudioPlayerNode().also {
+                        engine.attachNode(it)
+                        engine.connect(it, to = engine.mainMixerNode, format = buffer.format)
+                        this.node = it
+                    }
             node.volume = volume
-        }
-
-        fun restart() {
             node.scheduleBuffer(
                 buffer,
                 atTime = null,
                 options = AVAudioPlayerNodeBufferLoops or AVAudioPlayerNodeBufferInterrupts,
                 completionHandler = null,
             )
-            node.play()
+            if (engine.running) node.play()
         }
 
         override fun setVolume(volume: Float) {
-            node.volume = volume.coerceIn(0f, 1f)
+            node?.volume = volume
+        }
+
+        override fun pause() {
+            node?.pause()
+        }
+
+        override fun resume() {
+            if (engine.running) node?.play()
         }
 
         override fun stop() {
-            if (!loops.remove(this)) return
+            val node = node ?: return
             node.stop()
             engine.detachNode(node)
+            this.node = null
         }
     }
 

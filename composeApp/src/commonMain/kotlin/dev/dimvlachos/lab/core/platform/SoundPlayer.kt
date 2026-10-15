@@ -37,7 +37,10 @@ internal interface SoundPlayer {
      */
     fun play(sound: Sound, volume: Float = 1f, rate: Float = 1f)
 
-    /** Plays [sound] over and over until the returned loop is stopped. */
+    /**
+     * Plays [sound] over and over until the returned loop is stopped. The loop is live at once: it
+     * starts sounding when [sound] has loaded, and keeps quiet while the phone is set to silent.
+     */
     fun loop(sound: Sound, volume: Float = 1f): SoundLoop
 }
 
