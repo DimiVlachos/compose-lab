@@ -108,6 +108,7 @@ import dev.dimvlachos.lab.resources.smoke_restored
 import dev.dimvlachos.lab.resources.smoke_title
 import dev.dimvlachos.lab.resources.smoke_today
 import dev.dimvlachos.lab.resources.smoke_undo
+import dev.dimvlachos.lab.resources.smoke_undone
 import dev.dimvlachos.lab.smokedemo.Chat
 import dev.dimvlachos.lab.smokedemo.ChatChange
 import dev.dimvlachos.lab.smokedemo.ChatDay
@@ -165,8 +166,12 @@ internal fun SmokeDemo(
     val place = if (archive) ChatPlace.Archived else ChatPlace.Inbox
     val currentPlace by rememberUpdatedState(place)
 
+    // Whether the last action was undone, to say so: the next action is news again.
+    var undone by remember { mutableStateOf(false) }
+
     fun undo() {
         val action = inbox.undo() ?: return
+        undone = true
         // The smoke comes back only into a row on this screen; elsewhere the chat just returns.
         val here = action.from == currentPlace
         action.ids.reversed().forEachIndexed { i, id ->
@@ -227,6 +232,7 @@ internal fun SmokeDemo(
         kept?.let { old -> if (old !== last) old.ids.forEach(smoke::forget) }
         kept = last
         if (last != null) {
+            undone = false
             delay(undoMs)
             inbox.settle(last.serial)
         }
@@ -306,6 +312,7 @@ internal fun SmokeDemo(
                     .widthIn(max = ListWidth)
                     .padding(LabTheme.spacing.medium),
         )
+        UndoneAnnouncer(undone)
     }
 }
 
@@ -524,11 +531,24 @@ private fun UndoSnackbar(
                 modifier =
                     Modifier.onPlaced(onUndoPlaced)
                         .clip(LabTheme.shapes.small)
-                        .clickable(role = Role.Button, onClick = onUndo)
+                        // Not while the snackbar goes: there is nothing left to undo.
+                        .clickable(enabled = action != null, role = Role.Button, onClick = onUndo)
                         .padding(horizontal = 10.dp, vertical = 12.dp),
             )
         }
     }
+}
+
+// Says, politely, that Undo brought the chats back, from a node of its own that only this changes.
+@Composable
+private fun UndoneAnnouncer(undone: Boolean) {
+    val text = if (undone) stringResource(Res.string.smoke_undone) else ""
+    Spacer(
+        Modifier.size(1.dp).semantics {
+            liveRegion = LiveRegionMode.Polite
+            if (text.isNotEmpty()) contentDescription = text
+        }
+    )
 }
 
 private class Words {

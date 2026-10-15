@@ -372,4 +372,18 @@ class SmokeDemoUiTest {
         mainClock.advanceTimeByFrame()
         chat("Hydra Water Taxi").assertIsFocused()
     }
+
+    @Test
+    fun undoSaysItBroughtTheChatBackAndCantBeTappedAsItGoes() = runComposeUiTest {
+        show()
+        mainClock.autoAdvance = false
+        chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
+        advanceUntil("the chat to burn away") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        mainClock.advanceTimeBy(300)
+        onNodeWithText("Undo").performClick()
+        mainClock.advanceTimeByFrame()
+        onNodeWithContentDescription("Brought back").assertExists()
+        // The snackbar is on its way out: its Undo does nothing, so it isn't offered.
+        onNodeWithText("Undo").assertIsNotEnabled()
+    }
 }
