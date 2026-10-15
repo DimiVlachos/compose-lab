@@ -1,9 +1,15 @@
 package dev.dimvlachos.lab.typewriterdemo.presentation.components
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +59,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.max
@@ -109,10 +120,11 @@ private val ThreadMaxWidth = 640.dp
 private const val WideMachineShare = 0.5f
 private val WideMachineWidth = 440.dp
 
-// A reply's bubble is at most this share of the thread's width, and this round, tailed at its foot
-// on the sender's side.
+// A reply's bubble is at most this share of the thread's width, and this round, its corner by the
+// sender, at its top on the sender's side, square.
 private const val BubbleShare = 0.76f
-private val BubbleShape = RoundedCornerShape(18.dp, 18.dp, 18.dp, 6.dp)
+private val BubbleShape =
+    RoundedCornerShape(topStart = 6.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp)
 private val AvatarSize = 36.dp
 
 // In a scripted message, this stands for a backspace, so the script can make a typo and fix it.
@@ -128,12 +140,12 @@ private const val LandVolume = 0.5f
 private const val LongestFrameNanos = 50_000_000L
 
 /**
- * A chat with Jess in Portland, Maine, written on a typewriter typed on its own keys. Every letter strikes
- * the sheet in the roller, the bell rings near the margin and the carriage returns by itself; pull
- * the sheet up out of the roller and it trims down to a paper slip that flies up into the thread.
- * Jess answers in plain bubbles. The script taps out two messages on the keys, a typo struck out
- * on the way, pulls each out, the first after a pull too short that slides back, and takes them
- * back at the end.
+ * A chat with Jess in Portland, Maine, written on a typewriter typed on its own keys. Every letter
+ * strikes the sheet in the roller, the bell rings near the margin and the carriage returns by
+ * itself; pull the sheet up out of the roller and it trims down to a paper slip that flies up into
+ * the thread. Jess answers in plain bubbles. The script taps out two messages on the keys, a typo
+ * struck out on the way, pulls each out, the first after a pull too short that slides back, and
+ * takes them back at the end.
  */
 @Composable
 internal fun TypewriterDemo(state: DemoState) {
@@ -235,11 +247,25 @@ internal fun TypewriterDemo(state: DemoState) {
                     ),
                 verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.Bottom),
             ) {
-                if (chat.typing) {
-                    item(key = "typing") { Typing(Modifier.animateItem()) }
-                }
-                items(chat.messages.asReversed(), key = { it.id }) { message ->
-                    Message(message, flights, atlas, unit, bubbleWidth, Modifier.animateItem())
+                // Jess typing is a bubble at the foot that becomes her reply in its place.
+                val typing = chat.typing
+                val messages = chat.messages
+                val count = messages.size + if (typing) 1 else 0
+                fun at(index: Int): ThreadMessage? =
+                    if (typing) messages.getOrNull(messages.size - index)
+                    else messages[messages.lastIndex - index]
+                items(count, key = { at(it)?.id ?: chat.typingId }) { index ->
+                    when (val message = at(index)) {
+                        is ThreadMessage.Slip ->
+                            Slip(message, flights, atlas, unit, Modifier.animateItem())
+                        else ->
+                            Bubble(
+                                (message as? ThreadMessage.Reply)?.text,
+                                entering = message == null || chat.isNew(message.id),
+                                bubbleWidth,
+                                Modifier.animateItem(fadeInSpec = null),
+                            )
+                    }
                 }
                 item(key = "today") { Today() }
             }
@@ -321,48 +347,90 @@ private suspend fun pullTypewriterSheet(machine: TypewriterState, up: Dp, durati
     machine.pullScripted(up / machine.unit, duration.inWholeMilliseconds / 1000f)
 }
 
+// A slip sent from the typewriter, at the thread's end side, where its sheet lands.
 @Composable
-private fun Message(
-    message: ThreadMessage,
+private fun Slip(
+    message: ThreadMessage.Slip,
     flights: SlipFlights,
     atlas: GlyphAtlas,
     unit: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+        PaperSlip(
+            message.lines,
+            message.tilt,
+            atlas,
+            unit,
+            Modifier.slipLanding(flights, message.id).then(Announced).clearAndSetSemantics {
+                // Read as one message, however its lines broke on the sheet.
+                contentDescription = message.text.replace('\n', ' ')
+            },
+        )
+    }
+}
+
+// Each message is read out as it arrives; those the thread began with are simply there.
+private val Announced = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+
+// A plain bubble from Jess, at the thread's start side: her reply's [text], or, while she types,
+// three dots. A new one comes in softly, growing out of its flat corner, the one by her; the dots
+// become her reply in place, the bubble growing to fit it as the words fade in.
+@Composable
+private fun Bubble(
+    text: String?,
+    entering: Boolean,
     bubbleWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
     val colors = LabTheme.colors
-    // Each message is read out as it arrives; those the thread began with are simply there.
-    val announced = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-    when (message) {
-        is ThreadMessage.Slip ->
-            Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                PaperSlip(
-                    message.lines,
-                    message.tilt,
-                    atlas,
-                    unit,
-                    Modifier.slipLanding(flights, message.id).then(announced).clearAndSetSemantics {
-                        // Read as one message, however its lines broke on the sheet.
-                        contentDescription = message.text.replace('\n', ' ')
-                    },
-                )
+    val entrance = remember { Animatable(if (entering) 0f else 1f) }
+    LaunchedEffect(entrance) { entrance.animateTo(1f, BubbleIn) }
+    val start = if (LocalLayoutDirection.current == LayoutDirection.Ltr) 0f else 1f
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        Box(
+            Modifier.graphicsLayer {
+                    val p = entrance.value
+                    alpha = p.coerceIn(0f, 1f)
+                    val scale = BubbleFrom + (1f - BubbleFrom) * p
+                    scaleX = scale
+                    scaleY = scale
+                    translationY = (1f - p) * BubbleRise.toPx()
+                    transformOrigin = TransformOrigin(start, 0f)
+                }
+                .widthIn(max = bubbleWidth)
+                .background(colors.surface, BubbleShape)
+                .border(1.dp, colors.chipBorder, BubbleShape)
+                .animateContentSize(BubbleGrow)
+        ) {
+            Crossfade(text, animationSpec = tween(BubbleFadeMs)) { words ->
+                if (words == null) {
+                    TypingDots()
+                } else {
+                    Text(
+                        words,
+                        style = LabTheme.typography.body.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                        color = colors.textPrimary,
+                        modifier = Announced.padding(horizontal = 13.dp, vertical = 9.dp),
+                    )
+                }
             }
-        is ThreadMessage.Reply ->
-            Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                Text(
-                    message.text,
-                    style = LabTheme.typography.body.copy(fontSize = 15.sp, lineHeight = 20.sp),
-                    color = colors.textPrimary,
-                    modifier =
-                        Modifier.widthIn(max = bubbleWidth)
-                            .then(announced)
-                            .background(colors.surface, BubbleShape)
-                            .border(1.dp, colors.chipBorder, BubbleShape)
-                            .padding(horizontal = 13.dp, vertical = 9.dp),
-                )
-            }
+        }
     }
 }
+
+// A bubble comes in from this share of its size, this far down, on a spring that doesn't bounce,
+// and grows to its words, which fade in over this long.
+private const val BubbleFrom = 0.9f
+private val BubbleRise = 6.dp
+private val BubbleIn = spring<Float>(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
+private val BubbleGrow =
+    spring(
+        dampingRatio = 1f,
+        stiffness = Spring.StiffnessMediumLow,
+        visibilityThreshold = IntSize.VisibilityThreshold,
+    )
+private const val BubbleFadeMs = 220
 
 // Who the chat is with, over the thread.
 @Composable
@@ -424,32 +492,28 @@ private fun Today() {
 
 // Three dots that rise and fade in turn while the other side types.
 @Composable
-private fun Typing(modifier: Modifier = Modifier) {
+private fun TypingDots() {
     val colors = LabTheme.colors
     val label = stringResource(Res.string.typewriterchat_typing)
     val transition = rememberInfiniteTransition()
     val phase by
         transition.animateFloat(0f, 1f, infiniteRepeatable(tween(DotCycleMs), RepeatMode.Restart))
-    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-        Row(
-            Modifier.semantics { contentDescription = label }
-                .background(colors.surface, BubbleShape)
-                .border(1.dp, colors.chipBorder, BubbleShape)
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            repeat(3) { dot ->
-                Box(
-                    Modifier.size(6.dp).drawBehind {
-                        val t = ((phase - dot * DotLag) % 1f + 1f) % 1f
-                        val lift = sin(t * PI).toFloat()
-                        drawCircle(
-                            colors.textMuted.copy(alpha = 1f - DotFade * lift),
-                            center = center - Offset(0f, DotRise.toPx() * lift),
-                        )
-                    }
-                )
-            }
+    Row(
+        Modifier.semantics { contentDescription = label }
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        repeat(3) { dot ->
+            Box(
+                Modifier.size(6.dp).drawBehind {
+                    val t = ((phase - dot * DotLag) % 1f + 1f) % 1f
+                    val lift = sin(t * PI).toFloat()
+                    drawCircle(
+                        colors.textMuted.copy(alpha = 1f - DotFade * lift),
+                        center = center - Offset(0f, DotRise.toPx() * lift),
+                    )
+                }
+            )
         }
     }
 }

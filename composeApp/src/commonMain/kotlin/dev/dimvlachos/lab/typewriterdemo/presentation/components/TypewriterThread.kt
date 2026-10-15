@@ -49,6 +49,13 @@ internal class TypewriterThread(
     var typing by mutableStateOf(false)
         private set
 
+    /**
+     * The id the reply being typed will have: the bubble that shows the typing becomes the reply,
+     * in the same place.
+     */
+    var typingId by mutableStateOf(-1L)
+        private set
+
     private var nextId = 0L
     private var replied = 0
 
@@ -58,6 +65,9 @@ internal class TypewriterThread(
     init {
         for ((text, ours) in seed) messages += if (ours) slip(text) else reply(text)
     }
+
+    /** Whether message [id] came since the thread began, rather than being there from the start. */
+    fun isNew(id: Long): Boolean = id >= seeded
 
     /** Keeps the next message's id, so its sheet can take off for it before it is in the thread. */
     fun nextId(): Long = nextId
@@ -73,9 +83,10 @@ internal class TypewriterThread(
         if (replies.isEmpty()) return
         try {
             delay(ReplyWaitMs)
+            typingId = nextId++
             typing = true
             delay(ReplyTypingMs)
-            messages += reply(replies[replied++ % replies.size])
+            messages += ThreadMessage.Reply(typingId, replies[replied++ % replies.size])
         } finally {
             typing = false
         }
