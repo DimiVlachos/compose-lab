@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -337,4 +339,39 @@ class TypewriterComposerUiTest {
             assertTrue(bounds.top >= stage.top, "$key rises over the stage")
         }
     }
+
+    @Test
+    fun aScreenReaderFindsWhatIsOnTheSheetOnTheMachine() = runComposeUiTest {
+        val machine = machine()
+        press("o", "k", "New line", "g", "o")
+        mainClock.advanceTimeBy(300)
+        val node = onNodeWithContentDescription("Typewriter").fetchSemanticsNode()
+        assertEquals("ok go", node.config[SemanticsProperties.StateDescription])
+        assertEquals("ok\ngo", machine.state.text)
+    }
+
+    @Test
+    fun theSameWordsAgainAreHeardAgain() = runComposeUiTest {
+        val machine = machine()
+        fun said(): String? =
+            onAllNodes(hasLiveRegion())
+                .fetchSemanticsNodes()
+                .firstNotNullOfOrNull {
+                    it.config.getOrNull(SemanticsProperties.ContentDescription)
+                }
+                ?.joinToString()
+        runOnUiThread { machine.state.type('a') }
+        mainClock.advanceTimeBy(TypewriterDimens.SpeechPauseMs + 100)
+        assertEquals("a", said())
+        runOnUiThread { machine.state.type('a') }
+        mainClock.advanceTimeBy(TypewriterDimens.SpeechPauseMs + 20)
+        // Taken off a moment, then said again.
+        assertNull(said())
+        mainClock.advanceTimeBy(300)
+        assertEquals("a", said())
+        assertTrue(machine.state.inked)
+    }
 }
+
+private fun hasLiveRegion() =
+    androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)

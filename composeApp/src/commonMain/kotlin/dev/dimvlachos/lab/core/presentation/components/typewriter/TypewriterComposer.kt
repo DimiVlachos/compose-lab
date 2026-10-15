@@ -67,6 +67,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -412,6 +414,10 @@ internal fun TypewriterComposer(
                     }
                     .semantics {
                         contentDescription = label
+                        // What is on the sheet, read whenever the machine is come upon, as one
+                        // message however its lines broke.
+                        val text = state.text
+                        if (text.isNotBlank()) stateDescription = text.replace('\n', ' ')
                         // No Send while the machine is not to be touched, as while a script plays.
                         if (enabled) {
                             customActions =
@@ -527,7 +533,7 @@ private fun Said(state: TypewriterState, modifier: Modifier = Modifier) {
                         "\n" -> newLine
                         else -> text.replace("\n", " $newLine ")
                     }
-                said =
+                val next =
                     listOfNotNull(
                             speech.deleted
                                 .takeIf { it.isNotEmpty() }
@@ -538,10 +544,18 @@ private fun Said(state: TypewriterState, modifier: Modifier = Modifier) {
                             full.takeIf { speech.jam },
                         )
                         .joinToString(". ")
+                // The same words as last time change nothing on the node, so nothing would be
+                // heard: they are taken off it a moment first.
+                if (next == said) {
+                    said = ""
+                    delay(SaidAgainMs)
+                }
+                said = next
                 state.speech = Speech.Quiet
             }
     }
-    // Heard; then gone, so the node holds no stale words for a screen reader to come upon.
+    // Heard; then gone, so the node holds no stale words for a screen reader to come upon. It
+    // is visited last, after the machine and its keys.
     LaunchedEffect(said) {
         if (said.isNotEmpty()) {
             delay(SaidForMs)
@@ -552,6 +566,7 @@ private fun Said(state: TypewriterState, modifier: Modifier = Modifier) {
         modifier.size(1.dp).semantics {
             if (said.isNotEmpty()) contentDescription = said
             liveRegion = LiveRegionMode.Polite
+            traversalIndex = Float.MAX_VALUE
         }
     )
 }
@@ -752,8 +767,10 @@ private const val ModelShare = 0.8f
 private const val BadgeSpacing = 0.28f
 private const val ModelSpacing = 0.18f
 
-// What was last heard is kept on its node this long.
+// What was last heard is kept on its node this long; the same words again are taken off it this
+// long first, so they are heard again.
 private const val SaidForMs = 3_000L
+private const val SaidAgainMs = 150L
 
 // Pushes the held lever with the finger that went [down]: the lever goes over as far as the
 // finger moves right, and is let go, at the finger's speed, as it lifts.
