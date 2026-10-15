@@ -3,6 +3,9 @@ package dev.dimvlachos.lab.core.presentation.components.typewriter
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -226,5 +230,48 @@ class TypewriterComposerUiTest {
         mainClock.advanceTimeBy(2_000)
         assertEquals(before, compositions)
         assertNull(machine.sent.firstOrNull())
+    }
+
+    @Test
+    fun aMachineTakenAwayMidPullLetsGoOfTheSheet() = runComposeUiTest {
+        val state = TypewriterState()
+        var shown by mutableStateOf(true)
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 700.dp)) {
+                    if (shown) {
+                        TypewriterComposer(state, onSend = {}, Modifier.testTag("machine"))
+                    }
+                }
+            }
+        }
+        runOnUiThread { "ahoy".forEach { state.type(it) } }
+        mainClock.advanceTimeBy(500)
+        onNodeWithTag("machine").performTouchInput {
+            val u = 400f / TypewriterDimens.StageUnits * density
+            val keysTop =
+                onNodeWithContentDescription("q").fetchSemanticsNode().positionInRoot.y -
+                    onNodeWithTag("machine").fetchSemanticsNode().positionInRoot.y -
+                    6f * density
+            val machineTop = keysTop - TypewriterDimens.MachineHeight * u
+            val from =
+                androidx.compose.ui.geometry.Offset(
+                    (state.carriage + 40f) * u,
+                    machineTop + (TypewriterDimens.StrikeY - 10f) * u,
+                )
+            down(from)
+            for (i in 1..6) moveTo(from.copy(y = from.y - i * 6.dp.toPx()))
+        }
+        mainClock.advanceTimeBy(100)
+        // Held: no other finger may take it.
+        assertFalse(state.grab())
+        // The stage turns: the machine leaves under the finger.
+        shown = false
+        waitForIdle()
+        assertTrue(state.grab(), "the sheet was left held")
+        state.release(0f)
+        state.advance(2f)
+        repeat(240) { state.advance(1f / 60f) }
+        assertFalse(state.awake, "the machine never went back to sleep")
     }
 }

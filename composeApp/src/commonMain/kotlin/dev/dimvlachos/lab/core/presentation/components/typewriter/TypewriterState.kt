@@ -604,6 +604,15 @@ public class TypewriterState(text: String = "") {
     }
 
     /**
+     * Lets go of whatever a finger holds, the sheet or the lever, as if it lifted without moving:
+     * for a gesture cut off before it ended, so nothing stays held for good.
+     */
+    internal fun letGo() {
+        if (handHeld) releaseLever(0f)
+        if (held) release(0f)
+    }
+
+    /**
      * Sends what is typed without a finger: the sheet is pulled out by itself, as Ctrl or ⌘ and
      * Return, or a screen reader's Send, ask. Nothing for a blank sheet, or one already on its way.
      */

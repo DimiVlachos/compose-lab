@@ -184,7 +184,11 @@ internal fun TypewriterComposer(
                 active = { lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) },
             )
         state.feel = feel
-        onDispose { if (state.feel === feel) state.feel = object : TypewriterFeel {} }
+        onDispose {
+            if (state.feel === feel) state.feel = object : TypewriterFeel {}
+            // A machine taken away under a finger lets go of what the finger held.
+            state.letGo()
+        }
     }
     // The machine follows the text: what is typed strikes, what is deleted is lifted off.
     LaunchedEffect(state) { snapshotFlow { state.field.text.toString() }.collect(state::typedNow) }
@@ -356,24 +360,31 @@ internal fun TypewriterComposer(
                             tracker.addPosition(down.uptimeMillis, down.position)
                             var pulling = false
                             var travel = 0f
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                val moved = change.positionChange()
-                                travel += abs(moved.y) + abs(moved.x)
-                                if (!pulling && onSheet && travel > viewConfiguration.touchSlop) {
-                                    pulling = state.grab()
+                            // Let go however the gesture ends: lifted, or cut off as the stage
+                            // turns or the machine leaves, a sheet held would stay held for good.
+                            try {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change =
+                                        event.changes.firstOrNull { it.id == down.id } ?: break
+                                    tracker.addPosition(change.uptimeMillis, change.position)
+                                    val moved = change.positionChange()
+                                    travel += abs(moved.y) + abs(moved.x)
+                                    if (
+                                        !pulling && onSheet && travel > viewConfiguration.touchSlop
+                                    ) {
+                                        pulling = state.grab()
+                                    }
+                                    if (pulling) {
+                                        change.consume()
+                                        state.drag(-moved.y / u)
+                                    }
+                                    if (!change.pressed) break
                                 }
-                                if (pulling) {
-                                    change.consume()
-                                    state.drag(-moved.y / u)
-                                }
-                                if (!change.pressed) break
+                            } finally {
+                                if (pulling) state.release(-tracker.calculateVelocity().y / u)
                             }
-                            if (pulling) {
-                                state.release(-tracker.calculateVelocity().y / u)
-                            } else if (travel <= viewConfiguration.touchSlop) {
+                            if (!pulling && travel <= viewConfiguration.touchSlop) {
                                 runCatching { focus.requestFocus() }
                             }
                         }
