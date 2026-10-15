@@ -21,6 +21,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -31,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -59,6 +62,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
@@ -68,8 +72,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -241,13 +247,21 @@ internal fun TypewriterComposer(
             currentEnabled && event.type == KeyEventType.KeyDown && state.hardwareKey(event)
         }
     ) {
-        val unit = TypewriterDimens.unit(maxWidth, maxHeight)
+        val foot = with(density) { insets.getBottom(this).toDp() }
+        val hint = hintHeight(measurer, maxWidth)
+        // The machine, the hint over it and the keys fit the stage, a phone on its side too.
+        val fit =
+            remember(maxWidth, maxHeight, foot, hint) {
+                TypewriterDimens.fit(maxWidth, maxHeight - foot, hint, foot)
+            }
+        val unit = fit.unit
         SideEffect { state.unit = unit }
         val u = with(density) { unit.toPx() }
-        val pitch = TypewriterDimens.keyPitch(maxWidth, maxHeight)
-        val keysHeight = TypewriterDimens.keysHeight(pitch)
-        val lip = TypewriterDimens.FrontLip
+        val pitch = fit.pitch
+        val keysHeight = fit.keysHeight
+        val lip = fit.lip
         val below = with(density) { (keysHeight + lip).toPx() }
+        val hintRoom = with(density) { fit.hintRoom.toPx() }
         val badgeText =
             badge.takeIf { it.isNotEmpty() }?.let { lettering(measurer, it, unit, true) }
         val modelText =
@@ -258,13 +272,21 @@ internal fun TypewriterComposer(
             Modifier.fillMaxWidth()
                 .layout { measurable, constraints ->
                     val foot = insets.getBottom(this)
-                    val height =
-                        ((TypewriterDimens.HintRoom + state.fed + TypewriterDimens.MachineHeight) *
-                                u + below)
+                    // The paper stands up over the machine as lines feed; on a stage too short
+                    // for it, it rises out of sight under the composer's top edge instead.
+                    val wanted =
+                        (hintRoom + (state.fed + TypewriterDimens.MachineHeight) * u + below)
                             .roundToInt() + foot
+                    val height = wanted.coerceAtMost(constraints.maxHeight)
+                    placed.clipped = height < wanted
+                    placed.machineTop = height - foot - below - TypewriterDimens.MachineHeight * u
                     val placeable =
                         measurable.measure(Constraints.fixed(constraints.maxWidth, height))
                     layout(constraints.maxWidth, height) { placeable.place(0, 0) }
+                }
+                .drawWithContent {
+                    if (placed.clipped) clipRect { this@drawWithContent.drawContent() }
+                    else drawContent()
                 }
                 .onGloballyPositioned { coordinates ->
                     val foot = insets.getBottom(density)
@@ -276,7 +298,6 @@ internal fun TypewriterComposer(
         ) {
             // The parts that never move, drawn once in a layer of their own: the shell, the keys'
             // well, the basket's opening and the bell.
-            val foot = with(density) { insets.getBottom(this).toDp() }
             val machineHeight = with(density) { (TypewriterDimens.MachineHeight * u).toDp() }
             Spacer(
                 Modifier.align(Alignment.BottomCenter)
@@ -406,9 +427,9 @@ internal fun TypewriterComposer(
                     .fillMaxWidth()
                     .offset {
                         val top =
-                            TypewriterDimens.HintRoom + state.fed + TypewriterDimens.LeverPivotY -
-                                TypewriterDimens.LeverLength
-                        IntOffset(0, (top * u - TypewriterDimens.LeverReach.toPx()).roundToInt())
+                            placed.machineTop +
+                                (TypewriterDimens.LeverPivotY - TypewriterDimens.LeverLength) * u
+                        IntOffset(0, (top - TypewriterDimens.LeverReach.toPx()).roundToInt())
                     }
                     .height(
                         with(density) { (TypewriterDimens.LeverLength * u).toDp() } +
@@ -424,8 +445,9 @@ internal fun TypewriterComposer(
                         val reach = TypewriterDimens.LeverReach.toPx()
                         val x = left + (TypewriterDimens.HomeX - TypewriterDimens.LeverOffset) * u
                         val y =
-                            (TypewriterDimens.HintRoom + state.fed + TypewriterDimens.LeverPivotY -
-                                TypewriterDimens.LeverLength / 2f) * u
+                            placed.machineTop +
+                                (TypewriterDimens.LeverPivotY - TypewriterDimens.LeverLength / 2f) *
+                                    u
                         IntOffset((x - reach).roundToInt(), (y - reach).roundToInt())
                     }
                     .size(TypewriterDimens.LeverReach * 2)
@@ -438,14 +460,16 @@ internal fun TypewriterComposer(
                     }
             )
             Said(state, Modifier.align(Alignment.TopCenter))
-            Hint(
-                state,
-                Modifier.align(Alignment.TopCenter)
-                    .offset(y = with(density) { (HintTop * u).toDp() }),
-            )
+            // Left out on a stage too short for it, where it would hide the line being typed.
+            if (fit.hinted)
+                Hint(
+                    state,
+                    Modifier.align(Alignment.TopCenter).offset(y = unit * TypewriterDimens.HintTop),
+                )
             TypewriterKeys(
                 state,
                 pitch,
+                fit.rowHeight,
                 enabled,
                 measurer,
                 Modifier.align(Alignment.BottomCenter)
@@ -544,26 +568,80 @@ private fun Hint(state: TypewriterState, modifier: Modifier = Modifier) {
             else -> stringResource(Res.string.typewriter_hint_type)
         } ?: return
     val colors = LabTheme.colors
+    // The arrow up is only drawn: a screen reader hears the words.
+    val arrow = if (state.inked && !state.jammed) HintArrow else ""
     Text(
-        text,
-        style = LabTheme.typography.label,
+        text + arrow,
+        style = hintStyle(),
         color = colors.textMuted,
+        textAlign = TextAlign.Center,
         modifier =
             modifier
+                .clearAndSetSemantics { contentDescription = text }
                 .graphicsLayer {
                     state.frame
                     alpha = state.hintShown
                 }
                 .background(colors.surface, HintShape)
-                .border(1.dp, colors.chipBorder, HintShape)
-                .padding(horizontal = 11.dp, vertical = 4.dp),
+                .border(HintBorder, colors.chipBorder, HintShape)
+                .padding(horizontal = HintPadding.x, vertical = HintPadding.y),
     )
 }
 
-/** Where the machine lies in the root, its top left, and how big a unit is, in px. */
+// How tall the hint over the paper is at its tallest, whatever it says, on a stage [width] wide:
+// it sets the room left for it, so a big font never puts it over the paper.
+@Composable
+private fun hintHeight(measurer: TextMeasurer, width: Dp): Dp {
+    val texts =
+        listOf(
+            stringResource(Res.string.typewriter_hint_type),
+            stringResource(Res.string.typewriter_hint_pull) + HintArrow,
+            stringResource(Res.string.typewriter_hint_full),
+        )
+    val style = hintStyle()
+    val density = LocalDensity.current
+    return remember(measurer, texts, style, width, density) {
+        with(density) {
+            val room = (width - HintPadding.x * 2).roundToPx().coerceAtLeast(1)
+            val tallest = texts.maxOf {
+                measurer.measure(it, style, constraints = Constraints(maxWidth = room)).size.height
+            }
+            tallest.toDp() + HintPadding.y * 2 + HintBorder * 2
+        }
+    }
+}
+
+// The hint's type: the theme's label, grown with the font size no bigger than [HintMostText], so
+// on a phone on its side a large font leaves the machine room.
+@Composable
+private fun hintStyle(): TextStyle {
+    val label = LabTheme.typography.label
+    val density = LocalDensity.current
+    return remember(label, density) {
+        with(density) {
+            if (label.fontSize.toDp() <= HintMostText) {
+                label
+            } else {
+                label.copy(
+                    fontSize = HintMostText.toSp(),
+                    lineHeight =
+                        if (label.lineHeight.isSp) (HintMostText * HintLeading).toSp()
+                        else label.lineHeight,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Where the machine lies in the root, its top left, and how big a unit is, in px; and, as last laid
+ * out, where its top is in the composer and whether the paper is cut off at the composer's top.
+ */
 private class Placed {
     var machine = Offset.Zero
     var unit = 1f
+    var machineTop by mutableFloatStateOf(0f)
+    var clipped = false
 }
 
 /** What the machine does, heard through [sound] and felt through [haptics], while [active]. */
@@ -655,6 +733,18 @@ internal val TypewriterSounds: Set<Sound> =
 
 private val HintShape = RoundedCornerShape(50)
 
+// The hint's padding inside its border, across and down, and its border.
+private val HintPadding = DpOffset(11.dp, 4.dp)
+private val HintBorder = 1.dp
+
+// The hint's letters are no bigger than this on the screen, its lines this far apart for their
+// size.
+private val HintMostText = 18.dp
+private const val HintLeading = 1.3f
+
+// Drawn after the hint to pull the sheet up.
+private const val HintArrow = " ↑"
+
 // The badge's lettering, in units, and the model line under it as a share of that; and how far
 // apart their letters are set.
 private const val BadgeSize = 10f
@@ -664,9 +754,6 @@ private const val ModelSpacing = 0.18f
 
 // What was last heard is kept on its node this long.
 private const val SaidForMs = 3_000L
-
-// The hint's top, in units down from the composer's top.
-private const val HintTop = 6f
 
 // Pushes the held lever with the finger that went [down]: the lever goes over as far as the
 // finger moves right, and is let go, at the finger's speed, as it lifts.

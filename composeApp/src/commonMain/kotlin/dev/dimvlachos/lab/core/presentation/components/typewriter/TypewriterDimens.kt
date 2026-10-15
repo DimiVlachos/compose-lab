@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.typewriter
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -12,20 +13,60 @@ internal object TypewriterDimens {
     /** How wide the stage is in units when one unit is a dp. */
     const val StageUnits = 360f
 
-    // A unit is never smaller than this, nor bigger: on a tablet or a phone on its side, the
-    // machine stays a portable's size, in the middle of the stage.
+    // Across the stage, a unit is never smaller than this, nor bigger: on a tablet the machine
+    // stays a portable's size, in the middle of the stage. On a short stage, as a phone on its
+    // side, it shrinks further to fit, down to the shortest.
     val SmallestUnit = 0.85.dp
     val BiggestUnit = 1.3.dp
+    val ShortestUnit = 0.55.dp
 
     /**
-     * How big a unit is on a stage [width] wide and [height] tall: on a short one, as a phone on
-     * its side, the machine with a full sheet stays under half its height.
+     * How big a unit is, how far apart the keys are and how tall a row of them is on a stage
+     * [width] wide and [height] tall over the screen's [foot], with a hint [hint] tall over the
+     * paper: the machine with a sheet at its first line, the hint and the keys all fit. On a short
+     * stage the machine and its keys shrink together, the keys no closer than [LeastKeyPitch] where
+     * the width allows; if that is not enough the front lip runs on down into the foot, and then
+     * the hint is left out. Given room to spare, a row of keys is made as tall as a thumb's target.
      */
-    fun unit(width: Dp, height: Dp = Dp.Infinity): Dp =
-        minOf(width / StageUnits, height / ShortStageUnits).coerceIn(SmallestUnit, BiggestUnit)
+    fun fit(width: Dp, height: Dp = Dp.Infinity, hint: Dp = 0.dp, foot: Dp = 0.dp): MachineFit {
+        val unit = (width / StageUnits).coerceIn(SmallestUnit, BiggestUnit)
+        val pitch = minOf(MostKeyPitch, (width - KeysSide * 2) / KeysAcross)
+        fun at(scale: Float, lip: Dp, hinted: Boolean = true): MachineFit {
+            val u = maxOf(unit * scale, ShortestUnit)
+            val p = maxOf(pitch * scale, minOf(pitch, LeastKeyPitch))
+            val room = if (hinted) hintRoom(u, hint) else u * HintRoom
+            return MachineFit(u, p, p * KeyRowHeight, room, lip, hinted)
+        }
+        if (height == Dp.Infinity || at(1f, FrontLip).height <= height) {
+            return grown(at(1f, FrontLip), height)
+        }
+        val lip =
+            if (at(0f, FrontLip).height <= height) FrontLip else FrontLip - minOf(foot, FrontLip)
+        val hinted = at(0f, lip).height <= height
+        // The biggest scale at which it fits, or the smallest it goes.
+        var low = 0f
+        var high = 1f
+        repeat(FitSteps) {
+            val mid = (low + high) / 2f
+            if (at(mid, lip, hinted).height <= height) low = mid else high = mid
+        }
+        return grown(at(low, lip, hinted), height)
+    }
 
-    /** A stage is this many units tall at the least before the machine shrinks to fit it. */
-    const val ShortStageUnits = 440f
+    // Room to spare grows the rows of keys towards a thumb's target, the keys themselves no
+    // bigger.
+    private fun grown(fit: MachineFit, height: Dp): MachineFit {
+        if (fit.rowHeight >= KeyTarget) return fit
+        val spare = if (height == Dp.Infinity) KeyTarget else (height - fit.height) / KeyRows
+        if (spare <= 0.dp) return fit
+        val row = minOf(KeyTarget, fit.rowHeight + spare)
+        return MachineFit(fit.unit, fit.pitch, row, fit.hintRoom, fit.lip, fit.hinted)
+    }
+
+    /** The room over the paper at [unit] for a hint [hint] tall, at least [HintRoom] units. */
+    fun hintRoom(unit: Dp, hint: Dp): Dp = maxOf(unit * HintRoom, unit * HintTop + hint + HintGap)
+
+    private const val FitSteps = 14
 
     // The sheet: this many letters to a line, each this wide, lines this far apart, with this
     // much paper either side of the text and above its first line. A sheet holds this many lines,
@@ -75,8 +116,11 @@ internal object TypewriterDimens {
      */
     const val MachineHeight = DeckBottom
 
-    /** Room over the paper for the hint. */
+    // Room over the paper for the hint, at least; the hint's top is this far down it, and there
+    // is this much room under it.
     const val HintRoom = 34f
+    const val HintTop = 6f
+    val HintGap = 4.dp
 
     /** Where the sheet's top is at the first line, from the machine's top. */
     const val SheetTop = StrikeY - 26f
@@ -217,16 +261,18 @@ internal object TypewriterDimens {
     /** A message's slip waits this long for its place in the thread before it simply appears. */
     const val SlotWaitMs = 600L
 
-    // The keys: at most this far apart, ten across with this much room at either side, in four
-    // rows each this many pitches tall, with this much room over and under them. On a short stage
-    // a pitch is at most this share of its height.
+    // The keys: at most this far apart, and on a short stage no closer than this where the width
+    // allows; ten across with this much room at either side, in four rows each this many pitches
+    // tall, made as tall as a thumb's target where there is room, with this much room over and
+    // under them.
     val MostKeyPitch = 48.dp
+    val LeastKeyPitch = 30.dp
     val KeysSide = 6.dp
     const val KeysAcross = 10
     const val KeyRows = 4
     const val KeyRowHeight = 1.12f
+    val KeyTarget = 48.dp
     val KeysPadding = 6.dp
-    const val ShortStageKeyShare = 0.09f
 
     // A key's top is this share of its cell, stands this far up on its lever and goes this far
     // down when pressed; its chrome rim is this wide, and its lever this share of its top's width.
@@ -256,13 +302,30 @@ internal object TypewriterDimens {
     /** A screen reader hears the typing once it has paused this long. */
     const val SpeechPauseMs = 600L
 
-    /** How far apart the keys are on a stage [width] wide and [height] tall. */
-    fun keyPitch(width: Dp, height: Dp): Dp {
-        var pitch = minOf(MostKeyPitch, (width - KeysSide * 2) / KeysAcross)
-        if (height != Dp.Infinity) pitch = minOf(pitch, height * ShortStageKeyShare)
-        return pitch
-    }
+    /** How tall the keys are in all, rows [rowHeight] tall. */
+    fun keysHeight(rowHeight: Dp): Dp = rowHeight * KeyRows + KeysPadding * 2
+}
 
-    /** How tall the keys are in all, [pitch] apart. */
-    fun keysHeight(pitch: Dp): Dp = pitch * KeyRowHeight * KeyRows + KeysPadding * 2
+/**
+ * The machine's sizes on its stage: how big a [unit] is, how far apart the keys are ([pitch]), how
+ * tall a row of them is ([rowHeight]), the room over the paper for the hint ([hintRoom]), and how
+ * much of the front lip under the keys stands over the screen's foot ([lip]); and whether there is
+ * room for the hint at all ([hinted]).
+ */
+@Immutable
+internal class MachineFit(
+    val unit: Dp,
+    val pitch: Dp,
+    val rowHeight: Dp,
+    val hintRoom: Dp,
+    val lip: Dp = TypewriterDimens.FrontLip,
+    val hinted: Boolean = true,
+) {
+    /** How tall the keys are in all. */
+    val keysHeight: Dp
+        get() = TypewriterDimens.keysHeight(rowHeight)
+
+    /** How tall the composer is with a sheet at its first line, over the screen's foot. */
+    val height: Dp
+        get() = hintRoom + unit * TypewriterDimens.MachineHeight + keysHeight + lip
 }

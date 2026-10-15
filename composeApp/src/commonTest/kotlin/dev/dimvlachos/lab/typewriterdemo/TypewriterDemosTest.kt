@@ -59,7 +59,7 @@ class TypewriterDemosTest {
         // the full one.
         val short =
             PullToSend.shown(
-                TypewriterDemos.ShortPull / TypewriterDimens.SmallestUnit,
+                TypewriterDemos.ShortPull / TypewriterDimens.ShortestUnit,
                 inked = true,
             )
         val full =

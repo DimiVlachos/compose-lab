@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -46,13 +48,10 @@ class TypewriterDemoUiTest {
         }
         // The last reply came in at the thread's foot, and the thread kept it in sight.
         onNodeWithText(replies.last()).assertIsDisplayed()
-        // The thread it began with is still there.
-        assertEquals(
-            1,
-            onAllNodesWithContentDescription("on the 07:25 from piraeus. window seat, left side.")
-                .fetchSemanticsNodes()
-                .size,
-        )
+        // The thread it began with is still there, up the thread out of sight: its three
+        // messages, the two slips and the two replies, under the day.
+        val thread = onNode(hasScrollToIndexAction()).fetchSemanticsNode()
+        assertEquals(8, thread.config[SemanticsProperties.CollectionInfo].rowCount)
         mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds - 19_100 + 2_000)
         assertEquals(true, finished)
         for (text in slips) {

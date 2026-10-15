@@ -315,4 +315,26 @@ class TypewriterComposerUiTest {
         assertTrue(state.field.text.length >= left - 1, "Delete went on: ${state.field.text}")
         onNodeWithContentDescription("Delete").performTouchInput { up() }
     }
+
+    @Test
+    fun onAPhoneOnItsSideTheMachineAndItsKeysStayInsideTheStage() = runComposeUiTest {
+        val state = TypewriterState()
+        setContent {
+            LabTheme {
+                Box(Modifier.size(440.dp, 270.dp).testTag("stage")) {
+                    TypewriterComposer(state, onSend = {}, Modifier.testTag("machine"))
+                }
+            }
+        }
+        runOnUiThread { "a\nb\nc\nd".forEach { state.type(it) } }
+        mainClock.advanceTimeBy(1_500)
+        val stage = onNodeWithTag("stage").fetchSemanticsNode().boundsInRoot
+        val machine = onNodeWithTag("machine").fetchSemanticsNode().boundsInRoot
+        assertTrue(machine.height <= stage.height + 0.5f, "${machine.height} > ${stage.height}")
+        for (key in listOf("q", "Space", "New line")) {
+            val bounds = onNodeWithContentDescription(key).fetchSemanticsNode().boundsInRoot
+            assertTrue(bounds.bottom <= stage.bottom + 0.5f, "$key falls off the stage")
+            assertTrue(bounds.top >= stage.top, "$key rises over the stage")
+        }
+    }
 }

@@ -151,7 +151,7 @@
     <string name="typewriter_key_figures">Numbers and punctuation</string>
     <string name="typewriter_key_letters">Letters</string>
     <string name="typewriter_said_deleted">Deleted %1$s</string>
-    <string name="typewriter_hint_pull">Pull the sheet up to send ↑</string>
+    <string name="typewriter_hint_pull">Pull the sheet up to send</string>
     <string name="typewriter_hint_full">The sheet’s full. Pull it out to send</string>
     <string name="typewriterchat_badge">CYCLADES 22</string>
     <string name="typewriterchat_model">PORTABLE</string>

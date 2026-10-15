@@ -62,14 +62,16 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The typewriter's keys, row by row, [pitch] apart: the letters, or the figures and stops, their
- * legends set with [measurer]. Each is a button for a screen reader, named for what it types, and
- * disabled while not [enabled].
+ * The typewriter's keys, row by row, [pitch] apart, each row [rowHeight] tall: the letters, or the
+ * figures and stops, their legends set with [measurer]. A key takes a touch anywhere in its row's
+ * height, so a row taller than the keys makes a bigger target of each. Each is a button for a
+ * screen reader, named for what it types, and disabled while not [enabled].
  */
 @Composable
 internal fun TypewriterKeys(
     state: TypewriterState,
     pitch: Dp,
+    rowHeight: Dp,
     enabled: Boolean,
     measurer: TextMeasurer,
     modifier: Modifier = Modifier,
@@ -104,7 +106,17 @@ internal fun TypewriterKeys(
                             motions[key.id] = motion
                             onDispose { if (motions[key.id] === motion) motions -= key.id }
                         }
-                        KeyCap(state, key, motion, pitch, enabled, measurer, shadow, depth)
+                        KeyCap(
+                            state,
+                            key,
+                            motion,
+                            pitch,
+                            rowHeight,
+                            enabled,
+                            measurer,
+                            shadow,
+                            depth,
+                        )
                     }
                 }
             }
@@ -137,6 +149,7 @@ private fun KeyCap(
     key: TypeKey,
     motion: KeyMotion,
     pitch: Dp,
+    rowHeight: Dp,
     enabled: Boolean,
     measurer: TextMeasurer,
     shadow: SoftShadow,
@@ -170,7 +183,7 @@ private fun KeyCap(
     val lit = shift && shifted
     val name = keyName(key, figures, shifted)
     Spacer(
-        Modifier.size(pitch * key.width, pitch * TypewriterDimens.KeyRowHeight)
+        Modifier.size(pitch * key.width, maxOf(rowHeight, pitch * TypewriterDimens.KeyRowHeight))
             .semantics {
                 contentDescription = name
                 role = Role.Button
@@ -216,19 +229,21 @@ private fun KeyCap(
             .drawWithCache {
                 // The key's shape and gradients, made once for its size; it is moved down under
                 // them as it dips. Seen a little from above: its top is a flattened round, on a
-                // chrome stem that goes down into a slot in the well.
+                // chrome stem that goes down into a slot in the well. Drawn the same size in a
+                // taller row, in its middle.
+                val cell = pitch.toPx() * TypewriterDimens.KeyRowHeight
+                val above = (size.height - cell) / 2f
                 val scale = 1f - TypewriterDimens.TierShrink * depth
                 val wide = key.action == KeyAction.Space
-                val across = size.height * TypewriterDimens.CapShare * scale
+                val across = cell * TypewriterDimens.CapShare * scale
                 val height = across * TypewriterDimens.CapSquash
                 val width =
-                    if (wide) size.width - size.height * (1f - TypewriterDimens.CapShare)
-                    else across
-                val capTop = size.height * TypewriterDimens.CapRise
+                    if (wide) size.width - cell * (1f - TypewriterDimens.CapShare) else across
+                val capTop = above + cell * TypewriterDimens.CapRise
                 val capLeft = (size.width - width) / 2f
                 val ring = TypewriterDimens.RimWidth.toPx()
                 val stem = across * TypewriterDimens.StemShare
-                val slot = Offset(size.width / 2f, size.height * TypewriterDimens.SlotAt)
+                val slot = Offset(size.width / 2f, above + cell * TypewriterDimens.SlotAt)
                 val travel = TypewriterDimens.KeyTravel.toPx()
                 val chromeDark = lerp(colors.typeChrome, colors.typePlaten, 0.45f)
                 val stemBrush =
