@@ -164,7 +164,10 @@ internal fun TypewriterDemo(state: DemoState) {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             flights.fly(id, sheet, slipTilt(id))
             sound.play(Sound.RatchetTick, volume = LandVolume)
-            answers += scope.launch { chat.answer() }
+            // Kept only while it is under way, so answers don't pile up as the thread goes on.
+            val answer = scope.launch { chat.answer() }
+            answers += answer
+            answer.invokeOnCompletion { answers -= answer }
         }
         chat.send(sheet.text, sheet.lines)
         list.requestScrollToItem(0)
@@ -194,7 +197,7 @@ internal fun TypewriterDemo(state: DemoState) {
             turns.withLock {
                 // Once every sheet has landed, so none lands after its thread is put back.
                 snapshotFlow { chat.messages.none { flights.flying(it.id) } }.first { it }
-                answers.forEach { it.cancel() }
+                answers.toList().forEach { it.cancel() }
                 answers.clear()
                 chat.clear()
                 machine.clear()
