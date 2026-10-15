@@ -17,8 +17,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.special_elite
@@ -46,7 +44,11 @@ internal constructor(
 
     private fun DrawScope.pictureOf(char: Char): Picture? {
         val code = char.code
-        if (code >= PlainChars) return others.getOrPut(char) { drawn(char) }
+        if (code >= PlainChars) {
+            // A character with no picture is remembered as none, so it isn't measured again.
+            if (char !in others) others[char] = drawn(char)
+            return others[char]
+        }
         if (!drawnPlain[code]) {
             plain[code] = drawn(char)
             drawnPlain[code] = true
@@ -71,15 +73,9 @@ internal constructor(
         val left = x - image.width / 2f
         val top = baseline - picture.baseline
         val pivot = Offset(x, baseline - picture.baseline / 3f)
+        // Drawn where it falls, between px, so it moves smoothly with the paper under it.
         rotate(tilt, pivot) {
-            drawImage(
-                image,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(image.width, image.height),
-                dstOffset = IntOffset(left.toInt(), top.toInt()),
-                dstSize = IntSize(image.width, image.height),
-                alpha = alpha.coerceIn(0f, 1f),
-            )
+            drawImage(image, topLeft = Offset(left, top), alpha = alpha.coerceIn(0f, 1f))
         }
     }
 

@@ -44,7 +44,9 @@ internal class TypewriterPainter {
                 noise(i, 12) * TypewriterDimens.SheetHeight,
             )
         }
-    private val grainPoints = ArrayList<Offset>(GrainSpecks)
+    // The grain in px from a sheet's top left, for the size of unit it was made for.
+    private var grainPoints: List<Offset> = emptyList()
+    private var grainUnit = 0f
 
     private var brushes: Brushes? = null
 
@@ -125,15 +127,19 @@ internal class TypewriterPainter {
     }
 
     private fun DrawScope.drawGrain(colors: AppColors, left: Float, top: Float, u: Float) {
-        grainPoints.clear()
-        for (speck in grain) grainPoints += Offset(left + speck.x * u, top + speck.y * u)
-        drawPoints(
-            grainPoints,
-            PointMode.Points,
-            colors.typeInk.copy(alpha = GrainAlpha),
-            strokeWidth = GrainSize * u,
-            cap = StrokeCap.Round,
-        )
+        if (grainUnit != u) {
+            grainPoints = grain.map { it * u }
+            grainUnit = u
+        }
+        translate(left, top) {
+            drawPoints(
+                grainPoints,
+                PointMode.Points,
+                colors.typeInk.copy(alpha = GrainAlpha),
+                strokeWidth = GrainSize * u,
+                cap = StrokeCap.Round,
+            )
+        }
     }
 
     // The platen: a rubber roller, lit along its top and its belly, with a chrome knob at each
