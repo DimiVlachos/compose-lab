@@ -182,4 +182,22 @@ class SmokeStateTest {
         }
         assertEquals(PlumePhase.Reforming, plume.phase)
     }
+
+    @Test
+    fun aHeldRowTakenAwayLetsGoOfTheFingerAndIsDrawnBackIn() {
+        val smoke = state()
+        assertTrue(smoke.dragStart("a", SmokeSide.Left))
+        smoke.plumeOf("a")!!.width = 300f
+        smoke.dragTo("a", -200f, 0f)
+        smoke.advance(1 / 60f)
+        smoke.rows["a"]!!.present = false
+        smoke.advance(1 / 60f)
+        assertEquals(PlumePhase.Reforming, smoke.plumeOf("a")!!.phase)
+        assertFalse(smoke.rows["a"]!!.dragging)
+        // The finger's drag and lift that follow do nothing.
+        smoke.dragTo("a", -300f, 0f)
+        smoke.release("a", -3_000f)
+        smoke.run(1.5f)
+        assertEquals(0, deleted)
+    }
 }

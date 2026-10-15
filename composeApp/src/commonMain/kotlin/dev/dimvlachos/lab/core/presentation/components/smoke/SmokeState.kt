@@ -276,14 +276,17 @@ public class SmokeState internal constructor() {
             if (plume.material == SmokeMaterial.Mist) {
                 sound.play(Sound.MistWhoosh, SmokeDimens.MistVolume)
             }
-        } else {
-            plume.phase = PlumePhase.Reforming
-            plume.reformAt = now
-            plume.reformSeconds = SmokeDimens.ReformShort
-            plume.reform = 0f
-            sound.play(Sound.Inhale, SmokeDimens.ShortInhaleVolume, SmokeDimens.ShortInhaleRate)
-        }
+        } else drawBack(plume)
         awake = true
+    }
+
+    // Draws [plume]'s smoke back into its row, short of the commit point, and the row is whole.
+    private fun drawBack(plume: SmokePlume) {
+        plume.phase = PlumePhase.Reforming
+        plume.reformAt = now
+        plume.reformSeconds = SmokeDimens.ReformShort
+        plume.reform = 0f
+        sound.play(Sound.Inhale, SmokeDimens.ShortInhaleVolume, SmokeDimens.ShortInhaleRate)
     }
 
     /**
@@ -385,6 +388,14 @@ public class SmokeState internal constructor() {
             val row = plume.row
             when (plume.phase) {
                 PlumePhase.Held -> {
+                    // A row taken away under the finger, by an Undo say, isn't the finger's any
+                    // more: its smoke is drawn back in, as if let go short.
+                    if (row == null || !row.present || rows[row.key] !== row) {
+                        row?.dragging = false
+                        drawBack(plume)
+                        moving = true
+                        continue
+                    }
                     val width = plume.width.coerceAtLeast(1f)
                     val target = (SmokeDimens.Pull * plume.dragged / width).coerceIn(0f, 1f)
                     burnTo(plume, target, dt)
