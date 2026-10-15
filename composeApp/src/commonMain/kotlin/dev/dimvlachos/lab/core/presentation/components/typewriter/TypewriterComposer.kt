@@ -237,6 +237,7 @@ internal fun TypewriterComposer(
                     sheet.text,
                     sheet.lines,
                     Rect(o.x + b.left * u, o.y + b.top * u, o.x + b.right * u, o.y + b.bottom * u),
+                    sheet.rise * u,
                 )
             )
         }

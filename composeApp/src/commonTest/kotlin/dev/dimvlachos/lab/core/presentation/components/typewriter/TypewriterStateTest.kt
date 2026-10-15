@@ -236,7 +236,7 @@ class TypewriterStateTest {
         state.onSent = { sent = it }
         state.type("ok")
         assertTrue(state.send())
-        state.run(TypewriterDimens.AutoPullSeconds + TypewriterDimens.ZipSeconds + 0.1f)
+        state.run(TypewriterDimens.AutoPullSeconds + 0.4f)
         assertEquals("ok", sent?.text)
     }
 
@@ -252,7 +252,7 @@ class TypewriterStateTest {
         state.backspace()
         assertFalse(state.type('b'))
         assertEquals("a", state.field.text.toString())
-        state.run(TypewriterDimens.AutoPullSeconds + TypewriterDimens.ZipSeconds + 0.1f)
+        state.run(TypewriterDimens.AutoPullSeconds + 0.4f)
         assertEquals("a", sent?.text)
     }
 
@@ -364,5 +364,74 @@ class TypewriterStateTest {
         restored.run(1f)
         assertTrue(heard.events.isEmpty(), "made again, it sounded ${heard.events}")
         assertEquals(TypewriterState.columnX(7), restored.carriage, 0.05f)
+    }
+
+    // Pulls the sheet up with a finger moving at [speed] units a second for [seconds], a frame at
+    // a time, and gives the sheet's top at each frame.
+    private fun TypewriterState.pullAt(speed: Float, seconds: Float): MutableList<Float> {
+        val tops = mutableListOf<Float>()
+        val dt = 1f / 120f
+        var t = 0f
+        while (t < seconds) {
+            drag(speed * dt)
+            advance(dt)
+            tops += sheetTop
+            t += dt
+        }
+        return tops
+    }
+
+    @Test
+    fun aSheetLetGoPastTheThresholdZipsOnFromItsOwnSpeedWithoutAJolt() {
+        val (state, heard) = machine()
+        state.type("hello")
+        state.run(1f)
+        assertTrue(state.grab())
+        val speed = 600f
+        val tops = state.pullAt(speed, 0.25f)
+        val before = (tops[tops.size - 1] - tops[tops.size - 2]) * 120f
+        state.release(speed)
+        state.advance(1f / 120f)
+        val first = state.sheetTop
+        state.advance(1f / 120f)
+        val after = (state.sheetTop - first) * 120f
+        assertTrue(after < 0f, "the sheet stopped rising")
+        // The same speed on either side of letting go, give or take a step of its speeding up.
+        assertTrue(
+            abs(after - before) < abs(before) * 0.25f + TypewriterDimens.ZipAccel / 120f * 2f,
+            "rising at $before before letting go and $after after",
+        )
+        state.run(1f)
+        assertEquals(1, heard.count("release"))
+    }
+
+    @Test
+    fun aSheetLetGoShortCarriesItsSpeedThenSettlesBackWithoutBouncing() {
+        // The same short pull, let go still and let go moving up.
+        fun letGo(speed: Float): Pair<TypewriterState, Float> {
+            val (state, _) = machine()
+            state.type("hi")
+            state.run(1f)
+            assertTrue(state.grab())
+            state.pullAt(120f, 0.2f)
+            state.release(speed)
+            state.advance(1f / 120f)
+            return state to state.shown
+        }
+        val (still, stillShown) = letGo(0f)
+        val (moving, movingShown) = letGo(400f)
+        assertTrue(movingShown > stillShown, "the speed it was let go at was lost")
+        for (state in listOf(still, moving)) {
+            var settled = false
+            repeat(240) {
+                state.advance(1f / 120f)
+                assertTrue(state.shown >= 0f)
+                if (state.shown == 0f) settled = true
+            }
+            assertTrue(settled, "it never settled back in")
+            assertEquals(SheetPhase.Idle, state.phase)
+            state.run(1f)
+            assertFalse(state.awake, "it never went to sleep")
+        }
     }
 }

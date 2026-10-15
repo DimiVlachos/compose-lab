@@ -63,14 +63,26 @@ internal interface TypewriterFeel {
  * hands it over with [bounds] in the root, for a thread to fly it into its place.
  */
 @Immutable
-public class SentSheet(
+public class SentSheet
+internal constructor(
     /** The message, as typed, without the spaces round it. */
     public val text: String,
     /** The sheet's lines, as they were typed on it, blank ones at the foot left off. */
     public val lines: List<String>,
     /** The whole sheet, in px in the root (in units from the machine's top left, inside it). */
     public val bounds: Rect,
+    /**
+     * How fast it was rising as it came free, in px a second in the root (in units a second inside
+     * the machine): its flight carries on from that speed.
+     */
+    internal val rise: Float,
 ) {
+    public constructor(
+        text: String,
+        lines: List<String>,
+        bounds: Rect,
+    ) : this(text, lines, bounds, rise = 0f)
+
     /** Its letters, each where it was struck. */
     internal val glyphs: List<Glyph> = glyphsOf(lines)
 }
@@ -191,9 +203,12 @@ public class TypewriterState(text: String = "") {
     private var autoPullAt = Float.NEGATIVE_INFINITY
     private var autoPulling = false
 
-    // Sending: the sheet zips up from where it was let go, and a fresh one feeds in.
+    // Sending: the sheet zips up from where it was let go, at the speed it was let go at and
+    // speeding up, until it is clear of the roller; and a fresh one feeds in.
     private var phaseAt = 0f
-    private var zipFrom = 0f
+    private var zipSpeed = 0f
+    private var zipClear = 0f
+    private var zipRise = 0f
     internal var zip = 0f
         private set
 
@@ -632,7 +647,13 @@ public class TypewriterState(text: String = "") {
     public fun release(speed: Float) {
         if (!held) return
         held = false
-        if (PullToSend.sends(shown, speed, sheet.inked)) pullOut()
+        // The paper moves as fast as the finger, less what it gives: it goes on at that speed,
+        // out of the roller or back into it.
+        if (PullToSend.sends(shown, speed, sheet.inked)) {
+            pullOut(PullToSend.paperSpeed(pull, speed, sheet.inked))
+        } else {
+            pullSpeed = speed
+        }
         wake()
     }
 
@@ -704,13 +725,16 @@ public class TypewriterState(text: String = "") {
         }
     }
 
-    // The sheet comes free: it zips up out of the roller.
-    private fun pullOut() {
+    // The sheet comes free, rising at [speed] units a second: it zips up out of the roller.
+    private fun pullOut(speed: Float = 0f) {
         autoPulling = false
         held = false
         // A blank sheet is never sent: it slides back in.
         if (!sheet.inked) return
-        zipFrom = TypewriterDimens.SheetTop - feed - shown
+        val end = TypewriterDimens.PlatenTop - TypewriterDimens.SheetHeight - ZipClear
+        zipClear = (TypewriterDimens.SheetTop - feed - shown - end).coerceAtLeast(0f)
+        zipSpeed = speed.coerceAtLeast(0f)
+        zip = 0f
         phase = SheetPhase.Zipping
         phaseAt = now
         feel.release()
@@ -784,25 +808,34 @@ public class TypewriterState(text: String = "") {
                 TypewriterDimens.FeedDamping * feedSpeed) * dt
         feed += feedSpeed * dt
         if (autoPulling) {
-            val t = (now - autoPullAt) / TypewriterDimens.AutoPullSeconds
-            pull = TypewriterDimens.AutoPull * easeOut(t.coerceAtMost(1f))
-            if (t >= 1f) pullOut()
+            // Taken by itself, the sheet is pulled out speeding up, and let go at that speed.
+            val t = ((now - autoPullAt) / TypewriterDimens.AutoPullSeconds).coerceAtMost(1f)
+            pull = TypewriterDimens.AutoPull * t * t
+            if (t >= 1f) {
+                val speed = 2f * TypewriterDimens.AutoPull / TypewriterDimens.AutoPullSeconds
+                pullOut(PullToSend.paperSpeed(pull, speed, sheet.inked))
+            }
         } else if (!held && phase == SheetPhase.Idle && pull > 0f) {
             pullSpeed +=
                 (-TypewriterDimens.PullStiffness * pull -
                     TypewriterDimens.PullDamping * pullSpeed) * dt
             pull += pullSpeed * dt
-            if (pull <= 0f) {
+            // Critically damped, it only creeps the last of the way: close enough is home.
+            if (pull <= 0f || (pull < Still && abs(pullSpeed) < Still * PullSettle)) {
                 pull = 0f
                 pullSpeed = 0f
             }
         }
         when (phase) {
             SheetPhase.Zipping -> {
-                val t = ((now - phaseAt) / TypewriterDimens.ZipSeconds).coerceAtMost(1f)
-                val end = TypewriterDimens.PlatenTop - TypewriterDimens.SheetHeight - ZipClear
-                zip = (TypewriterDimens.SheetTop - feed - shown - end) * t * t
-                if (t >= 1f) sent()
+                // Carried on from the speed it was let go at, and speeding up: no jolt.
+                val t = now - phaseAt
+                zip = zipSpeed * t + TypewriterDimens.ZipAccel * t * t / 2f
+                if (zip >= zipClear) {
+                    zip = zipClear
+                    zipRise = zipSpeed + TypewriterDimens.ZipAccel * t
+                    sent()
+                }
             }
             SheetPhase.Feeding -> {
                 val t = ((now - phaseAt) / TypewriterDimens.FeedInSeconds).coerceAtMost(1f)
@@ -829,7 +862,7 @@ public class TypewriterState(text: String = "") {
                 Offset(carriage, sheetTop),
                 Size(TypewriterDimens.SheetWidth, TypewriterDimens.SheetHeight),
             )
-        val sheet = SentSheet(typed.trim(), this.sheet.sent, bounds)
+        val sheet = SentSheet(typed.trim(), this.sheet.sent, bounds, zipRise)
         // Cleared as the machine sees it first, so the field's clearing strikes and lifts nothing.
         typed = ""
         this.sheet = SheetLayout.Empty
@@ -927,6 +960,10 @@ public class TypewriterState(text: String = "") {
 
         // Close enough to count as still, in units and units a second.
         private const val Still = 0.02f
+
+        // A sheet springing back in this close to home, at a speed this many times that close a
+        // second, is home.
+        private const val PullSettle = 10f
 
         // The layout follows the paper's feed in steps no finer than this, in units.
         private const val FedStep = 0.05f

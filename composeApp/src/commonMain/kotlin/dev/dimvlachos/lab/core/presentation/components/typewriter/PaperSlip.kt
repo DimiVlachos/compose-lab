@@ -37,10 +37,13 @@ import dev.dimvlachos.lab.core.presentation.components.magnet.SoftShadow
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.sin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -134,21 +137,29 @@ public class SlipFlights {
     }
 
     /**
-     * Flies [sheet] into message [id]'s place, where it lies turned [tilt] degrees, once that is
-     * laid out. Returns once it has landed; if the place is never laid out, it simply appears
-     * there.
+     * Flies [sheet] into message [id]'s place, where it lies turned [tilt] degrees, carrying on
+     * from the speed it came free at. Its clock starts at once, so it moves on without a pause
+     * while its place is laid out. Returns once it has landed; if the place is never laid out, it
+     * simply appears there.
      */
     public suspend fun fly(id: Long, sheet: SentSheet, tilt: Float) {
         val flight = Flight(sheet, tilt)
         flights[id] = flight
         try {
-            withTimeoutOrNull(TypewriterDimens.SlotWaitMs) {
-                snapshotFlow { flight.to }.filterNotNull().first()
-            } ?: return
-            flight.progress.animateTo(
-                1f,
-                tween((TypewriterDimens.FlightSeconds * 1000).toInt(), easing = LinearEasing),
-            )
+            coroutineScope {
+                val clock = launch {
+                    flight.progress.animateTo(
+                        1f,
+                        tween(
+                            (TypewriterDimens.FlightSeconds * 1000).toInt(),
+                            easing = LinearEasing,
+                        ),
+                    )
+                }
+                withTimeoutOrNull(TypewriterDimens.SlotWaitMs) {
+                    snapshotFlow { flight.to }.filterNotNull().first()
+                } ?: clock.cancel()
+            }
         } finally {
             flights -= id
         }
@@ -163,14 +174,16 @@ public class SlipFlights {
         origin: Offset,
     ) {
         for (flight in flights.values) {
-            val to = flight.to ?: continue
-            val p = flight.progress.value
             val from = flight.sheet.bounds
+            // Until its place is laid out, a frame at most, it carries on as it came free.
+            val to = flight.to ?: from
+            val p = flight.progress.value
             val e = ease(p)
             val es = easeOut(min(1f, p / TrimShare))
             val arc = sin(PI.toFloat() * p)
-            val x = lerp(from.left, to.left, e) - origin.x
-            val y = lerp(from.top, to.top, e) - TypewriterDimens.FlightArc * u * arc - origin.y
+            val t = p * TypewriterDimens.FlightSeconds
+            val x = flightAxis(from.left, to.left, 0f, t) - origin.x
+            val y = flightAxis(from.top, to.top, -flight.sheet.rise, t) - origin.y
             val size = Size(lerp(from.width, to.width, es), lerp(from.height, to.height, es))
             val side = if (to.left > from.left) 1f else -1f
             val turn = lerp(0f, flight.tilt, e) + TypewriterDimens.FlightSwing * arc * side
@@ -193,6 +206,26 @@ public class SlipFlights {
         const val TrimShare = 0.55f
     }
 }
+
+/**
+ * Where a sheet in flight is along one axis, [t] seconds in: it set off from [from] moving at
+ * [speed] px a second, and a critically damped spring draws it to [to], where it is at the end of
+ * the flight, a little nudged there over its last stretch so it lands on time. It sets off just as
+ * fast as it came free, so the sheet never jolts as it leaves the machine.
+ */
+internal fun flightAxis(from: Float, to: Float, speed: Float, t: Float): Float {
+    val duration = TypewriterDimens.FlightSeconds
+    val k = TypewriterDimens.FlightSpring
+    val d = from - to
+    val p = (t / duration).coerceIn(0f, 1f)
+    return to + springOffset(d, speed, k, t.coerceIn(0f, duration)) -
+        springOffset(d, speed, k, duration) * p * p * p
+}
+
+// How far off its rest a critically damped spring [k] radians a second quick is, [t] seconds after
+// it was [d] off moving at [speed].
+private fun springOffset(d: Float, speed: Float, k: Float, t: Float): Float =
+    (d + (speed + k * d) * t) * exp(-k * t)
 
 /**
  * The place in a thread where message [id]'s slip lands: it tells [flights] where it is, and shows

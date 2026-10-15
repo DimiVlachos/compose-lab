@@ -19,6 +19,20 @@ internal object PullToSend {
     }
 
     /**
+     * How fast the paper moves, in units a second, for a finger moving up at [speed] [pull] units
+     * up: as fast as the finger at first, and less as the band stiffens; the rate [shown] changes
+     * with the pull.
+     */
+    fun paperSpeed(pull: Float, speed: Float, inked: Boolean): Float {
+        val p = pull.coerceAtLeast(0f)
+        return speed *
+            if (inked) exp(-p / TypewriterDimens.MostPull)
+            else
+                TypewriterDimens.EmptyPull / TypewriterDimens.EmptyPullScale *
+                    exp(-p / TypewriterDimens.EmptyPullScale)
+    }
+
+    /**
      * Whether letting go of a sheet out by [shown] units, the finger moving up at [speed] units a
      * second, sends it: out past the threshold, or flung up once it has started to come out. A
      * blank sheet is never sent.

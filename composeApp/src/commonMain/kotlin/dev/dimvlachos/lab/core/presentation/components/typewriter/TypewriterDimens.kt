@@ -230,18 +230,25 @@ internal object TypewriterDimens {
     const val FlingSpeed = 700f
     const val FlingPull = 18f
     const val PullStiffness = 600f
-    const val PullDamping = 40f
+    // Critically damped: let go short, it settles back in from the speed it was let go at
+    // without bouncing.
+    const val PullDamping = 49f
 
     /** The ratchet clicks each time the paper moves this far. */
     const val RatchetStep = 7f
 
-    // Sent: the sheet zips up out of the roller in this long, and a fresh one feeds in from this
-    // far down in this long, as the carriage goes home.
-    const val ZipSeconds = 0.17f
+    // Sent: the sheet zips up out of the roller from the speed it was let go at, speeding up by
+    // this
+    // many units a second each second, and a fresh one feeds in from this far down in this long, as
+    // the carriage goes home.
+    const val ZipAccel = 4_000f
     const val FeedInSeconds = 0.48f
     const val FeedIn = 64f
 
-    /** Ctrl or ⌘ and Return pulls the sheet out this far over this long before it lets go. */
+    /**
+     * Ctrl or ⌘ and Return pulls the sheet out this far over this long, speeding up, and lets go at
+     * that speed.
+     */
     const val AutoPull = 110f
     const val AutoPullSeconds = 0.24f
 
@@ -249,12 +256,14 @@ internal object TypewriterDimens {
     const val JamSeconds = 2.2f
 
     // A sent sheet as a slip in the thread: trimmed to its text with this much paper round it, and
-    // turned between these many degrees either way. It flies there in this long, arcing this high.
+    // turned between these many degrees either way. It flies there in this long, carried on from
+    // the speed it came free at and drawn in by a critically damped spring this quick (a second's
+    // radians), swinging and growing a little on the way.
     const val SlipBottom = 8f
     const val SlipLeastTilt = 0.6f
     const val SlipMostTilt = 1.5f
     const val FlightSeconds = 0.56f
-    const val FlightArc = 46f
+    const val FlightSpring = 13f
     const val FlightSwing = 6f
     const val FlightGrow = 0.05f
 
