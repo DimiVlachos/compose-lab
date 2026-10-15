@@ -6,10 +6,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
-class CycladesInboxTest {
+class ChatInboxTest {
     @Test
     fun itStartsWithSevenInTheInboxAndTwoArchived() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         assertEquals(7, inbox.chatsIn(ChatPlace.Inbox).size)
         assertEquals(listOf("pottery", "kite"), inbox.chatsIn(ChatPlace.Archived).map { it.id })
         assertEquals(5, inbox.readInInbox().size)
@@ -17,22 +17,22 @@ class CycladesInboxTest {
 
     @Test
     fun undoPutsADeletedChatBack() {
-        val inbox = CycladesInbox()
-        inbox.deleted("maria")
-        assertEquals(ChatPlace.Deleted, inbox.placeOf("maria"))
+        val inbox = ChatInbox()
+        inbox.deleted("patterson")
+        assertEquals(ChatPlace.Deleted, inbox.placeOf("patterson"))
         assertEquals(ChatChange.Deleted, inbox.last!!.change)
         inbox.undo()
-        assertEquals(ChatPlace.Inbox, inbox.placeOf("maria"))
+        assertEquals(ChatPlace.Inbox, inbox.placeOf("patterson"))
         assertNull(inbox.last)
     }
 
     @Test
     fun archivingAndRestoringMoveAChatAndUndoMovesItBack() {
-        val inbox = CycladesInbox()
-        inbox.archived("nikos")
-        assertEquals(ChatPlace.Archived, inbox.placeOf("nikos"))
+        val inbox = ChatInbox()
+        inbox.archived("jake")
+        assertEquals(ChatPlace.Archived, inbox.placeOf("jake"))
         inbox.undo()
-        assertEquals(ChatPlace.Inbox, inbox.placeOf("nikos"))
+        assertEquals(ChatPlace.Inbox, inbox.placeOf("jake"))
         inbox.restored("kite")
         assertEquals(ChatPlace.Inbox, inbox.placeOf("kite"))
         inbox.undo()
@@ -41,7 +41,7 @@ class CycladesInboxTest {
 
     @Test
     fun aClearIsOneActionOnceItsLastChatHasBurnt() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
         read.dropLast(1).forEach(inbox::deleted)
@@ -55,23 +55,23 @@ class CycladesInboxTest {
 
     @Test
     fun aSnackbarThatHasGoneCantBeUndone() {
-        val inbox = CycladesInbox()
-        inbox.deleted("anna")
+        val inbox = ChatInbox()
+        inbox.deleted("maddie")
         inbox.settle(inbox.last!!.serial)
         assertNull(inbox.undo())
-        assertEquals(ChatPlace.Deleted, inbox.placeOf("anna"))
+        assertEquals(ChatPlace.Deleted, inbox.placeOf("maddie"))
         inbox.reset()
-        assertEquals(ChatPlace.Inbox, inbox.placeOf("anna"))
+        assertEquals(ChatPlace.Inbox, inbox.placeOf("maddie"))
     }
 
     @Test
     fun smokeCantTakeAChatTwice() {
-        val inbox = CycladesInbox()
-        inbox.deleted("maria")
+        val inbox = ChatInbox()
+        inbox.deleted("patterson")
         val first = inbox.last
-        inbox.deleted("maria")
-        inbox.archived("maria")
-        inbox.restored("maria")
+        inbox.deleted("patterson")
+        inbox.archived("patterson")
+        inbox.restored("patterson")
         assertSame(first, inbox.last, "nothing happened the second time")
         inbox.archived("kite")
         assertSame(first, inbox.last, "kite was archived already")
@@ -79,7 +79,7 @@ class CycladesInboxTest {
 
     @Test
     fun aSecondClearWhileOneBurnsIsIgnored() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
         inbox.deleted(read[0])
@@ -91,21 +91,21 @@ class CycladesInboxTest {
 
     @Test
     fun aChatDeletedOnItsOwnDuringAClearJoinsIt() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
-        inbox.deleted("eleni")
+        inbox.deleted("emma")
         assertNull(inbox.last, "no snackbar of its own to be replaced")
         read.forEach(inbox::deleted)
         assertEquals(read.size + 1, inbox.last!!.ids.size)
         inbox.undo()
-        assertEquals(ChatPlace.Inbox, inbox.placeOf("eleni"))
+        assertEquals(ChatPlace.Inbox, inbox.placeOf("emma"))
         assertEquals(5, inbox.readInInbox().size)
     }
 
     @Test
     fun aClearChatArchivedBeforeItsTurnLeavesTheClear() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
         inbox.archived(read.last())
@@ -116,7 +116,7 @@ class CycladesInboxTest {
 
     @Test
     fun aClearChatLeftOutBeforeItsTurnLeavesTheClearAndTheRestSettleIt() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
         read.take(2).forEach(inbox::deleted)
@@ -129,7 +129,7 @@ class CycladesInboxTest {
 
     @Test
     fun aClearWithNothingBurntEndsWithNothingToUndo() {
-        val inbox = CycladesInbox()
+        val inbox = ChatInbox()
         val read = inbox.readInInbox().map { it.id }
         inbox.clearing(read)
         read.forEach(inbox::leaveClear)

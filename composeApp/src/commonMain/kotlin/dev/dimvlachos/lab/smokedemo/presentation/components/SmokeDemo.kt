@@ -112,12 +112,12 @@ import dev.dimvlachos.lab.resources.smoke_undone
 import dev.dimvlachos.lab.smokedemo.Chat
 import dev.dimvlachos.lab.smokedemo.ChatChange
 import dev.dimvlachos.lab.smokedemo.ChatDay
+import dev.dimvlachos.lab.smokedemo.ChatInbox
 import dev.dimvlachos.lab.smokedemo.ChatPlace
-import dev.dimvlachos.lab.smokedemo.CycladesChats
-import dev.dimvlachos.lab.smokedemo.CycladesInbox
 import dev.dimvlachos.lab.smokedemo.InboxAction
+import dev.dimvlachos.lab.smokedemo.InboxChats
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
-import dev.dimvlachos.lab.smokedemo.rememberCycladesInbox
+import dev.dimvlachos.lab.smokedemo.rememberChatInbox
 import kotlin.time.Duration
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -136,16 +136,16 @@ private const val UndoWaveSeconds = 0.07f
 private val ListWidth = 640.dp
 
 /**
- * A Cyclades chat list whose chats go up in smoke. Swipe one left and it burns away; right and it
- * goes in mist to the archive, which the row on top opens, and where a swipe right brings one back.
- * Clear read burns every read chat in a wave, and the snackbar's Undo breathes the smoke of the
- * last of these back in. The script's swipes and taps are played by a fingertip drawn on the list,
- * through the same drag the rows take from a finger.
+ * A chat list whose chats go up in smoke. Swipe one left and it burns away; right and it goes in
+ * mist to the archive, which the row on top opens, and where a swipe right brings one back. Clear
+ * read burns every read chat in a wave, and the snackbar's Undo breathes the smoke of the last of
+ * these back in. The script's swipes and taps are played by a fingertip drawn on the list, through
+ * the same drag the rows take from a finger.
  */
 @Composable
 internal fun SmokeDemo(
     state: DemoState,
-    inbox: CycladesInbox = rememberCycladesInbox(),
+    inbox: ChatInbox = rememberChatInbox(),
     smoke: SmokeState =
         rememberSmokeState(
             rememberSoundPlayer(setOf(Sound.BurnLoop, Sound.MistWhoosh, Sound.Inhale))
@@ -405,7 +405,7 @@ private fun Header(
 // in both, standing only where it is, so one that comes back opens in its place.
 @Composable
 private fun ChatList(
-    inbox: CycladesInbox,
+    inbox: ChatInbox,
     smoke: SmokeState,
     place: ChatPlace,
     onOpenArchive: () -> Unit,
@@ -427,7 +427,7 @@ private fun ChatList(
             )
         }
         for (day in ChatDay.entries) {
-            val chats = CycladesChats.all.filter { it.section == day }
+            val chats = InboxChats.all.filter { it.section == day }
             AnimatedVisibility(
                 visible = chats.any { inbox.placeOf(it.id) == place },
                 enter = expandVertically() + fadeIn(),
@@ -444,7 +444,7 @@ private fun ChatList(
         }
     } else {
         Spacer(Modifier.height(spacing.small))
-        ChatGroup(CycladesChats.all, inbox, smoke, place)
+        ChatGroup(InboxChats.all, inbox, smoke, place)
     }
 }
 
@@ -453,7 +453,7 @@ private fun ChatList(
 @Composable
 private fun ChatGroup(
     chats: List<Chat>,
-    inbox: CycladesInbox,
+    inbox: ChatInbox,
     smoke: SmokeState,
     place: ChatPlace,
 ) {
@@ -557,7 +557,7 @@ private class Words {
 
 @Composable
 private fun snackbarText(action: InboxAction): String {
-    val first = CycladesChats.all.firstOrNull { it.id == action.ids.firstOrNull() }
+    val first = InboxChats.all.firstOrNull { it.id == action.ids.firstOrNull() }
     val name = first?.let { stringResource(it.name) }.orEmpty()
     return when (action.change) {
         ChatChange.Deleted -> stringResource(Res.string.smoke_deleted, name)

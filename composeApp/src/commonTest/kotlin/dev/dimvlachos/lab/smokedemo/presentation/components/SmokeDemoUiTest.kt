@@ -45,11 +45,11 @@ import dev.dimvlachos.lab.core.presentation.components.smoke.SmokeState
 import dev.dimvlachos.lab.core.presentation.components.smoke.rememberSmokeState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.smokedemo.ChatChange
+import dev.dimvlachos.lab.smokedemo.ChatInbox
 import dev.dimvlachos.lab.smokedemo.ChatPlace
-import dev.dimvlachos.lab.smokedemo.CycladesChats
-import dev.dimvlachos.lab.smokedemo.CycladesInbox
+import dev.dimvlachos.lab.smokedemo.InboxChats
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
-import dev.dimvlachos.lab.smokedemo.rememberCycladesInbox
+import dev.dimvlachos.lab.smokedemo.rememberChatInbox
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -57,7 +57,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class SmokeDemoUiTest {
-    private var inbox: CycladesInbox? = null
+    private var inbox: ChatInbox? = null
     private var smoke: SmokeState? = null
     private var compositions = 0
 
@@ -72,7 +72,7 @@ class SmokeDemoUiTest {
                     LocalLayoutDirection provides direction,
                 ) {
                     Box(Modifier.size(400.dp, 800.dp)) {
-                        val chats = rememberCycladesInbox()
+                        val chats = rememberChatInbox()
                         val s = rememberSmokeState()
                         inbox = chats
                         smoke = s
@@ -117,27 +117,27 @@ class SmokeDemoUiTest {
         onNodeWithText("Messages").assertExists()
         onNodeWithText("Archived · 2").assertExists()
         onNodeWithText("Clear read").assertExists()
-        chat("Kyria Maria").assertExists()
+        chat("Mrs. Patterson").assertExists()
     }
 
     @Test
     fun aSwipePastAThirdBurnsAChatAndUndoBreathesItBack() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        swipe("Kyria Maria", -0.6f)
-        advanceUntil("the chat to burn away") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
-        onNodeWithText("Deleted chat with Kyria Maria").assertExists()
+        swipe("Mrs. Patterson", -0.6f)
+        advanceUntil("the chat to burn away") { inbox!!.placeOf("patterson") == ChatPlace.Deleted }
+        onNodeWithText("Deleted chat with Mrs. Patterson").assertExists()
         onNodeWithText("Undo").performClick()
-        advanceUntil("the chat to come back") { inbox!!.placeOf("maria") == ChatPlace.Inbox }
+        advanceUntil("the chat to come back") { inbox!!.placeOf("patterson") == ChatPlace.Inbox }
         advanceUntil("the smoke to settle", most = 8_000) { !smoke!!.awake }
-        chat("Kyria Maria").assertExists()
+        chat("Mrs. Patterson").assertExists()
     }
 
     @Test
     fun aShortSwipeDrawsTheSmokeBackIn() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        swipe("Kyma Lines", -0.15f)
+        swipe("Harborline Ferries", -0.15f)
         advanceUntil("the smoke to settle", most = 8_000) { !smoke!!.awake }
         assertEquals(ChatPlace.Inbox, inbox!!.placeOf("ferry"))
     }
@@ -146,20 +146,20 @@ class SmokeDemoUiTest {
     fun theDeleteActionAndTheDeleteKeyBurnAChat() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
-        advanceUntil("the action to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
-        chat("Anna").performSemanticsAction(SemanticsActions.RequestFocus)
-        chat("Anna").performKeyInput { pressKey(Key.Delete) }
-        advanceUntil("the key to burn it") { inbox!!.placeOf("anna") == ChatPlace.Deleted }
+        chat("Mrs. Patterson").performCustomAccessibilityActionWithLabel("Delete")
+        advanceUntil("the action to burn it") { inbox!!.placeOf("patterson") == ChatPlace.Deleted }
+        chat("Maddie").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Maddie").performKeyInput { pressKey(Key.Delete) }
+        advanceUntil("the key to burn it") { inbox!!.placeOf("maddie") == ChatPlace.Deleted }
     }
 
     @Test
     fun aRightSwipeArchivesAndTheArchiveRestores() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        swipe("Nikos", 0.6f)
-        advanceUntil("the chat to go in mist") { inbox!!.placeOf("nikos") == ChatPlace.Archived }
-        onNodeWithText("Archived chat with Nikos").assertExists()
+        swipe("Jake", 0.6f)
+        advanceUntil("the chat to go in mist") { inbox!!.placeOf("jake") == ChatPlace.Archived }
+        onNodeWithText("Archived chat with Jake").assertExists()
         advanceUntil("the archive's count") {
             onAllNodes(hasContentDescription("Archived · 3") or hasTextExactly("Archived · 3"))
                 .fetchSemanticsNodes()
@@ -168,9 +168,9 @@ class SmokeDemoUiTest {
         onNodeWithText("Archived · 3").performClick()
         mainClock.advanceTimeBy(500)
         onNodeWithText("Archived").assertExists()
-        chat("Nikos").performCustomAccessibilityActionWithLabel("Restore")
-        advanceUntil("the chat to be restored") { inbox!!.placeOf("nikos") == ChatPlace.Inbox }
-        onNodeWithText("Restored chat with Nikos").assertExists()
+        chat("Jake").performCustomAccessibilityActionWithLabel("Restore")
+        advanceUntil("the chat to be restored") { inbox!!.placeOf("jake") == ChatPlace.Inbox }
+        onNodeWithText("Restored chat with Jake").assertExists()
     }
 
     @Test
@@ -178,12 +178,12 @@ class SmokeDemoUiTest {
         show()
         mainClock.autoAdvance = false
         mainClock.advanceTimeBy(100)
-        smoke!!.swipeAway("maria", SmokeSide.Start)
+        smoke!!.swipeAway("patterson", SmokeSide.Start)
         mainClock.advanceTimeBy(64)
         val burning = compositions
         mainClock.advanceTimeBy(200)
         assertEquals(burning, compositions, "the burn must not recompose the list")
-        assertEquals(ChatPlace.Inbox, inbox!!.placeOf("maria"), "still burning")
+        assertEquals(ChatPlace.Inbox, inbox!!.placeOf("patterson"), "still burning")
     }
 
     @Test
@@ -194,7 +194,7 @@ class SmokeDemoUiTest {
         setContent {
             LabTheme {
                 Box(Modifier.size(400.dp, 800.dp)) {
-                    val chats = rememberCycladesInbox()
+                    val chats = rememberChatInbox()
                     inbox = chats
                     SmokeDemo(state, chats, rememberSmokeState())
                 }
@@ -207,15 +207,15 @@ class SmokeDemoUiTest {
             }
         }
         repeat(2) { run ->
-            advanceUntil("Kyria Maria's chat to burn in run ${run + 1}", most = 4_000) {
-                inbox!!.placeOf("maria") == ChatPlace.Deleted
+            advanceUntil("Mrs. Patterson's chat to burn in run ${run + 1}", most = 4_000) {
+                inbox!!.placeOf("patterson") == ChatPlace.Deleted
             }
             advanceUntil("the clear's wave in run ${run + 1}", most = 16_000) {
                 inbox!!.readInInbox().isEmpty()
             }
             advanceUntil("run ${run + 1} to end", most = 14_000) { runs == run + 1 }
-            for (chat in CycladesChats.all) {
-                assertEquals(CycladesChats.start[chat.id], inbox!!.placeOf(chat.id), chat.id)
+            for (chat in InboxChats.all) {
+                assertEquals(InboxChats.start[chat.id], inbox!!.placeOf(chat.id), chat.id)
             }
             assertNull(inbox!!.last, "nothing left to undo")
         }
@@ -240,13 +240,13 @@ class SmokeDemoUiTest {
         mainClock.autoAdvance = false
         onNodeWithText("Clear read").performClick()
         mainClock.advanceTimeByFrame()
-        // Anna is last in the wave: Delete her straight away.
-        chat("Anna").performSemanticsAction(SemanticsActions.RequestFocus)
-        chat("Anna").performKeyInput { pressKey(Key.Delete) }
+        // Maddie is last in the wave: Delete her straight away.
+        chat("Maddie").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Maddie").performKeyInput { pressKey(Key.Delete) }
         advanceUntil("the wave to end") { inbox!!.last != null }
         mainClock.advanceTimeBy(1_000)
         assertEquals(ChatChange.Cleared, inbox!!.last!!.change)
-        assertEquals(5, inbox!!.last!!.ids.size, "Anna is in the clear, once")
+        assertEquals(5, inbox!!.last!!.ids.size, "Maddie is in the clear, once")
         onNodeWithText("Undo").performClick()
         advanceUntil("the chats to come back") { inbox!!.readInInbox().size == 5 }
     }
@@ -255,23 +255,27 @@ class SmokeDemoUiTest {
     fun holdingDeleteBurnsOneChatAndTheNextPressBurnsAgain() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        chat("Kyria Maria").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Mrs. Patterson").performSemanticsAction(SemanticsActions.RequestFocus)
         // Held a second and a half: the key repeats, on whichever row focus has moved on to.
-        chat("Kyria Maria").performKeyInput {
+        chat("Mrs. Patterson").performKeyInput {
             keyDown(Key.Delete)
             advanceEventTime(1_500)
             keyUp(Key.Delete)
         }
-        advanceUntil("the held key to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        advanceUntil("the held key to burn it") {
+            inbox!!.placeOf("patterson") == ChatPlace.Deleted
+        }
         mainClock.advanceTimeBy(1_500)
-        val deleted = CycladesChats.all.filter { inbox!!.placeOf(it.id) == ChatPlace.Deleted }
-        assertEquals(listOf("maria"), deleted.map { it.id }, "one press, one chat")
+        val deleted = InboxChats.all.filter { inbox!!.placeOf(it.id) == ChatPlace.Deleted }
+        assertEquals(listOf("patterson"), deleted.map { it.id }, "one press, one chat")
         onNodeWithText("Undo").performClick()
-        advanceUntil("the chat to come back") { inbox!!.placeOf("maria") == ChatPlace.Inbox }
+        advanceUntil("the chat to come back") { inbox!!.placeOf("patterson") == ChatPlace.Inbox }
         advanceUntil("the smoke to settle", most = 8_000) { !smoke!!.awake }
-        chat("Kyria Maria").performSemanticsAction(SemanticsActions.RequestFocus)
-        chat("Kyria Maria").performKeyInput { pressKey(Key.Delete) }
-        advanceUntil("the next press to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        chat("Mrs. Patterson").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Mrs. Patterson").performKeyInput { pressKey(Key.Delete) }
+        advanceUntil("the next press to burn it") {
+            inbox!!.placeOf("patterson") == ChatPlace.Deleted
+        }
     }
 
     @Test
@@ -332,7 +336,7 @@ class SmokeDemoUiTest {
         mainClock.autoAdvance = false
         onNodeWithText("Archived · 2").performClick()
         mainClock.advanceTimeBy(500)
-        chat("Meltemaki Kite Club").performCustomAccessibilityActionWithLabel("Restore")
+        chat("Cape Wind Kite Club").performCustomAccessibilityActionWithLabel("Restore")
         advanceUntil("the chat to be restored") { inbox!!.placeOf("kite") == ChatPlace.Inbox }
         onNodeWithContentDescription("Back to messages").performClick()
         mainClock.advanceTimeBy(500)
@@ -353,32 +357,32 @@ class SmokeDemoUiTest {
         mainClock.autoAdvance = false
         onNodeWithText("Swipe right to delete, left to archive").assertExists()
         // Toward the start, to the right here, deletes.
-        swipe("Kyria Maria", 0.6f)
-        advanceUntil("the chat to burn away") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        swipe("Mrs. Patterson", 0.6f)
+        advanceUntil("the chat to burn away") { inbox!!.placeOf("patterson") == ChatPlace.Deleted }
         // Toward the end, to the left, archives.
-        swipe("Nikos", -0.6f)
-        advanceUntil("the chat to go in mist") { inbox!!.placeOf("nikos") == ChatPlace.Archived }
+        swipe("Jake", -0.6f)
+        advanceUntil("the chat to go in mist") { inbox!!.placeOf("jake") == ChatPlace.Archived }
         // The Delete key deletes, whichever way that is.
-        chat("Anna").performSemanticsAction(SemanticsActions.RequestFocus)
-        chat("Anna").performKeyInput { pressKey(Key.Delete) }
-        advanceUntil("the key to burn it") { inbox!!.placeOf("anna") == ChatPlace.Deleted }
+        chat("Maddie").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Maddie").performKeyInput { pressKey(Key.Delete) }
+        advanceUntil("the key to burn it") { inbox!!.placeOf("maddie") == ChatPlace.Deleted }
     }
 
     @Test
     fun aScreenReadersDeleteMovesFocusOnToTheNextChat() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
+        chat("Mrs. Patterson").performCustomAccessibilityActionWithLabel("Delete")
         mainClock.advanceTimeByFrame()
-        chat("Glaros Water Taxi").assertIsFocused()
+        chat("Bayside Cab Co.").assertIsFocused()
     }
 
     @Test
     fun undoSaysItBroughtTheChatBackAndCantBeTappedAsItGoes() = runComposeUiTest {
         show()
         mainClock.autoAdvance = false
-        chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
-        advanceUntil("the chat to burn away") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        chat("Mrs. Patterson").performCustomAccessibilityActionWithLabel("Delete")
+        advanceUntil("the chat to burn away") { inbox!!.placeOf("patterson") == ChatPlace.Deleted }
         mainClock.advanceTimeBy(300)
         onNodeWithText("Undo").performClick()
         mainClock.advanceTimeByFrame()

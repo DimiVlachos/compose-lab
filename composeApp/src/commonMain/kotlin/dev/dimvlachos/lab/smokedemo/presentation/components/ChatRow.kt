@@ -37,7 +37,7 @@ import dev.dimvlachos.lab.resources.smoke_archived_row
 import dev.dimvlachos.lab.resources.smoke_unread
 import dev.dimvlachos.lab.smokedemo.Avatar
 import dev.dimvlachos.lab.smokedemo.Chat
-import dev.dimvlachos.lab.smokedemo.CycladesChats
+import dev.dimvlachos.lab.smokedemo.InboxChats
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -140,7 +140,7 @@ internal fun ArchivedRow(label: String, modifier: Modifier = Modifier) {
     }
 }
 
-// The avatar: the chat's initials, white on its island colour.
+// The avatar: the chat's initials, white on its colour.
 @Composable
 private fun Avatar(initials: String, colour: Color) {
     Box(
@@ -244,7 +244,7 @@ private fun ChatRowPreview(dark: Boolean) {
         Column(Modifier.background(LabTheme.colors.background).padding(16.dp)) {
             ArchivedRow(stringResource(Res.string.smoke_archived_row, 2))
             Spacer(Modifier.size(12.dp))
-            CycladesChats.all.take(3).forEachIndexed { i, chat -> ChatRow(chat, divider = i > 0) }
+            InboxChats.all.take(3).forEachIndexed { i, chat -> ChatRow(chat, divider = i > 0) }
         }
     }
 }

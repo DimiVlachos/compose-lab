@@ -36,9 +36,9 @@ class SmokeDemosTest {
         demo.script.play(controller)
         assertEquals(
             listOf(
-                "maria" to SmokeDemos.Burn,
+                "patterson" to SmokeDemos.Burn,
                 "ferry" to SmokeDemos.Short,
-                "nikos" to SmokeDemos.Archive,
+                "jake" to SmokeDemos.Archive,
             ),
             controller.chatSwipes,
         )

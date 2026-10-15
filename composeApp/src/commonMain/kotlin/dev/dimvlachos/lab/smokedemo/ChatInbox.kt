@@ -9,29 +9,29 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.dimvlachos.lab.resources.Res
-import dev.dimvlachos.lab.resources.smoke_chat_anna_name
-import dev.dimvlachos.lab.resources.smoke_chat_anna_preview
-import dev.dimvlachos.lab.resources.smoke_chat_dive_name
-import dev.dimvlachos.lab.resources.smoke_chat_dive_preview
-import dev.dimvlachos.lab.resources.smoke_chat_eleni_name
-import dev.dimvlachos.lab.resources.smoke_chat_eleni_preview
+import dev.dimvlachos.lab.resources.smoke_chat_cab_name
+import dev.dimvlachos.lab.resources.smoke_chat_cab_preview
+import dev.dimvlachos.lab.resources.smoke_chat_emma_name
+import dev.dimvlachos.lab.resources.smoke_chat_emma_preview
 import dev.dimvlachos.lab.resources.smoke_chat_ferry_name
 import dev.dimvlachos.lab.resources.smoke_chat_ferry_preview
+import dev.dimvlachos.lab.resources.smoke_chat_jake_name
+import dev.dimvlachos.lab.resources.smoke_chat_jake_preview
 import dev.dimvlachos.lab.resources.smoke_chat_kite_name
 import dev.dimvlachos.lab.resources.smoke_chat_kite_preview
-import dev.dimvlachos.lab.resources.smoke_chat_maria_name
-import dev.dimvlachos.lab.resources.smoke_chat_maria_preview
-import dev.dimvlachos.lab.resources.smoke_chat_nikos_name
-import dev.dimvlachos.lab.resources.smoke_chat_nikos_preview
+import dev.dimvlachos.lab.resources.smoke_chat_maddie_name
+import dev.dimvlachos.lab.resources.smoke_chat_maddie_preview
+import dev.dimvlachos.lab.resources.smoke_chat_patterson_name
+import dev.dimvlachos.lab.resources.smoke_chat_patterson_preview
 import dev.dimvlachos.lab.resources.smoke_chat_pottery_name
 import dev.dimvlachos.lab.resources.smoke_chat_pottery_preview
-import dev.dimvlachos.lab.resources.smoke_chat_taxi_name
-import dev.dimvlachos.lab.resources.smoke_chat_taxi_preview
+import dev.dimvlachos.lab.resources.smoke_chat_surf_name
+import dev.dimvlachos.lab.resources.smoke_chat_surf_preview
 import dev.dimvlachos.lab.resources.smoke_chat_time_mon
 import dev.dimvlachos.lab.resources.smoke_chat_time_sun
 import org.jetbrains.compose.resources.StringResource
 
-/** Which island colour a chat's avatar is. */
+/** Which colour a chat's avatar is. */
 internal enum class Avatar {
     Green,
     Blue,
@@ -91,72 +91,72 @@ internal class InboxAction(
     val serial: Int,
 )
 
-/** The chats, a Cyclades inbox: five today and two earlier, and two already archived. */
-internal object CycladesChats {
+/** The chats, an inbox: five today and two earlier, and two already archived. */
+internal object InboxChats {
     val all: List<Chat> =
         listOf(
             Chat(
-                "eleni",
-                Res.string.smoke_chat_eleni_name,
-                "EM",
-                Res.string.smoke_chat_eleni_preview,
-                time = "18:42",
+                "emma",
+                Res.string.smoke_chat_emma_name,
+                "EC",
+                Res.string.smoke_chat_emma_preview,
+                time = "6:42 PM",
                 avatar = Avatar.Green,
                 unread = true,
             ),
             Chat(
                 "ferry",
                 Res.string.smoke_chat_ferry_name,
-                "KL",
+                "HF",
                 Res.string.smoke_chat_ferry_preview,
-                time = "17:05",
+                time = "5:05 PM",
                 avatar = Avatar.Blue,
             ),
             Chat(
-                "nikos",
-                Res.string.smoke_chat_nikos_name,
-                "N",
-                Res.string.smoke_chat_nikos_preview,
-                time = "16:20",
+                "jake",
+                Res.string.smoke_chat_jake_name,
+                "J",
+                Res.string.smoke_chat_jake_preview,
+                time = "4:20 PM",
                 avatar = Avatar.Amber,
             ),
             Chat(
-                "maria",
-                Res.string.smoke_chat_maria_name,
-                "KM",
-                Res.string.smoke_chat_maria_preview,
-                time = "12:10",
+                "patterson",
+                Res.string.smoke_chat_patterson_name,
+                "MP",
+                Res.string.smoke_chat_patterson_preview,
+                time = "12:10 PM",
                 avatar = Avatar.Red,
             ),
             Chat(
-                "taxi",
-                Res.string.smoke_chat_taxi_name,
-                "GW",
-                Res.string.smoke_chat_taxi_preview,
-                time = "09:48",
+                "cab",
+                Res.string.smoke_chat_cab_name,
+                "BC",
+                Res.string.smoke_chat_cab_preview,
+                time = "9:48 AM",
                 avatar = Avatar.Teal,
                 unread = true,
             ),
             Chat(
-                "dive",
-                Res.string.smoke_chat_dive_name,
-                "GD",
-                Res.string.smoke_chat_dive_preview,
+                "surf",
+                Res.string.smoke_chat_surf_name,
+                "DS",
+                Res.string.smoke_chat_surf_preview,
                 day = Res.string.smoke_chat_time_mon,
                 avatar = Avatar.Violet,
             ),
             Chat(
-                "anna",
-                Res.string.smoke_chat_anna_name,
-                "A",
-                Res.string.smoke_chat_anna_preview,
+                "maddie",
+                Res.string.smoke_chat_maddie_name,
+                "M",
+                Res.string.smoke_chat_maddie_preview,
                 day = Res.string.smoke_chat_time_mon,
                 avatar = Avatar.Pink,
             ),
             Chat(
                 "pottery",
                 Res.string.smoke_chat_pottery_name,
-                "PP",
+                "RM",
                 Res.string.smoke_chat_pottery_preview,
                 day = Res.string.smoke_chat_time_sun,
                 avatar = Avatar.Amber,
@@ -164,7 +164,7 @@ internal object CycladesChats {
             Chat(
                 "kite",
                 Res.string.smoke_chat_kite_name,
-                "MK",
+                "CW",
                 Res.string.smoke_chat_kite_preview,
                 day = Res.string.smoke_chat_time_sun,
                 avatar = Avatar.Blue,
@@ -185,9 +185,8 @@ internal object CycladesChats {
  * of the read chats is one action, made once the last of them has burnt.
  */
 @Stable
-internal class CycladesInbox {
-    private val places =
-        mutableStateMapOf<String, ChatPlace>().apply { putAll(CycladesChats.start) }
+internal class ChatInbox {
+    private val places = mutableStateMapOf<String, ChatPlace>().apply { putAll(InboxChats.start) }
 
     /** The last action, until it is undone or the next one replaces it. */
     var last: InboxAction? by mutableStateOf(null)
@@ -202,7 +201,7 @@ internal class CycladesInbox {
     fun placeOf(id: String): ChatPlace = places[id] ?: ChatPlace.Deleted
 
     /** The chats in [place], in the list's order. */
-    fun chatsIn(place: ChatPlace): List<Chat> = CycladesChats.all.filter { placeOf(it.id) == place }
+    fun chatsIn(place: ChatPlace): List<Chat> = InboxChats.all.filter { placeOf(it.id) == place }
 
     /** The read chats in the inbox: what Clear read burns. */
     fun readInInbox(): List<Chat> = chatsIn(ChatPlace.Inbox).filter { !it.unread }
@@ -295,7 +294,7 @@ internal class CycladesInbox {
     /** Puts every chat back where it started, with nothing to undo. */
     fun reset() {
         places.clear()
-        places.putAll(CycladesChats.start)
+        places.putAll(InboxChats.start)
         last = null
         clearing = emptyList()
         cleared.clear()
@@ -308,5 +307,5 @@ internal class CycladesInbox {
     }
 }
 
-/** A [CycladesInbox], as it starts. */
-@Composable internal fun rememberCycladesInbox(): CycladesInbox = remember { CycladesInbox() }
+/** A [ChatInbox], as it starts. */
+@Composable internal fun rememberChatInbox(): ChatInbox = remember { ChatInbox() }
