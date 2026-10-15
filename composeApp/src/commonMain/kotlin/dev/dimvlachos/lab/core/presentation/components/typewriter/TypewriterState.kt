@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -1009,9 +1010,21 @@ public class TypewriterState(text: String = "") {
             return typeable.take(layOutSheet(typeable).kept)
         }
 
-        /** Saves what is typed on the sheet, so it outlives the screen being made again. */
-        val Saver: Saver<TypewriterState, String> =
-            Saver(save = { it.field.text.toString() }, restore = { TypewriterState(it) })
+        /**
+         * Saves what is typed on the sheet, and whether Shift is down and the figures show, so they
+         * outlive the screen being made again. Made again, the machine stands still, as it was
+         * left: nothing strikes or sounds.
+         */
+        val Saver: Saver<TypewriterState, Any> =
+            listSaver(
+                save = { listOf(it.text, it.keyboard.shifted, it.keyboard.figures) },
+                restore = { saved ->
+                    TypewriterState(saved[0] as String).apply {
+                        keyboard.shifted = saved[1] as Boolean
+                        keyboard.figures = saved[2] as Boolean
+                    }
+                },
+            )
     }
 }
 

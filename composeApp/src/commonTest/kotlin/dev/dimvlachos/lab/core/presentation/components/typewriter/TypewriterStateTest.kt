@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.typewriter
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.saveable.SaverScope
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -342,5 +343,26 @@ class TypewriterStateTest {
         assertEquals(line.dropLast(1), state.text)
         assertEquals(0, state.sheet.line)
         assertEquals(1, heard.count("tape"))
+    }
+
+    @Test
+    fun savedAndMadeAgainTheMachineKeepsItsTextShiftAndPageAndMakesNoSound() {
+        val state = TypewriterState()
+        "see you".forEach { state.type(it) }
+        state.press(TypeKey(KeyAction.Page))
+        state.press(TypeKey(KeyAction.Shift))
+        val saved = with(TypewriterState.Saver) { SaverScope { true }.save(state) }!!
+        val restored = TypewriterState.Saver.restore(saved)!!
+        assertEquals("see you", restored.text)
+        assertTrue(restored.keyboard.figures)
+        assertTrue(restored.keyboard.shifted)
+        assertEquals(state.sheet.lines, restored.sheet.lines)
+        val heard = Heard()
+        restored.feel = heard
+        // The composer hands the machine its text again as it opens.
+        restored.typedNow(restored.text)
+        restored.run(1f)
+        assertTrue(heard.events.isEmpty(), "made again, it sounded ${heard.events}")
+        assertEquals(TypewriterState.columnX(7), restored.carriage, 0.05f)
     }
 }
