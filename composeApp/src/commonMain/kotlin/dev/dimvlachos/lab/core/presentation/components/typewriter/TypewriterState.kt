@@ -145,9 +145,11 @@ public class TypewriterState(text: String = "") {
 
     /**
      * How big a machine unit is, as the composer last laid the machine out: a thread its slips fly
-     * into draws them in the same size of type.
+     * into draws them in the same size of type. A new machine starts at the size the last one was
+     * laid out at, so a screen made again, as when a demo starts over, draws its slips at their
+     * size from its first frame rather than a frame later.
      */
-    public var unit: Dp by mutableStateOf(1.dp)
+    public var unit: Dp by mutableStateOf(lastUnit)
         internal set
 
     /** The keyboard the machine is typed on. */
@@ -1003,6 +1005,9 @@ public class TypewriterState(text: String = "") {
         private const val SheetGrabY = 20f
         private const val TouchDown = 0.09f
         private const val TouchUp = 0.26f
+
+        // The unit the last machine was laid out at, for the next one to start at.
+        var lastUnit: Dp = 1.dp
 
         /** Where the carriage stands at [column]: the sheet's left edge, in units. */
         fun columnX(column: Int): Float =

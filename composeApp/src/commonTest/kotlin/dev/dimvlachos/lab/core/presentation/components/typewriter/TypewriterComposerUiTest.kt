@@ -371,6 +371,15 @@ class TypewriterComposerUiTest {
         assertEquals("a", said())
         assertTrue(machine.state.inked)
     }
+
+    @Test
+    fun aNewMachineStartsAtTheSizeTheLastOneWasLaidOutAt() = runComposeUiTest {
+        val machine = machine()
+        val laidOut = machine.state.unit
+        assertEquals(400.dp / TypewriterDimens.StageUnits, laidOut)
+        // Made again, as when a demo starts over: its slips are their size from the first frame.
+        assertEquals(laidOut, TypewriterState().unit)
+    }
 }
 
 private fun hasLiveRegion() =

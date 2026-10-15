@@ -260,7 +260,10 @@ internal fun TypewriterComposer(
                 TypewriterDimens.fit(maxWidth, maxHeight - foot, hint, foot)
             }
         val unit = fit.unit
-        SideEffect { state.unit = unit }
+        SideEffect {
+            state.unit = unit
+            TypewriterState.lastUnit = unit
+        }
         val u = with(density) { unit.toPx() }
         val pitch = fit.pitch
         val keysHeight = fit.keysHeight
