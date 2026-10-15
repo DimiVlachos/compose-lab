@@ -24,9 +24,8 @@ internal object SmokeDemos {
 
     // Kyria Maria's chat burns away and Undo breathes it back; the ferry ticket is swiped short, so
     // less than a third burns, and its smoke is drawn back in; Nikos goes to the archive in mist
-    // and Undo brings him
-    // back; Clear read burns the five read chats in a wave and Undo brings them all back. Then the
-    // list is put back as it began, which it already is, so the clip loops.
+    // and Undo brings him back; Clear read burns the five read chats in a wave and Undo brings
+    // them all back. Then the list is put back as it began, which it already is, so the clip loops.
     private val inbox = demoScript {
         at(0.6.seconds, lasts = 1.4.seconds) { swipeChat("maria", Burn, 900.milliseconds) }
         at(4.seconds, lasts = 500.milliseconds) { tapControl(Undo) }
