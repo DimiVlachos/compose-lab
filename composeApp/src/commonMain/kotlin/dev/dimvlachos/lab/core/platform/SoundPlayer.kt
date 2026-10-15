@@ -30,7 +30,11 @@ internal enum class Sound(val file: String) {
  * silent or vibrate.
  */
 internal interface SoundPlayer {
-    /** Plays [sound] once, at [volume] (0 to 1) and [rate] (0.5 to 2, 1 is as recorded). */
+    /**
+     * Plays [sound] once, at [volume] (0 to 1) and [rate] (0.5 to 2, 1 is as recorded). The rate
+     * resamples the clip on both platforms, like a tape run faster or slower: its pitch moves with
+     * its speed.
+     */
     fun play(sound: Sound, volume: Float = 1f, rate: Float = 1f)
 
     /** Plays [sound] over and over until the returned loop is stopped. */
