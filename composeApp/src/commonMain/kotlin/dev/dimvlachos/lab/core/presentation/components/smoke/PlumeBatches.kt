@@ -2,11 +2,11 @@ package dev.dimvlachos.lab.core.presentation.components.smoke
 
 /**
  * A plume's particles as they stand this frame, sorted into batches that are each drawn in one
- * call: one for each of the row's colours at each age, and one for the sparks at each age. Ages are
- * cut into [Bands] bands of a particle's life, closer together early on, where a particle changes
- * fastest. Each batch is a flat run of x, y pairs in px; the arrays grow as they need to and are
- * never shrunk, and what is past a batch's count lies off the screen, so filling and drawing them
- * allocates nothing once the plume has been drawn a few times, on either platform.
+ * call: one for each of the row's colours at each age, in two sizes, and one for the sparks at each
+ * age. Ages are cut into [Bands] bands of a particle's life, closer together early on, where a
+ * particle changes fastest. Each batch is a flat run of x, y pairs in px; the arrays grow as they
+ * need to and are never shrunk, and what is past a batch's count lies off the screen, so filling
+ * and drawing them allocates nothing once the plume has been drawn a few times, on either platform.
  */
 internal class PlumeBatches {
     /** How many colours it was filled for: none until its plume's row has been sampled. */
@@ -24,7 +24,7 @@ internal class PlumeBatches {
     fun clear(colourCount: Int) {
         if (colourCount != colours || points.isEmpty()) {
             colours = colourCount
-            val n = (colourCount + 1) * Bands
+            val n = colourCount * Bands * Sizes + Bands
             points = Array(n) { FloatArray(InitialPoints * 2).apply { fill(OffScreen) } }
             counts = IntArray(n)
             sealed = IntArray(n)
@@ -68,11 +68,14 @@ internal class PlumeBatches {
     fun countOf(batch: Int): Int = counts[batch]
 
     companion object {
-        /** The batch for colour [colour] at age band [band]. */
-        fun of(colour: Int, band: Int): Int = colour * Bands + band
+        /** The batch for colour [colour] at age band [band], in size [size] of [Sizes]. */
+        fun of(colour: Int, band: Int, size: Int = 0): Int = (colour * Bands + band) * Sizes + size
 
         /** The sparks' batch at age band [band], after [colours] colours' batches. */
-        fun sparks(colours: Int, band: Int): Int = colours * Bands + band
+        fun sparks(colours: Int, band: Int): Int = colours * Bands * Sizes + band
+
+        /** Each colour's particles at each age are drawn in this many sizes. */
+        const val Sizes = 2
 
         /** Which band [share] of a particle's life falls in. */
         fun bandOf(share: Float): Int {
@@ -82,6 +85,12 @@ internal class PlumeBatches {
 
         /** The share of a particle's life in the middle of band [band]. */
         fun middleOf(band: Int): Float = (BandEdges[band] + BandEdges[band + 1]) / 2f
+
+        /** The share of a particle's life where band [band] starts. */
+        fun startOf(band: Int): Float = BandEdges[band]
+
+        /** The share of a particle's life where band [band] ends. */
+        fun endOf(band: Int): Float = BandEdges[band + 1]
 
         private val BandEdges =
             floatArrayOf(

@@ -106,10 +106,27 @@ internal class SmokePainter {
                 place[1] += (plume.atY + y * sy - fromY) * pull
             }
             val band = PlumeBatches.bandOf(age / life)
+            val spark = SmokeMotion.isSpark(seed, ink, material)
             val batch =
-                if (SmokeMotion.isSpark(seed, ink, material)) PlumeBatches.sparks(colours, band)
-                else PlumeBatches.of(particles.colour[i].toInt(), band)
+                if (spark) PlumeBatches.sparks(colours, band)
+                else {
+                    // Half are drawn smaller and half larger, so the smoke isn't one grain.
+                    val size = if (fract(seed * 5.71f) < 0.5f) 0 else 1
+                    PlumeBatches.of(particles.colour[i].toInt(), band, size)
+                }
             batches.add(batch, place[0], place[1])
+            // Once it has spread, a particle is drawn twice, a little apart, so the body of the
+            // smoke reads as a soft mass rather than a few thousand dots.
+            if (!spark && (!ink || age > SplatFrom)) {
+                val reach = SmokeMotion.spreadAt(age, life, ink) * SplatReach * density
+                if (reach > 0.5f) {
+                    batches.add(
+                        batch,
+                        place[0] + (fract(seed * 31.7f) - 0.5f) * 2f * reach,
+                        place[1] + (fract(seed * 47.3f) - 0.5f) * 2f * reach,
+                    )
+                }
+            }
         }
         batches.seal()
     }
@@ -119,7 +136,8 @@ internal class SmokePainter {
         paint.blendMode =
             if (layer == SmokeLayer.Glow && colors.glowAdds) BlendMode.Plus else BlendMode.SrcOver
         drawIntoCanvas { canvas ->
-            for (plume in plumes) {
+            for (p in plumes.indices) {
+                val plume = plumes[p]
                 val particles = plume.particles ?: continue
                 val colours = plume.batches.colours
                 if (colours == 0 || colours != particles.palette.size) continue
@@ -129,9 +147,9 @@ internal class SmokePainter {
                     } else 1f
                 for (k in 0 until colours) {
                     for (band in 0 until PlumeBatches.Bands) {
-                        val batch = PlumeBatches.of(k, band)
-                        val count = plume.batches.countOf(batch)
-                        if (count == 0) continue
+                        val small = plume.batches.countOf(PlumeBatches.of(k, band, 0))
+                        val large = plume.batches.countOf(PlumeBatches.of(k, band, 1))
+                        if (small + large == 0) continue
                         if (
                             !look(
                                 k,
@@ -144,8 +162,16 @@ internal class SmokePainter {
                         )
                             continue
                         paint.color = lookColour.copy(alpha = (lookAlpha * fade).coerceIn(0f, 1f))
-                        paint.strokeWidth = lookSize * density
-                        drawPointBatch(canvas, plume.batches.pointsOf(batch), count, paint)
+                        // The blurred layers' grains are of two sizes; the crisp ones of one.
+                        val blurred = layer == SmokeLayer.Haze || layer == SmokeLayer.Soft
+                        for (size in 0 until PlumeBatches.Sizes) {
+                            val batch = PlumeBatches.of(k, band, size)
+                            val count = plume.batches.countOf(batch)
+                            if (count == 0) continue
+                            val share = if (blurred) SizeClass[size] else 1f
+                            paint.strokeWidth = lookSize * share * density
+                            drawPointBatch(canvas, plume.batches.pointsOf(batch), count, paint)
+                        }
                     }
                 }
                 if (layer == SmokeLayer.Glow) drawSparks(canvas, plume, colours, colors, fade)
@@ -194,7 +220,17 @@ internal class SmokePainter {
         val ink = k > 0
         val life = representativeLife(ink, material)
         val age = PlumeBatches.middleOf(band) * life
-        if (layerOf(ink, age, material) != layer) return false
+        // A band that straddles the age where its particles move to the next layer is drawn in
+        // both, each in the share of the band that falls there, so they cross over softly rather
+        // than all at once.
+        val from = PlumeBatches.startOf(band) * life
+        val to = PlumeBatches.endOf(band) * life
+        var share = 0f
+        for (q in 0 until LayerSamples) {
+            val at = from + (to - from) * (q + 0.5f) / LayerSamples
+            if (layerOf(ink, at, material) == layer) share += 1f / LayerSamples
+        }
+        if (share == 0f) return false
         val spread = SmokeMotion.spreadAt(age, life, ink)
         val mist = material == SmokeMaterial.Mist
         val target = if (mist) colors.mist else colors.smoke
@@ -214,7 +250,7 @@ internal class SmokePainter {
                 val thin = smoothstep(0f, 0.12f, spread)
                 0.85f * (1f + (0.024f - 1f) * thin) * (1f + SmokeDimens.CardBoost * thin)
             }
-        lookAlpha = opacity * fade * if (mist) SmokeDimens.MistOpacity else 1f
+        lookAlpha = opacity * fade * share * if (mist) SmokeDimens.MistOpacity else 1f
         val size =
             if (ink) 1.3f + (17f - 1.3f) * spread.pow(0.6f) else 2f + (30f - 2f) * spread.pow(0.45f)
         lookSize = size * SizeShare[layer.ordinal]
@@ -240,6 +276,16 @@ internal class SmokePainter {
                 age < 0.5f -> SmokeLayer.Soft
                 else -> SmokeLayer.Haze
             }
+
+        // Ink is drawn a second time once it is this old, this many dp off at its widest.
+        const val SplatFrom = 0.55f
+        const val SplatReach = 6f
+
+        // How finely a band is sampled for the layers it falls in.
+        const val LayerSamples = 4
+
+        // The smaller and the larger of a blurred layer's grains, against a particle's own size.
+        val SizeClass = floatArrayOf(0.75f, 1.3f)
 
         // A blurred layer's particles are drawn smaller, the blur spreading them out again.
         val SizeShare = floatArrayOf(0.5f, 0.6f, 0.75f, 1f)
