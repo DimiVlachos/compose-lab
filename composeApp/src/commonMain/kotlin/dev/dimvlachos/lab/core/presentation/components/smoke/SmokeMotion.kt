@@ -8,7 +8,8 @@ import kotlin.math.sqrt
  * Where a particle is, worked out from where it started and how old it is, and nothing else: a few
  * steps through a fixed curl-noise field, plus buoyancy. Nothing is carried from one frame to the
  * next, so a frame can be drawn for any moment, forwards or back, and running a particle's age back
- * to nothing brings it home to the very pixel it left.
+ * to nothing, as a finger drawing the front back or an undo does, brings it home to the very pixel
+ * it left.
  */
 internal object SmokeMotion {
     /** How long a particle with [seed] lives, in seconds: ink longest, mist longer than smoke. */
@@ -30,23 +31,17 @@ internal object SmokeMotion {
         ink && material == SmokeMaterial.Smoke && fract(seed * 3.17f) < SmokeDimens.SparkShare
 
     /**
-     * How old a particle is at [now], its column crossed at [cross]: or, while it is reforming,
-     * [reform] of the way (0 to 1) back from how old it was when reforming began at [reformStart].
-     * A particle still in the air then starts back from where it is, so nothing jumps; one that had
-     * already faded starts from [SmokeDimens.ReformFrom] of its [life], so it gathers out of the
-     * air as a visible wisp rather than out of an invisible haze. Negative while it hasn't lifted
-     * off.
+     * How old a particle is, its column [column] seconds old ([BurnFront.ageOf]) and its own lift
+     * off [jitter] after the column's: or, while its row is reforming, [reform] of the way (0 to 1)
+     * back from how old it was when reforming began, its column then [column] old. A particle still
+     * in the air then starts back from where it is, so nothing jumps; one that had already faded
+     * starts from [SmokeDimens.ReformFrom] of its [life], so it gathers out of the air as a visible
+     * wisp rather than out of an invisible haze. Negative while it hasn't lifted off, or has
+     * landed.
      */
-    fun ageAt(
-        now: Float,
-        cross: Float,
-        jitter: Float,
-        life: Float,
-        reform: Float = -1f,
-        reformStart: Float = 0f,
-    ): Float {
-        if (reform < 0f) return now - cross - jitter
-        val then = reformStart - cross - jitter
+    fun ageAt(column: Float, jitter: Float, life: Float, reform: Float = -1f): Float {
+        val then = column - jitter
+        if (reform < 0f) return then
         if (then < 0f) return -1f
         val from = if (then < life) then else life * SmokeDimens.ReformFrom
         return from * (1f - reform)

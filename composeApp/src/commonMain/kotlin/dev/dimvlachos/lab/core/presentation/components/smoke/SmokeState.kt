@@ -59,12 +59,14 @@ public class SmokeAction(
  * The smoke over a list of [SmokeRow]s: every row going up, or coming back, and the frame loop that
  * moves them. Make one with [rememberSmokeState] and hand it to the [SmokeOverlay] and its rows.
  *
- * A swipe that has burnt a third of a row, [swipeAway], or a key or a screen reader's action burns
- * it away; [reform] breathes the smoke of a row that went back in, as an undo does, for as long as
- * it is kept, until [forget]. A finger's swipe comes in through [dragStart], [dragTo] and
- * [release], which a scripted finger can call too, and [boundsOf] says where a row is. Nothing here
- * is read in composition: the rows read their front and their height while drawing and laying out,
- * and the overlay draws the particles, so nothing recomposes while the smoke moves.
+ * A finger's swipe burns a row from its edge to under the finger, and as the finger goes back the
+ * smoke runs back down into the row behind it; let go past a third, or flung, it burns the rest of
+ * the way, as [swipeAway], or a key or a screen reader's action, does. [reform] breathes the smoke
+ * of a row that went back in, as an undo does, for as long as it is kept, until [forget]. A
+ * finger's swipe comes in through [dragStart], [dragTo] and [release], which a scripted finger can
+ * call too, and [boundsOf] says where a row is. Nothing here is read in composition: the rows read
+ * their front and their height while drawing and laying out, and the overlay draws the particles,
+ * so nothing recomposes while the smoke moves.
  */
 @Stable
 public class SmokeState internal constructor() {
@@ -109,14 +111,14 @@ public class SmokeState internal constructor() {
 
     // The frames' particles are worked out off the main thread by one long-lived worker
     // ([fillOffMainThread]), told of each job through [jobs]: which plumes, at what time, and how
-    // far each was reforming. [filling] while a job is out; the worker marks it done in [doneJob].
+    // far each was reforming, with a copy of each one's front. [filling] while a job is out; the
+    // worker marks it done in [doneJob].
     // A job is never left out: once the worker stops, as the overlay goes, it lets it go, and the
     // frame loop fills the plumes itself.
     private val jobs = Channel<Unit>(Channel.CONFLATED)
     private var working = false
     private var filling = false
     private var job = 0
-    private var jobTime = 0f
     private var jobDensity = 1f
     @Volatile private var doneJob = 0
     private val jobPlumes = mutableListOf<SmokePlume>()
@@ -288,25 +290,47 @@ public class SmokeState internal constructor() {
     // ---- The finger's drag, from a row or a scripted fingertip.
 
     /**
-     * A finger has started to swipe row [key] to [side], as [SmokeRow] calls it once a drag has
-     * gone far enough across, or as a scripted fingertip does. Returns whether that way does
-     * anything: not while the row is burning, reforming, keeping its smoke for an undo, or waiting
-     * its turn in a wave, which it can't be taken out of.
+     * A finger has started to swipe row [key] to [side], [at] px across the row from its left edge
+     * (if known), as [SmokeRow] calls it once a drag has gone far enough across, or as a scripted
+     * fingertip does. Returns whether that way does anything: not while the row is burning,
+     * reforming, keeping its smoke for an undo, or waiting its turn in a wave, which it can't be
+     * taken out of. A row let go short whose smoke is still going back in can be taken again the
+     * same way: its smoke carries on from where it is.
      */
-    public fun dragStart(key: Any, side: SmokeSide): Boolean {
+    public fun dragStart(key: Any, side: SmokeSide, at: Float = Float.NaN): Boolean {
         val row = rows[key] ?: return false
-        if (!row.present || busy(row) || isWaiting(key)) return false
+        if (!row.present || isWaiting(key)) return false
         val action = row.actionFor(side) ?: return false
-        val plume = start(row, action, side)
+        val back = plumes[key]
+        val plume =
+            if (
+                back != null &&
+                    back.phase == PlumePhase.Returning &&
+                    back.row === row &&
+                    back.material == action.material &&
+                    back.front.fromRight == burnsFromRight(row, side)
+            ) {
+                back.action = action
+                back
+            } else {
+                if (busy(row)) return false
+                start(row, action, side)
+            }
         plume.phase = PlumePhase.Held
+        plume.dragged = 0f
+        plume.velocity = 0f
+        plume.armed = false
+        plume.heldAt = at
         row.dragging = true
+        awake = true
         return true
     }
 
     /**
      * The finger on row [key] is [dx] px across from where its swipe started (negative is left),
-     * moving [velocity] px a second. The row burns this far, times [SmokeDimens.Pull], from the
-     * edge it burns from, and only ever onwards.
+     * moving [velocity] px a second. The row burns from its edge to under the finger, and back as
+     * the finger goes back: the columns it uncovers are wound back, their smoke flowing down into
+     * the row behind it, and come back as it lands.
      */
     public fun dragTo(key: Any, dx: Float, velocity: Float) {
         val plume = plumes[key] ?: return
@@ -318,16 +342,18 @@ public class SmokeState internal constructor() {
 
     /**
      * The finger lets go of row [key], moving [velocity] px a second across. Once a third of the
-     * row has burnt, or flung its way, the row burns the rest of the way; short of it, the smoke is
-     * drawn back in and the row is whole again.
+     * row has burnt, or flung its way, the row burns the rest of the way; short of it, or flung
+     * back, the smoke is drawn back in and the row is whole again.
      */
     public fun release(key: Any, velocity: Float) {
         val row = rows[key]
         row?.dragging = false
         val plume = plumes[key] ?: return
         if (plume.phase != PlumePhase.Held) return
-        val flung = velocity * plume.travel > SmokeDimens.FlingSpeed * density
-        if (plume.front.burnt > SmokeDimens.Commit || flung) {
+        val onwards = velocity * plume.travel
+        val flung = onwards > SmokeDimens.FlingSpeed * density
+        val flungBack = onwards < -SmokeDimens.FlingSpeed * density
+        if (flung || (plume.armed && !flungBack)) {
             plume.phase = PlumePhase.Burning
             plume.speed = maxOf(SmokeDimens.AutoSpeed * 0.8f, abs(velocity) / density * 0.8f)
             onCommitted()
@@ -338,12 +364,11 @@ public class SmokeState internal constructor() {
         awake = true
     }
 
-    // Draws [plume]'s smoke back into its row, short of the commit point, and the row is whole.
+    // Draws [plume]'s smoke back into its row, short of the commit point: the front goes back to
+    // the edge, and the row is whole once the last of its smoke has landed.
     private fun drawBack(plume: SmokePlume) {
-        plume.phase = PlumePhase.Reforming
-        plume.reformAt = now
-        plume.reformSeconds = SmokeDimens.ReformShort
-        plume.reform = 0f
+        plume.phase = PlumePhase.Returning
+        plume.front.moveTo(0f, now, 0f)
         sound.play(Sound.Inhale, SmokeDimens.ShortInhaleVolume, SmokeDimens.ShortInhaleRate)
     }
 
@@ -366,10 +391,7 @@ public class SmokeState internal constructor() {
     // ready. Their columns' crossing times are already stamped, so they come in where they should.
     private fun start(row: SmokeRowState, action: SmokeAction, side: SmokeSide): SmokePlume {
         val bounds = boundsOf(row.key)
-        // The way it goes on the screen: toward the start is to the left, unless the row is laid
-        // out right to left.
-        val toLeft = (side == SmokeSide.Start) != row.rtl
-        val plume = SmokePlume(row.key, action.material, fromRight = toLeft)
+        val plume = SmokePlume(row.key, action.material, burnsFromRight(row, side))
         plume.action = action
         plume.row = row
         if (bounds != null) {
@@ -427,6 +449,11 @@ public class SmokeState internal constructor() {
         awake = true
         return plume
     }
+
+    // Whether [row] swiped to [side] burns from its right edge: it goes to the left, toward its
+    // start, unless it is laid out right to left.
+    private fun burnsFromRight(row: SmokeRowState, side: SmokeSide): Boolean =
+        (side == SmokeSide.Start) != row.rtl
 
     // A drawing of [layer] to sample: the row's own, or, for a row too big to draw into one
     // bitmap whole, a smaller copy of it, sampled the same way and scaled back up.
@@ -496,15 +523,29 @@ public class SmokeState internal constructor() {
                         continue
                     }
                     val width = plume.width.coerceAtLeast(1f)
-                    val target = (SmokeDimens.Pull * plume.dragged / width).coerceIn(0f, 1f)
-                    burnTo(plume, target, dt)
-                    if (!plume.armed && plume.front.burnt > SmokeDimens.Commit) {
+                    val target = frontUnder(plume.dragged / width, plume.grip)
+                    // The row may move under the finger: smoke going back in follows it there.
+                    if (!burnTo(plume, target, dt)) track(plume)
+                    // A tick as the front passes the commit point, either way; going back, only
+                    // once it is a little short of it.
+                    val burnt = plume.front.burnt
+                    if (!plume.armed && burnt > SmokeDimens.Commit) {
                         plume.armed = true
+                        onThreshold()
+                    } else if (plume.armed && burnt < SmokeDimens.Commit - SmokeDimens.CommitBand) {
+                        plume.armed = false
                         onThreshold()
                     }
                     if (plume.material == SmokeMaterial.Smoke) {
-                        val pace = abs(plume.velocity) / density / SmokeDimens.AutoTop
-                        burning += SmokeDimens.HoldVolume + pace.coerceAtMost(1f) * 0.6f
+                        // The loop follows the burning: a hiss for a finger that holds still, and
+                        // next to nothing as it draws the front back.
+                        val onwards = plume.velocity * plume.travel / density
+                        burning +=
+                            if (onwards < -SmokeDimens.BackPace) SmokeDimens.ScrubVolume
+                            else {
+                                val pace = (onwards / SmokeDimens.AutoTop).coerceIn(0f, 1f)
+                                SmokeDimens.HoldVolume + pace * 0.6f
+                            }
                     }
                     moving = true
                 }
@@ -557,11 +598,17 @@ public class SmokeState internal constructor() {
                     }
                     moving = true
                 }
+                PlumePhase.Returning -> {
+                    track(plume)
+                    if (plume.front.wholeAt(now)) removePlume(plume)
+                    moving = true
+                }
             }
             val changing =
                 plume.phase == PlumePhase.Held ||
                     plume.phase == PlumePhase.Burning ||
-                    plume.phase == PlumePhase.Reforming
+                    plume.phase == PlumePhase.Reforming ||
+                    plume.phase == PlumePhase.Returning
             if (changing || plume.phase != was) redraw(row)
         }
         for (i in rowList.indices) {
@@ -588,10 +635,11 @@ public class SmokeState internal constructor() {
         }
     }
 
-    // Burns [plume]'s front on to [to] of its row, stamping the columns it crosses with where the
-    // row is now and what of it shows, so their smoke leaves from there.
-    private fun burnTo(plume: SmokePlume, to: Float, dt: Float) {
-        if (minOf(to, 1f) <= plume.front.burnt) return
+    // Moves [plume]'s front to [to] of its row, on or back, stamping the columns it crosses with
+    // where the row is now and what of it shows, so their smoke leaves from there. Returns whether
+    // it moved, and so found where the row is.
+    private fun burnTo(plume: SmokePlume, to: Float, dt: Float): Boolean {
+        if (to.coerceIn(0f, 1f) == plume.front.burnt) return false
         var top = Float.NEGATIVE_INFINITY
         var bottom = Float.POSITIVE_INFINITY
         if (track(plume)) {
@@ -600,7 +648,7 @@ public class SmokeState internal constructor() {
             top = shown.top - plume.atY
             bottom = shown.bottom - plume.atY
         }
-        plume.front.advanceTo(
+        plume.front.moveTo(
             to,
             now,
             dt,
@@ -609,6 +657,7 @@ public class SmokeState internal constructor() {
             shownTop = top,
             shownBottom = bottom,
         )
+        return true
     }
 
     // Finds where [plume]'s row is now in the overlay, and its size; returns whether both are laid
@@ -641,7 +690,8 @@ public class SmokeState internal constructor() {
             for (i in drawn.indices) {
                 val plume = drawn[i]
                 val reform = plume.reformProgress
-                painter.fill(plume, plume.spare, now, reform, plume.reformAt, density)
+                takeColumns(plume, reform)
+                painter.fill(plume, plume.spare, reform, density)
                 swap(plume, reform)
             }
             return
@@ -655,8 +705,11 @@ public class SmokeState internal constructor() {
         jobPlumes.clear()
         for (i in drawn.indices) jobPlumes += drawn[i]
         if (jobReforms.size < jobPlumes.size) jobReforms = FloatArray(jobPlumes.size * 2)
-        for (i in jobPlumes.indices) jobReforms[i] = jobPlumes[i].reformProgress
-        jobTime = now
+        for (i in jobPlumes.indices) {
+            val plume = jobPlumes[i]
+            jobReforms[i] = plume.reformProgress
+            takeColumns(plume, jobReforms[i])
+        }
         jobDensity = density
         job++
         filling = true
@@ -676,14 +729,7 @@ public class SmokeState internal constructor() {
                     val mine = job
                     for (i in jobPlumes.indices) {
                         val plume = jobPlumes[i]
-                        painter.fill(
-                            plume,
-                            plume.spare,
-                            jobTime,
-                            jobReforms[i],
-                            plume.reformAt,
-                            jobDensity,
-                        )
+                        painter.fill(plume, plume.spare, jobReforms[i], jobDensity)
                     }
                     doneJob = mine
                 }
@@ -692,6 +738,12 @@ public class SmokeState internal constructor() {
             working = false
             filling = false
         }
+    }
+
+    // Copies [plume]'s front for its particles to be filled from: its columns' ages now, or, while
+    // an undo breathes it back in ([reform] from 0), as they were when that began.
+    private fun takeColumns(plume: SmokePlume, reform: Float) {
+        plume.columns.take(plume.front, if (reform >= 0f) plume.reformAt else now, now)
     }
 
     private fun swap(plume: SmokePlume, reform: Float) {
@@ -797,6 +849,19 @@ internal class SmokeRowState(val key: Any, present: Boolean) {
         heightSpeed = v
         return true
     }
+}
+
+/**
+ * How far a row has burnt, from the edge it burns from, under a finger that has gone [travel] of
+ * its width since it took hold [grip] of its width in from that edge: the front starts at the edge
+ * and runs ahead at first, to meet the finger by the time it has gone [SmokeDimens.CatchUp] as far
+ * again, and from then on stays right under it, back as well as on. All in fractions of the row's
+ * width.
+ */
+internal fun frontUnder(travel: Float, grip: Float): Float {
+    val on = travel.coerceAtLeast(0f)
+    val catchUp = if (grip > 0f) grip * smoothstep(0f, grip * SmokeDimens.CatchUp, on) else 0f
+    return (on + catchUp).coerceIn(0f, 1f)
 }
 
 /**

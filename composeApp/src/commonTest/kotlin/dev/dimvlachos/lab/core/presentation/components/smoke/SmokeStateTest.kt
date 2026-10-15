@@ -50,7 +50,7 @@ class SmokeStateTest {
     fun shortOfAThirdTheSmokeIsDrawnBackIn() {
         val smoke = state()
         smoke.swipe(dx = -60f)
-        assertEquals(PlumePhase.Reforming, smoke.plumeOf("a")!!.phase)
+        assertEquals(PlumePhase.Returning, smoke.plumeOf("a")!!.phase)
         smoke.run(1f)
         assertNull(smoke.plumeOf("a"), "the row must be whole again")
         assertEquals(0, deleted)
@@ -61,7 +61,7 @@ class SmokeStateTest {
     @Test
     fun pastAThirdItBurnsAwayCallsBackOnceAndCloses() {
         val smoke = state()
-        smoke.swipe(dx = -90f)
+        smoke.swipe(dx = -120f)
         assertEquals(1, ticks, "a tick as the drag passes the commit point")
         smoke.run(1.5f)
         assertEquals(1, deleted)
@@ -196,7 +196,7 @@ class SmokeStateTest {
         smoke.advance(1 / 60f)
         smoke.rows["a"]!!.present = false
         smoke.advance(1 / 60f)
-        assertEquals(PlumePhase.Reforming, smoke.plumeOf("a")!!.phase)
+        assertEquals(PlumePhase.Returning, smoke.plumeOf("a")!!.phase)
         assertFalse(smoke.rows["a"]!!.dragging)
         // The finger's drag and lift that follow do nothing.
         smoke.dragTo("a", -300f, 0f)
@@ -255,13 +255,16 @@ class SmokeStateTest {
     // A burn loop that says whether it is still playing.
     private class Loops : SoundPlayer {
         var playing = 0
+        var volume = 0f
 
         override fun play(sound: Sound, volume: Float, rate: Float) = Unit
 
         override fun loop(sound: Sound, volume: Float): SoundLoop {
             playing++
             return object : SoundLoop {
-                override fun setVolume(volume: Float) = Unit
+                override fun setVolume(volume: Float) {
+                    this@Loops.volume = volume
+                }
 
                 override fun stop() {
                     playing--
@@ -284,5 +287,184 @@ class SmokeStateTest {
         assertEquals(1, loops.playing, "it starts again with the burn")
         smoke.clear()
         assertEquals(0, loops.playing, "the overlay went")
+    }
+
+    // Takes hold of row "a", 300 px wide, [at] px from its left edge, to [side].
+    private fun SmokeState.hold(side: SmokeSide = SmokeSide.Start, at: Float = Float.NaN) {
+        assertTrue(dragStart("a", side, at))
+        plumeOf("a")!!.width = 300f
+    }
+
+    // Drags the finger on row "a" to [dx] px from where it took hold, over a frame.
+    private fun SmokeState.drag(dx: Float, velocity: Float = 0f) {
+        dragTo("a", dx, velocity)
+        advance(1 / 60f)
+    }
+
+    @Test
+    fun theFrontStaysRightUnderTheFinger() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-90f)
+        assertEquals(0.3f, smoke.plumeOf("a")!!.front.burnt, 1e-5f, "one to one, no lead")
+        smoke.drag(-150f)
+        assertEquals(0.5f, smoke.plumeOf("a")!!.front.burnt, 1e-5f)
+    }
+
+    @Test
+    fun aFingerTakingHoldInsideTheRowIsCaughtUpWithThenFollowed() {
+        val smoke = state()
+        // 60 px in from the right edge, the one a left swipe burns from.
+        smoke.hold(at = 240f)
+        smoke.drag(-15f)
+        val front = smoke.plumeOf("a")!!.front
+        assertTrue(front.burnt > 0.1f && front.burnt < 0.3f, "catching up: ${front.burnt}")
+        // Once the finger has gone half as far again, the front is right under it, on and back.
+        for (dx in floatArrayOf(-60f, -150f, -100f, -70f)) {
+            smoke.drag(dx)
+            assertEquals((60f - dx) / 300f, front.burnt, 1e-5f, "finger $dx px across")
+        }
+        // Back where it took hold, nothing is burning.
+        smoke.drag(0f)
+        assertEquals(0f, front.burnt)
+    }
+
+    @Test
+    fun drawingTheFingerBackBringsTheRowBackAsItsSmokeLands() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-150f)
+        smoke.run(0.5f)
+        smoke.drag(-30f)
+        val plume = smoke.plumeOf("a")!!
+        val front = plume.front
+        assertEquals(PlumePhase.Held, plume.phase, "still the finger's")
+        assertEquals(0.1f, front.burnt, 1e-5f)
+        // The smoke is flowing back down: the row is still cut behind the finger.
+        assertTrue(front.shownFrom(smoke.now) > 0.4f)
+        smoke.run(SmokeDimens.RewindMost + 0.05f)
+        assertEquals(0.1f, front.shownFrom(smoke.now), 1e-5f, "landed, the row is back")
+        for (c in 0 until SmokeDimens.Columns) {
+            val burning = (SmokeDimens.Columns - c - 0.5f) / SmokeDimens.Columns < 0.1f
+            assertEquals(burning, front.burning(c), "column $c")
+        }
+    }
+
+    @Test
+    fun scrubbingManyTimesThenLettingGoShortBringsItAllBack() {
+        val smoke = state()
+        smoke.hold()
+        repeat(60) {
+            smoke.drag(-180f)
+            smoke.run(0.1f)
+            smoke.drag(-20f)
+            smoke.run(0.1f)
+        }
+        smoke.drag(-60f)
+        smoke.release("a", 0f)
+        assertEquals(PlumePhase.Returning, smoke.plumeOf("a")!!.phase)
+        smoke.run(SmokeDimens.RewindMost + 0.1f)
+        assertNull(smoke.plumeOf("a"), "the row must be whole again")
+        assertEquals(0, deleted)
+        smoke.run(SmokeMotion.longestLife)
+        assertFalse(smoke.awake, "the frame loop sleeps again")
+    }
+
+    @Test
+    fun theTickComesEachWayPastTheCommitPointButNotWhileHoveringThere() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-105f) // 0.35
+        assertEquals(1, ticks)
+        // Hovering just either side of a third: no more ticks, and it stays armed.
+        for (dx in floatArrayOf(-97f, -102f, -95f, -104f, -96f)) smoke.drag(dx)
+        assertEquals(1, ticks)
+        // Back well short of it: a tick, and a release now would draw it back in.
+        smoke.drag(-80f)
+        assertEquals(2, ticks)
+        smoke.drag(-110f)
+        assertEquals(3, ticks)
+        // Let go hovering just short of a third, once past it: it burns, as the tick said.
+        smoke.drag(-97f)
+        smoke.release("a", 0f)
+        assertEquals(PlumePhase.Burning, smoke.plumeOf("a")!!.phase)
+    }
+
+    @Test
+    fun letGoAfterComingBackShortOfAThirdItIsDrawnBackIn() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-200f)
+        smoke.drag(-60f)
+        smoke.release("a", 0f)
+        assertEquals(PlumePhase.Returning, smoke.plumeOf("a")!!.phase)
+        smoke.run(1f)
+        assertNull(smoke.plumeOf("a"))
+        assertEquals(0, deleted)
+    }
+
+    @Test
+    fun flungBackPastAThirdItIsDrawnBackIn() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-200f)
+        smoke.release("a", 3_000f)
+        assertEquals(PlumePhase.Returning, smoke.plumeOf("a")!!.phase)
+    }
+
+    @Test
+    fun theArchiveAndARightToLeftRowScrubTheSameWay() {
+        val smoke = state()
+        smoke.hold(SmokeSide.End)
+        smoke.drag(150f)
+        smoke.run(0.5f)
+        val front = smoke.plumeOf("a")!!.front
+        assertFalse(front.fromRight)
+        assertEquals(0.5f, front.burnt, 1e-5f)
+        smoke.drag(30f)
+        assertEquals(0.1f, front.burnt, 1e-5f)
+        assertTrue(front.shownFrom(smoke.now) > 0.4f)
+        smoke.release("a", 0f)
+        smoke.run(1f)
+        assertNull(smoke.plumeOf("a"))
+        assertEquals(0, archived)
+
+        val rtl = state()
+        rtl.rows["a"]!!.rtl = true
+        rtl.hold(SmokeSide.Start)
+        rtl.drag(150f)
+        val mirrored = rtl.plumeOf("a")!!.front
+        assertFalse(mirrored.fromRight, "a right-to-left delete burns from the left edge")
+        assertEquals(0.5f, mirrored.burnt, 1e-5f)
+        rtl.drag(30f)
+        assertEquals(0.1f, mirrored.burnt, 1e-5f)
+    }
+
+    @Test
+    fun aRowLetGoShortCanBeTakenAgainAndItsSmokeCarriesOn() {
+        val smoke = state()
+        smoke.hold()
+        smoke.drag(-90f)
+        smoke.run(0.5f)
+        smoke.release("a", 0f)
+        val plume = smoke.plumeOf("a")!!
+        smoke.advance(1 / 60f)
+        assertTrue(smoke.dragStart("a", SmokeSide.Start))
+        assertTrue(smoke.plumeOf("a") === plume, "the same smoke, still in the air")
+        assertEquals(PlumePhase.Held, plume.phase)
+        assertFalse(smoke.dragStart("a", SmokeSide.End), "not the other way while it holds")
+    }
+
+    @Test
+    fun theBurnLoopAllButFallsSilentAsTheFingerDrawsTheFrontBack() {
+        val loops = Loops()
+        val smoke = state().apply { sound = loops }
+        smoke.hold()
+        smoke.drag(-150f, velocity = -800f)
+        val burning = loops.volume
+        assertTrue(burning > SmokeDimens.HoldVolume * SmokeDimens.LoopVolume)
+        smoke.drag(-60f, velocity = 800f)
+        assertTrue(loops.volume < burning / 4f, "drawn back, it hushes: ${loops.volume}")
+        assertEquals(1, loops.playing)
     }
 }

@@ -89,17 +89,25 @@ internal object SmokeDimens {
     const val AutoTop = 1_150f
     const val FlingSpeed = 650f
 
-    // A swipe burns the row this many times as far as the finger has moved, and starts once the
-    // finger has gone Slop across, and more across than up. Let go past Commit of the row, it
-    // burns the rest of the way; short of it, the smoke is drawn back in, over ReformShort.
-    const val Pull = 1.35f
+    // A swipe starts once the finger has gone Slop across, and more across than up, and burns the
+    // row to under the finger. Let go past Commit of the row, it burns the rest of the way; short
+    // of it, the smoke is drawn back in. Past it, the finger must come back CommitBand short of it
+    // before letting go draws the smoke back in, so a finger hovering there doesn't tick and tick.
     val Slop = 7.dp
     const val Commit = 1f / 3f
-    const val ReformShort = 0.52f
+    const val CommitBand = 0.03f
+
+    // A finger that takes hold inside the row has the front meet it by the time it has gone this
+    // share of the way it took hold in from the edge; from then on the front is right under it.
+    const val CatchUp = 0.5f
+
+    // A column the front is drawn back off winds its smoke back at least RewindRate times as fast
+    // as it rose, and lands it within RewindMost seconds, however old it was.
+    const val RewindRate = 2.5f
+    const val RewindMost = 0.45f
 
     // Undo breathes the smoke back over ReformUndo, starting ReformDelay after the row has begun
-    // to open again. Reforming starts a particle that had already faded from ReformFrom of its
-    // life.
+    // to open again. Undo starts a particle that had already faded from ReformFrom of its life.
     const val ReformUndo = 1.15f
     const val ReformDelay = 0.38f
     const val ReformFrom = 0.5f
@@ -150,12 +158,15 @@ internal object SmokeDimens {
     const val HeightStep = 1f / 120f
 
     // The burn loop's volume follows how fast the rows are burning, this loud at AutoTop, with a
-    // little hiss for a finger on a row that isn't moving.
+    // little hiss for a finger on a row that isn't moving, and next to nothing for one drawing the
+    // front back faster than BackPace.
     const val LoopVolume = 0.9f
     const val HoldVolume = 0.12f
+    const val ScrubVolume = 0.02f
+    const val BackPace = 40f
 
     // The burn loop stops this long after the last row stops burning. The mist's whoosh and the
-    // undo's inhale play this loud; a smoke drawn back in short of the commit inhales quieter and
+    // undo's inhale play this loud; smoke drawn back in short of the commit inhales quieter and
     // quicker, and a wave of rows coming back breathes once in this long, not once each.
     const val LoopTail = 0.3f
     const val MistVolume = 0.8f

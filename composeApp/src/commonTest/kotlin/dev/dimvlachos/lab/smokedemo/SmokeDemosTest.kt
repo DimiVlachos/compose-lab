@@ -4,6 +4,7 @@ package dev.dimvlachos.lab.smokedemo
 
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.core.presentation.components.smoke.SmokeDimens
+import dev.dimvlachos.lab.core.presentation.components.smoke.frontUnder
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,9 +26,11 @@ class SmokeDemosTest {
 
     @Test
     fun theBurnsGoPastAThirdAndTheShortSwipeDoesnt() {
-        assertTrue(abs(SmokeDemos.Burn) * SmokeDimens.Pull > SmokeDimens.Commit)
-        assertTrue(abs(SmokeDemos.Archive) * SmokeDimens.Pull > SmokeDimens.Commit)
-        assertTrue(abs(SmokeDemos.Short) * SmokeDimens.Pull < SmokeDimens.Commit)
+        // The scripted finger takes hold 40 dp in from the edge, an eighth of a narrow phone's row.
+        val grip = 0.125f
+        assertTrue(frontUnder(abs(SmokeDemos.Burn), grip) > SmokeDimens.Commit)
+        assertTrue(frontUnder(abs(SmokeDemos.Archive), grip) > SmokeDimens.Commit)
+        assertTrue(frontUnder(abs(SmokeDemos.Short), grip) < SmokeDimens.Commit)
     }
 
     @Test

@@ -61,9 +61,11 @@ import kotlin.math.sin
  * A row of a [SmokeOverlay]'s list, known by [key], that can be swiped away: toward its start (to
  * the left, or to the right in a right-to-left layout) it goes as [start] says, burning from its
  * end edge, and toward its end as [end] says, from its start edge; a side with no action doesn't
- * swipe. The row is cut at the front as it burns, along a ragged, flickering edge, and once it is
- * all smoke its height springs to nothing. With less than a third burnt, let go, the smoke is drawn
- * back in and the row is whole again.
+ * swipe. The row is cut at the front as it burns, along a ragged, flickering edge that stays under
+ * the finger, back as well as on: drawn back, the smoke flows down into the row behind it and the
+ * row comes back as it lands. Let go past a third, or flung, it burns the rest of the way, and once
+ * it is all smoke its height springs to nothing; let go short of it, the smoke is drawn back in and
+ * the row is whole again.
  *
  * The row stands while it is [present] and closes up when it isn't, and opens again when it comes
  * back: as its [start] or [end] action runs, the caller takes it out, and an undo puts it back (and
@@ -214,7 +216,7 @@ private suspend fun PointerInputScope.swipes(
                     if (change.isConsumed) break
                     if (abs(dx) > slop && abs(dx) > abs(dy) * 1.2f) {
                         val side = state.rows[key]?.sideOf(dx) ?: break
-                        if (!state.dragStart(key, side)) break
+                        if (!state.dragStart(key, side, at = change.position.x)) break
                         holding = true
                         startX = change.position.x
                         change.consume()
@@ -252,9 +254,19 @@ internal class EdgePainter {
         val width = size.width
         val height = size.height
         val front = plume.front
+        // Where the row is cut, from the edge it burns from: at the front, or behind it where the
+        // front has been drawn back and the smoke is still landing.
+        val shown = front.shownFrom(now)
+        val cut = (if (front.fromRight) 1f - shown else shown) * width
         when (plume.phase) {
             PlumePhase.Burnt,
             PlumePhase.Waiting -> return
+            PlumePhase.Returning -> {
+                // Let go short: the row comes back as its smoke lands, with no fire at its edge.
+                if (front.fromRight) clipRect(right = cut) { drawLayer(layer) }
+                else clipRect(left = cut) { drawLayer(layer) }
+                return
+            }
             PlumePhase.Reforming -> {
                 // The row comes back in the last of the reforming, as its smoke arrives, from the
                 // side that never burnt.
@@ -271,11 +283,11 @@ internal class EdgePainter {
             PlumePhase.Held,
             PlumePhase.Burning -> Unit
         }
-        if (front.burnt <= 0f) {
+        if (shown <= 0f) {
             drawLayer(layer)
             return
         }
-        val at = front.edge * width
+        val at = cut
         val ragged = SmokeDimens.Ragged.toPx()
         val seed = (plume.hashCode() and 1023) / 1023f
         val t = now * (1f + seed * 0.3f)

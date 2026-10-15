@@ -12,8 +12,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object SmokeDemos {
-    // Swipes in the row's widths: two that burn well past a third of the row (a swipe burns
-    // SmokeDimens.Pull times as far as the finger goes), and one that burns short of it.
+    // Swipes in the row's widths: two that burn well past a third of the row (the front stays
+    // under the finger), and one that burns short of it.
     const val Burn = -0.62f
     const val Short = -0.18f
     const val Archive = 0.62f

@@ -620,7 +620,8 @@ private class ChatFinger {
                 Offset(if (left) bounds.right - inset else bounds.left + inset, bounds.center.y)
             at = start
             alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
-            holding = smoke.dragStart(id, if (by < 0f) SmokeSide.Start else SmokeSide.End)
+            val side = if (by < 0f) SmokeSide.Start else SmokeSide.End
+            holding = smoke.dragStart(id, side, at = start.x - bounds.left)
             if (!holding) return
             animate(
                 0f,

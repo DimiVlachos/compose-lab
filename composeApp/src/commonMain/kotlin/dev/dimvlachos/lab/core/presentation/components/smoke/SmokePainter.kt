@@ -46,19 +46,13 @@ internal class SmokePainter {
     private val scratch = FloatArray(2)
 
     /**
-     * Sorts [plume]'s particles at [now] into [batches], at [density] px per dp, [reform] of the
-     * way back in since [reformAt] (or -1). It reads only the plume's particles and its front's
-     * crossing times, so it can run off the main thread while the last frame's batches are drawn,
-     * one plume after another: never two at once, as they share their scratch.
+     * Sorts [plume]'s particles into [batches], at [density] px per dp, [reform] of the way back in
+     * as an undo breathes them (or -1). It reads only the plume's particles and the copy of its
+     * front's columns taken for this frame ([SmokePlume.columns]), so it can run off the main
+     * thread while the last frame's batches are drawn, one plume after another: never two at once,
+     * as they share their scratch.
      */
-    fun fill(
-        plume: SmokePlume,
-        batches: PlumeBatches,
-        now: Float,
-        reform: Float,
-        reformAt: Float,
-        density: Float,
-    ) {
+    fun fill(plume: SmokePlume, batches: PlumeBatches, reform: Float, density: Float) {
         val particles = plume.particles
         if (particles == null) {
             batches.clear(0)
@@ -66,28 +60,28 @@ internal class SmokePainter {
         }
         val colours = particles.palette.size
         batches.clear(colours)
-        val front = plume.front
+        val columns = plume.columns
         val material = plume.material
-        // Breathed back in, the smoke is eased over to where the row is now, at its size now.
-        val pull = if (reform >= 0f) smoothstep(0f, 1f, reform) else 0f
+        // Breathed back in, the smoke is eased over to where the row is now, at its size now; and
+        // so is a column's as it is wound back.
+        val undo = if (reform >= 0f) smoothstep(0f, 1f, reform) else 0f
         val sx = if (plume.width > 0f) plume.atWidth / plume.width else 1f
         val sy = if (plume.height > 0f) plume.atHeight / plume.height else 1f
         for (i in 0 until particles.count) {
             val column = particles.column[i].toInt()
-            val cross = front.crossing(column)
-            if (cross == BurnFront.Uncrossed) continue
+            val columnAge = columns.age[column]
+            if (columnAge == Float.NEGATIVE_INFINITY) continue
             val x = particles.x[i]
             val y = particles.y[i]
-            if (!front.showed(column, y)) continue
+            if (!columns.showed(column, y)) continue
             val seed = particles.seed[i]
             val ink = particles.isInk(i)
             val life = SmokeMotion.life(seed, ink, material)
-            val age =
-                SmokeMotion.ageAt(now, cross, SmokeMotion.jitter(seed), life, reform, reformAt)
-            if (age < 0f || age >= life) continue
+            val age = SmokeMotion.ageAt(columnAge, SmokeMotion.jitter(seed), life, reform)
+            if (age <= 0f || age >= life) continue
             // It left from where the row was as the front crossed its column.
-            val fromX = plume.originX + front.movedXOf(column) + x
-            val fromY = plume.originY + front.movedYOf(column) + y
+            val fromX = plume.originX + columns.movedX[column] + x
+            val fromY = plume.originY + columns.movedY[column] + y
             SmokeMotion.place(
                 fromX,
                 fromY,
@@ -101,6 +95,7 @@ internal class SmokePainter {
                 place,
                 scratch,
             )
+            val pull = maxOf(undo, smoothstep(0f, 1f, columns.woundBack[column]))
             if (pull > 0f) {
                 place[0] += (plume.atX + x * sx - fromX) * pull
                 place[1] += (plume.atY + y * sy - fromY) * pull

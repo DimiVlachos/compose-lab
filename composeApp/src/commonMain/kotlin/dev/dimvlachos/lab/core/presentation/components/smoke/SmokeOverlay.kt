@@ -36,11 +36,12 @@ import kotlinx.coroutines.flow.first
 /**
  * A list whose rows go up in smoke. Put [SmokeRow]s in [content], a scrolling column say, with the
  * same [state]: swipe a row toward its start (to the left, or to the right in a right-to-left
- * layout) and it burns from its end edge as the finger goes; once a third of it has burnt, let go
- * and it burns the rest of the way into fine smoke that curls up over the list, still carrying the
- * shapes of its words a moment, while the list closes under it; let go short of that and the smoke
- * is drawn back in. A row can go the other way too, in [SmokeMaterial.Mist], cooler and drifting
- * aside, for an archive say. Undo ([SmokeState.reform]) breathes the smoke back into its row.
+ * layout) and it burns from its end edge to under the finger, and as the finger goes back the smoke
+ * flows back down into the row behind it; once a third of it has burnt, let go and it burns the
+ * rest of the way into fine smoke that curls up over the list, still carrying the shapes of its
+ * words a moment, while the list closes under it; let go short of that and the smoke is drawn back
+ * in. A row can go the other way too, in [SmokeMaterial.Mist], cooler and drifting aside, for an
+ * archive say. Undo ([SmokeState.reform]) breathes the smoke back into its row.
  *
  * The smoke is a few thousand particles a row, each where a pixel of the row was: its path is a
  * pure function of where it started and how old it is, so nothing is simulated from frame to frame,
