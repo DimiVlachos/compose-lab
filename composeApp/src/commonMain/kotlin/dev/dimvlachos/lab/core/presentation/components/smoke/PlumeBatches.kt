@@ -48,12 +48,17 @@ internal class PlumeBatches {
     /**
      * Puts every point past a batch's count off the screen, so a batch can be drawn whole, as Skia
      * draws it, without copying it to its length. Only what the last fill left there is moved, so
-     * this costs next to nothing.
+     * this costs next to nothing. A batch that holds far fewer points than it has room for gives
+     * the room back, so drawing it whole never costs more than a few times its count.
      */
     fun seal() {
         for (b in counts.indices) {
             val count = counts[b]
-            if (count < sealed[b]) points[b].fill(OffScreen, count * 2, sealed[b] * 2)
+            val array = points[b]
+            if (array.size > InitialPoints * 2 && count * 2 * Shrink < array.size) {
+                val kept = maxOf(InitialPoints, count * 2) * 2
+                points[b] = array.copyOf(kept).apply { fill(OffScreen, count * 2) }
+            } else if (count < sealed[b]) array.fill(OffScreen, count * 2, sealed[b] * 2)
             sealed[b] = count
         }
     }
@@ -100,7 +105,12 @@ internal class PlumeBatches {
 
         private const val InitialPoints = 64
 
-        // Where a batch's unused points lie: far off any screen, where they draw nothing.
-        const val OffScreen = -100_000f
+        // A batch with room for this many times its points gives the room back.
+        private const val Shrink = 4
+
+        // Where a batch's unused points lie: just off the top left of the screen, where they draw
+        // nothing however large a point is drawn, and near enough that a batch drawn whole keeps
+        // bounds about the size of the screen.
+        const val OffScreen = -1_000f
     }
 }
