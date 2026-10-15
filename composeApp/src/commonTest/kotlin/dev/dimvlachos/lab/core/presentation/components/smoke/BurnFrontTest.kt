@@ -55,4 +55,21 @@ class BurnFrontTest {
         assertEquals(stamped, front.crossing(SmokeDimens.Columns - 1))
         assertEquals(3f, front.lastCross)
     }
+
+    @Test
+    fun eachColumnKeepsWhereTheRowWasAndWhatShowedAsItWasCrossed() {
+        val front = BurnFront(fromRight = false)
+        front.advanceTo(0.25f, now = 1f, seconds = 0.1f, shownTop = 10f, shownBottom = 50f)
+        // The list scrolls the row up 30 px, all of it showing, and the front burns on.
+        front.advanceTo(0.5f, now = 2f, seconds = 0.1f, movedY = -30f)
+        val first = 0
+        val later = SmokeDimens.Columns * 3 / 8
+        assertEquals(0f, front.movedYOf(first))
+        assertEquals(-30f, front.movedYOf(later))
+        assertTrue(!front.showed(first, 5f) && front.showed(first, 20f))
+        assertTrue(front.showed(later, 5f))
+        // Burnt again, nothing already crossed is stamped anew.
+        front.advanceTo(0.75f, now = 3f, seconds = 0.1f, movedY = -90f)
+        assertEquals(-30f, front.movedYOf(later))
+    }
 }

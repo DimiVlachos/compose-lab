@@ -313,6 +313,10 @@ public class SmokeState internal constructor() {
             plume.originY = bounds.top
             plume.width = bounds.width
             plume.height = bounds.height
+            plume.atX = bounds.left
+            plume.atY = bounds.top
+            plume.atWidth = bounds.width
+            plume.atHeight = bounds.height
         }
         plumes[row.key] = plume
         val layer = row.layer
@@ -383,7 +387,7 @@ public class SmokeState internal constructor() {
                 PlumePhase.Held -> {
                     val width = plume.width.coerceAtLeast(1f)
                     val target = (SmokeDimens.Pull * plume.dragged / width).coerceIn(0f, 1f)
-                    plume.front.advanceTo(target, now, dt)
+                    burnTo(plume, target, dt)
                     if (!plume.armed && plume.front.burnt > SmokeDimens.Commit) {
                         plume.armed = true
                         onThreshold()
@@ -399,7 +403,7 @@ public class SmokeState internal constructor() {
                         (plume.speed + SmokeDimens.AutoGain * dt).coerceAtMost(SmokeDimens.AutoTop)
                     val width = plume.width.coerceAtLeast(1f)
                     val step = plume.speed * density * dt / width
-                    plume.front.advanceTo(plume.front.burnt + step, now, dt)
+                    burnTo(plume, plume.front.burnt + step, dt)
                     if (plume.material == SmokeMaterial.Smoke) {
                         burning += plume.speed / SmokeDimens.AutoTop
                     }
@@ -420,13 +424,10 @@ public class SmokeState internal constructor() {
                     }
                 }
                 PlumePhase.Waiting -> {
+                    // The row may have moved while it was away: the smoke comes back to where it
+                    // is now, eased there as it is breathed in.
+                    track(plume)
                     if (now >= plume.reformAt) {
-                        // The row may have moved while it was away: the smoke comes back to where
-                        // it is now.
-                        boundsOf(key)?.let {
-                            plume.originX = it.left
-                            plume.originY = it.top
-                        }
                         plume.phase = PlumePhase.Reforming
                         plume.reform = 0f
                         // One breath for a wave of rows coming back, not one each.
@@ -438,6 +439,7 @@ public class SmokeState internal constructor() {
                     moving = true
                 }
                 PlumePhase.Reforming -> {
+                    track(plume)
                     plume.reform = ((now - plume.reformAt) / plume.reformSeconds).coerceIn(0f, 1f)
                     if (plume.reform >= 1f) {
                         plumes.remove(key)
@@ -462,6 +464,44 @@ public class SmokeState internal constructor() {
             awake = false
             quiet()
         }
+    }
+
+    // Burns [plume]'s front on to [to] of its row, stamping the columns it crosses with where the
+    // row is now and what of it shows, so their smoke leaves from there.
+    private fun burnTo(plume: SmokePlume, to: Float, dt: Float) {
+        if (minOf(to, 1f) <= plume.front.burnt) return
+        var top = Float.NEGATIVE_INFINITY
+        var bottom = Float.POSITIVE_INFINITY
+        if (track(plume)) {
+            // What of the row shows in the overlay, clipped by the list it scrolls in.
+            val shown = overlay!!.localBoundingBoxOf(plume.row!!.coordinates!!, clipBounds = true)
+            top = shown.top - plume.atY
+            bottom = shown.bottom - plume.atY
+        }
+        plume.front.advanceTo(
+            to,
+            now,
+            dt,
+            movedX = plume.atX - plume.originX,
+            movedY = plume.atY - plume.originY,
+            shownTop = top,
+            shownBottom = bottom,
+        )
+    }
+
+    // Finds where [plume]'s row is now in the overlay, and its size; returns whether both are laid
+    // out, else the plume keeps where the row was last.
+    private fun track(plume: SmokePlume): Boolean {
+        val coordinates = plume.row?.coordinates ?: return false
+        val overlay = overlay ?: return false
+        if (!coordinates.isAttached || !overlay.isAttached) return false
+        val at = overlay.localPositionOf(coordinates, Offset.Zero)
+        val size = coordinates.size
+        plume.atX = at.x
+        plume.atY = at.y
+        plume.atWidth = size.width.toFloat()
+        plume.atHeight = size.height.toFloat()
+        return true
     }
 
     // Works out where the particles in the air are now, into each plume's spare batches, and

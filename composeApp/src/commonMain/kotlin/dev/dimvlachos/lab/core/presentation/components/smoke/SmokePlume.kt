@@ -19,8 +19,10 @@ internal enum class PlumePhase {
 
 /**
  * One row going up in [material]: its burn [front], its particles once the row has been sampled,
- * and where in the smoke's overlay the row lay ([originX], [originY], in px), which is where the
- * plume stays, whatever the list does under it.
+ * and where in the smoke's overlay the row lay as it began to burn ([originX], [originY], in px).
+ * Each column's smoke leaves from where the row was as the front crossed it, so the smoke stays on
+ * a row that moves as it burns, and once in the air stays there, whatever the list does under it;
+ * breathed back in, it comes back to where the row is now ([atX], [atY]), at its size now.
  */
 internal class SmokePlume(val material: SmokeMaterial, fromRight: Boolean) {
     val front = BurnFront(fromRight)
@@ -41,6 +43,12 @@ internal class SmokePlume(val material: SmokeMaterial, fromRight: Boolean) {
     /** The row's size in px when it was sampled. */
     var width = 0f
     var height = 0f
+
+    /** Where the row is now in the overlay, and its size, in px: followed while it is laid out. */
+    var atX = 0f
+    var atY = 0f
+    var atWidth = 0f
+    var atHeight = 0f
 
     var phase = PlumePhase.Held
 

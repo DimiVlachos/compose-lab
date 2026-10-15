@@ -67,18 +67,29 @@ internal class SmokePainter {
         batches.clear(colours)
         val front = plume.front
         val material = plume.material
+        // Breathed back in, the smoke is eased over to where the row is now, at its size now.
+        val pull = if (reform >= 0f) smoothstep(0f, 1f, reform) else 0f
+        val sx = if (plume.width > 0f) plume.atWidth / plume.width else 1f
+        val sy = if (plume.height > 0f) plume.atHeight / plume.height else 1f
         for (i in 0 until particles.count) {
-            val cross = front.crossing(particles.column[i].toInt())
+            val column = particles.column[i].toInt()
+            val cross = front.crossing(column)
             if (cross == BurnFront.Uncrossed) continue
+            val x = particles.x[i]
+            val y = particles.y[i]
+            if (!front.showed(column, y)) continue
             val seed = particles.seed[i]
             val ink = particles.isInk(i)
             val life = SmokeMotion.life(seed, ink, material)
             val age =
                 SmokeMotion.ageAt(now, cross, SmokeMotion.jitter(seed), life, reform, reformAt)
             if (age < 0f || age >= life) continue
+            // It left from where the row was as the front crossed its column.
+            val fromX = plume.originX + front.movedXOf(column) + x
+            val fromY = plume.originY + front.movedYOf(column) + y
             SmokeMotion.place(
-                plume.originX + particles.x[i],
-                plume.originY + particles.y[i],
+                fromX,
+                fromY,
                 seed,
                 ink,
                 age,
@@ -89,6 +100,10 @@ internal class SmokePainter {
                 place,
                 scratch,
             )
+            if (pull > 0f) {
+                place[0] += (plume.atX + x * sx - fromX) * pull
+                place[1] += (plume.atY + y * sy - fromY) * pull
+            }
             val band = PlumeBatches.bandOf(age / life)
             val batch =
                 if (SmokeMotion.isSpark(seed, ink, material)) PlumeBatches.sparks(colours, band)
