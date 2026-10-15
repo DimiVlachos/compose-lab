@@ -403,11 +403,11 @@ public class TypewriterState(text: String = "") {
 
     /**
      * Types [char] at the end of the text, and says whether it did: not while the sheet is being
-     * pulled out by itself or is coming free, and not off the foot of a full sheet, which jams
-     * instead.
+     * pulled out by itself or is coming free, nor while a finger has the lever, whose line it would
+     * type over, and not off the foot of a full sheet, which jams instead.
      */
     public fun type(char: Char): Boolean {
-        if (sending) return false
+        if (sending || (handHeld && !byHand)) return false
         val next = field.text.toString() + char
         if (layOutSheet(next).overflow) {
             jam()
@@ -420,10 +420,11 @@ public class TypewriterState(text: String = "") {
 
     /**
      * Deletes the last character typed: the carriage runs back and the tape lifts it off. Not while
-     * the sheet is being pulled out by itself or is coming free, so what is sent is what was there.
+     * the sheet is being pulled out by itself or is coming free, so what is sent is what was there,
+     * nor while a finger has the lever.
      */
     public fun backspace() {
-        if (sending || field.text.isEmpty()) return
+        if (sending || (handHeld && !byHand) || field.text.isEmpty()) return
         field.edit { delete(length - 1, length) }
         typedNow(field.text)
     }
@@ -493,7 +494,8 @@ public class TypewriterState(text: String = "") {
             leverHold = 0f
             heldUntil = Float.NEGATIVE_INFINITY
             homing = false
-            if (handFed && feedTaken) {
+            // Only the line the pawl fed is taken back, if it is still the last thing typed.
+            if (handFed && feedTaken && field.text.endsWith('\n')) {
                 byHand = true
                 backspace()
                 byHand = false
@@ -614,10 +616,11 @@ public class TypewriterState(text: String = "") {
 
     /**
      * Sends what is typed without a finger: the sheet is pulled out by itself, as Ctrl or ⌘ and
-     * Return, or a screen reader's Send, ask. Nothing for a blank sheet, or one already on its way.
+     * Return, or a screen reader's Send, ask. Nothing for a blank sheet, one already on its way, or
+     * while a finger has the lever.
      */
     public fun send(): Boolean {
-        if (phase != SheetPhase.Idle || autoPulling || !sheet.inked) return false
+        if (handHeld || phase != SheetPhase.Idle || autoPulling || !sheet.inked) return false
         held = false
         autoPulling = true
         autoPullAt = now

@@ -177,4 +177,70 @@ class TypewriterLeverTest {
         state.run(1f)
         assertEquals(1, heard.count("return"))
     }
+
+    @Test
+    fun whileTheLeverIsHeldKeysTypeNothingAndTheShortPushStillUndoesOnlyItsLine() {
+        val (state, _) = machine("see you")
+        state.grabLever()
+        state.push(TypewriterDimens.LeverPawl + 0.1f)
+        assertEquals("see you\n", state.field.text.toString())
+        // A second finger on a key, or a hardware key, while the hand is on the lever.
+        assertFalse(state.type('x'))
+        state.backspace()
+        assertEquals("see you\n", state.field.text.toString())
+        state.push(TypewriterDimens.LeverPawl + 0.15f)
+        state.releaseLever(0f)
+        state.run(1f)
+        assertEquals("see you", state.field.text.toString())
+        assertEquals(TypewriterState.columnX(7), state.carriage, 0.05f)
+    }
+
+    @Test
+    fun theShortPushsUndoLeavesALetterTypedAfterItsLine() {
+        val (state, _) = machine("ok")
+        state.grabLever()
+        state.push(TypewriterDimens.LeverPawl + 0.1f)
+        // Something past the keys put a letter after the line the pawl fed.
+        state.field.edit { append('x') }
+        state.typedNow(state.field.text)
+        state.releaseLever(0f)
+        state.run(1f)
+        assertEquals("ok\nx", state.field.text.toString())
+    }
+
+    @Test
+    fun whileTheLeverIsHeldTheSheetIsNotSentAndTheNextSheetStartsClean() {
+        val (state, heard) = machine("hello")
+        state.grabLever()
+        state.push(0.2f)
+        assertFalse(state.send())
+        state.releaseLever(0f)
+        state.run(1f)
+        assertTrue(state.send())
+        state.run(2f)
+        assertEquals(SheetPhase.Idle, state.phase)
+        // A fresh sheet: the lever takes a new push from nothing.
+        assertTrue(state.grabLever())
+        state.push(1f)
+        state.releaseLever(0f)
+        state.run(1.5f)
+        assertEquals("\n", state.field.text.toString())
+        assertEquals(0, heard.count("jam"))
+    }
+
+    @Test
+    fun theMachineSleepsAfterALeverCycleAndAfterAJam() {
+        val (state, _) = machine("see you")
+        state.grabLever()
+        state.push(1f)
+        state.releaseLever(0f)
+        state.run(2f)
+        assertFalse(state.awake, "awake after a return")
+        val (full, _) = machine("a\nb\nc\n" + "x".repeat(TypewriterDimens.Columns))
+        assertFalse(full.type('e'))
+        full.run(0.1f)
+        assertTrue(full.awake)
+        full.run(TypewriterDimens.JamSeconds + 1f)
+        assertFalse(full.awake, "awake after a jam")
+    }
 }
