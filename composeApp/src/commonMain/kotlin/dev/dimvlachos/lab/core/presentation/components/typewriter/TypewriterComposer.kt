@@ -391,8 +391,11 @@ internal fun TypewriterComposer(
                     }
                     .semantics {
                         contentDescription = label
-                        customActions =
-                            listOf(CustomAccessibilityAction(sendLabel) { state.send() })
+                        // No Send while the machine is not to be touched, as while a script plays.
+                        if (enabled) {
+                            customActions =
+                                listOf(CustomAccessibilityAction(sendLabel) { state.send() })
+                        }
                     }
             )
             // The band the lever swings in, kept from the system's edge swipes: at the end of a
@@ -428,8 +431,10 @@ internal fun TypewriterComposer(
                     .size(TypewriterDimens.LeverReach * 2)
                     .semantics {
                         contentDescription = leverLabel
-                        customActions =
-                            listOf(CustomAccessibilityAction(newLineLabel) { state.newLine() })
+                        if (enabled) {
+                            customActions =
+                                listOf(CustomAccessibilityAction(newLineLabel) { state.newLine() })
+                        }
                     }
             )
             Said(state, Modifier.align(Alignment.TopCenter))

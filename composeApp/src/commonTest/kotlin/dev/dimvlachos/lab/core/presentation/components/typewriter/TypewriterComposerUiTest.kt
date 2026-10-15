@@ -274,4 +274,45 @@ class TypewriterComposerUiTest {
         repeat(240) { state.advance(1f / 60f) }
         assertFalse(state.awake, "the machine never went back to sleep")
     }
+
+    @Test
+    fun whileDisabledAScreenReaderFindsNoSendNorNewLine() = runComposeUiTest {
+        val state = TypewriterState()
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 700.dp)) {
+                    TypewriterComposer(state, onSend = {}, enabled = false)
+                }
+            }
+        }
+        waitForIdle()
+        for (name in listOf("Typewriter", "Carriage return lever")) {
+            val config = onNodeWithContentDescription(name).fetchSemanticsNode().config
+            assertFalse(SemanticsActions.CustomActions in config, "$name has actions")
+        }
+    }
+
+    @Test
+    fun aHeldDeleteStopsOnceTheKeysAreDisabled() = runComposeUiTest {
+        val state = TypewriterState()
+        var enabled by mutableStateOf(true)
+        setContent {
+            LabTheme {
+                Box(Modifier.size(400.dp, 700.dp)) {
+                    TypewriterComposer(state, onSend = {}, enabled = enabled)
+                }
+            }
+        }
+        runOnUiThread { "abcdefgh".forEach { state.type(it) } }
+        mainClock.advanceTimeBy(300)
+        onNodeWithContentDescription("Delete").performTouchInput { down(center) }
+        mainClock.advanceTimeBy(TypewriterDimens.RepeatAfterMs + 50)
+        val left = state.field.text.length
+        assertTrue(left < 8)
+        // A replay starts while the finger is still down.
+        enabled = false
+        mainClock.advanceTimeBy(TypewriterDimens.RepeatEveryMs * 5)
+        assertTrue(state.field.text.length >= left - 1, "Delete went on: ${state.field.text}")
+        onNodeWithContentDescription("Delete").performTouchInput { up() }
+    }
 }

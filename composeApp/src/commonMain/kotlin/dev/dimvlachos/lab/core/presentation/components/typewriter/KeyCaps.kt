@@ -193,7 +193,8 @@ private fun KeyCap(
                         if (key.action == KeyAction.Backspace) {
                             scope.launch {
                                 delay(TypewriterDimens.RepeatAfterMs)
-                                while (true) {
+                                // Not once the keys are disabled, as when a replay starts.
+                                while (currentEnabled) {
                                     state.press(key)
                                     delay(TypewriterDimens.RepeatEveryMs)
                                 }
