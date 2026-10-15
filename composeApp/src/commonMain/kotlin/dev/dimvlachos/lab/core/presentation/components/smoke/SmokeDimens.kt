@@ -23,6 +23,9 @@ internal object SmokeDimens {
     const val MostLive = 11_000
     const val LeastPerRow = 700
 
+    // A row's drawing is sampled from at most this many pixels: a bigger row is drawn smaller.
+    const val MostSampledPixels = 2_000_000f
+
     // How far a pixel must be from the card's colour, summed over its channels out of 765, to be
     // taken as ink rather than the card.
     const val InkDistance = 54

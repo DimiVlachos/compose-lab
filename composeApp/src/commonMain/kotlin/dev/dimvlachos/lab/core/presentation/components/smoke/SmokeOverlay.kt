@@ -24,6 +24,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalGraphicsContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,9 +72,11 @@ public fun SmokeOverlay(
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { state.quiet() }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current.density
+    val graphics = LocalGraphicsContext.current
     SideEffect {
         state.scope = scope
         state.density = density
+        state.graphics = graphics
     }
     LaunchedEffect(state) { state.fillOffMainThread() }
     LaunchedEffect(state) {

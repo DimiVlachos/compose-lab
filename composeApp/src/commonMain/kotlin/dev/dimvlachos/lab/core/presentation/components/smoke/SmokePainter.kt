@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.smoke
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -250,3 +251,6 @@ internal class SmokePainter {
  * point past them lies off the screen, so a platform that can't take a count draws them all.
  */
 internal expect fun drawPointBatch(canvas: Canvas, points: FloatArray, count: Int, paint: Paint)
+
+/** Gives [bitmap]'s memory back now, rather than when it is collected. */
+internal expect fun releaseBitmap(bitmap: ImageBitmap)

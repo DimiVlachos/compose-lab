@@ -10,20 +10,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.GraphicsContext
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundLoop
 import dev.dimvlachos.lab.core.platform.SoundPlayer
-import kotlin.math.abs
 import kotlin.concurrent.Volatile
+import kotlin.math.abs
+import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** Which way a row is swiped away: [Left] burns it from its right edge, [Right] from its left. */
@@ -65,6 +75,11 @@ public class SmokeState internal constructor() {
     internal var scope: CoroutineScope? = null
     internal var overlay: LayoutCoordinates? = null
     internal var density = 1f
+    internal var graphics: GraphicsContext? = null
+
+    // The one buffer a row's pixels are read into, a row at a time.
+    private val sampling = Mutex()
+    private var pixels = IntArray(0)
 
     /** The smoke's own clock, in seconds: it runs only while the frame loop does. */
     internal var now = 0f
@@ -369,15 +384,21 @@ public class SmokeState internal constructor() {
             val seed = row.key.hashCode()
             scope.launch {
                 try {
-                    val bitmap = layer.toImageBitmap()
+                    val bitmap = drawingOf(layer)
                     val width = bitmap.width
                     val height = bitmap.height
-                    val sampled =
-                        withContext(Dispatchers.Default) {
-                            val pixels = IntArray(width * height)
-                            bitmap.readPixels(pixels)
-                            RowSampler.sample(pixels, width, height, budget, seed)
+                    // One row is read at a time, into the one buffer, grown as it needs to be.
+                    val sampled = sampling.withLock {
+                        try {
+                            withContext(Dispatchers.Default) {
+                                if (pixels.size < width * height) pixels = IntArray(width * height)
+                                bitmap.readPixels(pixels, width = width, height = height)
+                                RowSampler.sample(pixels, width, height, budget, seed)
+                            }
+                        } finally {
+                            releaseBitmap(bitmap)
                         }
+                    }
                     // The drawing may be at another scale than the row is laid out at.
                     val sx = plume.width / width
                     val sy = plume.height / height
@@ -399,6 +420,30 @@ public class SmokeState internal constructor() {
         row.tick++
         awake = true
         return plume
+    }
+
+    // A drawing of [layer] to sample: the row's own, or, for a row too big to draw into one
+    // bitmap whole, a smaller copy of it, sampled the same way and scaled back up.
+    private suspend fun drawingOf(layer: GraphicsLayer): ImageBitmap {
+        val size = layer.size
+        val area = size.width.toFloat() * size.height
+        val graphics = graphics
+        if (area <= SmokeDimens.MostSampledPixels || graphics == null) return layer.toImageBitmap()
+        val scale = sqrt(SmokeDimens.MostSampledPixels / area)
+        val smaller = graphics.createGraphicsLayer()
+        try {
+            val scaled =
+                IntSize(
+                    (size.width * scale).toInt().coerceAtLeast(1),
+                    (size.height * scale).toInt().coerceAtLeast(1),
+                )
+            smaller.record(Density(density), LayoutDirection.Ltr, scaled) {
+                scale(scale, scale, pivot = Offset.Zero) { drawLayer(layer) }
+            }
+            return smaller.toImageBitmap()
+        } finally {
+            graphics.releaseGraphicsLayer(smaller)
+        }
     }
 
     // How many particles a new row may have: thinner while many are already in the air, kept or
