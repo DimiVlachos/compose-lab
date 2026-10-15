@@ -50,11 +50,11 @@ class TypewriterDimensTest {
 
     @Test
     fun onAStageTooShortForAllOfItTheLipRunsIntoTheFootAndThenTheHintGoes() {
-        val lipped = TypewriterDimens.fit(440.dp, 260.dp, hint = 26.dp, foot = 24.dp)
+        val lipped = TypewriterDimens.fit(440.dp, 245.dp, hint = 26.dp, foot = 24.dp)
         assertTrue(lipped.lip < TypewriterDimens.FrontLip)
         assertTrue(lipped.hinted)
-        val bare = TypewriterDimens.fit(440.dp, 245.dp, hint = 40.dp, foot = 24.dp)
+        val bare = TypewriterDimens.fit(440.dp, 240.dp, hint = 40.dp, foot = 24.dp)
         assertTrue(!bare.hinted)
-        assertTrue(bare.height <= 245.dp, "${bare.height}")
+        assertTrue(bare.height <= 240.dp, "${bare.height}")
     }
 }

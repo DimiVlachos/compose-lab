@@ -18,7 +18,7 @@ internal object TypewriterDimens {
     // side, it shrinks further to fit, down to the shortest.
     val SmallestUnit = 0.85.dp
     val BiggestUnit = 1.3.dp
-    val ShortestUnit = 0.55.dp
+    val ShortestUnit = 0.5.dp
 
     /**
      * How big a unit is, how far apart the keys are and how tall a row of them is on a stage
@@ -266,7 +266,7 @@ internal object TypewriterDimens {
     // tall, made as tall as a thumb's target where there is room, with this much room over and
     // under them.
     val MostKeyPitch = 48.dp
-    val LeastKeyPitch = 30.dp
+    val LeastKeyPitch = 28.dp
     val KeysSide = 6.dp
     const val KeysAcross = 10
     const val KeyRows = 4
