@@ -52,8 +52,8 @@ class SheetLayoutTest {
     @Test
     fun aLongMessageBreaksAtTheEndsOfItsWords() {
         assertEquals(
-            listOf("on the 07:25 from", "piraeus. window", "seat, left side."),
-            layOutSheet("on the 07:25 from piraeus. window seat, left side.").sent,
+            listOf("on the 7:25 from", "boston. window", "seat, left side."),
+            layOutSheet("on the 7:25 from boston. window seat, left side.").sent,
         )
     }
 

@@ -155,20 +155,20 @@
     <string name="typewriter_said_deleted">Deleted %1$s</string>
     <string name="typewriter_hint_pull">Pull the sheet up to send</string>
     <string name="typewriter_hint_full">The sheet’s full. Pull it out to send</string>
-    <string name="typewriterchat_badge">CYCLADES 22</string>
+    <string name="typewriterchat_badge">MERIDIAN 22</string>
     <string name="typewriterchat_model">PORTABLE</string>
-    <string name="typewriterchat_contact">Eleni</string>
-    <string name="typewriterchat_contact_status">Naxos · online</string>
+    <string name="typewriterchat_contact">Jess</string>
+    <string name="typewriterchat_contact_status">Portland, ME · online</string>
     <string name="typewriterchat_today">Today</string>
-    <string name="typewriterchat_typing">Eleni is typing</string>
-    <string name="typewriterchat_seed_1">The Aegean ferry gets into Naxos at 13:10 tomorrow.</string>
-    <string name="typewriterchat_seed_2">on the 07:25 from piraeus. window seat, left side.</string>
-    <string name="typewriterchat_seed_3">Meet you at the port? Portara for sunset after.</string>
+    <string name="typewriterchat_typing">Jess is typing</string>
+    <string name="typewriterchat_seed_1">My train gets into Portland at 1:10 p.m. tomorrow.</string>
+    <string name="typewriterchat_seed_2">on the 7:25 from boston. window seat, left side.</string>
+    <string name="typewriterchat_seed_3">Meet you at the station? The lake for sunset after.</string>
     <string name="typewriterchat_script_1" translatable="false">see you at the</string>
-    <string name="typewriterchat_script_1b" translatable="false">port at nine.</string>
-    <string name="typewriterchat_script_2" translatable="false">sunset at the potr⌫⌫rtara?</string>
-    <string name="typewriterchat_reply_1">Perfect. I’ll bring the graviera.</string>
-    <string name="typewriterchat_reply_2">Deal. Sunset at the Portara it is.</string>
+    <string name="typewriterchat_script_1b" translatable="false">station at nine.</string>
+    <string name="typewriterchat_script_2" translatable="false">sunset at the laek⌫⌫ke?</string>
+    <string name="typewriterchat_reply_1">Perfect. I’ll bring the blueberry pie.</string>
+    <string name="typewriterchat_reply_2">Deal. Sunset at the lake it is.</string>
     <string name="typewriterchat_reply_3">Ha. Nobody else I know sends letters by chat.</string>
     <string name="demo_navbar_description">A bottom bar built from layers, springing from tab to tab</string>
     <string name="demo_morph_app_description">A profile where everything opens with a shared-element morph</string>

@@ -23,7 +23,7 @@ internal object TypewriterDemos {
     // Two messages, each typed and pulled out. The first rings the bell at the end of a word and
     // a fingertip pushes the lever over for a new line, then, after a pull too short that slides
     // back, it is pulled out; the second returns the carriage by itself at the bell and strikes
-    // out a typo with the tape. Eleni answers each. Once both answers are in, everything sent is
+    // out a typo with the tape. Jess answers each. Once both answers are in, everything sent is
     // taken back, so the next run starts from the same thread.
     private val thread =
         demoScript(holdEnd = 400.milliseconds) {

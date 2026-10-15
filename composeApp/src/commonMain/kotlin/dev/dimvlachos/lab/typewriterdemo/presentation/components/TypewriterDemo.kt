@@ -128,10 +128,10 @@ private const val LandVolume = 0.5f
 private const val LongestFrameNanos = 50_000_000L
 
 /**
- * A chat with Eleni on Naxos, written on a typewriter typed on its own keys. Every letter strikes
+ * A chat with Jess in Portland, Maine, written on a typewriter typed on its own keys. Every letter strikes
  * the sheet in the roller, the bell rings near the margin and the carriage returns by itself; pull
  * the sheet up out of the roller and it trims down to a paper slip that flies up into the thread.
- * Eleni answers in plain bubbles. The script taps out two messages on the keys, a typo struck out
+ * Jess answers in plain bubbles. The script taps out two messages on the keys, a typo struck out
  * on the way, pulls each out, the first after a pull too short that slides back, and takes them
  * back at the end.
  */
@@ -172,7 +172,7 @@ internal fun TypewriterDemo(state: DemoState) {
         chat.send(sheet.text, sheet.lines)
         list.requestScrollToItem(0)
     }
-    // A new message or Eleni typing comes in at the foot: kept in sight if the thread was there,
+    // A new message or Jess typing comes in at the foot: kept in sight if the thread was there,
     // rather than opening under it, as a list anchored to the item it showed would.
     LaunchedEffect(chat, list) {
         snapshotFlow { chat.messages.size to chat.typing }

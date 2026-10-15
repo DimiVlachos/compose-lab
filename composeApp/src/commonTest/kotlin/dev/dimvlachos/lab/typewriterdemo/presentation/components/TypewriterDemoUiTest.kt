@@ -36,9 +36,9 @@ class TypewriterDemoUiTest {
                 }
             }
         }
-        val slips = listOf("see you at the port at nine.", "sunset at the portara?")
+        val slips = listOf("see you at the station at nine.", "sunset at the lake?")
         val replies =
-            listOf("Perfect. I’ll bring the graviera.", "Deal. Sunset at the Portara it is.")
+            listOf("Perfect. I’ll bring the blueberry pie.", "Deal. Sunset at the lake it is.")
         mainClock.advanceTimeBy(19_100)
         for (slip in slips) {
             assertEquals(1, onAllNodesWithContentDescription(slip).fetchSemanticsNodes().size, slip)

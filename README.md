@@ -418,7 +418,7 @@ A chat composer that is a typewriter, typed on its own keys. Round, chrome-rimme
 
 Nothing recomposes as the machine moves: the carriage, the paper, the bars, the ribbon and the lever are read only while drawing, the paper's feed only in layout, and each letter's strike is worked out once, as it is laid out. A change of the hint's wording, the keys' page or Shift recomposes only those. The frame loop sleeps once the machine is still, and a key's dip is its own small animation. What is typed is saved, with Shift and the page of figures, so it outlives the screen being made again, as when a hardware keyboard is plugged in or the phone turns, and comes back without a sound.
 
-The demo, `typewriter.composer`, is a chat with Eleni on Naxos. Its scripted fingertip taps out, on the machine's keys, a message that rings the bell, pushes the lever over for a new line and finishes it, tugs the sheet too little so it slides back, pulls it out, then a second that returns the carriage by itself at the bell, with a typo that the tape takes off and a question mark from the figures, and takes both back once Eleni has answered. Its typing waits on frames, so behind another app it stops, and picks up where it was.
+The demo, `typewriter.composer`, is a chat with Jess in Portland, Maine. Its scripted fingertip taps out, on the machine's keys, a message that rings the bell, pushes the lever over for a new line and finishes it, tugs the sheet too little so it slides back, pulls it out, then a second that returns the carriage by itself at the bell, with a typo that the tape takes off and a question mark from the figures, and takes both back once Jess has answered. Its typing waits on frames, so behind another app it stops, and picks up where it was.
 
 ```kotlin
 val machine = rememberTypewriterState() // what is typed is saved
@@ -441,7 +441,7 @@ Column {
             scope.launch(start = CoroutineStart.UNDISPATCHED) { flights.fly(id, sheet, slipTilt(id)) }
             slips += Slip(id, sheet.lines, slipTilt(id))
         },
-        badge = "CYCLADES 22",
+        badge = "MERIDIAN 22",
         model = "PORTABLE",
         insets = WindowInsets.navigationBars, // its body, keys and all, runs down behind the bar
         atlas = atlas,
