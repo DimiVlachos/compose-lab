@@ -45,6 +45,8 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var popUpTabHandler: (suspend (Float, Duration) -> Unit)? = null
     private var typewriterSheetPullHandler: (suspend (Dp, Duration) -> Unit)? = null
     private var typewriterLeverHandler: (suspend (Duration) -> Unit)? = null
+    private var chatSwipeHandler: (suspend (String, Float, Duration) -> Unit)? = null
+    private var controlTapHandler: (suspend (String) -> Unit)? = null
 
     override fun select(index: Int) {
         selectedIndex = index
@@ -122,6 +124,14 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         typewriterLeverHandler?.invoke(duration)
     }
 
+    override suspend fun swipeChat(id: String, by: Float, duration: Duration) {
+        chatSwipeHandler?.invoke(id, by, duration)
+    }
+
+    override suspend fun tapControl(id: String) {
+        controlTapHandler?.invoke(id)
+    }
+
     fun setScrollHandler(handler: (suspend (Float) -> Unit)?) {
         scrollHandler = handler
     }
@@ -192,5 +202,13 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setTypewriterLeverHandler(handler: (suspend (Duration) -> Unit)?) {
         typewriterLeverHandler = handler
+    }
+
+    fun setChatSwipeHandler(handler: (suspend (String, Float, Duration) -> Unit)?) {
+        chatSwipeHandler = handler
+    }
+
+    fun setControlTapHandler(handler: (suspend (String) -> Unit)?) {
+        controlTapHandler = handler
     }
 }

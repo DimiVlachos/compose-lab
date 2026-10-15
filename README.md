@@ -33,6 +33,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing) | `fishing` | `feed.fishing` | A pull-to-refresh that isn't a boring spinner: cast a line, haul new cards up from the deep, reel in an empty hook, or snap the line |
 | [Pop-up book](#pop-up-book-corepresentationcomponentspopup) | `popup` | `tour.popup` | An onboarding as a pop-up book: paper scenery stands up as a spread opens, and pull tabs sail a boat and spin windmill sails |
 | [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter) | `typewriter` | `typewriter.composer` | A chat composer that is a typewriter with its own round keys: letters strike the paper, the bell rings at the margin, and you pull the sheet out to send |
+| [Smoke delete](#smoke-delete-corepresentationcomponentssmoke) | `smoke` | `smoke.delete` | Swipe a chat away and it burns from the edge into smoke that curls up over the list; mist for the archive; Undo breathes it back |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -50,6 +51,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Fishing refresh](#fishing-refresh-corepresentationcomponentsfishing)
 - [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
 - [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter)
+- [Smoke delete](#smoke-delete-corepresentationcomponentssmoke)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -450,6 +452,46 @@ Column {
 SlipFlightStage(flights, atlas, machine.unit) // over both: where the sheets fly
 ```
 
+## Smoke delete (`core/presentation/components/smoke/`)
+
+Deleting a chat doesn't slide it away. Swipe it to the left and it burns in from its right edge, the burning edge right under your finger, along a ragged, flickering edge of char, ember and a white-hot core, and the row turns to fine smoke that curls up over the list, still carrying the shapes of its words and its avatar for a moment. Change your mind mid-swipe and draw the finger back: the smoke flows back down into the row behind it, like a film run backwards, and the row comes back column by column as its smoke lands; go forward again and it burns again from wherever its smoke is. Let go before a third of it has burnt (or fling it back) and the rest of the smoke is drawn back in the same way, and the row is whole again; past that, or flung, it burns the rest of the way while the list closes underneath. Swipe to the right and the row goes in mist instead, cooler, low and drifting aside, to the archive. Undo breathes the smoke back into its row. The sides are the layout's start and end, so in a right-to-left layout they mirror: a swipe to the right deletes.
+
+- **Every pixel becomes a particle.** As a swipe starts, the row's drawing, recorded into a `GraphicsLayer` on every draw, is taken as a bitmap (`toImageBitmap`) and cut into about 2,600 particles in the background: the ink at its own colour, and a sparse sample of the card's own colour, which blooms into haze. The row's colours are cut down to a few, so particles can be drawn a colour at a time. While many rows are in the air, a new one is cut into fewer, so the total stays near 11,000.
+- **A path is a pure function of where it started and how old it is.** Nothing is simulated from frame to frame. A particle's place is three steps through a fixed curl-noise field (gradient noise with its derivatives worked out alongside, so a curl costs one look-up), plus buoyancy, a kick off the burning edge, and a wander that grows with age, so a solid shape breaks up into wisps. The same particle at the same age is always in the same place, so any frame, forwards or back, can be drawn.
+- **The front is 64 column ages.** The row is 64 columns across, and each has an age, how long its particles have been smoke: a straight line in time from the moment it last turned, rising a second a second while the front is past it, and wound back to nothing, at least 2.5 times as fast as it rose and within 0.45 s however old it was, once the finger draws the front back off it. So a frame can be drawn for any moment, a column burnt again carries on from where its smoke is, and scrubbing back and forth for as long as you like keeps three numbers a column and is the same every time. A fast front turns its columns one after another within the frame. The row is cut at the front, but where the front has gone back it comes back only as each column's smoke lands. A finger that takes hold inside the row, rather than at its edge, has the front catch up with it over the first half of that distance again, and from then on the front is right under it. Each column is stamped too with where the row was and what of it showed in the list, so a row the list moves or scrolls mid-burn keeps its smoke, and a row half under the header doesn't smoke over it. Undo runs every particle's age back to nothing, from where it is if it is still in the air, or from half its life if it had faded, so the smoke retraces its own path into the row as visible wisps; it is eased over to where the row is now, at its size now, if the list has moved or the screen turned meanwhile.
+- **Batched points in blurred layers.** Each frame's particles are worked out off the main thread by one long-lived worker, in one job for every plume, into a spare set of batches, one for each colour at each of 14 bands of age, and swapped in when ready. The batches grow as they need to, and shrink only once far too big, and the points past a batch's count are parked just off the screen, so filling and drawing them allocates next to nothing. Each batch is one call of round points (`drawPoints` with a count on Android; on iOS, where Skia takes the whole array, the unused points sit just off the screen and a batch gives back room it has far too much of) whose size, colour and opacity are those of its age: ember, then the row's own colour, then smoke. A particle that has spread is drawn twice, a little apart, and half of them a size smaller and half a size larger in the blurred layers, so the body of the smoke reads as a soft mass rather than a few thousand dots; a band of age that straddles the move to the next layer is drawn in both, each in its share, so particles cross over softly. Four layers stack over the list: a haze blurred by 7 dp, a body by 2.5 dp, the crisp young particles, and the glow of the embers and sparks, added to the screen in the dark theme.
+- **The row is cut, then closes.** The row draws its recorded layer clipped along the front's ragged polygon. Once it is all smoke, its height springs to nothing, read in layout, and the list closes under the plume, which stays where it was.
+- **Feel.** A burn loop whose volume follows how fast the rows are burning, a whoosh for the mist and an inhale for Undo. Sound comes through the lab's internal `SoundPlayer` hook (`rememberSmokeState(sound)`, which the demo uses); the public `rememberSmokeState()` is silent. The loop stops when the app goes to the background. The loop all but falls silent while the finger draws the front back. A tick of haptics as a swipe burns past a third, and again as it comes back short of it (a little short, so a finger hovering there doesn't buzz), and a soft click when the finger lets go there and the row commits; a burn from a key or an action has none.
+- **Keyboard and screen readers.** Delete or Backspace burns the focused row, once however long it is held, focus moving on to the next (or the one before, at the end). Each row has its swipe actions as custom actions by their labels (Delete, Archive, Restore).
+
+Nothing recomposes while the smoke moves: the rows read their front in drawing and their height in layout, the overlay draws the particles, and the frame loop sleeps once the last smoke has gone. Smoke is kept for Undo, out of the frame loop, until the caller lets it go with `forget`; what is still in the air then drifts on until it has faded. A scripted finger swipes through the same public `dragStart`, `dragTo` and `release` a finger's drag uses, and `boundsOf` says where a row is.
+
+The demo, `smoke.delete`, is a chat list of friends, a host and the businesses of a summer weekend. Swipe left to delete, right to archive; the "Archived · N" row on top opens the archive, where a right swipe restores a chat. Clear read burns every read chat in a wave. A snackbar, dark on both themes, says what happened for five seconds (longer if the person has asked for more time), politely to a screen reader too, and offers Undo, for an archive as for a delete. Clear read can't be tapped again while its wave burns, and a chat deleted during the wave joins it, so the one Undo brings everything back. Its script burns a chat and undoes it, swipes one too short to commit, archives one in mist and undoes it, clears the read chats and brings them all back.
+
+```kotlin
+val smoke = rememberSmokeState()
+SmokeOverlay(smoke, Modifier.fillMaxSize()) {
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        for (chat in chats) {
+            key(chat.id) {
+                SmokeRow(
+                    smoke,
+                    key = chat.id,
+                    present = chat.id in inbox, // false: the row closes; true again: it opens
+                    start = SmokeAction("Delete", SmokeMaterial.Smoke) { viewModel.delete(chat.id) },
+                    end = SmokeAction("Archive", SmokeMaterial.Mist) { viewModel.archive(chat.id) },
+                ) {
+                    ChatRow(chat)
+                }
+            }
+        }
+    }
+}
+// Undo: put the chat back, then breathe its smoke back in; once Undo has gone, let it go.
+viewModel.undo(); smoke.reform(chatId)
+smoke.forget(chatId)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -574,6 +616,8 @@ The pull cord hangs one lamp over a screen it fills. While a new look spreads, t
 The pop-up book's leaves are rigid boards, and its frame is 1.22 times as tall as it is wide. A spread has at most one tab, at the outer edge of its near page; the layout is not mirrored for right-to-left. It takes as many spreads and pieces as you like, but each page and piece is a bitmap painted for the book's size, so a book of many spreads holds many bitmaps. Only the spread the book is turned to is saved: tabs and sails start again at rest.
 
 The typewriter composer's sheet takes 18 letters to a line and 4 lines, 72 letters at most, and what does not fit is refused, not scrolled. Its keys are a fixed QWERTY set with one page of figures and stops: no accents, no other scripts, no emoji, and a hardware key it has no key for types nothing. It types left to right only. Each sheet is one message.
+
+The smoke delete cuts a row into about 2,600 particles, at most 3,000, and fewer for a new row while more than 11,000 are in the air, so a wave of rows thins out rather than slowing down; a row is sampled from a drawing of at most 2 million pixels, a bigger one from a smaller copy. Every row of a list goes up in the one overlay, keyed by the caller's key, which must be unique in the list. A row's colours are cut down to 8. The smoke is drawn over the whole overlay, so it rises over a header above the list, though a row's hidden part makes none. Nothing about the smoke is saved: a screen made again starts with its rows whole.
 
 ## Contributing
 

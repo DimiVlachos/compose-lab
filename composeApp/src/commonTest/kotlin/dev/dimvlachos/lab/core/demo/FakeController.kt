@@ -165,4 +165,16 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun pushTypewriterLever(duration: Duration) {
         calls += now() to "pushTypewriterLever($duration)"
     }
+
+    /** Each chat swiped, and how far, in order. */
+    val chatSwipes = mutableListOf<Pair<String, Float>>()
+
+    override suspend fun swipeChat(id: String, by: Float, duration: Duration) {
+        chatSwipes += id to by
+        calls += now() to "swipeChat($id, $by, $duration)"
+    }
+
+    override suspend fun tapControl(id: String) {
+        calls += now() to "tapControl($id)"
+    }
 }

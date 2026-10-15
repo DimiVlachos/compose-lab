@@ -77,8 +77,9 @@ internal interface DemoController {
     suspend fun pullToRefresh(distance: Dp, duration: Duration)
 
     /**
-     * Puts a refreshing feed back as it began, with only the items it started with, so a script
-     * that refreshed it ends where it started and loops.
+     * Puts the demo's list back as it began, a refreshing feed with only the items it started with
+     * or a chat list with every chat in its place, so a script that changed it ends where it
+     * started and loops.
      */
     suspend fun resetFeed()
 
@@ -109,4 +110,14 @@ internal interface DemoController {
      * fingertip has lifted.
      */
     suspend fun pushTypewriterLever(duration: Duration)
+
+    /**
+     * Swipes the chat [id] across by [by] of its width (negative is toward its start) over
+     * [duration] with a fingertip, and lets go. Returns once the finger has lifted; the chat burns,
+     * mists or is drawn back in by itself.
+     */
+    suspend fun swipeChat(id: String, by: Float, duration: Duration)
+
+    /** Taps the demo's control [id], such as Undo on a snackbar, if it shows. */
+    suspend fun tapControl(id: String)
 }
