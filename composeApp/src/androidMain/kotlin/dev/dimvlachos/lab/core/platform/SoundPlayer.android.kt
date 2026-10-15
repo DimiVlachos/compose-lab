@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.platform
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.SoundPool
@@ -9,6 +12,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.resources.Res
 import java.io.File
@@ -47,8 +51,32 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val ready = mutableSetOf<Int>()
     private var released = false
 
+    /**
+     * Silent and vibrate both mean the person has asked the phone to keep quiet. Kept up to date by
+     * [ringer] rather than asked for on every click, since asking is a call to another process.
+     */
+    private var audible = audio?.ringerMode == AudioManager.RINGER_MODE_NORMAL
+
+    private val ringer =
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val mode =
+                    intent.getIntExtra(
+                        AudioManager.EXTRA_RINGER_MODE,
+                        AudioManager.RINGER_MODE_NORMAL,
+                    )
+                audible = mode == AudioManager.RINGER_MODE_NORMAL
+            }
+        }
+
     init {
         pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) ready += id }
+        ContextCompat.registerReceiver(
+            context,
+            ringer,
+            IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     suspend fun load(sounds: Set<Sound>) {
@@ -87,10 +115,6 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         return file
     }
 
-    /** Silent and vibrate both mean the person has asked the phone to keep quiet. */
-    private val audible: Boolean
-        get() = audio?.ringerMode == AudioManager.RINGER_MODE_NORMAL
-
     private fun readyId(sound: Sound): Int? = ids[sound]?.takeIf { it in ready && audible }
 
     override fun play(sound: Sound, volume: Float, rate: Float) {
@@ -114,7 +138,9 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     }
 
     fun release() {
+        if (released) return
         released = true
+        context.unregisterReceiver(ringer)
         pool.release()
     }
 
