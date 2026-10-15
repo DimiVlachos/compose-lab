@@ -75,6 +75,7 @@ public fun SmokeOverlay(
         state.scope = scope
         state.density = density
     }
+    LaunchedEffect(state) { state.fillOffMainThread() }
     LaunchedEffect(state) {
         while (true) {
             snapshotFlow { state.awake }.first { it }

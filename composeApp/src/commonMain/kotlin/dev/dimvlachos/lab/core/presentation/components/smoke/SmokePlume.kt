@@ -24,7 +24,7 @@ internal enum class PlumePhase {
  * a row that moves as it burns, and once in the air stays there, whatever the list does under it;
  * breathed back in, it comes back to where the row is now ([atX], [atY]), at its size now.
  */
-internal class SmokePlume(val material: SmokeMaterial, fromRight: Boolean) {
+internal class SmokePlume(val key: Any, val material: SmokeMaterial, fromRight: Boolean) {
     val front = BurnFront(fromRight)
 
     /** The way the front runs across the row: -1 left, 1 right. */
@@ -80,7 +80,6 @@ internal class SmokePlume(val material: SmokeMaterial, fromRight: Boolean) {
     var batches = PlumeBatches()
     var batchesReform = -1f
     var spare = PlumeBatches()
-    var filling = false
 
     /** Whether any of its smoke is in the air, or about to be. */
     fun visibleAt(now: Float): Boolean =

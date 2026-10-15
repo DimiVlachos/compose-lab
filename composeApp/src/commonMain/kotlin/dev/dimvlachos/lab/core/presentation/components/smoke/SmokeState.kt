@@ -18,9 +18,11 @@ import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundLoop
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import kotlin.math.abs
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -75,16 +77,30 @@ public class SmokeState internal constructor() {
     /** Whether the frame loop is running: while anything moves or any smoke is in the air. */
     internal var awake by mutableStateOf(false)
 
+    // The rows, by key and in a list, and the plumes the same: the frame loop walks the lists by
+    // index, so a frame allocates nothing.
     internal val rows = mutableMapOf<Any, SmokeRowState>()
+    private val rowList = mutableListOf<SmokeRowState>()
     private val plumes = mutableMapOf<Any, SmokePlume>()
+    private val plumeList = mutableListOf<SmokePlume>()
 
     // Smoke let go of, no longer anyone's to undo, still in the air until it has faded.
     private val fading = mutableListOf<SmokePlume>()
-    private val stepping = mutableListOf<Pair<Any, SmokePlume>>()
+    private val stepping = mutableListOf<SmokePlume>()
     internal val painter = SmokePainter()
 
-    // Whether a frame's particles are being worked out off the main thread, and for which plumes.
+    // The frames' particles are worked out off the main thread by one long-lived worker
+    // ([fillOffMainThread]), told of each job through [jobs]: which plumes, at what time, and how
+    // far each was reforming. [filling] while a job is out; the worker marks it done in [doneJob].
+    // A job is never left out: once the worker stops, as the overlay goes, it lets it go, and the
+    // frame loop fills the plumes itself.
+    private val jobs = Channel<Unit>(Channel.CONFLATED)
+    private var working = false
     private var filling = false
+    private var job = 0
+    private var jobTime = 0f
+    private var jobDensity = 1f
+    @Volatile private var doneJob = 0
     private val jobPlumes = mutableListOf<SmokePlume>()
     private var jobReforms = FloatArray(8)
 
@@ -113,6 +129,29 @@ public class SmokeState internal constructor() {
 
     /** The plume of the row [key], if it has one. */
     internal fun plumeOf(key: Any): SmokePlume? = plumes[key]
+
+    /** Adds [row], as its [SmokeRow] comes in, in place of any row its key had. */
+    internal fun register(row: SmokeRowState) {
+        rows.put(row.key, row)?.let { rowList.remove(it) }
+        rowList += row
+    }
+
+    /** Takes [row] out as its [SmokeRow] leaves, unless its key has another row by now. */
+    internal fun unregister(row: SmokeRowState) {
+        if (rows[row.key] !== row) return
+        rows.remove(row.key)
+        rowList.remove(row)
+    }
+
+    private fun addPlume(plume: SmokePlume) {
+        plumes.put(plume.key, plume)?.let { plumeList.remove(it) }
+        plumeList += plume
+    }
+
+    private fun removePlume(plume: SmokePlume) {
+        if (plumes[plume.key] === plume) plumes.remove(plume.key)
+        plumeList.remove(plume)
+    }
 
     /**
      * The plume of [row] itself, if it has one: not one left by the row's key on another screen.
@@ -200,7 +239,7 @@ public class SmokeState internal constructor() {
     public fun forget(key: Any) {
         val plume = plumes[key] ?: return
         if (plume.phase != PlumePhase.Burnt) return
-        plumes.remove(key)
+        removePlume(plume)
         if (plume.visibleAt(now)) fading += plume
     }
 
@@ -213,11 +252,12 @@ public class SmokeState internal constructor() {
     /** Clears all the smoke at once and brings every row back, as it was. */
     public fun clear() {
         plumes.clear()
+        plumeList.clear()
         fading.clear()
         queued.clear()
         drawn.clear()
         deleteHeld = false
-        for (row in rows.values) {
+        for (row in rowList) {
             row.gone = false
             row.dragging = false
             row.tick++
@@ -308,7 +348,7 @@ public class SmokeState internal constructor() {
     // ready. Their columns' crossing times are already stamped, so they come in where they should.
     private fun start(row: SmokeRowState, action: SmokeAction, side: SmokeSide): SmokePlume {
         val bounds = boundsOf(row.key)
-        val plume = SmokePlume(action.material, fromRight = side == SmokeSide.Left)
+        val plume = SmokePlume(row.key, action.material, fromRight = side == SmokeSide.Left)
         plume.action = action
         plume.row = row
         if (bounds != null) {
@@ -321,7 +361,7 @@ public class SmokeState internal constructor() {
             plume.atWidth = bounds.width
             plume.atHeight = bounds.height
         }
-        plumes[row.key] = plume
+        addPlume(plume)
         val layer = row.layer
         val scope = scope
         if (layer != null && scope != null && bounds != null && bounds.width >= 1f) {
@@ -361,12 +401,14 @@ public class SmokeState internal constructor() {
         return plume
     }
 
-    // How many particles a new row may have: thinner while many are already in the air.
-    private fun budget(): Int {
+    // How many particles a new row may have: thinner while many are already in the air, kept or
+    // let go.
+    internal fun budget(): Int {
         var live = 0
-        for (plume in plumes.values) {
+        for (plume in plumeList) {
             if (plume.visibleAt(now)) live += plume.particles?.count ?: SmokeDimens.PerRow
         }
+        for (plume in fading) live += plume.particles?.count ?: SmokeDimens.PerRow
         val room = SmokeDimens.MostLive - live
         return room.coerceIn(SmokeDimens.LeastPerRow, SmokeDimens.PerRow)
     }
@@ -382,10 +424,15 @@ public class SmokeState internal constructor() {
         runQueued()
         var burning = 0f
         var moving = false
+        // A plume's callbacks may start or let go of others: the frame steps those it began with.
         stepping.clear()
-        for ((key, plume) in plumes) stepping += key to plume
-        for ((key, plume) in stepping) {
+        for (i in plumeList.indices) stepping += plumeList[i]
+        for (i in stepping.indices) {
+            val plume = stepping[i]
             val row = plume.row
+            // Only a row whose cut or edge changes draws again; one that is all smoke, or kept for
+            // an undo, doesn't, nor one whose screen has gone.
+            val was = plume.phase
             when (plume.phase) {
                 PlumePhase.Held -> {
                     // A row taken away under the finger, by an Undo say, isn't the finger's any
@@ -394,6 +441,7 @@ public class SmokeState internal constructor() {
                         row?.dragging = false
                         drawBack(plume)
                         moving = true
+                        redraw(row)
                         continue
                     }
                     val width = plume.width.coerceAtLeast(1f)
@@ -453,21 +501,33 @@ public class SmokeState internal constructor() {
                     track(plume)
                     plume.reform = ((now - plume.reformAt) / plume.reformSeconds).coerceIn(0f, 1f)
                     if (plume.reform >= 1f) {
-                        plumes.remove(key)
+                        removePlume(plume)
                         row?.gone = false
                     }
                     moving = true
                 }
             }
-            row?.tick?.let { row.tick = it + 1 }
+            val changing =
+                plume.phase == PlumePhase.Held ||
+                    plume.phase == PlumePhase.Burning ||
+                    plume.phase == PlumePhase.Reforming
+            if (changing || plume.phase != was) redraw(row)
         }
-        for (row in rows.values) {
+        for (i in rowList.indices) {
+            val row = rowList[i]
             if (row.stepHeight(dt, plumeOf(row))) moving = true
         }
-        fading.removeAll { !it.visibleAt(now) }
+        var f = fading.size - 1
+        while (f >= 0) {
+            if (!fading[f].visibleAt(now)) fading.removeAt(f)
+            f--
+        }
         drawn.clear()
-        drawn += fading
-        for (plume in plumes.values) if (plume.visibleAt(now)) drawn += plume
+        for (i in fading.indices) drawn += fading[i]
+        for (i in plumeList.indices) {
+            val plume = plumeList[i]
+            if (plume.visibleAt(now)) drawn += plume
+        }
         fill()
         follow(burning, dt)
         frame++
@@ -515,45 +575,71 @@ public class SmokeState internal constructor() {
         return true
     }
 
+    // Bumps [row]'s tick so it draws again, if it is still on its screen.
+    private fun redraw(row: SmokeRowState?) {
+        if (row != null && rows[row.key] === row) row.tick++
+    }
+
     // Works out where the particles in the air are now, into each plume's spare batches, and
     // draws them in place of the last once they are ready: off the main thread, in one job for
-    // every plume, when there is a scope to run it in, so a wave of rows burning costs the frame
+    // every plume, by the worker if there is one, so a wave of rows burning costs the frame
     // nothing. While the last frame's job is still going, the plumes keep the batches they have.
     private fun fill() {
         if (drawn.isEmpty()) return
-        val time = now
-        val scope = scope
-        if (scope == null) {
-            for (plume in drawn) {
+        if (!working) {
+            for (i in drawn.indices) {
+                val plume = drawn[i]
                 val reform = plume.reformProgress
-                painter.fill(plume, plume.spare, time, reform, plume.reformAt, density)
+                painter.fill(plume, plume.spare, now, reform, plume.reformAt, density)
                 swap(plume, reform)
             }
             return
         }
-        if (filling) return
-        filling = true
+        if (filling) {
+            if (doneJob != job) return
+            for (i in jobPlumes.indices) swap(jobPlumes[i], jobReforms[i])
+            filling = false
+        }
         // The job's own copy of what it fills, reused: only one job runs at a time.
-        val plumes = jobPlumes
-        plumes.clear()
-        plumes += drawn
-        if (jobReforms.size < plumes.size) jobReforms = FloatArray(plumes.size * 2)
-        val reforms = jobReforms
-        for (i in plumes.indices) reforms[i] = plumes[i].reformProgress
-        val density = density
-        scope.launch {
-            try {
-                withContext(Dispatchers.Default) {
-                    for (i in plumes.indices) {
-                        val plume = plumes[i]
-                        painter.fill(plume, plume.spare, time, reforms[i], plume.reformAt, density)
+        jobPlumes.clear()
+        for (i in drawn.indices) jobPlumes += drawn[i]
+        if (jobReforms.size < jobPlumes.size) jobReforms = FloatArray(jobPlumes.size * 2)
+        for (i in jobPlumes.indices) jobReforms[i] = jobPlumes[i].reformProgress
+        jobTime = now
+        jobDensity = density
+        job++
+        filling = true
+        jobs.trySend(Unit)
+    }
+
+    /**
+     * The worker that fills each frame's particles, for as long as the overlay is shown: it sleeps
+     * between jobs, and once it stops the frame loop fills them itself.
+     */
+    internal suspend fun fillOffMainThread() {
+        working = true
+        try {
+            withContext(Dispatchers.Default) {
+                for (signal in jobs) {
+                    // What the main thread set before it sent the job, seen through the channel.
+                    val mine = job
+                    for (i in jobPlumes.indices) {
+                        val plume = jobPlumes[i]
+                        painter.fill(
+                            plume,
+                            plume.spare,
+                            jobTime,
+                            jobReforms[i],
+                            plume.reformAt,
+                            jobDensity,
+                        )
                     }
+                    doneJob = mine
                 }
-                for (i in plumes.indices) swap(plumes[i], reforms[i])
-                frame++
-            } finally {
-                filling = false
             }
+        } finally {
+            working = false
+            filling = false
         }
     }
 

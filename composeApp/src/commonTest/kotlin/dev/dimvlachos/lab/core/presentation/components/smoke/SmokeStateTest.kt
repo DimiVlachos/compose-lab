@@ -14,11 +14,12 @@ class SmokeStateTest {
 
     private fun state(): SmokeState =
         SmokeState().apply {
-            rows["a"] =
+            register(
                 SmokeRowState("a", present = true).apply {
                     left = SmokeAction("Delete", SmokeMaterial.Smoke) { deleted++ }
                     right = SmokeAction("Archive", SmokeMaterial.Mist) { archived++ }
                 }
+            )
             onThreshold = { ticks++ }
         }
 
@@ -199,5 +200,52 @@ class SmokeStateTest {
         smoke.release("a", -3_000f)
         smoke.run(1.5f)
         assertEquals(0, deleted)
+    }
+
+    @Test
+    fun smokeLetGoStillCountsAgainstTheBudget() {
+        val smoke = state()
+        val keys = (1..5).map { "row$it" }
+        for (key in keys) {
+            smoke.register(
+                SmokeRowState(key, present = true).apply {
+                    left = SmokeAction("Delete", SmokeMaterial.Smoke) {}
+                }
+            )
+        }
+        assertEquals(SmokeDimens.PerRow, smoke.budget())
+        for (key in keys) assertTrue(smoke.swipeAway(key, SmokeSide.Left))
+        smoke.run(1f)
+        assertEquals(SmokeDimens.LeastPerRow, smoke.budget(), "five rows in the air thin the next")
+        keys.forEach(smoke::forget)
+        assertEquals(SmokeDimens.LeastPerRow, smoke.budget(), "let go, they are still in the air")
+        smoke.run(SmokeMotion.longestLife)
+        assertEquals(SmokeDimens.PerRow, smoke.budget())
+    }
+
+    @Test
+    fun aRowThatIsAllSmokeStopsDrawingAgain() {
+        val smoke = state()
+        val row = smoke.rows["a"]!!
+        smoke.swipe(dx = -200f)
+        smoke.run(1f)
+        assertTrue(row.gone)
+        val tick = row.tick
+        smoke.run(0.5f)
+        assertEquals(tick, row.tick, "a closed row isn't drawn again each frame")
+    }
+
+    @Test
+    fun clearBringsEveryRowBackAndTheNextBurnDrawsAgain() {
+        val smoke = state()
+        smoke.swipe(dx = -200f)
+        smoke.run(0.5f)
+        smoke.clear()
+        assertNull(smoke.plumeOf("a"))
+        assertTrue(smoke.drawn.isEmpty())
+        assertFalse(smoke.rows["a"]!!.gone)
+        assertTrue(smoke.swipeAway("a", SmokeSide.Left))
+        smoke.advance(1 / 60f)
+        assertTrue(smoke.drawn.isNotEmpty(), "the frame loop fills and draws again")
     }
 }

@@ -82,8 +82,8 @@ public fun SmokeRow(
     ReportComposition()
     val row = remember(state, key) { SmokeRowState(key, present) }
     DisposableEffect(state, key, row) {
-        state.rows[key] = row
-        onDispose { if (state.rows[key] === row) state.rows.remove(key) }
+        state.register(row)
+        onDispose { state.unregister(row) }
     }
     val layer = rememberGraphicsLayer()
     SideEffect {
