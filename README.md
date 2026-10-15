@@ -403,7 +403,7 @@ PopUpBook(
 
 ## Smoke delete (`core/presentation/components/smoke/`)
 
-Deleting a chat doesn't slide it away. Swipe it to the left and it burns in from its right edge as you go (a little faster than the finger moves), along a ragged, flickering edge of char, ember and a white-hot core, and the row turns to fine smoke that curls up over the list, still carrying the shapes of its words and its avatar for a moment, while the list closes underneath. Let go before a third of it has burnt and the smoke is drawn back in along the way it came, and the row is whole again; past that, or flung, it burns the rest of the way. Swipe to the right and the row goes in mist instead, cooler, low and drifting aside, to the archive. Undo breathes the smoke back into its row.
+Deleting a chat doesn't slide it away. Swipe it to the left and it burns in from its right edge as you go (a little faster than the finger moves), along a ragged, flickering edge of char, ember and a white-hot core, and the row turns to fine smoke that curls up over the list, still carrying the shapes of its words and its avatar for a moment, while the list closes underneath. Let go before a third of it has burnt and the smoke is drawn back in along the way it came, and the row is whole again; past that, or flung, it burns the rest of the way. Swipe to the right and the row goes in mist instead, cooler, low and drifting aside, to the archive. Undo breathes the smoke back into its row. The sides are the layout's start and end, so in a right-to-left layout they mirror: a swipe to the right deletes.
 
 - **Every pixel becomes a particle.** As a swipe starts, the row's drawing, recorded into a `GraphicsLayer` on every draw, is taken as a bitmap (`toImageBitmap`) and cut into about 2,600 particles in the background: the ink at its own colour, and a sparse sample of the card's own colour, which blooms into haze. The row's colours are cut down to a few, so particles can be drawn a colour at a time. While many rows are in the air, a new one is cut into fewer, so the total stays near 11,000.
 - **A path is a pure function of where it started and how old it is.** Nothing is simulated from frame to frame. A particle's place is three steps through a fixed curl-noise field (gradient noise with its derivatives worked out alongside, so a curl costs one look-up), plus buoyancy, a kick off the burning edge, and a wander that grows with age, so a solid shape breaks up into wisps. The same particle at the same age is always in the same place, so any frame, forwards or back, can be drawn.
@@ -427,8 +427,8 @@ SmokeOverlay(smoke, Modifier.fillMaxSize()) {
                     smoke,
                     key = chat.id,
                     present = chat.id in inbox, // false: the row closes; true again: it opens
-                    left = SmokeAction("Delete", SmokeMaterial.Smoke) { viewModel.delete(chat.id) },
-                    right = SmokeAction("Archive", SmokeMaterial.Mist) { viewModel.archive(chat.id) },
+                    start = SmokeAction("Delete", SmokeMaterial.Smoke) { viewModel.delete(chat.id) },
+                    end = SmokeAction("Archive", SmokeMaterial.Mist) { viewModel.archive(chat.id) },
                 ) {
                     ChatRow(chat)
                 }

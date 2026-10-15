@@ -36,10 +36,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** Which way a row is swiped away: [Left] burns it from its right edge, [Right] from its left. */
+/**
+ * Which way a row is swiped away, as the layout reads: toward its [Start] (left, or right in a
+ * right-to-left layout) it burns from its end edge, and toward its [End] from its start edge.
+ */
 public enum class SmokeSide {
-    Left,
-    Right,
+    Start,
+    End,
 }
 
 /**
@@ -363,7 +366,10 @@ public class SmokeState internal constructor() {
     // ready. Their columns' crossing times are already stamped, so they come in where they should.
     private fun start(row: SmokeRowState, action: SmokeAction, side: SmokeSide): SmokePlume {
         val bounds = boundsOf(row.key)
-        val plume = SmokePlume(row.key, action.material, fromRight = side == SmokeSide.Left)
+        // The way it goes on the screen: toward the start is to the left, unless the row is laid
+        // out right to left.
+        val toLeft = (side == SmokeSide.Start) != row.rtl
+        val plume = SmokePlume(row.key, action.material, fromRight = toLeft)
         plume.action = action
         plume.row = row
         if (bounds != null) {
@@ -736,9 +742,12 @@ public class SmokeState internal constructor() {
 internal class SmokeRowState(val key: Any, present: Boolean) {
     var coordinates: LayoutCoordinates? = null
     var layer: GraphicsLayer? = null
-    var left: SmokeAction? = null
-    var right: SmokeAction? = null
+    var start: SmokeAction? = null
+    var end: SmokeAction? = null
     var present = present
+
+    /** Whether it is laid out right to left, its start on the right. */
+    var rtl = false
 
     /** Burnt away and closed up: it stays closed until it is reformed or comes back. */
     var gone = false
@@ -753,7 +762,10 @@ internal class SmokeRowState(val key: Any, present: Boolean) {
     /** Bumped whenever the row's cut or edge changes. Read in drawing. */
     var tick by mutableIntStateOf(0)
 
-    fun actionFor(side: SmokeSide): SmokeAction? = if (side == SmokeSide.Left) left else right
+    fun actionFor(side: SmokeSide): SmokeAction? = if (side == SmokeSide.Start) start else end
+
+    /** The side a swipe [dx] px across the screen (negative is left) goes toward. */
+    fun sideOf(dx: Float): SmokeSide = if ((dx < 0f) != rtl) SmokeSide.Start else SmokeSide.End
 
     /** Springs the row's height on by [dt]; returns whether it is still moving. */
     fun stepHeight(dt: Float, plume: SmokePlume?): Boolean {

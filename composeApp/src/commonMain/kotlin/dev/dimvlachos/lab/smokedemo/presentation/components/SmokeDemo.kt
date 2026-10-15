@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigationevent.NavigationEventInfo
@@ -100,6 +101,8 @@ import dev.dimvlachos.lab.resources.smoke_deleted
 import dev.dimvlachos.lab.resources.smoke_earlier
 import dev.dimvlachos.lab.resources.smoke_hint
 import dev.dimvlachos.lab.resources.smoke_hint_archive
+import dev.dimvlachos.lab.resources.smoke_hint_archive_rtl
+import dev.dimvlachos.lab.resources.smoke_hint_rtl
 import dev.dimvlachos.lab.resources.smoke_restore
 import dev.dimvlachos.lab.resources.smoke_restored
 import dev.dimvlachos.lab.resources.smoke_title
@@ -158,6 +161,7 @@ internal fun SmokeDemo(
     val finger = remember { ChatFinger() }
     val targets = remember { Targets() }
     val density = LocalDensity.current.density
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val place = if (archive) ChatPlace.Archived else ChatPlace.Inbox
     val currentPlace by rememberUpdatedState(place)
 
@@ -177,7 +181,7 @@ internal fun SmokeDemo(
         for (chat in inbox.readInInbox()) {
             val delay = going.size * WaveSeconds
             // A chat whose turn finds it gone from the screen is left out of the clear.
-            if (smoke.swipeAway(chat.id, SmokeSide.Left, delay) { inbox.leaveClear(chat.id) }) {
+            if (smoke.swipeAway(chat.id, SmokeSide.Start, delay) { inbox.leaveClear(chat.id) }) {
                 going += chat.id
             }
         }
@@ -186,7 +190,7 @@ internal fun SmokeDemo(
 
     DisposableEffect(state, inbox, smoke) {
         state.setChatSwipeHandler { id, by, duration ->
-            finger.swipe(smoke, id, by, duration, density)
+            finger.swipe(smoke, id, by, duration, density, rtl)
         }
         state.setControlTapHandler { control ->
             when (control) {
@@ -273,7 +277,10 @@ internal fun SmokeDemo(
                                 when {
                                     archive && inbox.chatsIn(ChatPlace.Archived).isEmpty() ->
                                         Res.string.smoke_archive_empty
+                                    // Which way is which mirrors in a right-to-left layout.
+                                    archive && rtl -> Res.string.smoke_hint_archive_rtl
                                     archive -> Res.string.smoke_hint_archive
+                                    rtl -> Res.string.smoke_hint_rtl
                                     else -> Res.string.smoke_hint
                                 }
                             ),
@@ -457,8 +464,8 @@ private fun ChatGroup(
                     smoke,
                     chat.id,
                     present = present,
-                    left = SmokeAction(delete, SmokeMaterial.Smoke) { inbox.deleted(chat.id) },
-                    right =
+                    start = SmokeAction(delete, SmokeMaterial.Smoke) { inbox.deleted(chat.id) },
+                    end =
                         if (place == ChatPlace.Inbox) {
                             SmokeAction(archive, SmokeMaterial.Mist) { inbox.archived(chat.id) }
                         } else {
@@ -570,7 +577,8 @@ private class ChatFinger {
 
     /**
      * Comes down on chat [id] near the edge it swipes away from, drags it [by] of its width over
-     * [duration], holds a moment and lets go. A script stopped mid-swipe still lets go.
+     * [duration] (negative is toward its start: to the left, or to the right if [rtl]), holds a
+     * moment and lets go. A script stopped mid-swipe still lets go.
      */
     suspend fun swipe(
         smoke: SmokeState,
@@ -578,22 +586,25 @@ private class ChatFinger {
         by: Float,
         duration: Duration,
         density: Float,
+        rtl: Boolean,
     ) {
         val mine = ++gesture
         var holding = false
         try {
             val bounds = smoke.boundsOf(id) ?: return
-            val left = by < 0f
+            // Across the screen: negative is to the left.
+            val across = if (rtl) -by else by
+            val left = across < 0f
             val inset = FingerInset * density
             val start =
                 Offset(if (left) bounds.right - inset else bounds.left + inset, bounds.center.y)
             at = start
             alpha.animateTo(1f, tween(ScriptedTouch.DownMs))
-            holding = smoke.dragStart(id, if (left) SmokeSide.Left else SmokeSide.Right)
+            holding = smoke.dragStart(id, if (by < 0f) SmokeSide.Start else SmokeSide.End)
             if (!holding) return
             animate(
                 0f,
-                by * bounds.width,
+                across * bounds.width,
                 animationSpec =
                     tween(duration.inWholeMilliseconds.toInt(), easing = FastOutSlowInEasing),
             ) { value, velocity ->

@@ -167,6 +167,8 @@
     <string name="smoke_undone">Brought back</string>
     <string name="smoke_hint">Swipe left to delete, right to archive</string>
     <string name="smoke_hint_archive">Swipe left to delete, right to restore</string>
+    <string name="smoke_hint_rtl">Swipe right to delete, left to archive</string>
+    <string name="smoke_hint_archive_rtl">Swipe right to delete, left to restore</string>
     <string name="smoke_chat_eleni_name">Eleni Markou</string>
     <string name="smoke_chat_eleni_preview">Portara at sunset? I’ll bring the wine.</string>
     <string name="smoke_chat_ferry_name">Aegean Ferries</string>

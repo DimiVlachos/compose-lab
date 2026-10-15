@@ -16,8 +16,8 @@ class SmokeStateTest {
         SmokeState().apply {
             register(
                 SmokeRowState("a", present = true).apply {
-                    left = SmokeAction("Delete", SmokeMaterial.Smoke) { deleted++ }
-                    right = SmokeAction("Archive", SmokeMaterial.Mist) { archived++ }
+                    start = SmokeAction("Delete", SmokeMaterial.Smoke) { deleted++ }
+                    end = SmokeAction("Archive", SmokeMaterial.Mist) { archived++ }
                 }
             )
             onThreshold = { ticks++ }
@@ -26,7 +26,7 @@ class SmokeStateTest {
     private fun SmokeState.swipe(
         dx: Float,
         velocity: Float = 0f,
-        side: SmokeSide = SmokeSide.Left,
+        side: SmokeSide = SmokeSide.Start,
     ) {
         assertTrue(dragStart("a", side))
         plumeOf("a")!!.width = 300f
@@ -78,7 +78,7 @@ class SmokeStateTest {
     @Test
     fun aRightSwipeArchivesInMistAndUndoBringsItBack() {
         val smoke = state()
-        smoke.swipe(dx = 200f, side = SmokeSide.Right)
+        smoke.swipe(dx = 200f, side = SmokeSide.End)
         assertEquals(SmokeMaterial.Mist, smoke.plumeOf("a")!!.material)
         smoke.run(1.5f)
         assertEquals(1, archived)
@@ -109,22 +109,22 @@ class SmokeStateTest {
     @Test
     fun aRowHeldOrWaitingCantBeQueuedOrTakenTwice() {
         val smoke = state()
-        assertTrue(smoke.dragStart("a", SmokeSide.Left))
-        assertFalse(smoke.swipeAway("a", SmokeSide.Left, delay = 0.1f), "held: no burn queued")
-        assertFalse(smoke.swipeAway("a", SmokeSide.Left), "held: no burn now")
+        assertTrue(smoke.dragStart("a", SmokeSide.Start))
+        assertFalse(smoke.swipeAway("a", SmokeSide.Start, delay = 0.1f), "held: no burn queued")
+        assertFalse(smoke.swipeAway("a", SmokeSide.Start), "held: no burn now")
         smoke.release("a", 0f)
         smoke.run(1f)
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f))
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start, delay = 0.2f))
         assertTrue(smoke.isWaiting("a"))
-        assertFalse(smoke.dragStart("a", SmokeSide.Left), "waiting its turn in a wave")
-        assertFalse(smoke.swipeAway("a", SmokeSide.Left, delay = 0.3f), "queued twice")
+        assertFalse(smoke.dragStart("a", SmokeSide.Start), "waiting its turn in a wave")
+        assertFalse(smoke.swipeAway("a", SmokeSide.Start, delay = 0.3f), "queued twice")
     }
 
     @Test
     fun burningARowNowTakesThePlaceOfItsQueuedBurn() {
         val smoke = state()
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f))
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left))
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start, delay = 0.2f))
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start))
         assertFalse(smoke.isWaiting("a"))
         smoke.plumeOf("a")!!.width = 300f
         smoke.run(2f)
@@ -135,7 +135,7 @@ class SmokeStateTest {
     fun aQueuedBurnFindsTheRowGoneAndLetsItBe() {
         val smoke = state()
         var dropped = 0
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f) { dropped++ })
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start, delay = 0.2f) { dropped++ })
         smoke.rows["a"]!!.present = false
         smoke.run(0.5f)
         assertNull(smoke.plumeOf("a"))
@@ -147,7 +147,7 @@ class SmokeStateTest {
     fun aQueuedBurnThatStartsIsntDropped() {
         val smoke = state()
         var dropped = 0
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left, delay = 0.2f) { dropped++ })
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start, delay = 0.2f) { dropped++ })
         smoke.run(0.3f)
         assertNotNull(smoke.plumeOf("a"), "its turn came and it burns")
         assertEquals(0, dropped)
@@ -187,7 +187,7 @@ class SmokeStateTest {
     @Test
     fun aHeldRowTakenAwayLetsGoOfTheFingerAndIsDrawnBackIn() {
         val smoke = state()
-        assertTrue(smoke.dragStart("a", SmokeSide.Left))
+        assertTrue(smoke.dragStart("a", SmokeSide.Start))
         smoke.plumeOf("a")!!.width = 300f
         smoke.dragTo("a", -200f, 0f)
         smoke.advance(1 / 60f)
@@ -209,12 +209,12 @@ class SmokeStateTest {
         for (key in keys) {
             smoke.register(
                 SmokeRowState(key, present = true).apply {
-                    left = SmokeAction("Delete", SmokeMaterial.Smoke) {}
+                    start = SmokeAction("Delete", SmokeMaterial.Smoke) {}
                 }
             )
         }
         assertEquals(SmokeDimens.PerRow, smoke.budget())
-        for (key in keys) assertTrue(smoke.swipeAway(key, SmokeSide.Left))
+        for (key in keys) assertTrue(smoke.swipeAway(key, SmokeSide.Start))
         smoke.run(1f)
         assertEquals(SmokeDimens.LeastPerRow, smoke.budget(), "five rows in the air thin the next")
         keys.forEach(smoke::forget)
@@ -244,7 +244,7 @@ class SmokeStateTest {
         assertNull(smoke.plumeOf("a"))
         assertTrue(smoke.drawn.isEmpty())
         assertFalse(smoke.rows["a"]!!.gone)
-        assertTrue(smoke.swipeAway("a", SmokeSide.Left))
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start))
         smoke.advance(1 / 60f)
         assertTrue(smoke.drawn.isNotEmpty(), "the frame loop fills and draws again")
     }

@@ -43,31 +43,34 @@ import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * A row of a [SmokeOverlay]'s list, known by [key], that can be swiped away: to the left it goes as
- * [left] says, burning from its right edge, and to the right as [right] says, from its left edge; a
- * side with no action doesn't swipe. The row is cut at the front as it burns, along a ragged,
- * flickering edge, and once it is all smoke its height springs to nothing. With less than a third
- * burnt, let go, the smoke is drawn back in and the row is whole again.
+ * A row of a [SmokeOverlay]'s list, known by [key], that can be swiped away: toward its start (to
+ * the left, or to the right in a right-to-left layout) it goes as [start] says, burning from its
+ * end edge, and toward its end as [end] says, from its start edge; a side with no action doesn't
+ * swipe. The row is cut at the front as it burns, along a ragged, flickering edge, and once it is
+ * all smoke its height springs to nothing. With less than a third burnt, let go, the smoke is drawn
+ * back in and the row is whole again.
  *
  * The row stands while it is [present] and closes up when it isn't, and opens again when it comes
- * back: as its [left] or [right] action runs, the caller takes it out, and an undo puts it back
- * (and calls [SmokeState.reform] to breathe its smoke back in).
+ * back: as its [start] or [end] action runs, the caller takes it out, and an undo puts it back (and
+ * calls [SmokeState.reform] to breathe its smoke back in).
  *
- * With a keyboard, Delete or Backspace on the focused row runs its [left] action, once however long
- * the key is held, focus moving on to the next row (or the one before, at the end); a screen reader
- * has both actions as custom actions, by their labels. A row that isn't [present] is hidden from
- * both.
+ * With a keyboard, Delete or Backspace on the focused row runs its [start] action, once however
+ * long the key is held, focus moving on to the next row (or the one before, at the end); a screen
+ * reader has both actions as custom actions, by their labels. A row that isn't [present] is hidden
+ * from both.
  */
 @Composable
 public fun SmokeRow(
@@ -75,8 +78,8 @@ public fun SmokeRow(
     key: Any,
     modifier: Modifier = Modifier,
     present: Boolean = true,
-    left: SmokeAction? = null,
-    right: SmokeAction? = null,
+    start: SmokeAction? = null,
+    end: SmokeAction? = null,
     content: @Composable () -> Unit,
 ) {
     ReportComposition()
@@ -86,16 +89,18 @@ public fun SmokeRow(
         onDispose { state.unregister(row) }
     }
     val layer = rememberGraphicsLayer()
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     SideEffect {
-        row.left = left
-        row.right = right
+        row.start = start
+        row.end = end
+        row.rtl = rtl
         row.layer = layer
         if (row.present != present) {
             row.present = present
             state.awake = true
         }
     }
-    val currentLeft by rememberUpdatedState(left)
+    val currentStart by rememberUpdatedState(start)
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
     val colors = LabTheme.colors
@@ -107,11 +112,11 @@ public fun SmokeRow(
         }
     val actions =
         listOfNotNull(
-            left?.let {
-                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.Left) }
+            start?.let {
+                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.Start) }
             },
-            right?.let {
-                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.Right) }
+            end?.let {
+                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.End) }
             },
         )
     Box(
@@ -132,12 +137,12 @@ public fun SmokeRow(
             )
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { event ->
-                if (!isDelete(event.key) || currentLeft == null) return@onKeyEvent false
+                if (!isDelete(event.key) || currentStart == null) return@onKeyEvent false
                 // A held key repeats its downs, on whichever row focus has moved on to: only the
                 // first, until the key is let up anywhere in the overlay, burns.
                 if (event.type != KeyEventType.KeyDown || state.deleteHeld) return@onKeyEvent true
                 state.deleteHeld = true
-                if (state.swipeAway(key, SmokeSide.Left)) {
+                if (state.swipeAway(key, SmokeSide.Start)) {
                     // On to the next row, or the one before at the end of the list.
                     if (!focusManager.moveFocus(FocusDirection.Down)) {
                         focusManager.moveFocus(FocusDirection.Up)
@@ -202,7 +207,7 @@ private suspend fun PointerInputScope.swipes(
                 if (!holding) {
                     if (change.isConsumed) break
                     if (abs(dx) > slop && abs(dx) > abs(dy) * 1.2f) {
-                        val side = if (dx < 0f) SmokeSide.Left else SmokeSide.Right
+                        val side = state.rows[key]?.sideOf(dx) ?: break
                         if (!state.dragStart(key, side)) break
                         holding = true
                         startX = change.position.x

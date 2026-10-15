@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -28,6 +29,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventInfo
@@ -58,10 +60,16 @@ class SmokeDemoUiTest {
     private var smoke: SmokeState? = null
     private var compositions = 0
 
-    private fun ComposeUiTest.show(state: DemoState = DemoState()) {
+    private fun ComposeUiTest.show(
+        state: DemoState = DemoState(),
+        direction: LayoutDirection = LayoutDirection.Ltr,
+    ) {
         setContent {
             LabTheme {
-                CompositionLocalProvider(LocalSmokeCompositionProbe provides { compositions++ }) {
+                CompositionLocalProvider(
+                    LocalSmokeCompositionProbe provides { compositions++ },
+                    LocalLayoutDirection provides direction,
+                ) {
                     Box(Modifier.size(400.dp, 800.dp)) {
                         val chats = rememberCycladesInbox()
                         val s = rememberSmokeState()
@@ -169,7 +177,7 @@ class SmokeDemoUiTest {
         show()
         mainClock.autoAdvance = false
         mainClock.advanceTimeBy(100)
-        smoke!!.swipeAway("maria", SmokeSide.Left)
+        smoke!!.swipeAway("maria", SmokeSide.Start)
         mainClock.advanceTimeBy(64)
         val burning = compositions
         mainClock.advanceTimeBy(200)
@@ -336,5 +344,22 @@ class SmokeDemoUiTest {
         assertEquals(ChatChange.Cleared, inbox!!.last!!.change)
         assertEquals(5, inbox!!.last!!.ids.size)
         assertTrue("kite" !in inbox!!.last!!.ids)
+    }
+
+    @Test
+    fun rightToLeftTheSwipesMirror() = runComposeUiTest {
+        show(direction = LayoutDirection.Rtl)
+        mainClock.autoAdvance = false
+        onNodeWithText("Swipe right to delete, left to archive").assertExists()
+        // Toward the start, to the right here, deletes.
+        swipe("Kyria Maria", 0.6f)
+        advanceUntil("the chat to burn away") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+        // Toward the end, to the left, archives.
+        swipe("Nikos", -0.6f)
+        advanceUntil("the chat to go in mist") { inbox!!.placeOf("nikos") == ChatPlace.Archived }
+        // The Delete key deletes, whichever way that is.
+        chat("Anna").performSemanticsAction(SemanticsActions.RequestFocus)
+        chat("Anna").performKeyInput { pressKey(Key.Delete) }
+        advanceUntil("the key to burn it") { inbox!!.placeOf("anna") == ChatPlace.Deleted }
     }
 }

@@ -96,9 +96,9 @@ internal interface DemoController {
     suspend fun pullPopUpTab(out: Float, duration: Duration)
 
     /**
-     * Swipes the chat [id] across by [by] of its width (negative is left) over [duration] with a
-     * fingertip, and lets go. Returns once the finger has lifted; the chat burns, mists or is drawn
-     * back in by itself.
+     * Swipes the chat [id] across by [by] of its width (negative is toward its start) over
+     * [duration] with a fingertip, and lets go. Returns once the finger has lifted; the chat burns,
+     * mists or is drawn back in by itself.
      */
     suspend fun swipeChat(id: String, by: Float, duration: Duration)
 
