@@ -1,5 +1,8 @@
 package dev.dimvlachos.lab.core.presentation.components.smoke
 
+import dev.dimvlachos.lab.core.platform.Sound
+import dev.dimvlachos.lab.core.platform.SoundLoop
+import dev.dimvlachos.lab.core.platform.SoundPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -247,5 +250,39 @@ class SmokeStateTest {
         assertTrue(smoke.swipeAway("a", SmokeSide.Start))
         smoke.advance(1 / 60f)
         assertTrue(smoke.drawn.isNotEmpty(), "the frame loop fills and draws again")
+    }
+
+    // A burn loop that says whether it is still playing.
+    private class Loops : SoundPlayer {
+        var playing = 0
+
+        override fun play(sound: Sound, volume: Float, rate: Float) = Unit
+
+        override fun loop(sound: Sound, volume: Float): SoundLoop {
+            playing++
+            return object : SoundLoop {
+                override fun setVolume(volume: Float) = Unit
+
+                override fun stop() {
+                    playing--
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theBurnLoopStopsInTheBackgroundAndWithTheOverlay() {
+        val loops = Loops()
+        val smoke = state().apply { sound = loops }
+        assertTrue(smoke.swipeAway("a", SmokeSide.Start))
+        smoke.plumeOf("a")!!.width = 3_000f
+        smoke.advance(1 / 60f)
+        assertEquals(1, loops.playing)
+        smoke.quiet()
+        assertEquals(0, loops.playing, "the app went to the background")
+        smoke.advance(1 / 60f)
+        assertEquals(1, loops.playing, "it starts again with the burn")
+        smoke.clear()
+        assertEquals(0, loops.playing, "the overlay went")
     }
 }

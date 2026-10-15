@@ -72,4 +72,19 @@ class BurnFrontTest {
         front.advanceTo(0.75f, now = 3f, seconds = 0.1f, movedY = -90f)
         assertEquals(-30f, front.movedYOf(later))
     }
+
+    @Test
+    fun aFingerGoingBackAndForthStillCrossesColumnsInOrder() {
+        val front = BurnFront(fromRight = true)
+        // Held: the finger goes on, back a little, and on again.
+        front.advanceTo(0.3f, now = 1f, seconds = 0.016f)
+        front.advanceTo(0.1f, now = 1.016f, seconds = 0.016f)
+        front.advanceTo(0.25f, now = 1.032f, seconds = 0.016f)
+        front.advanceTo(0.6f, now = 1.048f, seconds = 0.016f)
+        val columns = SmokeDimens.Columns
+        for (c in columns - 1 downTo columns - (columns * 6 / 10) + 1) {
+            assertTrue(front.crossing(c) <= front.crossing(c - 1), "column $c before ${c - 1}")
+        }
+        assertEquals(0.6f, front.burnt)
+    }
 }
