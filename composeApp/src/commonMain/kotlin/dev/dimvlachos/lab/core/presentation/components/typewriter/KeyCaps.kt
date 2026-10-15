@@ -52,6 +52,8 @@ import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.typewriter_key_delete
+import dev.dimvlachos.lab.resources.typewriter_key_face_figures
+import dev.dimvlachos.lab.resources.typewriter_key_face_letters
 import dev.dimvlachos.lab.resources.typewriter_key_figures
 import dev.dimvlachos.lab.resources.typewriter_key_letters
 import dev.dimvlachos.lab.resources.typewriter_key_new_line
@@ -160,7 +162,15 @@ private fun KeyCap(
     val currentEnabled by rememberUpdatedState(enabled)
     val figures = state.keyboard.figures
     val shifted = state.keyboard.shifted
-    val face = keyFace(key, figures)
+    val face =
+        when (key.action) {
+            KeyAction.Page ->
+                stringResource(
+                    if (figures) Res.string.typewriter_key_face_letters
+                    else Res.string.typewriter_key_face_figures
+                )
+            else -> keyFace(key)
+        }
     val legend =
         with(LocalDensity.current) {
             val share =
@@ -355,15 +365,15 @@ private fun KeyCap(
     )
 }
 
-// What a key shows on its top.
-private fun keyFace(key: TypeKey, figures: Boolean): String =
+// What a key shows on its top; the page key's words are the caller's, from the strings.
+private fun keyFace(key: TypeKey): String =
     when (val action = key.action) {
         is KeyAction.Type -> action.char.uppercaseChar().toString()
         KeyAction.Space -> ""
         KeyAction.Shift -> "⇧"
         KeyAction.Backspace -> "←"
         KeyAction.Return -> "↵"
-        KeyAction.Page -> if (figures) "ABC" else "123"
+        KeyAction.Page -> ""
     }
 
 // What a screen reader calls a key: a letter as it would type now, a capital after Shift.
@@ -384,13 +394,12 @@ private fun keyName(key: TypeKey, figures: Boolean, shifted: Boolean): String =
 
 private val KeyUp = spring<Float>(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh)
 
-// How lit Shift's glass is while it is down, how dark a key's lever and its shadow are, up and
-// pressed, and how bright the glint on its glass.
+// How lit Shift's glass is while it is down, how dark the slot its stem goes into, how worn and how
+// dark its legend, how dark its shadow, up and pressed, and how bright the glint on its glass.
 private const val LitGlass = 0.45f
 private const val SlotAlpha = 0.6f
 private const val LegendWear = 0.25f
 private const val LegendInk = 0.88f
-private const val StemAlpha = 0.5f
 private const val KeyShadow = 0.45f
 private const val KeyShadowPressed = 0.2f
 private const val GlassGlint = 0.3f

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.presentation.components.magnet.SoftShadow
 import dev.dimvlachos.lab.core.presentation.ui.AppColors
 import kotlin.math.PI
@@ -101,7 +102,7 @@ internal class MachineShell {
                 cx - front / 2f,
                 top + 6f * u,
                 cx + front / 2f,
-                bottom + 20f,
+                bottom + 20f * u,
                 14f * u,
                 TableShadow,
             )
@@ -334,7 +335,7 @@ internal class MachineShell {
                     Color.White.copy(alpha = StepLight),
                     Offset(left, y),
                     Offset(right, y),
-                    strokeWidth = 1f,
+                    strokeWidth = 1.dp.toPx(),
                 )
             }
             // The deck overhanging the back of the well.
@@ -348,7 +349,7 @@ internal class MachineShell {
                 Size(right - left, rowHeight * 0.5f),
             )
         }
-        drawPath(wellPath, Color.White.copy(alpha = RimLight), style = Stroke(1.2f))
+        drawPath(wellPath, Color.White.copy(alpha = RimLight), style = Stroke(1.2.dp.toPx()))
     }
 
     // The lip under the keys, the shell curving down and under towards the table, and the badge
@@ -362,7 +363,7 @@ internal class MachineShell {
         badge: TextLayoutResult?,
         model: TextLayoutResult?,
     ) {
-        val top = keysBottom + 2f
+        val top = keysBottom + 2.dp.toPx()
         val left = cx - front / 2f
         drawRect(
             Brush.verticalGradient(
@@ -383,9 +384,9 @@ internal class MachineShell {
         )
         drawLine(
             Color.White.copy(alpha = LipLight),
-            Offset(left + 8f, top + 1f),
-            Offset(left + front - 8f, top + 1f),
-            strokeWidth = 1.5f,
+            Offset(left + 8.dp.toPx(), top + 1.dp.toPx()),
+            Offset(left + front - 8.dp.toPx(), top + 1.dp.toPx()),
+            strokeWidth = 1.5.dp.toPx(),
         )
         val lipHeight = TypewriterDimens.FrontLip.toPx()
         if (badge != null) {
@@ -393,7 +394,7 @@ internal class MachineShell {
             val y = top + (lipHeight - badge.size.height) / 2f
             val x = cx - width / 2f
             // Lettered in relief: a dark edge under the lettering, then the lettering.
-            drawText(badge, Color.Black.copy(alpha = 0.35f), Offset(x, y + 1f))
+            drawText(badge, Color.Black.copy(alpha = 0.35f), Offset(x, y + 1.dp.toPx()))
             drawText(badge, colors.typeBadge, Offset(x, y))
             if (model != null) {
                 val mx = x + badge.size.width + lipHeight * 0.5f

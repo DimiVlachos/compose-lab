@@ -426,8 +426,8 @@ internal fun TypewriterComposer(
                     }
             )
             // The band the lever swings in, kept from the system's edge swipes: at the end of a
-            // long
-            // line the lever is at the screen's left edge, where a push would otherwise go back.
+            // long line the lever is at the screen's left edge, where a push would otherwise go
+            // back.
             Spacer(
                 Modifier.align(Alignment.TopStart)
                     .fillMaxWidth()

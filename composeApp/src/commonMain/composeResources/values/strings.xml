@@ -150,6 +150,8 @@
     <string name="typewriter_key_new_line">New line</string>
     <string name="typewriter_key_figures">Numbers and punctuation</string>
     <string name="typewriter_key_letters">Letters</string>
+    <string name="typewriter_key_face_figures">123</string>
+    <string name="typewriter_key_face_letters">ABC</string>
     <string name="typewriter_said_deleted">Deleted %1$s</string>
     <string name="typewriter_hint_pull">Pull the sheet up to send</string>
     <string name="typewriter_hint_full">The sheet’s full. Pull it out to send</string>
@@ -162,9 +164,9 @@
     <string name="typewriterchat_seed_1">The Aegean ferry gets into Naxos at 13:10 tomorrow.</string>
     <string name="typewriterchat_seed_2">on the 07:25 from piraeus. window seat, left side.</string>
     <string name="typewriterchat_seed_3">Meet you at the port? Portara for sunset after.</string>
-    <string name="typewriterchat_script_1">see you at the</string>
-    <string name="typewriterchat_script_1b">port at nine.</string>
-    <string name="typewriterchat_script_2">sunset at the potr⌫⌫rtara?</string>
+    <string name="typewriterchat_script_1" translatable="false">see you at the</string>
+    <string name="typewriterchat_script_1b" translatable="false">port at nine.</string>
+    <string name="typewriterchat_script_2" translatable="false">sunset at the potr⌫⌫rtara?</string>
     <string name="typewriterchat_reply_1">Perfect. I’ll bring the graviera.</string>
     <string name="typewriterchat_reply_2">Deal. Sunset at the Portara it is.</string>
     <string name="typewriterchat_reply_3">Ha. Nobody else I know sends letters by chat.</string>
