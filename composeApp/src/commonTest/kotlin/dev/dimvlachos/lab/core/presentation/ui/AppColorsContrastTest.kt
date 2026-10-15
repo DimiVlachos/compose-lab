@@ -44,6 +44,44 @@ class AppColorsContrastTest {
     }
 
     @Test
+    fun theUndoSnackbarReads() {
+        for (colors in Palettes) {
+            assertContrast(colors.onSmokeSnackbar, colors.smokeSnackbar, 7f, colors, "snackbar")
+            assertContrast(
+                colors.smokeSnackbarAction,
+                colors.smokeSnackbar,
+                4.5f,
+                colors,
+                "snackbar action",
+            )
+        }
+    }
+
+    @Test
+    fun theInitialsReadOnEveryChatAvatar() {
+        // White initials, as the smoke delete's chat list draws them.
+        for (colors in Palettes) {
+            val avatars =
+                listOf(
+                    colors.chatGreen,
+                    colors.chatBlue,
+                    colors.chatAmber,
+                    colors.magnetRed,
+                    colors.chatTeal,
+                    colors.chatViolet,
+                    colors.tagVillage,
+                )
+            for (avatar in avatars) assertContrast(
+                colors.onAccent,
+                avatar,
+                4.5f,
+                colors,
+                "initials",
+            )
+        }
+    }
+
+    @Test
     fun selectedTextReads() {
         for (colors in Palettes) {
             val selected = colors.selection.compositeOver(colors.surface)
