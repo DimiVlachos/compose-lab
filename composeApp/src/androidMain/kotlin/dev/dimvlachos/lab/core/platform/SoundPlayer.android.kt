@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.resources.Res
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -44,6 +45,7 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val ids = mutableMapOf<Sound, Int>()
     private val ready = mutableSetOf<Int>()
+    private var released = false
 
     init {
         pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) ready += id }
@@ -51,14 +53,18 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
 
     suspend fun load(sounds: Set<Sound>) {
         for (sound in sounds) {
+            if (released) return
             if (sound in ids) continue
             val file =
                 try {
                     withContext(Dispatchers.IO) { cacheFile(sound) }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     log.w(e) { "Could not load ${sound.file}" }
                     continue
                 }
+            if (released) return
             ids[sound] = pool.load(file.path, 1)
         }
     }
@@ -107,7 +113,10 @@ private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         }
     }
 
-    fun release() = pool.release()
+    fun release() {
+        released = true
+        pool.release()
+    }
 
     private companion object {
         const val MaxStreams = 8

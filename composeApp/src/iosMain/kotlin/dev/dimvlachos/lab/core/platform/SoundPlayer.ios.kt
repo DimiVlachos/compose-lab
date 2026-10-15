@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import co.touchlab.kermit.Logger
 import dev.dimvlachos.lab.resources.Res
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -34,6 +35,7 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
 private class AvSoundPlayer : SoundPlayer {
     private val voices = mutableMapOf<Sound, List<AVAudioPlayer>>()
     private val next = mutableMapOf<Sound, Int>()
+    private var released = false
 
     init {
         val session = AVAudioSession.sharedInstance()
@@ -43,14 +45,18 @@ private class AvSoundPlayer : SoundPlayer {
 
     suspend fun load(sounds: Set<Sound>) {
         for (sound in sounds) {
+            if (released) return
             if (sound in voices) continue
             val bytes =
                 try {
                     Res.readBytes(sound.path)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     log.w(e) { "Could not load ${sound.file}" }
                     continue
                 }
+            if (released) return
             val data = bytes.usePinned {
                 NSData.create(bytes = it.addressOf(0), length = bytes.size.toULong())
             }
@@ -98,6 +104,7 @@ private class AvSoundPlayer : SoundPlayer {
     }
 
     fun release() {
+        released = true
         voices.values.flatten().forEach { it.stop() }
         voices.clear()
     }
