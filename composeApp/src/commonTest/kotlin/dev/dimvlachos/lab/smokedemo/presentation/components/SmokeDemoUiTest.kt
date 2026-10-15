@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
@@ -54,6 +55,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+
+/**
+ * How long a test that plays the demo's script through may take, in real time: on a CI runner with
+ * few cores, longer than the test runner's own 60 s.
+ */
+private val SlowSmokeTest: Duration = 3.minutes
 
 @OptIn(ExperimentalTestApi::class)
 class SmokeDemoUiTest {
@@ -187,39 +196,46 @@ class SmokeDemoUiTest {
     }
 
     @Test
-    fun theScriptPlaysTwiceAndEndsWithTheListAsItBegan() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val state = DemoState(replay = true)
-        var runs = 0
-        setContent {
-            LabTheme {
-                Box(Modifier.size(400.dp, 800.dp)) {
-                    val chats = rememberChatInbox()
-                    inbox = chats
-                    SmokeDemo(state, chats, rememberSmokeState())
-                }
-                LaunchedEffect(Unit) {
-                    repeat(2) {
-                        SmokeDemos.all.single().script.play(state)
-                        runs++
+    fun theScriptPlaysTwiceAndEndsWithTheListAsItBegan() =
+        runComposeUiTest(testTimeout = SlowSmokeTest) {
+            mainClock.autoAdvance = false
+            val state = DemoState(replay = true)
+            var runs = 0
+            setContent {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 800.dp)) {
+                        val chats = rememberChatInbox()
+                        inbox = chats
+                        // Twice through the script is 45 s of frames: without the smoke, which this
+                        // doesn't look at, it doesn't take minutes on a slow runner.
+                        SmokeDemo(
+                            state,
+                            chats,
+                            remember { SmokeState().apply { smokeless = true } },
+                        )
+                    }
+                    LaunchedEffect(Unit) {
+                        repeat(2) {
+                            SmokeDemos.all.single().script.play(state)
+                            runs++
+                        }
                     }
                 }
             }
+            repeat(2) { run ->
+                advanceUntil("Mrs. Patterson's chat to burn in run ${run + 1}", most = 4_000) {
+                    inbox!!.placeOf("patterson") == ChatPlace.Deleted
+                }
+                advanceUntil("the clear's wave in run ${run + 1}", most = 16_000) {
+                    inbox!!.readInInbox().isEmpty()
+                }
+                advanceUntil("run ${run + 1} to end", most = 14_000) { runs == run + 1 }
+                for (chat in InboxChats.all) {
+                    assertEquals(InboxChats.start[chat.id], inbox!!.placeOf(chat.id), chat.id)
+                }
+                assertNull(inbox!!.last, "nothing left to undo")
+            }
         }
-        repeat(2) { run ->
-            advanceUntil("Mrs. Patterson's chat to burn in run ${run + 1}", most = 4_000) {
-                inbox!!.placeOf("patterson") == ChatPlace.Deleted
-            }
-            advanceUntil("the clear's wave in run ${run + 1}", most = 16_000) {
-                inbox!!.readInInbox().isEmpty()
-            }
-            advanceUntil("run ${run + 1} to end", most = 14_000) { runs == run + 1 }
-            for (chat in InboxChats.all) {
-                assertEquals(InboxChats.start[chat.id], inbox!!.placeOf(chat.id), chat.id)
-            }
-            assertNull(inbox!!.last, "nothing left to undo")
-        }
-    }
 
     @Test
     fun clearReadIgnoresASecondTapWhileItsWaveBurns() = runComposeUiTest {

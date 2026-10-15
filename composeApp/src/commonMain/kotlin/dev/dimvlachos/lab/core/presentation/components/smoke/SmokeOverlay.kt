@@ -134,14 +134,16 @@ private fun BoxScope.SmokeLayerOf(
     Spacer(
         Modifier.matchParentSize()
             .graphicsLayer {
-                if (blur > 0.dp) {
+                // Blurred only while there are particles to blur: an empty layer isn't.
+                state.frame
+                if (blur > 0.dp && state.smoky) {
                     val radius = blur.toPx()
                     renderEffect = BlurEffect(radius, radius, TileMode.Decal)
-                }
+                } else renderEffect = null
             }
             .drawBehind {
                 state.frame
-                if (state.drawn.isEmpty()) return@drawBehind
+                if (!state.smoky) return@drawBehind
                 with(state.painter) { draw(state.drawn, layer, colors) }
             }
     )

@@ -82,6 +82,13 @@ public class SmokeState internal constructor() {
     internal var density = 1f
     internal var graphics: GraphicsContext? = null
 
+    /**
+     * Whether the rows burn, close and come back without any smoke: never sampled into particles,
+     * so nothing is filled or drawn. For a test that plays out a long script and only looks at the
+     * list.
+     */
+    internal var smokeless = false
+
     // The one buffer a row's pixels are read into, a row at a time.
     private val sampling = Mutex()
     private var pixels = IntArray(0)
@@ -126,6 +133,10 @@ public class SmokeState internal constructor() {
 
     /** The plumes in the air this frame, in the order they were started. */
     internal val drawn = mutableListOf<SmokePlume>()
+
+    /** Whether any plume in the air this frame has particles to draw. */
+    internal var smoky = false
+        private set
 
     private var loop: SoundLoop? = null
     private var quietFor = 0f
@@ -276,6 +287,7 @@ public class SmokeState internal constructor() {
         fading.clear()
         queued.clear()
         drawn.clear()
+        smoky = false
         deleteHeld = false
         for (row in rowList) {
             row.gone = false
@@ -407,7 +419,7 @@ public class SmokeState internal constructor() {
         addPlume(plume)
         val layer = row.layer
         val scope = scope
-        if (layer != null && scope != null && bounds != null && bounds.width >= 1f) {
+        if (!smokeless && layer != null && scope != null && bounds != null && bounds.width >= 1f) {
             val budget = budget()
             val seed = row.key.hashCode()
             scope.launch {
@@ -626,6 +638,8 @@ public class SmokeState internal constructor() {
             val plume = plumeList[i]
             if (plume.visibleAt(now)) drawn += plume
         }
+        smoky = false
+        for (i in drawn.indices) if (drawn[i].particles != null) smoky = true
         fill()
         follow(burning, dt)
         frame++
