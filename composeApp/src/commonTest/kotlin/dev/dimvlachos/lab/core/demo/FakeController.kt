@@ -154,6 +154,18 @@ internal class FakeController(private val now: () -> Long) : DemoController {
         calls += now() to "pullPopUpTab($out, $duration)"
     }
 
+    /** How far each pull of the typewriter's sheet went, in order. */
+    val typewriterSheetPulls = mutableListOf<Dp>()
+
+    override suspend fun pullTypewriterSheet(up: Dp, duration: Duration) {
+        typewriterSheetPulls += up
+        calls += now() to "pullTypewriterSheet($up, $duration)"
+    }
+
+    override suspend fun pushTypewriterLever(duration: Duration) {
+        calls += now() to "pushTypewriterLever($duration)"
+    }
+
     /** Each chat swiped, and how far, in order. */
     val chatSwipes = mutableListOf<Pair<String, Float>>()
 

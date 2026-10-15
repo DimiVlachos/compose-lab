@@ -97,6 +97,21 @@ internal interface DemoController {
     suspend fun pullPopUpTab(out: Float, duration: Duration)
 
     /**
+     * Takes the typewriter's sheet with a fingertip, pulls it [up] out of the roller over
+     * [duration] and lets go: pulled far enough it is sent, and short of that it slides back in.
+     * The typewriter types with [sendMessage], which leaves the sheet in the roller. Returns once
+     * the fingertip has lifted.
+     */
+    suspend fun pullTypewriterSheet(up: Dp, duration: Duration)
+
+    /**
+     * Takes the typewriter's carriage-return lever with a fingertip, pushes it all the way over in
+     * [duration] and lets go: the paper feeds a line and the carriage bangs home. Returns once the
+     * fingertip has lifted.
+     */
+    suspend fun pushTypewriterLever(duration: Duration)
+
+    /**
      * Swipes the chat [id] across by [by] of its width (negative is toward its start) over
      * [duration] with a fingertip, and lets go. Returns once the finger has lifted; the chat burns,
      * mists or is drawn back in by itself.

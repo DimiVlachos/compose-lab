@@ -129,6 +129,26 @@ public data class AppColors(
     val fishingLine: Color = Color(0xFFE9EEF2),
     val bobberRed: Color = Color(0xFFE0402F),
     val bobberWhite: Color = Color(0xFFF7F4EE),
+    // The typewriter composer. Themed: its sheet of paper and the slips sent from it, a shade
+    // dimmer on the dark screen, with the darker paper of its edges; the machine's green enamel,
+    // lit at its top and deep at its foot, and the badge lettered on it. Art: the ink, the black
+    // platen and its sheen, the ribbon's black and red halves, the chrome of its rims, bars and
+    // lever, the legends on its keys and the brass of its bell.
+    val typePaper: Color = Color(0xFFE8E0CB),
+    val typePaperEdge: Color = Color(0xFFCFC5AB),
+    val typeEnamelLight: Color = Color(0xFF6F9A91),
+    val typeEnamel: Color = Color(0xFF4A7369),
+    val typeEnamelDeep: Color = Color(0xFF335851),
+    val typeInk: Color = Color(0xFF1F1D1B),
+    val typePlaten: Color = Color(0xFF0C0D0F),
+    val typePlatenSheen: Color = Color(0xFF5A6066),
+    val typeRibbonBlack: Color = Color(0xFF17181A),
+    val typeRibbonRed: Color = Color(0xFFA8141C),
+    val typeChrome: Color = Color(0xFF9AA3AB),
+    val typeChromeSheen: Color = Color(0xFFE6EAEE),
+    val typeKeyLegend: Color = Color(0xFFF4F0E6),
+    val typeBrass: Color = Color(0xFFC9A55A),
+    val typeBadge: Color = Color(0xFFF4F6F8),
     // Smoke delete. Themed: the smoke a burnt row turns to, pale on the dark screen and a sooty
     // grey on the light one, and the cooler mist an archived row goes up in. Art: the ember at
     // the burning edge, its white-hot core, the char just behind it and the sparks; the snackbar
@@ -186,6 +206,12 @@ public data class AppColors(
                 rodBlank = Color(0xFF6B7682),
                 rodReel = Color(0xFF707884),
                 fishingLine = Color(0xFF4A535E),
+                typePaper = Color(0xFFF8F3E6),
+                typePaperEdge = Color(0xFFE9E1CC),
+                typeEnamelLight = Color(0xFFA3CDC3),
+                typeEnamel = Color(0xFF78AA9F),
+                typeEnamelDeep = Color(0xFF4E8075),
+                typeBadge = Color(0xFF0F1F1B),
                 smoke = Color(0xFF7D8591),
                 mist = Color(0xFF7D9DB8),
             )

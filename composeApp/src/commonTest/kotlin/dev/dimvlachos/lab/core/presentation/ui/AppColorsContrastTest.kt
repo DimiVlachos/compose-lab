@@ -44,6 +44,13 @@ class AppColorsContrastTest {
     }
 
     @Test
+    fun theTypewritersBadgeReadsOnItsEnamel() {
+        for (colors in Palettes) {
+            assertContrast(colors.typeBadge, colors.typeEnamel, 4.5f, colors, "typeBadge")
+        }
+    }
+
+    @Test
     fun theUndoSnackbarReads() {
         for (colors in Palettes) {
             assertContrast(colors.onSmokeSnackbar, colors.smokeSnackbar, 7f, colors, "snackbar")

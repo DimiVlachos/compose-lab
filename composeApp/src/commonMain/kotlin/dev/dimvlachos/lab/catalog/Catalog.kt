@@ -15,6 +15,7 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_description
 import dev.dimvlachos.lab.resources.ic_demo_fog
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
+import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
 
 internal object Catalog {
     // The finished demo of each component, each one a clip; the fogged mirror in two versions.
@@ -33,6 +34,7 @@ internal object Catalog {
                     MagnetDemos.all +
                     FishingDemos.all +
                     PopUpDemos.all +
+                    TypewriterDemos.all +
                     SmokeDemos.all)
                 .map {
                     CatalogEntry.Single(it)

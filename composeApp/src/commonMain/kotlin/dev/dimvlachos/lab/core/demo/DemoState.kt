@@ -43,6 +43,8 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var feedResetHandler: (suspend () -> Unit)? = null
     private var popUpPageHandler: (suspend (Offset, Offset, Duration) -> Unit)? = null
     private var popUpTabHandler: (suspend (Float, Duration) -> Unit)? = null
+    private var typewriterSheetPullHandler: (suspend (Dp, Duration) -> Unit)? = null
+    private var typewriterLeverHandler: (suspend (Duration) -> Unit)? = null
     private var chatSwipeHandler: (suspend (String, Float, Duration) -> Unit)? = null
     private var controlTapHandler: (suspend (String) -> Unit)? = null
 
@@ -112,6 +114,14 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     override suspend fun pullPopUpTab(out: Float, duration: Duration) {
         popUpTabHandler?.invoke(out, duration)
+    }
+
+    override suspend fun pullTypewriterSheet(up: Dp, duration: Duration) {
+        typewriterSheetPullHandler?.invoke(up, duration)
+    }
+
+    override suspend fun pushTypewriterLever(duration: Duration) {
+        typewriterLeverHandler?.invoke(duration)
     }
 
     override suspend fun swipeChat(id: String, by: Float, duration: Duration) {
@@ -184,6 +194,14 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setPopUpTabHandler(handler: (suspend (Float, Duration) -> Unit)?) {
         popUpTabHandler = handler
+    }
+
+    fun setTypewriterSheetPullHandler(handler: (suspend (Dp, Duration) -> Unit)?) {
+        typewriterSheetPullHandler = handler
+    }
+
+    fun setTypewriterLeverHandler(handler: (suspend (Duration) -> Unit)?) {
+        typewriterLeverHandler = handler
     }
 
     fun setChatSwipeHandler(handler: (suspend (String, Float, Duration) -> Unit)?) {
