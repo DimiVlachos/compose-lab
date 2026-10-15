@@ -107,15 +107,15 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * A chat composer that is a typewriter, typed on its own keys: round, chrome-rimmed keys with glass
- * tops, in a QWERTY layout, with Shift, Delete, New line, a space bar and a page of figures and
- * stops. The phone's keyboard never opens. Every key dips as it is pressed and strikes the sheet: a
- * type bar flies up from the basket, the ribbon lifts, and the carriage steps on. The bell rings
- * five letters before the margin, and at the margin, or at a space once the bell has rung, the
- * lever swings and the carriage returns by itself; New line starts a new line too. Delete runs the
- * carriage back and the correction tape lifts the letter off; held, it goes on, slowly. A hardware
- * keyboard types too, once the machine has focus, which it takes as it opens and on a tap on it; a
- * character the machine has no key for types nothing.
+ * A chat composer that is a typewriter, typed on its own keys: round, chrome-rimmed keys with
+ * celluloid tops, in a QWERTY layout, with Shift, Delete, New line, a space bar and a page of
+ * figures and stops. The phone's keyboard never opens. Every key dips as it is pressed and strikes
+ * the sheet: a type bar flies up from the basket, the ribbon lifts, and the carriage steps on. The
+ * bell rings five letters before the margin, and at the margin, or at a space once the bell has
+ * rung, the lever swings and the carriage returns by itself; New line starts a new line too. Delete
+ * runs the carriage back and the correction tape lifts the letter off; held, it goes on, slowly. A
+ * hardware keyboard types too, once the machine has focus, which it takes as it opens and on a tap
+ * on it; a character the machine has no key for types nothing.
  *
  * To send, pull the sheet up out of the roller: it gives like a rubber band and the ratchet clicks
  * as it comes; let go short of the threshold and it slides back in, past it or flung, and it zips
@@ -127,14 +127,16 @@ import org.jetbrains.compose.resources.stringResource
  * A tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and
  * the ratchet ticks under the finger, none while the screen is in the background. The machine sits
  * at the foot of the space it is given, the paper standing up over it as lines feed, its keys in
- * its body; its body runs on down behind [insets]' foot. [badge] and [model] are lettered on its
- * body. [atlas] is its type, which a thread showing its slips can share. While not [enabled], as
- * while a script plays, it takes neither keys nor touches.
+ * its body; on a short stage, as a phone on its side, it shrinks to fit, and the paper rises out of
+ * sight under its top; its body runs on down behind [insets]' foot. [badge] and [model] are
+ * lettered on its body. [atlas] is its type, which a thread showing its slips can share. While not
+ * [enabled], as while a script plays, it takes neither keys nor touches.
  *
- * A screen reader finds the machine as "Typewriter", with a Send action, and each key as a button
- * named for what it types ("q", or "Q" after Shift, "Space", "Delete", "New line"); it hears what
- * was typed or deleted once the typing pauses. Nothing recomposes as the machine moves; a change of
- * what the hint says, of the keys' page or of Shift recomposes only those.
+ * A screen reader finds the machine as "Typewriter", what is on the sheet as its state, with a Send
+ * action, and each key as a button named for what it types ("q", or "Q" after Shift, "Space",
+ * "Delete", "New line"); it hears what was typed or deleted once the typing pauses. Nothing
+ * recomposes as the machine moves; a change of what the hint says, of the keys' page or of Shift
+ * recomposes only those.
  */
 @Composable
 public fun TypewriterComposer(

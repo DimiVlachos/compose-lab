@@ -143,7 +143,8 @@ private class KeyMotion {
     }
 }
 
-// One key: a round glass top in a chrome rim on a lever, or a long bar for the space. It dips as it
+// One key: a round celluloid top in a chrome rim on a lever, or a long bar for the space. It dips
+// as it
 // is pressed, by a finger, a scripted fingertip or a hardware key, and the fingertip shows on it.
 @Composable
 private fun KeyCap(
