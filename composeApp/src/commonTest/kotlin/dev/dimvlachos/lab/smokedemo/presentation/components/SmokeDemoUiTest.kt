@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.smokedemo.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -26,6 +27,12 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.smoke.LocalSmokeCompositionProbe
 import dev.dimvlachos.lab.core.presentation.components.smoke.SmokeSide
@@ -254,5 +261,37 @@ class SmokeDemoUiTest {
         chat("Kyria Maria").performSemanticsAction(SemanticsActions.RequestFocus)
         chat("Kyria Maria").performKeyInput { pressKey(Key.Delete) }
         advanceUntil("the next press to burn it") { inbox!!.placeOf("maria") == ChatPlace.Deleted }
+    }
+
+    @Test
+    fun systemBackLeavesTheArchiveThenTheScreen() = runComposeUiTest {
+        val backInput = DirectNavigationEventInput()
+        var left = 0
+        setContent {
+            val owner = rememberNavigationEventDispatcherOwner(parent = null)
+            DisposableEffect(owner) {
+                owner.navigationEventDispatcher.addInput(backInput)
+                onDispose { owner.navigationEventDispatcher.removeInput(backInput) }
+            }
+            CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides owner) {
+                // The screen it is on: back that the demo doesn't take leaves it.
+                NavigationBackHandler(
+                    state = rememberNavigationEventState(NavigationEventInfo.None),
+                    isBackEnabled = true,
+                    onBackCompleted = { left++ },
+                )
+                LabTheme { Box(Modifier.size(400.dp, 800.dp)) { SmokeDemo(DemoState()) } }
+            }
+        }
+        onNodeWithText("Archived · 2").performClick()
+        waitForIdle()
+        onNodeWithText("Archived").assertExists()
+        runOnUiThread { backInput.backCompleted() }
+        waitForIdle()
+        onNodeWithText("Messages").assertExists()
+        assertEquals(0, left, "back leaves the archive, not the screen")
+        runOnUiThread { backInput.backCompleted() }
+        waitForIdle()
+        assertEquals(1, left, "in the inbox, back is the screen's")
     }
 }

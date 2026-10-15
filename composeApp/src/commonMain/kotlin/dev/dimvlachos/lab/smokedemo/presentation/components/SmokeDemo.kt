@@ -41,7 +41,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +67,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.platform.Sound
@@ -145,7 +147,14 @@ internal fun SmokeDemo(
             rememberSoundPlayer(setOf(Sound.BurnLoop, Sound.MistWhoosh, Sound.Inhale))
         ),
 ) {
-    var archive by rememberSaveable { mutableStateOf(false) }
+    // Not saved, as the chats and their smoke aren't: a screen made again starts in the inbox.
+    var archive by remember { mutableStateOf(false) }
+    // The system back gesture leaves the archive for the inbox; in the inbox it is the screen's.
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = archive,
+        onBackCompleted = { archive = false },
+    )
     val finger = remember { ChatFinger() }
     val targets = remember { Targets() }
     val density = LocalDensity.current.density
