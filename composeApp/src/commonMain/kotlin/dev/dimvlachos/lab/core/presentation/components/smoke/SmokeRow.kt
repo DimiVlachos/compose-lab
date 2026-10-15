@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -69,8 +71,8 @@ import kotlin.math.sin
  *
  * With a keyboard, Delete or Backspace on the focused row runs its [start] action, once however
  * long the key is held, focus moving on to the next row (or the one before, at the end); a screen
- * reader has both actions as custom actions, by their labels. A row that isn't [present] is hidden
- * from both.
+ * reader has both actions as custom actions, by their labels, focus moving on from the row the same
+ * way. A row that isn't [present] is hidden from both.
  */
 @Composable
 public fun SmokeRow(
@@ -110,14 +112,22 @@ public fun SmokeRow(
         remember(colors) {
             EdgeColors(colors.ember, colors.emberCore, colors.emberChar, colors.mist)
         }
+    val requester = remember { FocusRequester() }
+    // Once the row goes, focus moves on to the next row, or the one before at the end of the list.
+    fun moveOn() {
+        if (!focusManager.moveFocus(FocusDirection.Down)) focusManager.moveFocus(FocusDirection.Up)
+    }
+    // A screen reader's action moves focus on from the row it was on, as the Delete key does.
+    fun act(side: SmokeSide): Boolean {
+        if (!state.swipeAway(key, side)) return false
+        requester.requestFocus()
+        moveOn()
+        return true
+    }
     val actions =
         listOfNotNull(
-            start?.let {
-                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.Start) }
-            },
-            end?.let {
-                CustomAccessibilityAction(it.label) { state.swipeAway(key, SmokeSide.End) }
-            },
+            start?.let { CustomAccessibilityAction(it.label) { act(SmokeSide.Start) } },
+            end?.let { CustomAccessibilityAction(it.label) { act(SmokeSide.End) } },
         )
     Box(
         modifier
@@ -142,14 +152,10 @@ public fun SmokeRow(
                 // first, until the key is let up anywhere in the overlay, burns.
                 if (event.type != KeyEventType.KeyDown || state.deleteHeld) return@onKeyEvent true
                 state.deleteHeld = true
-                if (state.swipeAway(key, SmokeSide.Start)) {
-                    // On to the next row, or the one before at the end of the list.
-                    if (!focusManager.moveFocus(FocusDirection.Down)) {
-                        focusManager.moveFocus(FocusDirection.Up)
-                    }
-                }
+                if (state.swipeAway(key, SmokeSide.Start)) moveOn()
                 true
             }
+            .focusRequester(requester)
             .focusable(enabled = present)
             .pointerInput(state, key) { swipes(state, key) }
             .drawWithContent {

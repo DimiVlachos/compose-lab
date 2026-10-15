@@ -17,6 +17,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTextExactly
@@ -361,5 +362,14 @@ class SmokeDemoUiTest {
         chat("Anna").performSemanticsAction(SemanticsActions.RequestFocus)
         chat("Anna").performKeyInput { pressKey(Key.Delete) }
         advanceUntil("the key to burn it") { inbox!!.placeOf("anna") == ChatPlace.Deleted }
+    }
+
+    @Test
+    fun aScreenReadersDeleteMovesFocusOnToTheNextChat() = runComposeUiTest {
+        show()
+        mainClock.autoAdvance = false
+        chat("Kyria Maria").performCustomAccessibilityActionWithLabel("Delete")
+        mainClock.advanceTimeByFrame()
+        chat("Hydra Water Taxi").assertIsFocused()
     }
 }
