@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -198,7 +197,7 @@ internal fun TypewriterDemo(state: DemoState) {
                 answers.forEach { it.cancel() }
                 answers.clear()
                 chat.clear()
-                machine.field.clearText()
+                machine.clear()
             }
         }
         onDispose {

@@ -308,4 +308,39 @@ class TypewriterStateTest {
         assertTrue(short < full)
         assertTrue(full < TypewriterDimens.ReturnBang - TypewriterDimens.LeverShortest)
     }
+
+    @Test
+    fun aMachineBegunWithTextKeepsOnlyWhatItsSheetAndKeysCanTake() {
+        val state = TypewriterState("x".repeat(200))
+        assertEquals(TypewriterDimens.Columns * TypewriterDimens.MaxLines, state.text.length)
+        assertEquals(state.sheet.lines.joinToString(""), state.text)
+        // A character the machine has no key for is left out.
+        assertEquals("caf ok", TypewriterState("caf\u00e9 ok").text)
+    }
+
+    @Test
+    fun clearLiftsEverythingOff() {
+        val (state, heard) = machine()
+        state.type("hey")
+        state.run(0.5f)
+        state.clear()
+        assertEquals("", state.text)
+        assertEquals(1, heard.count("tape"))
+        assertFalse(state.inked)
+    }
+
+    @Test
+    fun deleteTakesTheSpaceAReturnSwallowedWithTheLetterBeforeIt() {
+        val (state, heard) = machine()
+        val line = "abcdefghijklmnopqr"
+        state.type("$line ")
+        state.run(1f)
+        assertEquals(1, state.sheet.line)
+        assertEquals(0, state.sheet.column)
+        state.backspace()
+        state.run(1f)
+        assertEquals(line.dropLast(1), state.text)
+        assertEquals(0, state.sheet.line)
+        assertEquals(1, heard.count("tape"))
+    }
 }

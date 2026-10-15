@@ -123,4 +123,25 @@ class SheetLayoutTest {
             )
         }
     }
+
+    @Test
+    fun onTheLastLineASpacePastTheBellIsOnlyASpace() {
+        val last = "a\nb\nc\n" + "x".repeat(TypewriterDimens.BellColumn + 1) + " "
+        val sheet = layOutSheet(last)
+        assertFalse(sheet.full)
+        assertEquals(3, sheet.line)
+        assertEquals(TypewriterDimens.BellColumn + 2, sheet.column)
+        // The columns left still take letters, up to the margin.
+        val rest = "y".repeat(TypewriterDimens.Columns - sheet.column)
+        assertFalse(layOutSheet(last + rest).overflow)
+        assertTrue(layOutSheet(last + rest).full)
+    }
+
+    @Test
+    fun whatFitsOnTheSheetIsKept() {
+        assertEquals(5, layOutSheet("hello").kept)
+        val long = "x".repeat(200)
+        assertEquals(TypewriterDimens.Columns * TypewriterDimens.MaxLines, layOutSheet(long).kept)
+        assertEquals(7, layOutSheet("a\nb\nc\nd\ne").kept)
+    }
 }

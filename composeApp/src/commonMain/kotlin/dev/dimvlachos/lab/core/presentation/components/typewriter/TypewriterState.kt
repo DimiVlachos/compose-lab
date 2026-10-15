@@ -87,25 +87,30 @@ internal enum class SheetPhase {
 }
 
 /**
- * A typewriter used as a chat composer: its [field] is what is typed, and the machine follows it,
+ * A typewriter used as a chat composer: its [text] is what is typed, and the machine follows it,
  * striking each letter onto its sheet as it is typed, ringing its bell near the margin, returning
  * its carriage at the margin and lifting letters off with its correction tape when they are
  * deleted. The sheet is sent by pulling it up out of the roller ([grab], [drag], [release]), by
  * [send], which pulls it out by itself, or by a scripted fingertip ([pullScripted]). Its physics is
  * stepped at a fixed 120 Hz by [advance], which the composer calls every frame while it is [awake],
  * and everything that moves is read while drawing, so only a change of [inked], [jammed] or [phase]
- * recomposes.
+ * recomposes. It begins with [text] typed, as much of it as the machine has keys for and its sheet
+ * has room for.
  */
 @Stable
 public class TypewriterState(text: String = "") {
     /**
      * What is typed: edited only by the machine's keys and a hardware keyboard, never the phone's.
      */
-    public val field: TextFieldState = TextFieldState(text)
+    internal val field: TextFieldState = TextFieldState(fitted(text))
+
+    /** What is typed, as it lies on the sheet; read in composition, a change recomposes. */
+    public val text: String
+        get() = this.field.text.toString()
 
     /** What is typed, as the machine last saw it, and as it lies on the sheet. */
-    private var typed = text
-    internal var sheet = layOutSheet(text)
+    private var typed = field.text.toString()
+    internal var sheet = layOutSheet(typed)
         private set
 
     /** Whether there is anything on the sheet to send. */
@@ -425,8 +430,33 @@ public class TypewriterState(text: String = "") {
      */
     public fun backspace() {
         if (sending || (handHeld && !byHand) || field.text.isEmpty()) return
-        field.edit { delete(length - 1, length) }
+        // A space the carriage's return took up shows nothing on the sheet: it goes with the
+        // letter before it, so a Delete always takes something off that can be seen.
+        val count = if (!byHand && field.text.length > 1 && swallowed()) 2 else 1
+        field.edit { delete(length - count, length) }
         typedNow(field.text)
+    }
+
+    /**
+     * Clears what is typed: the tape lifts it all off, and the carriage goes back to the start of
+     * the sheet. Not while the sheet is being pulled out by itself or is coming free.
+     */
+    public fun clear() {
+        if (sending || field.text.isEmpty()) return
+        if (handHeld) releaseLever(0f)
+        field.clearText()
+        typedNow(field.text)
+    }
+
+    // Whether the last character typed is a space the sheet doesn't show: one the carriage's
+    // return took up.
+    private fun swallowed(): Boolean {
+        val text = field.text
+        if (text.last() != ' ') return false
+        val without = layOutSheet(text.subSequence(0, text.length - 1))
+        return without.line == sheet.line &&
+            without.column == sheet.column &&
+            without.lines == sheet.lines
     }
 
     /**
@@ -972,6 +1002,12 @@ public class TypewriterState(text: String = "") {
                 0,
                 TypewriterDimens.MaxLines * TypewriterDimens.Columns - 1,
             )
+
+        // What of [text] the machine can type: the characters it has keys for, as many as fit.
+        private fun fitted(text: String): String {
+            val typeable = text.filter { keyIdFor(it) != null }
+            return typeable.take(layOutSheet(typeable).kept)
+        }
 
         /** Saves what is typed on the sheet, so it outlives the screen being made again. */
         val Saver: Saver<TypewriterState, String> =

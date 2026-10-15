@@ -9,7 +9,7 @@ import kotlin.math.sin
  * A text as the typewriter puts it on its sheet: its [lines], and where the carriage stands after
  * it, on line [line] at column [column]; its [glyphs], each letter in its place. [full] when the
  * last line has ended and the sheet can take no more; [overflow] when some of the text was left off
- * it for want of room.
+ * it for want of room, the first [kept] of its characters having fit.
  */
 @Immutable
 internal class SheetLayout(
@@ -19,6 +19,7 @@ internal class SheetLayout(
     val full: Boolean,
     val overflow: Boolean = false,
     val glyphs: List<Glyph> = emptyList(),
+    val kept: Int = 0,
 ) {
     /** Whether there is anything on the sheet but spaces. */
     val inked: Boolean
@@ -39,7 +40,8 @@ internal class SheetLayout(
  * itself; and once the bell has rung, [bell] letters in, a space returns it too, as a typist who
  * heard the bell would at the end of the word, so words are kept whole where they can be. A space
  * just after the carriage has returned by itself is taken up by the return. The sheet holds no more
- * than [maxLines]: at the margin of the last, it is full, and what follows is left off.
+ * than [maxLines]: at the margin of the last, it is full, and what follows is left off. On the last
+ * line a space past the bell is only a space, as there is no line to return to.
  */
 internal fun layOutSheet(
     text: CharSequence,
@@ -53,6 +55,7 @@ internal fun layOutSheet(
     var returned = false
     var full = false
     var overflow = false
+    var kept = text.length
     val glyphs = mutableListOf<Glyph>()
     fun newLine(): Boolean {
         if (lines.size >= maxLines) {
@@ -65,16 +68,21 @@ internal fun layOutSheet(
     for ((index, char) in text.withIndex()) {
         if (full) {
             overflow = true
+            kept = index
             break
         }
         val current = lines.last()
         when {
             char == '\n' -> {
                 returned = false
-                if (!newLine()) overflow = true
+                if (!newLine()) {
+                    overflow = true
+                    kept = index
+                    break
+                }
             }
             char == ' ' && returned && current.isEmpty() -> returned = false
-            char == ' ' && current.length >= bell -> returned = newLine()
+            char == ' ' && current.length >= bell && lines.size < maxLines -> returned = newLine()
             else -> {
                 returned = false
                 if (char != ' ') glyphs += Glyph(index, lines.size - 1, current.length, char)
@@ -91,6 +99,7 @@ internal fun layOutSheet(
         full = full,
         overflow = overflow,
         glyphs = glyphs,
+        kept = kept,
     )
 }
 
