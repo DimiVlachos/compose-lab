@@ -95,7 +95,8 @@ internal object SmokeDimens {
     const val ReformShort = 0.52f
 
     // Undo breathes the smoke back over ReformUndo, starting ReformDelay after the row has begun
-    // to open again. Reforming starts each particle from no older than ReformFrom of its life.
+    // to open again. Reforming starts a particle that had already faded from ReformFrom of its
+    // life.
     const val ReformUndo = 1.15f
     const val ReformDelay = 0.38f
     const val ReformFrom = 0.5f

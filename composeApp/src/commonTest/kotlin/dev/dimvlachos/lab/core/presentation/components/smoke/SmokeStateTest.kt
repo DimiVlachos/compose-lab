@@ -165,4 +165,21 @@ class SmokeStateTest {
         assertTrue(smoke.drawn.isEmpty())
         assertFalse(smoke.awake)
     }
+
+    @Test
+    fun smokeStillInTheAirStaysThereWhileUndoWaitsForTheRow() {
+        val smoke = state()
+        smoke.swipe(dx = -200f)
+        smoke.run(1.2f)
+        val plume = smoke.plumeOf("a")!!
+        assertEquals(PlumePhase.Burnt, plume.phase)
+        assertTrue(plume in smoke.drawn)
+        assertTrue(smoke.reform("a"))
+        // Every frame until it is breathed back in, the smoke in the air is drawn.
+        while (plume.phase == PlumePhase.Waiting) {
+            smoke.advance(1 / 60f)
+            assertTrue(plume in smoke.drawn, "the smoke vanished while undo waited")
+        }
+        assertEquals(PlumePhase.Reforming, plume.phase)
+    }
 }

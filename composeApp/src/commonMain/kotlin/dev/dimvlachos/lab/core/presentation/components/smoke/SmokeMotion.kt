@@ -2,7 +2,6 @@ package dev.dimvlachos.lab.core.presentation.components.smoke
 
 import kotlin.math.exp
 import kotlin.math.floor
-import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
@@ -32,9 +31,10 @@ internal object SmokeMotion {
 
     /**
      * How old a particle is at [now], its column crossed at [cross]: or, while it is reforming,
-     * [reform] of the way (0 to 1) back from how old it was when reforming began at [reformStart],
-     * starting from no older than [SmokeDimens.ReformFrom] of its [life], so it gathers out of the
-     * air as visible wisps rather than out of an invisible haze. Negative while it hasn't lifted
+     * [reform] of the way (0 to 1) back from how old it was when reforming began at [reformStart].
+     * A particle still in the air then starts back from where it is, so nothing jumps; one that had
+     * already faded starts from [SmokeDimens.ReformFrom] of its [life], so it gathers out of the
+     * air as a visible wisp rather than out of an invisible haze. Negative while it hasn't lifted
      * off.
      */
     fun ageAt(
@@ -48,7 +48,8 @@ internal object SmokeMotion {
         if (reform < 0f) return now - cross - jitter
         val then = reformStart - cross - jitter
         if (then < 0f) return -1f
-        return min(then, life * SmokeDimens.ReformFrom) * (1f - reform)
+        val from = if (then < life) then else life * SmokeDimens.ReformFrom
+        return from * (1f - reform)
     }
 
     /**

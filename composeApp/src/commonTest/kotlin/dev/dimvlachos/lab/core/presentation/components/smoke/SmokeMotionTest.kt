@@ -60,12 +60,16 @@ class SmokeMotionTest {
         val life = 3f
         val start = SmokeMotion.ageAt(now = 5f, cross = 4f, jitter = 0f, life = life)
         assertEquals(1f, start)
-        // Breathed back in from when undo began: no older than half its life, then younger.
+        // Faded by the time undo began: breathed back from half its life, then younger.
         val begin = SmokeMotion.ageAt(9f, 4f, 0f, life, reform = 0f, reformStart = 9f)
         assertEquals(life * SmokeDimens.ReformFrom, begin)
         val half = SmokeMotion.ageAt(9.5f, 4f, 0f, life, reform = 0.5f, reformStart = 9f)
         assertEquals(begin / 2f, half)
         assertEquals(0f, SmokeMotion.ageAt(10f, 4f, 0f, life, reform = 1f, reformStart = 9f))
+        // A particle still in the air when undo began starts back from where it is: no jump.
+        val young = SmokeMotion.ageAt(9f, 7.5f, 0f, life, reform = 0f, reformStart = 9f)
+        assertEquals(SmokeMotion.ageAt(9f, 7.5f, 0f, life), young)
+        assertEquals(young / 2f, SmokeMotion.ageAt(9.5f, 7.5f, 0f, life, 0.5f, reformStart = 9f))
         // A column crossed after reforming began has nothing to bring back.
         assertTrue(SmokeMotion.ageAt(10f, 9.5f, 0f, life, reform = 0.5f, reformStart = 9f) < 0f)
     }

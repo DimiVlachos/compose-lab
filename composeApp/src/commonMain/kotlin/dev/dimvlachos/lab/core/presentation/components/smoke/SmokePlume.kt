@@ -8,7 +8,10 @@ internal enum class PlumePhase {
     Burning,
     /** All smoke. The plume drifts off and fades, and is kept, invisible, for an undo. */
     Burnt,
-    /** Undone: waiting for the row to open again before the smoke is breathed back in. */
+    /**
+     * Undone: waiting for the row to open again before the smoke is breathed back in, what is still
+     * in the air drifting on meanwhile.
+     */
     Waiting,
     /** The smoke flows back into the row along the paths it left by. */
     Reforming,
@@ -77,8 +80,9 @@ internal class SmokePlume(val material: SmokeMaterial, fromRight: Boolean) {
             PlumePhase.Held,
             PlumePhase.Burning,
             PlumePhase.Reforming -> true
-            PlumePhase.Waiting -> false
-            PlumePhase.Burnt -> now - front.lastCross < SmokeMotion.longestLife
+            // Waiting for the row to open, what is still in the air drifts on as it did.
+            PlumePhase.Burnt,
+            PlumePhase.Waiting -> now - front.lastCross < SmokeMotion.longestLife
         }
 
     /** How far reforming has got, 0 to 1, or -1 while it isn't. */
