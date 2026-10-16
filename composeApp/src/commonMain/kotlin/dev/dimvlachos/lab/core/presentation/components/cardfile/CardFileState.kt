@@ -59,6 +59,14 @@ internal class CardFileState(
     var onTick: (() -> Unit)? = null
 
     /**
+     * Sets a grown deck size at once, without suspending, so the very first frame already shows the
+     * starting card. A shrink waits for [updateCount], which also snaps the wheel back.
+     */
+    fun growCount(count: Int) {
+        if (count > this.count) this.count = count
+    }
+
+    /**
      * Sets the deck size; if the deck shrank below the wheel, the wheel snaps back onto its last
      * card.
      */

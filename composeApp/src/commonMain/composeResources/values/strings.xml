@@ -252,4 +252,7 @@
     <string name="theme_system">Theme: follow system</string>
     <string name="theme_light">Theme: light</string>
     <string name="theme_dark">Theme: dark</string>
+    <string name="cardfile_previous">Previous card</string>
+    <string name="cardfile_next">Next card</string>
+    <string name="cardfile_pull_out">Pull out</string>
 </resources>

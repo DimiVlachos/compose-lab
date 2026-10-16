@@ -32,6 +32,13 @@ internal object CardFileDimens {
      */
     const val FlickFilesVelocity = 1.5f
 
+    /**
+     * Each card behind the front stands this much higher, up to [BehindLiftCards] cards back, as if
+     * seen from a little above, so their tops peek over the front card and can be tapped.
+     */
+    val BehindLift = 12.dp
+    const val BehindLiftCards = 2f
+
     val CardWidth = 280.dp
     val CardHeight = 168.dp
     /** How far the rod sits under the card's bottom edge: the pivot of each card's turn. */
