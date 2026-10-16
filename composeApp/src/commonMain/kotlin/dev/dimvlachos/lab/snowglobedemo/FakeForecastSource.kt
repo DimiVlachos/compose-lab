@@ -5,8 +5,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 
 /**
- * A forecast service that takes [delay] to answer: the refreshed Wellfleet forecast, or a failure
- * when [failNext] is set, which it then clears.
+ * A forecast service that takes [delay] to answer: the refreshed Oia forecast, or a failure when
+ * [failNext] is set, which it then clears.
  */
 internal class FakeForecastSource(private val delay: Duration = 1200.milliseconds) {
     var failNext = false
@@ -17,7 +17,7 @@ internal class FakeForecastSource(private val delay: Duration = 1200.millisecond
             failNext = false
             return Result.failure(IllegalStateException("The forecast service didn't answer"))
         }
-        return Result.success(WellfleetRefreshed)
+        return Result.success(OiaRefreshed)
     }
 
     fun reset() {

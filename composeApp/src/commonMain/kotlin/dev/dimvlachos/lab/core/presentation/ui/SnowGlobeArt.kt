@@ -61,3 +61,52 @@ internal object SnowGlobeArt {
     val tableShadow = Color(0x55000000)
     val caustic = Color(0x66FFE9B0)
 }
+
+/**
+ * The weather screen round the snow globe, as the prototype styles it: its own warm paper by day
+ * and plum by night, with an amber accent for a fresh forecast. [card] is the day strip, [chip] the
+ * hint, [selected] the chosen day, and [cardLine] their hairline edge.
+ */
+internal class SnowGlobeScreenColors(
+    val background: Color,
+    val ink: Color,
+    val muted: Color,
+    val accent: Color,
+    val card: Color,
+    val cardLine: Color,
+    val selected: Color,
+    val chip: Color,
+) {
+    internal companion object {
+        val Light =
+            SnowGlobeScreenColors(
+                background = Color(0xFFF4E6D6),
+                ink = Color(0xFF231D1A),
+                muted = Color(0xFF6F655E),
+                accent = Color(0xFFA8641C),
+                card = Color(0x9EFFFCF7),
+                cardLine = Color(0x143C2814),
+                selected = Color(0x143C2814),
+                chip = Color(0x94FFFCF7),
+            )
+        val Dark =
+            SnowGlobeScreenColors(
+                background = Color(0xFF1C1720),
+                ink = Color(0xFFF3EEE9),
+                muted = Color(0xFFA9A0A6),
+                accent = Color(0xFFF0B064),
+                card = Color(0x99241E26),
+                cardLine = Color(0x14FFF0DC),
+                selected = Color(0x1AFFF0DC),
+                chip = Color(0x8C241E26),
+            )
+    }
+}
+
+/** The day cards' weather icons, in the prototype's colours. */
+internal object SnowGlobeIconColors {
+    val sun = Color(0xFFF2A53A)
+    val wind = Color(0xFF5B8FC7)
+    val cloud = Color(0xFFA8B5C7)
+    val rain = Color(0xFF4F8FD8)
+}

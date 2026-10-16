@@ -5,8 +5,9 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -28,6 +29,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -35,15 +37,15 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import kotlin.math.roundToInt
 
-/** The sphere's radius and centre as fractions of the globe's width. */
-private const val RadiusOfWidth = 0.42f
-private const val CenterYOfWidth = 0.46f
 /**
  * How far the globe moves for the glass's spring [SnowGlobeState.offset], in radii per globe unit,
  * and how far it leans, in degrees per radian of [SnowGlobeState.tilt]: at the peak of a hard shake
@@ -52,8 +54,6 @@ private const val CenterYOfWidth = 0.46f
  */
 private const val ShiftOfOffset = 0.1f
 private const val TiltDegreesOfRadians = 25f
-/** The bottom of the walnut base, as a fraction of the globe's height: what it rocks on. */
-private const val BaseBottomOfHeight = 0.865f
 
 /**
  * A glass snow globe holding [scene]. Drag it about, shake the phone, or press it, and the water
@@ -61,6 +61,9 @@ private const val BaseBottomOfHeight = 0.865f
  * calmed and no refresh is [refreshPending]. A change of [scene] crossfades inside the glass. With
  * [reducedMotion] a shake still refreshes but the glitter stays down. [stateDescription], the
  * conditions it shows, is read out after its [description].
+ *
+ * It fills [modifier]'s bounds as the room the globe stands in, and puts the globe where [layout]
+ * says, or, without one, as large as fits in the middle.
  */
 @Composable
 internal fun SnowGlobe(
@@ -75,6 +78,7 @@ internal fun SnowGlobe(
     description: String = "",
     reducedMotion: Boolean = false,
     stateDescription: String = "",
+    layout: GlobeLayout? = null,
 ) {
     ReportSnowGlobeComposition()
     val pending by rememberUpdatedState(refreshPending)
@@ -104,48 +108,60 @@ internal fun SnowGlobe(
     }
     ShakeImpulses(shakeSensorEnabled) { state.nudge(it) }
 
-    var globeSize by remember { mutableStateOf(IntSize.Zero) }
-    val radius = globeSize.width * RadiusOfWidth
-    val center = Offset(globeSize.width / 2f, globeSize.width * CenterYOfWidth)
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val place =
+        layout
+            ?: globeLayout(
+                size.width.toFloat(),
+                headerBottom = -4f * size.width / 360f,
+                daysTop = size.height + 46f * size.width / 360f,
+            )
+    val radius = place.radius
+    val center = Offset(place.cx, place.cy)
     val glass =
-        remember(globeSize) {
-            if (globeSize == IntSize.Zero) null else glassRenderEffect(center, radius)
+        remember(size, place.cx, place.cy, radius) {
+            if (size == IntSize.Zero) null else glassRenderEffect(center, radius)
         }
 
-    Box(
-        modifier
-            .aspectRatio(0.86f)
-            .onSizeChanged { globeSize = it }
-            .testTag("snowglobe")
-            .semantics {
-                role = Role.Button
-                contentDescription = description
-                if (stateDescription.isNotEmpty()) this.stateDescription = stateDescription
-                onClick {
-                    state.shake()
-                    true
+    Box(modifier.onSizeChanged { size = it }) {
+        // The globe and its base take touches, focus and the globe's semantics; the room doesn't.
+        Box(
+            Modifier.offset { IntOffset(place.boxLeft.roundToInt(), place.boxTop.roundToInt()) }
+                .size(
+                    with(LocalDensity.current) {
+                        DpSize(place.boxWidth.toDp(), place.boxHeight.toDp())
+                    }
+                )
+                .testTag("snowglobe")
+                .semantics {
+                    role = Role.Button
+                    contentDescription = description
+                    if (stateDescription.isNotEmpty()) this.stateDescription = stateDescription
+                    onClick {
+                        state.shake()
+                        true
+                    }
                 }
-            }
-            .onKeyEvent { e ->
-                if (e.type == KeyEventType.KeyUp && (e.key == Key.Enter || e.key == Key.Spacebar)) {
-                    state.shake()
-                    true
-                } else false
-            }
-            .focusable()
-            .pointerInput(state) {
-                detectDragGestures(
-                    onDragEnd = { state.release() },
-                    onDragCancel = { state.release() },
-                ) { change, drag ->
-                    change.consume()
-                    // PointerInputScope.size, current on every drag, unlike a radius captured when
-                    // this block started (pointerInput is keyed on the state, not the size).
-                    val r = (size.width * RadiusOfWidth).coerceAtLeast(1f)
-                    state.drag(drag / r)
+                .onKeyEvent { e ->
+                    if (
+                        e.type == KeyEventType.KeyUp &&
+                            (e.key == Key.Enter || e.key == Key.Spacebar)
+                    ) {
+                        state.shake()
+                        true
+                    } else false
                 }
-            }
-    ) {
+                .focusable()
+                .pointerInput(state, radius) {
+                    detectDragGestures(
+                        onDragEnd = { state.release() },
+                        onDragCancel = { state.release() },
+                    ) { change, drag ->
+                        change.consume()
+                        state.drag(drag / radius.coerceAtLeast(1f))
+                    }
+                }
+        )
         // The table doesn't move, so it redraws only when the globe is resized.
         Canvas(Modifier.fillMaxSize()) { drawTable(center, radius) }
         // The globe moves as one object, rocking on its base like a globe that is carried: the
@@ -157,7 +173,11 @@ internal fun SnowGlobe(
                 translationX = state.offset.x * radius * ShiftOfOffset
                 translationY = state.offset.y * radius * ShiftOfOffset
                 rotationZ = state.tilt * TiltDegreesOfRadians
-                transformOrigin = TransformOrigin(0.5f, BaseBottomOfHeight)
+                transformOrigin =
+                    TransformOrigin(
+                        place.cx / size.width.coerceAtLeast(1).toFloat(),
+                        place.pivotY / size.height.coerceAtLeast(1).toFloat(),
+                    )
             }
         ) {
             Spacer(

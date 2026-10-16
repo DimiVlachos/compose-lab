@@ -14,14 +14,14 @@ import androidx.compose.runtime.setValue
  * the day a refresh changed, to announce.
  */
 @Stable
-internal class WeatherBoard(private val initial: Forecast = WellfleetForecast) {
+internal class WeatherBoard(private val initial: Forecast = OiaForecast) {
     var days by mutableStateOf(initial.days)
         private set
 
     var updated by mutableStateOf(initial.updated)
         private set
 
-    var selected by mutableIntStateOf(0)
+    var selected by mutableIntStateOf(OpeningDay)
         private set
 
     var refreshPending by mutableStateOf(false)
@@ -44,14 +44,19 @@ internal class WeatherBoard(private val initial: Forecast = WellfleetForecast) {
         return direction
     }
 
-    /** Starts a refresh, unless one is already pending. */
-    fun startRefresh(): Boolean {
-        if (refreshPending) return false
+    // Each refresh's token; a reset moves it on, so a refresh that lands afterwards is dropped.
+    private var generation = 0
+
+    /** Starts a refresh and returns its token, or null if one is already pending. */
+    fun startRefresh(): Int? {
+        if (refreshPending) return null
         refreshPending = true
-        return true
+        return ++generation
     }
 
-    fun finishRefresh(result: Result<Forecast>) {
+    /** Lands the refresh [token] started; one from before a [reset] is ignored. */
+    fun finishRefresh(token: Int?, result: Result<Forecast>) {
+        if (token == null || token != generation || !refreshPending) return
         refreshPending = false
         result
             .onSuccess { forecast ->
@@ -67,9 +72,10 @@ internal class WeatherBoard(private val initial: Forecast = WellfleetForecast) {
     }
 
     fun reset() {
+        generation++
         days = initial.days
         updated = initial.updated
-        selected = 0
+        selected = OpeningDay
         refreshPending = false
         failed = false
         lastChange = null

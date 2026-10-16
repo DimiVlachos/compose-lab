@@ -21,12 +21,12 @@ class SnowGlobeDemosTest {
     }
 
     @Test
-    fun theClipShakesLooksAtTomorrowAndEndsOnTodayAsItBegan() = runTest {
+    fun theClipShakesLooksAtFridayAndComesBackToTomorrowAsItBegan() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         val names = controller.calls.map { it.second }
         assertEquals(
-            listOf("shakeGlobe(1500)", "tapControl(day-1)", "tapControl(day-0)", "resetFeed()"),
+            listOf("shakeGlobe(1500)", "tapControl(day-2)", "tapControl(day-1)", "resetFeed()"),
             names,
         )
     }

@@ -13,6 +13,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -98,12 +100,12 @@ class SnowGlobeDemoUiTest {
         mainClock.advanceTimeBy(8_000)
         assertFalse(board.refreshPending)
         assertEquals(GlobeScene.Shower, board.days[1].scene)
-        onNodeWithTag("updated").assertTextEquals("Updated 6:48 PM")
-        onNodeWithTag("updated")
+        onNodeWithTag("updated").assertTextEquals("Updated just now")
+        onNodeWithTag("live")
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.ContentDescription,
-                    listOf("Updated. Tomorrow: Light shower, 64°"),
+                    listOf("Updated. Tomorrow · Thu 15: Light shower, 22 degrees."),
                 )
             )
     }
@@ -116,47 +118,47 @@ class SnowGlobeDemoUiTest {
         onNodeWithTag("day-2").performClick()
         mainClock.advanceTimeBy(100)
         onNodeWithTag("day-2").assertIsSelected()
-        onNodeWithTag("temperature").assertTextEquals("61°")
+        onNodeWithTag("temperature").assertTextEquals("23°")
         onNodeWithTag("snowglobe")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Breezy"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Meltemi"))
         mainClock.advanceTimeBy(4_000)
         assertFalse(board.refreshPending, "changing day never refreshes")
-        onNodeWithTag("updated").assertTextEquals("Updated 6:42 PM")
+        onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
     }
 
     @Test
     fun theArrowKeysMoveTheDayTabs() = runComposeUiTest {
         show()
-        onNodeWithTag("day-0").requestFocus()
-        onNodeWithTag("day-0").performKeyInput { pressKey(Key.DirectionRight) }
-        mainClock.advanceTimeBy(100)
-        onNodeWithTag("day-1").assertIsSelected()
-        onNodeWithTag("temperature").assertTextEquals("70°")
+        onNodeWithTag("day-1").requestFocus()
         onNodeWithTag("day-1").performKeyInput { pressKey(Key.DirectionRight) }
         mainClock.advanceTimeBy(100)
         onNodeWithTag("day-2").assertIsSelected()
-        onNodeWithTag("day-2").performKeyInput { pressKey(Key.DirectionLeft) }
+        onNodeWithTag("temperature").assertTextEquals("23°")
+        onNodeWithTag("day-2").performKeyInput { pressKey(Key.DirectionRight) }
         mainClock.advanceTimeBy(100)
-        onNodeWithTag("day-1").assertIsSelected()
-        onNodeWithTag("temperature").assertTextEquals("70°")
+        onNodeWithTag("day-3").assertIsSelected()
+        onNodeWithTag("day-3").performKeyInput { pressKey(Key.DirectionLeft) }
+        mainClock.advanceTimeBy(100)
+        onNodeWithTag("day-2").assertIsSelected()
+        onNodeWithTag("temperature").assertTextEquals("23°")
         assertFalse(board.refreshPending)
     }
 
     @Test
     fun aSwipeOutsideTheGlobeChangesDayWithoutARefresh() = runComposeUiTest {
         show()
-        onNodeWithText("Wellfleet, MA").performTouchInput {
+        onNodeWithText("Oia, Santorini").performTouchInput {
             down(center)
             // 100 dp: past one day's 64 dp step and short of two.
             repeat(10) { moveBy(Offset(-10f * density, 0f)) }
             up()
         }
         mainClock.advanceTimeBy(100)
-        assertEquals(1, board.selected)
-        onNodeWithTag("temperature").assertTextEquals("70°")
+        assertEquals(2, board.selected)
+        onNodeWithTag("temperature").assertTextEquals("23°")
         mainClock.advanceTimeBy(4_000)
         assertFalse(board.refreshPending, "changing day never refreshes")
-        onNodeWithTag("updated").assertTextEquals("Updated 6:42 PM")
+        onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
     }
 
     @Test
@@ -168,7 +170,7 @@ class SnowGlobeDemoUiTest {
             up()
         }
         mainClock.advanceTimeBy(100)
-        assertEquals(0, board.selected, "the globe keeps its drags")
+        assertEquals(1, board.selected, "the globe keeps its drags")
     }
 
     @Test
@@ -190,20 +192,31 @@ class SnowGlobeDemoUiTest {
         }
         assertFalse(board.refreshPending)
         assertEquals(GlobeScene.Shower, board.days[1].scene)
-        onNodeWithTag("updated").assertTextEquals("Updated 6:48 PM")
+        onNodeWithTag("updated").assertTextEquals("Updated just now")
     }
 
     @Test
-    fun theScriptRefreshesAndEndsOnTodayAtRest() =
+    fun theDayCardsShowEachDaysHighAndLowAndTheHintSaysShake() = runComposeUiTest {
+        show()
+        onNodeWithTag("day-2").assert(hasText("23°"))
+        onNodeWithTag("day-2").assert(hasText("18°"))
+        onNodeWithTag("day-2").assert(hasText("Fri"))
+        onNodeWithTag("hint").assert(hasAnyDescendant(hasText("Shake to refresh")))
+        onNodeWithText("TOMORROW · THU 15").assertExists()
+        onNodeWithText("H 25° · L 18° · Rain 10%").assertExists()
+    }
+
+    @Test
+    fun theScriptRefreshesLooksAtFridayAndEndsOnTomorrowAtRest() =
         runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
             var ended = false
             show(script = true, state = DemoState(replay = true), onScriptEnd = { ended = true })
             advanceUntil("the scripted shake to refresh the forecast", most = 6_000) {
                 board.days[1].scene == GlobeScene.Shower
             }
-            advanceUntil("the script to look at tomorrow", most = 8_000) { board.selected == 1 }
+            advanceUntil("the script to look at Friday", most = 8_000) { board.selected == 2 }
             advanceUntil("the script to end", most = 10_000) { ended }
-            assertEquals(0, board.selected, "the clip ends on today")
+            assertEquals(1, board.selected, "the clip ends back on tomorrow")
             assertEquals(GlobeScene.Sunny, board.days[1].scene, "the forecast is put back")
             assertTrue(
                 globe.energy < SnowGlobeDimens.SettleThreshold,
