@@ -256,7 +256,7 @@
     <string name="demo_snowglobe_description">Shake the snow globe to refresh the forecast; the gold settles on the rooftops</string>
     <string name="snowglobe_place">Wellfleet, MA</string>
     <string name="snowglobe_updated">Updated %1$s</string>
-    <string name="snowglobe_failed">Couldn\'t update</string>
+    <string name="snowglobe_failed">Couldn’t update</string>
     <string name="snowglobe_refresh">Refresh forecast</string>
     <string name="snowglobe_high_low">H %1$d° · L %2$d°</string>
     <string name="snowglobe_announce">Updated. %1$s: %2$s, %3$d°</string>

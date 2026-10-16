@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
@@ -49,7 +50,8 @@ private const val RadiansToDegrees = 57.3f
  * A glass snow globe holding [scene]. Drag it about, shake the phone, or press it, and the water
  * swirls the glitter up: [onShaken] once the shake is hard enough, [onSettled] once the glitter has
  * calmed and no refresh is [refreshPending]. A change of [scene] crossfades inside the glass. With
- * [reducedMotion] a shake still refreshes but the glitter stays down.
+ * [reducedMotion] a shake still refreshes but the glitter stays down. [stateDescription], the
+ * conditions it shows, is read out after its [description].
  */
 @Composable
 internal fun SnowGlobe(
@@ -63,6 +65,7 @@ internal fun SnowGlobe(
     shakeSensorEnabled: Boolean = true,
     description: String = "",
     reducedMotion: Boolean = false,
+    stateDescription: String = "",
 ) {
     ReportSnowGlobeComposition()
     val pending by rememberUpdatedState(refreshPending)
@@ -103,6 +106,7 @@ internal fun SnowGlobe(
             .semantics {
                 role = Role.Button
                 contentDescription = description
+                if (stateDescription.isNotEmpty()) this.stateDescription = stateDescription
                 onClick {
                     state.shake()
                     true
