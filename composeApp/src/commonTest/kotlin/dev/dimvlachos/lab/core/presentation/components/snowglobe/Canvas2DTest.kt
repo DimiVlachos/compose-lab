@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,6 +62,23 @@ class Canvas2DTest {
         val px = c.bitmap.toPixelMap()
         near(Color.Blue, px[10, 10])
         near(Color.Transparent, px[1, 1])
+    }
+
+    @Test
+    fun anArcAfterLinesContinuesTheSameShape() {
+        // A box's top edge, then the bottom half of a circle: one D shape, as the browser fills it.
+        val c = Canvas2D.create(20, 20)
+        c.beginPath()
+        c.moveTo(2f, 0f)
+        c.lineTo(18f, 0f)
+        c.arc(10f, 10f, 8f, 0f, PI.toFloat())
+        c.closePath()
+        c.fillStyle = "#0000ff"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        // Below the diagonal a separate arc contour would leave the box's lower left empty.
+        near(Color.Blue, px[5, 8])
+        near(Color.Blue, px[10, 15])
     }
 
     @Test

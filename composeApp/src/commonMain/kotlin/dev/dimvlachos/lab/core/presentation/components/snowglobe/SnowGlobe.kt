@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -38,9 +39,11 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toOffset
 import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
@@ -126,11 +129,19 @@ internal fun SnowGlobe(
     SideEffect { state.configure(place.scale / density, radius / density) }
     val glass = remember { compileGlassShader() }
     val dark = LabTheme.isDark
+    val measurer = rememberTextMeasurer()
+    val densityNow = LocalDensity.current
+    // The walnut base doesn't change, so it's painted once per size and theme.
+    val base =
+        remember(radius, place.scale, dark, measurer, densityNow) {
+            if (radius < 1f) null else paintBase(radius, place.scale, dark, measurer, densityNow)
+        }
+    val boxAt = IntOffset(place.boxLeft.roundToInt(), place.boxTop.roundToInt())
 
     Box(modifier.onSizeChanged { size = it }) {
         // The globe and its base take touches, focus and the globe's semantics; the room doesn't.
         Box(
-            Modifier.offset { IntOffset(place.boxLeft.roundToInt(), place.boxTop.roundToInt()) }
+            Modifier.offset { boxAt }
                 .size(
                     with(LocalDensity.current) {
                         DpSize(place.boxWidth.toDp(), place.boxHeight.toDp())
@@ -166,8 +177,26 @@ internal fun SnowGlobe(
                     }
                 }
         )
-        // The table doesn't move, so it redraws only when the globe is resized.
-        Canvas(Modifier.fillMaxSize()) { drawTable(center, radius) }
+        // The room: wall, table and the shadows and caustic the globe throws, which follow it.
+        Canvas(Modifier.fillMaxSize()) {
+            state.frame
+            drawIntoCanvas { canvas ->
+                Canvas2D(canvas, this.size.width.toInt(), this.size.height.toInt())
+                    .drawRoom(
+                        this.size.width,
+                        this.size.height,
+                        place.cx,
+                        place.cy,
+                        radius,
+                        dark,
+                        state.sceneFrom,
+                        state.sceneTo,
+                        state.fade,
+                        state.offset.x * density,
+                        state.tilt,
+                    )
+            }
+        }
         // The globe moves as one object, rocking on its base like a globe that is carried: the
         // water, the glass's highlights and the walnut base together. Its own layer, too, so its
         // per-frame redraws don't invalidate whatever holds the globe.
@@ -184,6 +213,10 @@ internal fun SnowGlobe(
                     )
             }
         ) {
+            // The base's top face and groove, behind the glass.
+            Canvas(Modifier.fillMaxSize()) {
+                base?.let { drawImage(it.back, topLeft = boxAt.toOffset()) }
+            }
             // The prototype's glass shader over the interior, its bubble following the tilt and
             // its reflections the room's crossfade; or, where it can't run, the plain glass.
             Spacer(
@@ -220,7 +253,10 @@ internal fun SnowGlobe(
                         }
                     }
             )
-            Canvas(Modifier.fillMaxSize()) { drawBase(center, radius) }
+            // The turned body and its plaque, in front.
+            Canvas(Modifier.fillMaxSize()) {
+                base?.let { drawImage(it.front, topLeft = boxAt.toOffset()) }
+            }
         }
     }
 }

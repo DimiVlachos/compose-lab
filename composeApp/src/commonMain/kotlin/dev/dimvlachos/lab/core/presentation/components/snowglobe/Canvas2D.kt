@@ -313,6 +313,21 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         if (ccw && sweep > 0f) sweep = (sweep % TAU) - TAU
         if (abs(sweep) > TAU) sweep = if (sweep > 0) TAU else -TAU
         val full = abs(sweep) >= TAU - 1e-4f
+        if (rotation == 0f) {
+            // The arc continues the current shape, joined by a line from where the path was, as
+            // the browser's does; a separate contour would close on its own and leave gaps.
+            val box = Rect(x - rx, y - ry, x + rx, y + ry)
+            val start = a0 * 180f / PI.toFloat()
+            val move = path.isEmpty
+            if (full) {
+                val half = if (sweep > 0) 180f else -180f
+                path.arcTo(box, start, half, forceMoveTo = move)
+                path.arcTo(box, start + half, half, forceMoveTo = false)
+            } else {
+                path.arcTo(box, start, sweep * 180f / PI.toFloat(), forceMoveTo = move)
+            }
+            return
+        }
         val piece = Path()
         val bounds = Rect(-rx, -ry, rx, ry)
         if (full) {
