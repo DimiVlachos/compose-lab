@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.platform.shakeImpulse
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -121,5 +122,28 @@ class SnowGlobeStateTest {
         assertEquals(Offset.Zero, s.offset)
         assertEquals(0, shaken)
         assertEquals(0, settled)
+    }
+
+    private fun SnowGlobeState.feed(x: Float, y: Float) {
+        shakeImpulse(x, y)?.let(::nudge)
+        step(1f / 60f, false, onShaken = { shaken++ }, onSettled = { settled++ })
+    }
+
+    @Test
+    fun walkingWithThePhoneNeverRefreshes() {
+        val s = SnowGlobeState()
+        // A heel strike twice a second: six samples at 60 Hz of a pocket jolt, then the sway.
+        repeat(600) { i ->
+            if (i % 30 < 6) s.feed(0.5f, 5f) else s.feed(0.3f, 1f)
+        }
+        assertEquals(0, shaken)
+    }
+
+    @Test
+    fun aRealShakeOfThePhoneRefreshes() {
+        val s = SnowGlobeState()
+        repeat(36) { i -> s.feed(if (i % 6 < 3) 12f else -12f, 2f) }
+        repeat(480) { s.feed(0f, 0f) }
+        assertEquals(1, shaken)
     }
 }

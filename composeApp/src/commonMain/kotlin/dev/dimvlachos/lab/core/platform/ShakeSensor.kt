@@ -4,8 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.sqrt
 
-/** Below this linear acceleration, in m/s², the phone is just being carried. */
-private const val ShakeNoiseFloor = 2.5f
+/**
+ * Below this, in m/s², it is only carrying: pocket heel strikes peak around 3–5, a shake well
+ * above.
+ */
+private const val ShakeNoiseFloor = 6f
 
 /**
  * The impulse a shake of the phone gives, from its linear acceleration along the device's [x] and
