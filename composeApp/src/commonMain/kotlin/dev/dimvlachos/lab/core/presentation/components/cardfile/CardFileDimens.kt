@@ -1,93 +1,44 @@
 package dev.dimvlachos.lab.core.presentation.components.cardfile
 
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.coerceAtLeast
-import androidx.compose.ui.unit.coerceAtMost
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
-
-/** The card file's sizes, angles and feel. Positions and velocities are in cards. */
+/**
+ * The card file's feel, as the prototype has it. Positions and velocities are in cards; distances
+ * in dp, the prototype's CSS px.
+ */
 internal object CardFileDimens {
-    /** How far a finger drags to turn one card; a knob turns a quarter as fast. */
-    val CardDrag = 56.dp
-    const val KnobRatio = 0.25f
+    /** A knob takes this many times the drag the cards do to turn one card, for fine control. */
+    const val KnobRatio = 2.6f
 
-    /** How fast a fling dies away, per second: a fling of v cards/s carries v / Friction cards. */
-    const val Friction = 4f
+    /** A fling of v cards/s carries on for this long: it comes to rest v × FlingCarry cards on. */
+    const val FlingCarry = .3f
     /** A release is taken at no more than this many cards a second, either way. */
-    const val MaxFlingVelocity = 40f
-    /** How stiffly the wheel resists being dragged past either end. */
-    const val RubberStiffness = 0.8f
+    const val MaxFlingVelocity = 60f
+    /** A release slower than this, in cards a second, rests on the nearest card. */
+    const val MinFlingVelocity = 1.2f
+    /** How stiffly the wheel resists being dragged past either end: o goes o / (1 + 1.5 o). */
+    const val RubberStiffness = 1.5f
 
-    /** A card behind the front leans back this much per card, up to [BehindAngle]. */
-    const val BehindStep = 4f
-    const val BehindAngle = 24f
-    /**
-     * A card turned over the top falls forward past level to [FallAngle]; each card under it on the
-     * pile lies [FallStep] further over, up to [FlippedAngle].
-     */
-    const val FallAngle = 116f
-    const val FallStep = 7f
-    const val FlippedAngle = 138f
+    /** The wheel's spring onto a card: stiffness in 1/s², and its damping ratio. */
+    const val WheelStiffness = 70f
+    const val WheelDamping = .92f
 
-    /** How many cards either side of the front are composed. */
-    const val Window = 4
+    /** The pulled card's spring out of the rail and back in. */
+    const val PullStiffness = 95f
+    const val PullDamping = .9f
 
-    const val TickGapMs = 45L
+    const val TickGapMs = 16L
 
-    /** A pulled-out card pushed down past this share of its height is filed. */
-    const val FileFraction = 0.3f
+    /** A pulled card let go less than this far out files itself. */
+    const val FiledBelow = .72f
+    /** A pulled card flicked down faster than this, in dp a second, files itself. */
+    const val FlickFiles = 700f
+    /** How far down a pulled card is pushed to go all the way back in, as a share of the stage. */
+    const val PushTravel = .42f
+    /** A pulled card can be pushed once it is this far out. */
+    const val Grabbable = .85f
 
-    /**
-     * A pulled card flicked down faster than this, in fractions of its height per second, is filed.
-     */
-    const val FlickFilesVelocity = 1.5f
-
-    /**
-     * Each card behind the front stands this much higher, up to [BehindLiftCards] cards back, as if
-     * seen from a little above, so their tops peek over the front card and can be tapped.
-     */
-    val BehindLift = 16.dp
-    const val BehindLiftCards = 4f
-
-    /** A card spans this share of the stage's width, within [MinCardWidth]..[MaxCardWidth]. */
-    const val CardWidthShare = 0.82f
-    val MinCardWidth = 200.dp
-    val MaxCardWidth = 420.dp
-    /** An index card's height over its width: a 5 × 3 card. */
-    const val CardAspect = 0.6f
-    /** A card is never taller than this share of the stage's height. */
-    const val CardMaxHeightShare = 0.34f
-    /** The front card's centre, as a share of the stage's height from the top. */
-    const val WheelCentre = 0.4f
-
-    /** How far the rod sits under the card's bottom edge: the pivot of each card's turn. */
-    val RodDrop = 14.dp
-    val RodThickness = 9.dp
-    /** The knurled knobs at the rod's ends, seen side-on: a short chrome drum. */
-    val KnobWidth = 30.dp
-    val KnobHeight = 46.dp
-    /** How far the rod reaches past the cards on each side, to the knobs. */
-    val RodOverhang = 14.dp
-    /** How far under the rod the base sits, as a share of the card's height. */
-    const val BaseDropShare = 0.5f
-
-    /** The pulled card's top, as a share of the stage's height. */
-    const val PulledTop = 0.05f
-    /** The pulled card is never wider than this. */
-    val MaxPulledWidth = 480.dp
-
-    /** The size of a card on a stage of [width] × [height]. */
-    fun cardSize(width: Dp, height: Dp): DpSize {
-        // Room is left either side for the rod's overhang and the knobs.
-        val besideKnobs = width - (RodOverhang + KnobWidth + 8.dp) * 2
-        val w =
-            min(
-                    min(min(width * CardWidthShare, besideKnobs), MaxCardWidth),
-                    height * CardMaxHeightShare / CardAspect,
-                )
-                .coerceAtLeast(MinCardWidth.coerceAtMost(width))
-        return DpSize(w, w * CardAspect)
-    }
+    /** A touch that moves less than this, in dp, and lifts within [TapMs] is a tap. */
+    const val TapSlop = 8f
+    const val TapMs = 350L
+    /** A tap pulls the front card only when the wheel is this close to it, in cards. */
+    const val TapOnCard = .15f
 }

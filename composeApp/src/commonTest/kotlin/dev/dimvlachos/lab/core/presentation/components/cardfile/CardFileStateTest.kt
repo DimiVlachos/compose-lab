@@ -100,7 +100,7 @@ class CardFileStateTest {
         val s = file()
         s.spinTo(5)
         s.release(20f)
-        assertEquals(10f, s.position, 1e-3f)
+        assertEquals(11f, s.position, 1e-3f)
     }
 
     @Test
@@ -136,25 +136,41 @@ class CardFileStateTest {
     }
 
     @Test
-    fun aPushPastAThirdFilesTheCardAndAShortOneSpringsBack() = clocked {
+    fun aShortPushSpringsBackAndOneThatTakesTheCardMostOfTheWayInFilesIt() = clocked {
         val s = file()
+        s.pushTravel = 100f
         s.pull()
-        s.pushBy(0.15f)
+        // Pushed down 20 of the 100 it travels, the card is still 80% out: it comes back out.
+        s.pushTo(20f)
+        assertEquals(.8f, s.pullProgress, 1e-3f)
         s.releasePush(0f)
         assertEquals(0, s.pulled)
-        assertEquals(0f, s.pushDown, 1e-3f)
-        s.pushBy(0.4f)
+        assertEquals(1f, s.pullProgress, 1e-3f)
+        // Pushed 30 down, it is under 72% out: it files.
+        s.pushTo(30f)
         s.releasePush(0f)
         assertNull(s.pulled)
     }
 
     @Test
-    fun aDownwardFlickFilesItToo() = clocked {
+    fun aFlickDownFasterThanSevenHundredFilesItToo() = clocked {
         val s = file()
+        s.pushTravel = 100f
         s.pull()
-        s.pushBy(0.05f)
-        s.releasePush(3f)
+        s.pushTo(5f)
+        s.releasePush(600f)
+        assertEquals(0, s.pulled, "a slow push springs back")
+        s.pushTo(5f)
+        s.releasePush(800f)
         assertNull(s.pulled)
+    }
+
+    @Test
+    fun aGentleReleaseRestsOnTheNearestCard() = clocked {
+        val s = file()
+        s.dragBy(4.3f)
+        s.release(1f)
+        assertEquals(4f, s.position, 1e-3f)
     }
 
     @Test
@@ -290,7 +306,7 @@ class CardFileStateTest {
         s.onTick = { ticks++ }
         s.spinBy(20, 300.milliseconds)
         assertEquals(20f, s.position, 1e-3f)
-        assertTrue(ticks in 1..(300 / 45 + 1), "$ticks ticks for 20 cards in 300 ms")
+        assertTrue(ticks in 1..(300 / 16 + 1), "$ticks ticks for 20 cards in 300 ms")
     }
 
     @Test

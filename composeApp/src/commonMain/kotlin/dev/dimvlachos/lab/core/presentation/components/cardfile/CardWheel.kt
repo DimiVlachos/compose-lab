@@ -12,8 +12,8 @@ internal object CardWheel {
     /** The whole card a release at [position] going [velocity] cards/s comes to rest on. */
     fun restingCard(position: Float, velocity: Float, count: Int): Int {
         if (count <= 0) return 0
-        val travel = velocity / CardFileDimens.Friction
-        return (position + travel).roundToInt().coerceIn(0, count - 1)
+        val v = if (abs(velocity) < CardFileDimens.MinFlingVelocity) 0f else velocity
+        return (position + v * CardFileDimens.FlingCarry).roundToInt().coerceIn(0, count - 1)
     }
 
     /** How far the wheel goes for a drag [over] past an end: always less, ever stiffer. */
@@ -52,33 +52,6 @@ internal object CardWheel {
     /** How many cards crossed the top going from [from] to [to]: one each half-card mark passed. */
     fun cardsCrossed(from: Float, to: Float): Int =
         abs(floor(to + 0.5f) - floor(from + 0.5f)).toInt()
-
-    /**
-     * Card [index]'s turn on the rod at [position], in degrees: 0 upright at the front, leaning
-     * back the further behind it is, and falling forward past level as it is flipped over the top,
-     * onto the pile of cards in front.
-     */
-    fun cardAngle(index: Int, position: Float): Float {
-        val d = index - position
-        return if (d >= 0f) {
-            (d * CardFileDimens.BehindStep).coerceAtMost(CardFileDimens.BehindAngle)
-        } else if (d > -1f) {
-            d * CardFileDimens.FallAngle
-        } else {
-            // Further down the pile in front, each card lies a little further over.
-            -(CardFileDimens.FallAngle + (-d - 1f) * CardFileDimens.FallStep).coerceAtMost(
-                CardFileDimens.FlippedAngle
-            )
-        }
-    }
-
-    /** The cards composed around [position]: the front and [CardFileDimens.Window] either side. */
-    fun window(position: Float, count: Int): IntRange {
-        if (count <= 0) return IntRange.EMPTY
-        val front = position.roundToInt().coerceIn(0, count - 1)
-        return (front - CardFileDimens.Window).coerceAtLeast(0)..(front + CardFileDimens.Window)
-                .coerceAtMost(count - 1)
-    }
 }
 
 /** Lets a tick through at most once every [minGapMs]: a fast spin drops ticks, not queues them. */

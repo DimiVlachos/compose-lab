@@ -1,47 +1,164 @@
 package dev.dimvlachos.lab.cardfiledemo
 
-private fun c(first: String, last: String, area: String, line: Int, note: String) =
-    Contact(
-        "${last.lowercase()}-${first.lowercase()}",
-        first,
-        last,
-        "($area) 555-01${line.toString().padStart(2, '0')}",
-        note,
-        seed = (first + last).hashCode(),
+private class Row(
+    val name: String,
+    val kind: String,
+    val number: String,
+    val line: String,
+    val note: String,
+)
+
+/** The prototype's people and places: invented, American, in alphabetical order. */
+private val rows =
+    listOf(
+        Row(
+            "Abby Carter",
+            "Carter Hardware",
+            "(802) 555-0142",
+            "14 Elm St, Burlington",
+            "Spare key under the planter",
+        ),
+        Row(
+            "Andre Wallace",
+            "Piano teacher",
+            "(802) 555-0178",
+            "Tuesdays, 4:30 PM",
+            "Bring the Chopin book",
+        ),
+        Row(
+            "Ben Hollis",
+            "Hollis Auto Body",
+            "(802) 555-0119",
+            "Route 7, Shelburne",
+            "Ask for the Thursday rate",
+        ),
+        Row(
+            "Bianca Reyes",
+            "Sister-in-law",
+            "(617) 555-0164",
+            "Somerville, MA",
+            "Birthday March 3",
+        ),
+        Row(
+            "Caleb Moore",
+            "Landlord",
+            "(802) 555-0107",
+            "Pine St Apartments",
+            "Rent due on the 1st",
+        ),
+        Row(
+            "Dana Whitfield",
+            "Lakeside Dental",
+            "(802) 555-0185",
+            "Cleaning every 6 months",
+            "Next: Nov 12, 9:00 AM",
+        ),
+        Row(
+            "Eli Brennan",
+            "College roommate",
+            "(312) 555-0126",
+            "Chicago, IL",
+            "Owes me a deep dish",
+        ),
+        Row(
+            "Frank Delgado",
+            "Plumber · 24 hr",
+            "(802) 555-0133",
+            "Delgado Plumbing",
+            "Fixed the water heater",
+        ),
+        Row(
+            "Grandma June",
+            "Family",
+            "(207) 555-0150",
+            "Bar Harbor, ME",
+            "Call Sundays after church",
+        ),
+        Row(
+            "Hannah Price",
+            "Book club",
+            "(802) 555-0171",
+            "First Thursday, 7 PM",
+            "Reading East of Eden",
+        ),
+        Row(
+            "Jamal Turner",
+            "Little League coach",
+            "(802) 555-0192",
+            "Field 3, Saturdays",
+            "Snack duty Oct 21",
+        ),
+        Row(
+            "Kendra Lee",
+            "Pinecrest Animal Hosp.",
+            "(802) 555-0148",
+            "Biscuit's vet",
+            "Shots due in spring",
+        ),
+        Row("Lucy Bennett", "Babysitter", "(802) 555-0115", "\$18 an hour", "Free most Fridays"),
+        Row(
+            "Maya Brooks",
+            "Best friend",
+            "(617) 555-0193",
+            "Cambridge, MA",
+            "Coffee Saturday, Blue Kettle",
+        ),
+        Row("Mom", "Family", "(802) 555-0101", "Home", "Call her back!"),
+        Row("Nate Sullivan", "Next door", "(802) 555-0138", "16 Maple Ave", "Still has our ladder"),
+        Row("Olivia Grant", "Grant Realty", "(802) 555-0166", "Church St", "Showing Sat, 11 AM"),
+        Row(
+            "Pete's Corner Pizza",
+            "Takeout",
+            "(802) 555-0122",
+            "Open till 11 PM",
+            "Large pepperoni, extra crisp",
+        ),
+        Row(
+            "Rosa Martinez",
+            "Across the street",
+            "(802) 555-0159",
+            "21 Maple Ave",
+            "Waters the plants when we travel",
+        ),
+        Row(
+            "Sam Whitaker",
+            "Bandmate",
+            "(802) 555-0184",
+            "Practice Wed, 7 PM",
+            "Bring the spare cable",
+        ),
+        Row(
+            "Tom Becker",
+            "Becker Tax & Books",
+            "(802) 555-0177",
+            "Main St, Suite 2",
+            "Receipts by Feb 15",
+        ),
+        Row(
+            "Walt Jensen",
+            "Fishing buddy",
+            "(802) 555-0109",
+            "Lake Champlain",
+            "Opening day in April",
+        ),
+        Row(
+            "Zoe Chen",
+            "Cousin",
+            "(415) 555-0131",
+            "San Francisco, CA",
+            "Visiting for Thanksgiving",
+        ),
     )
 
-/** The card file's people: invented, American, alphabetical by last name. */
-internal val DemoContacts: List<Contact> =
-    listOf(
-            c("Grace", "Abbott", "617", 12, "Book club, 2nd Tue"),
-            c("Leo", "Alvarez", "512", 47, "Fixed the porch"),
-            c("Nora", "Bennett", "207", 3, "Cape house, July"),
-            c("Maya", "Brooks", "415", 42, "Pottery class Thu"),
-            c("Sam", "Burke", "312", 88, "Old roommate"),
-            c("Owen", "Carter", "503", 21, "Carpool, Mon/Wed"),
-            c("Ruby", "Chen", "206", 64, "Dentist reminder"),
-            c("Eli", "Dawson", "303", 9, "Bluegrass jam"),
-            c("Hazel", "Diaz", "305", 77, "Lends the kayak"),
-            c("Cal", "Ellison", "802", 35, "Maple syrup guy"),
-            c("June", "Fischer", "608", 50, "Ski trip host"),
-            c("Ben", "Foster", "919", 16, "Soccer coach"),
-            c("Iris", "Garner", "404", 93, "Plant sitter"),
-            c("Wes", "Hale", "406", 28, "Fishing in May"),
-            c("Lucy", "Hart", "212", 70, "Godmother"),
-            c("Theo", "Ingram", "615", 5, "Band practice"),
-            c("Ada", "Jensen", "651", 59, "Knits the hats"),
-            c("Miles", "Keller", "720", 83, "Climbing gym"),
-            c("Pearl", "Lawson", "843", 26, "Shrimp boil, Aug"),
-            c("Gus", "Moreno", "702", 61, "Mechanic"),
-            c("Ivy", "Nolan", "401", 14, "Library Saturdays"),
-            c("Hank", "Osborne", "406", 98, "Ranch next door"),
-            c("Clara", "Park", "213", 37, "Piano lessons"),
-            c("Rhett", "Quinn", "504", 72, "Jazz brunch"),
-            c("Mae", "Rivera", "520", 8, "Hiking buddy"),
-            c("Jack", "Sullivan", "617", 55, "Ballpark seats, sec 9"),
-            c("Tess", "Turner", "208", 31, "Babysitter"),
-            c("Abe", "Vance", "802", 66, "Cider press"),
-            c("Lila", "Warren", "971", 19, "Farmers market"),
-            c("Finn", "Young", "907", 44, "Cabin keys"),
-        )
-        .sortedBy { it.last + it.first }
+/** The card file's contacts, each with the prototype's seed for its hand: 31 + 17 per card. */
+internal val DemoContacts: List<Contact> = rows.mapIndexed { i, r ->
+    Contact(
+        id = r.name.lowercase().replace(Regex("[^a-z]+"), "-").trim('-'),
+        name = r.name,
+        kind = r.kind,
+        number = r.number,
+        line = r.line,
+        note = r.note,
+        seed = 31 + i * 17,
+    )
+}

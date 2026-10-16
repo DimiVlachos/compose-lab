@@ -1,82 +1,94 @@
 package dev.dimvlachos.lab.core.presentation.components.cardfile
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
-import dev.dimvlachos.lab.core.presentation.ui.CardFileColors
+import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.archivo_extrabold
 import dev.dimvlachos.lab.resources.cardfile_next
 import dev.dimvlachos.lab.resources.cardfile_previous
 import dev.dimvlachos.lab.resources.cardfile_pull_out
+import dev.dimvlachos.lab.resources.caveat_semibold
+import dev.dimvlachos.lab.resources.courier_prime_bold
+import dev.dimvlachos.lab.resources.courier_prime_regular
 import kotlin.math.abs
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 
+/** What a finger on the card file is doing, decided where it lands. */
+private enum class Grab {
+    Wheel,
+    Knob,
+    Push,
+    Outside,
+}
+
+/** The cards as the scene paints them: each divider numbered along, each entry as [paper] says. */
+internal fun paperCards(
+    cards: List<FileCard>,
+    paper: (FileCard.Entry) -> PaperCard.Contact,
+): List<PaperCard> {
+    var ordinal = 0
+    return cards.map {
+        when (it) {
+            is FileCard.Divider -> PaperCard.Divider(it.letter, ordinal++)
+            is FileCard.Entry -> paper(it)
+        }
+    }
+}
+
 /**
- * A chrome rotary card file holding [cards]. Drag the cards or a knob to spin the wheel, tap a
- * raised tab to spin to its letter, tap the front card to pull it out (drawn by [pulled]) and push
- * it down, tap outside, press back or Escape to file it. [face] draws an entry's face on the wheel;
- * [describe] says what a card is, for the wheel's description.
+ * A mid-century rotary card file holding [cards], on a walnut desk under a lamp, painted as its
+ * prototype paints it. Drag the cards or a knob to spin the wheel, tap a card behind or a divider's
+ * tab to spin to it, tap the front card to pull it out and push it down, tap outside, press back or
+ * Escape to file it. [paper] says what is typed and written on an entry's card; [describe] says
+ * what a card is, for the wheel's description.
  *
  * The wheel is one focusable node: the cards and tabs take taps but expose nothing of their own to
  * accessibility or focus.
@@ -84,8 +96,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun CardFile(
     cards: List<FileCard>,
-    face: @Composable (FileCard.Entry) -> Unit,
-    pulled: @Composable (FileCard.Entry) -> Unit,
+    paper: (FileCard.Entry) -> PaperCard.Contact,
     describe: (FileCard) -> String,
     modifier: Modifier = Modifier,
     state: CardFileState = rememberCardFileState(),
@@ -94,8 +105,6 @@ internal fun CardFile(
     ReportCardFileComposition()
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val screenDensity = LocalDensity.current
-    val cardPx = with(screenDensity) { CardFileDimens.CardDrag.toPx() }
     val wheelFocus = remember { FocusRequester() }
     val pulledFocus = remember { FocusRequester() }
     // The deck size is known now, so the first frame shows the starting card, not card 0. Done
@@ -121,38 +130,44 @@ internal fun CardFile(
         }
     }
 
+    // The paper, type and ink the cards are painted with. Resource fonts arrive a frame or two
+    // late; the families change when they do, and the cards are baked again.
+    val measurer = rememberTextMeasurer()
+    val typedRegular = Font(Res.font.courier_prime_regular, FontWeight.Normal)
+    val typedBold = Font(Res.font.courier_prime_bold, FontWeight.Bold)
+    val handFont = Font(Res.font.caveat_semibold, FontWeight.SemiBold)
+    val sansFont = Font(Res.font.archivo_extrabold, FontWeight.ExtraBold)
+    val grain = remember { makeGrain() }
+    val ink =
+        remember(measurer, typedRegular, typedBold, handFont, sansFont, grain) {
+            CardInk(
+                measurer,
+                mapOf(
+                    "TYPED" to FontFamily(typedRegular, typedBold),
+                    "HAND" to FontFamily(handFont),
+                    "SANS" to FontFamily(sansFont),
+                ),
+                grain,
+            )
+        }
+    val latestPaper by rememberUpdatedState(paper)
+    val scene = remember(cards) { CardFileScene(paperCards(cards) { latestPaper(it) }) }
+
+    fun firstContactFrom(i: Int): Int =
+        (i until cards.size).firstOrNull { cards[it] is FileCard.Entry } ?: i
+
     fun pullOrOpen() = scope.launch {
-        when (val card = cards.getOrNull(state.front)) {
-            is FileCard.Divider -> {
-                val first = cards.indexOfFirst { it is FileCard.Entry && it.letter == card.letter }
-                if (first >= 0) state.spinTo(first)
-            }
+        when (cards.getOrNull(state.front)) {
+            is FileCard.Divider -> state.spinTo(firstContactFrom(state.front))
             is FileCard.Entry -> if (state.pull()) pulledFocus.requestFocus()
             null -> Unit
         }
     }
 
-    fun file() = scope.launch {
-        state.file()
+    fun file(velocity: Float = 0f) = scope.launch {
+        state.file(velocity)
         wheelFocus.requestFocus()
     }
-
-    fun spinToLetter(letter: Char) {
-        val first = cards.indexOfFirst { it is FileCard.Entry && it.letter == letter }
-        if (first >= 0) scope.launch { state.spinTo(first) }
-    }
-
-    val touch = remember { Touch() }
-
-    // The cards' and tabs' tap detectors outlive a recomposition, so they call the latest of these.
-    // A tap that caught a turning wheel only stops it.
-    val tapCard by rememberUpdatedState { i: Int ->
-        // The front card pulls out; a card behind it spins to the front.
-        if (!touch.caught) {
-            if (i == state.front) pullOrOpen() else scope.launch { state.spinTo(i) }
-        }
-    }
-    val tapTab by rememberUpdatedState { letter: Char -> if (!touch.caught) spinToLetter(letter) }
 
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
@@ -196,37 +211,30 @@ internal fun CardFile(
                 }
             }
 
-    BoxWithConstraints(modifier.background(CardFileColors.night)) {
-        // The card grows with the stage, so the file fills a phone's width.
-        val cardSize = CardFileDimens.cardSize(maxWidth, maxHeight)
-        val centreOffset = maxHeight * (CardFileDimens.WheelCentre - 0.5f)
-        val rod =
-            with(screenDensity) {
-                Offset(
-                    constraints.maxWidth / 2f,
-                    constraints.maxHeight * CardFileDimens.WheelCentre +
-                        cardSize.height.toPx() / 2 +
-                        CardFileDimens.RodDrop.toPx(),
-                )
-            }
-        val halfWidth =
-            with(screenDensity) { cardSize.width.toPx() / 2 + CardFileDimens.RodOverhang.toPx() }
-        val baseDrop = with(screenDensity) { cardSize.height.toPx() * CardFileDimens.BaseDropShare }
-        // The desk, stand and rod are kept across a spin's recompositions, so their caches hold.
-        val desk = remember(rod) { Modifier.fillMaxSize().desk(rod) }
-        val stand =
-            remember(rod, halfWidth, baseDrop) {
-                Modifier.fillMaxSize().stand(rod, halfWidth, baseDrop)
-            }
-        val rodAndKnobs =
-            remember(state, rod, halfWidth) {
-                Modifier.fillMaxSize().rod(rod, halfWidth) { state.position }
-            }
-        Spacer(desk)
-        // The stand stands behind the cards; the rod and knobs, drawn after them, in front.
-        Spacer(stand)
+    // A tap lands where the last frame drew the cards. These are read by a gesture detector that
+    // outlives recompositions, so they are kept up to date.
+    val tap by rememberUpdatedState { hit: Int, caught: Boolean ->
+        val onFront = hit == state.front && abs(state.position - hit) < CardFileDimens.TapOnCard
+        when {
+            // A tap that caught a turning wheel only settles it, on the card under the finger.
+            hit >= 0 && onFront && !caught -> pullOrOpen()
+            hit >= 0 ->
+                scope.launch {
+                    state.spinTo(
+                        if (cards.getOrNull(hit) is FileCard.Divider) firstContactFrom(hit) else hit
+                    )
+                }
+            else -> scope.launch { state.release(0f) }
+        }
+    }
+    val fileOnTap by rememberUpdatedState { file() }
 
-        // The wheel: one focusable node for the whole file.
+    BoxWithConstraints(modifier) {
+        val density = LocalDensity.current.density
+        // Laid out in composition too, so the pulled card's focus target sits where it is drawn.
+        scene.layout(constraints.maxWidth / density, constraints.maxHeight / density, density)
+
+        // The wheel: one focusable node for the whole file, painted as the prototype paints it.
         Box(
             Modifier.fillMaxSize()
                 .testTag("cardfile")
@@ -262,129 +270,92 @@ internal fun CardFile(
                     }
                 }
                 .focusable()
-                // A finger landing on a turning wheel stops it at once, before any drag, and lets
-                // it settle on a card if it lifts without dragging. Nothing is consumed, so the
-                // cards' taps and the drag below still see the touch.
-                .pointerInput(state) {
+                .pointerInput(state, scene) {
                     awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        touch.caught = state.isSpinning
-                        touch.dragged = false
-                        if (touch.caught) scope.launch { state.stop() }
-                        do {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                        } while (event.changes.any { it.pressed })
-                        if (touch.caught && !touch.dragged) scope.launch { state.release(0f) }
-                    }
-                }
-                .pointerInput(state, cardPx) {
-                    val tracker = VelocityTracker()
-                    detectVerticalDragGestures(
-                        onDragStart = {
-                            touch.dragged = true
-                            tracker.resetTracking()
-                            // A finger catches a spinning wheel where it is.
-                            scope.launch { state.beginDrag() }
-                        },
-                        onDragEnd = {
-                            val v = tracker.calculateVelocity().y / cardPx
-                            scope.launch { state.release(v) }
-                        },
-                        onDragCancel = { scope.launch { state.release(0f) } },
-                    ) { change, dy ->
-                        change.consume()
-                        tracker.addPosition(change.uptimeMillis, change.position)
-                        scope.launch { state.dragBy(dy / cardPx) }
-                    }
-                }
-        ) {
-            // Only the window around the front is composed; reading `front` here recomposes this
-            // block only when the window moves by a card. Each card is keyed, so its face and
-            // anything it remembers stay with it as the window slides.
-            val window = CardWheel.window(front.toFloat(), cards.size)
-            for (i in window) {
-                val card = cards[i]
-                key(card.key) {
-                    val index by rememberUpdatedState(i)
-                    val depth = i - front
-                    CardLayer(
-                        i,
-                        card,
-                        state,
-                        zIndex = -abs(depth).toFloat() + if (depth < 0) 0.5f else 0f,
-                        size = cardSize,
-                        centreOffset = centreOffset,
-                        modifier =
-                            Modifier.clearAndSetSemantics { testTag = "card-${card.key}" }
-                                .pointerInput(Unit) { detectTapGestures { tapCard(index) } },
-                    ) {
-                        if (card is FileCard.Entry) face(card)
-                    }
-                }
-            }
-            // The raised tabs of the next few dividers, peeking up behind the front card.
-            val tabs = window.filter { it > front && cards[it] is FileCard.Divider }.take(3)
-            tabs.forEachIndexed { n, i ->
-                val tabX = cardSize.width * (-0.3f + n * 0.3f)
-                val letter = (cards[i] as FileCard.Divider).letter
-                key(letter) {
-                    Box(
-                        Modifier.align(Alignment.Center)
-                            .offset(
-                                x = tabX,
-                                y = centreOffset - cardSize.height / 2 - 20.dp,
-                            )
-                            // Over the cards behind, which they stand taller than; under the front.
-                            .zIndex(-0.25f)
-                            .size(52.dp, 30.dp)
-                            .background(
-                                CardFileColors.dividerPaper,
-                                RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
-                            )
-                            .clearAndSetSemantics { testTag = "tab-$letter" }
-                            .pointerInput(letter) { detectTapGestures { tapTab(letter) } }
-                    ) {
-                        Text(
-                            letter.toString(),
-                            Modifier.align(Alignment.Center),
-                            color = CardFileColors.dividerInk,
-                        )
-                    }
-                }
-            }
-        }
-
-        // The rod and knobs; only the knurling redraws in a spin, reading the position as it draws.
-        Spacer(rodAndKnobs)
-
-        // A knob turns the wheel at a quarter of a finger's speed on the cards, for fine control.
-        // It is turned, not flicked: letting go settles on the nearest card, with no momentum.
-        for ((tag, side) in listOf("knob-left" to -1, "knob-right" to 1)) {
-            Box(
-                Modifier.offset {
-                        IntOffset(
-                            (rod.x + side * (halfWidth + CardFileDimens.KnobWidth.toPx() / 2) -
-                                    KnobTarget.width.toPx() / 2)
-                                .toInt(),
-                            (rod.y - KnobTarget.height.toPx() / 2).toInt(),
-                        )
-                    }
-                    .size(KnobTarget)
-                    .testTag(tag)
-                    .pointerInput(state, cardPx) {
-                        detectVerticalDragGestures(
-                            onDragStart = { scope.launch { state.beginDrag() } },
-                            onDragEnd = { scope.launch { state.release(0f) } },
-                            onDragCancel = { scope.launch { state.release(0f) } },
-                        ) { change, dy ->
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val d = this@pointerInput.density
+                        val x0 = down.position.x / d
+                        val y0 = down.position.y / d
+                        state.pushTravel = scene.h * CardFileDimens.PushTravel
+                        val grab =
+                            when {
+                                state.pulled != null ->
+                                    when {
+                                        state.pullProgress <= CardFileDimens.Grabbable -> null
+                                        scene.inPulled(x0, y0) -> Grab.Push
+                                        else -> Grab.Outside
+                                    }
+                                scene.knobAt(x0, y0) -> Grab.Knob
+                                scene.onCards(x0, y0) -> Grab.Wheel
+                                else -> null
+                            } ?: return@awaitEachGesture
+                        // A finger landing on a turning wheel stops it where it is.
+                        val caught = state.isSpinning
+                        val turning = grab == Grab.Wheel || grab == Grab.Knob
+                        if (turning) scope.launch { state.beginDrag() }
+                        val per =
+                            scene.pitch * (if (grab == Grab.Knob) CardFileDimens.KnobRatio else 1f)
+                        val tracker = VelocityTracker()
+                        tracker.addPosition(down.uptimeMillis, down.position)
+                        down.consume()
+                        var lastY = down.position.y
+                        var moved = false
+                        var upAt = down.uptimeMillis
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            upAt = change.uptimeMillis
+                            val travelled = (change.position - down.position).getDistance() / d
+                            if (travelled > CardFileDimens.TapSlop) moved = true
+                            if (!change.pressed) break
+                            val dy = (change.position.y - lastY) / d
+                            lastY = change.position.y
                             change.consume()
-                            scope.launch { state.dragBy(dy / cardPx * CardFileDimens.KnobRatio) }
+                            when (grab) {
+                                Grab.Wheel,
+                                Grab.Knob -> scope.launch { state.dragBy(dy / per) }
+                                Grab.Push -> {
+                                    val pushed = (change.position.y - down.position.y) / d
+                                    scope.launch { state.pushTo(pushed) }
+                                }
+                                Grab.Outside -> Unit
+                            }
+                        }
+                        val vy = tracker.calculateVelocity().y / d
+                        val isTap = !moved && upAt - down.uptimeMillis < CardFileDimens.TapMs
+                        when (grab) {
+                            Grab.Wheel,
+                            Grab.Knob ->
+                                if (isTap) {
+                                    tap(if (grab == Grab.Knob) -1 else scene.cardAt(x0, y0), caught)
+                                } else {
+                                    scope.launch { state.release(vy / per) }
+                                }
+                            Grab.Push -> scope.launch { state.releasePush(vy) }
+                            // A tap outside the pulled card files it too.
+                            Grab.Outside -> if (!moved) fileOnTap()
                         }
                     }
-            )
-        }
+                }
+                .drawBehind {
+                    // Read here, so the cards are painted again when the fonts arrive.
+                    if (scene.ink !== ink) scene.ink = ink
+                    val d = density
+                    scene.layout(size.width / d, size.height / d, d)
+                    val position = state.position
+                    val out = state.pulled ?: -1
+                    val q = state.pullProgress
+                    drawIntoCanvas { canvas ->
+                        val g = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
+                        g.setTransform(d, 0f, 0f, d, 0f, 0f)
+                        scene.paint(g, position, out, q, state.reducedMotion)
+                    }
+                }
+        )
 
-        // The pulled-out card, over a dimmed desk.
+        // The pulled-out card is painted with the rest; this is where focus and its description
+        // rest while it is out, and where Escape files it.
         val out = state.pulled
         if (out != null) {
             val entry = cards.getOrNull(out) as? FileCard.Entry
@@ -396,88 +367,27 @@ internal fun CardFile(
                     wheelFocus.requestFocus()
                 }
             } else {
+                val t = scene.target
                 Box(
-                    Modifier.fillMaxSize()
-                        .testTag("scrim")
-                        // Back and Escape file the card for accessibility; the scrim is only a
-                        // place to tap, not a button of its own.
-                        .clearAndSetSemantics {}
-                        .graphicsLayer { alpha = state.pullProgress }
-                        .background(CardFileColors.scrim)
-                        .clickable(remember { MutableInteractionSource() }, indication = null) {
-                            file()
+                    Modifier.offset {
+                            IntOffset(
+                                ((t.cx - t.w / 2) * density).toInt(),
+                                ((t.cy - t.h / 2) * density).toInt(),
+                            )
                         }
-                )
-                val pulledTop = maxHeight * CardFileDimens.PulledTop
-                val slotTop = maxHeight * CardFileDimens.WheelCentre - cardSize.height / 2
-                Box(
-                    Modifier.align(Alignment.TopCenter)
-                        .padding(top = pulledTop, start = 16.dp, end = 16.dp)
-                        .widthIn(max = CardFileDimens.MaxPulledWidth)
-                        // At least a card's footprint, so there is a card to push down whatever is
-                        // on it.
-                        .defaultMinSize(cardSize.width, cardSize.height)
+                        .size(t.w.dp, t.h.dp)
                         .testTag("pulled")
                         .focusRequester(pulledFocus)
+                        .semantics { contentDescription = describe(entry) }
                         .onKeyEvent { e ->
                             if (e.type == KeyEventType.KeyDown && e.key == Key.Escape) {
                                 file()
                                 true
                             } else false
                         }
-                        .graphicsLayer {
-                            // It rises out of the rail at the slot's size, then comes forward to
-                            // full size, its top edge leading.
-                            val p = state.pullProgress
-                            val rise = smoothStep(p / 0.6f)
-                            val forward = smoothStep((p - 0.3f) / 0.7f)
-                            transformOrigin = TransformOrigin(0.5f, 0f)
-                            val from = cardSize.width.toPx() / size.width
-                            scaleX = from + (1f - from) * forward
-                            scaleY = scaleX
-                            translationY =
-                                (1f - rise) * (slotTop - pulledTop).toPx() +
-                                    state.pushDown * size.height
-                            alpha = (p * 3f).coerceIn(0f, 1f)
-                        }
-                        .pointerInput(state) {
-                            val tracker = VelocityTracker()
-                            detectVerticalDragGestures(
-                                onDragStart = { tracker.resetTracking() },
-                                onDragEnd = {
-                                    scope.launch {
-                                        state.releasePush(
-                                            tracker.calculateVelocity().y / size.height
-                                        )
-                                    }
-                                },
-                                onDragCancel = { scope.launch { state.releasePush(0f) } },
-                            ) { change, dy ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                scope.launch { state.pushBy(dy / size.height) }
-                            }
-                        }
-                        .focusable(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    pulled(entry)
-                }
+                        .focusable()
+                )
             }
         }
     }
-}
-
-/** What the finger now on the wheel did: whether it caught it turning, and whether it dragged. */
-private class Touch {
-    var caught = false
-    var dragged = false
-}
-
-/** The knob's touch target, a little larger than the drawn knob. */
-private val KnobTarget = DpSize(56.dp, 64.dp)
-
-private fun smoothStep(t: Float): Float {
-    val x = t.coerceIn(0f, 1f)
-    return x * x * (3f - 2f * x)
 }

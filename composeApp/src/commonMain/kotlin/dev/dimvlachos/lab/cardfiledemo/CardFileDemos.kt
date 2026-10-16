@@ -15,23 +15,23 @@ internal object CardFileDemos {
     const val Pull = "pull"
     const val File = "file"
 
-    /** The wheel starts on the first contact, after the A divider. */
-    const val StartIndex = 1
+    private val deck = ContactDeck(DemoContacts)
 
-    /** From three cards in, the flick that lands on Maya Brooks. */
-    val FlickToMaya: Int = ContactDeck(DemoContacts).indexOf("brooks-maya") - StartIndex - 3
+    /** The wheel starts on Ben Hollis, as the prototype's does. */
+    val StartIndex: Int = deck.indexOf("ben-hollis")
 
-    // Three slow flips to show the cards turning over the top, a flick to Maya Brooks, her card
-    // pulled out and pushed back, and the wheel put back on the first contact so the clip loops.
+    /** From three cards on, the flick that lands on Maya Brooks. */
+    val FlickToMaya: Int = deck.indexOf("maya-brooks") - StartIndex - 3
+
+    // The prototype's clip: three cards turned slowly over the top, a flick to Maya Brooks, her
+    // card pulled out and pushed back, and the wheel put back on Ben Hollis so the clip loops.
     private val contacts = demoScript {
-        at(0.8.seconds, lasts = 600.milliseconds) { spinCards(1, 600.milliseconds) }
-        at(1.8.seconds, lasts = 600.milliseconds) { spinCards(1, 600.milliseconds) }
-        at(2.8.seconds, lasts = 600.milliseconds) { spinCards(1, 600.milliseconds) }
-        at(4.seconds, lasts = 900.milliseconds) { spinCards(FlickToMaya, 900.milliseconds) }
-        at(6.seconds, lasts = 500.milliseconds) { tapControl(Pull) }
-        at(9.5.seconds, lasts = 700.milliseconds) { tapControl(File) }
-        // The reset springs back from Maya to the first contact, which takes about a second.
-        at(11.seconds, lasts = 1200.milliseconds) { resetFeed() }
+        at(1.1.seconds, lasts = 1300.milliseconds) { spinCards(3, 1300.milliseconds) }
+        at(2.8.seconds, lasts = 900.milliseconds) { spinCards(FlickToMaya, 900.milliseconds) }
+        at(5.4.seconds, lasts = 600.milliseconds) { tapControl(Pull) }
+        at(8.3.seconds, lasts = 700.milliseconds) { tapControl(File) }
+        // The reset springs back from Maya to Ben, which takes a little over a second.
+        at(9.6.seconds, lasts = 1500.milliseconds) { resetFeed() }
     }
 
     val all =

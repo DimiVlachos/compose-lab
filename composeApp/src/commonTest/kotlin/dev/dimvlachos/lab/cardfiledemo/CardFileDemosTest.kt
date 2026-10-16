@@ -21,15 +21,13 @@ class CardFileDemosTest {
     }
 
     @Test
-    fun theClipFlipsFlicksToMayaPullsHerOutAndFilesHerBack() = runTest {
+    fun theClipTurnsThreeCardsFlicksToMayaPullsHerOutAndFilesHerBack() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         val names = controller.calls.map { it.second }
         assertEquals(
             listOf(
-                "spinCards(1)",
-                "spinCards(1)",
-                "spinCards(1)",
+                "spinCards(3)",
                 "spinCards(${CardFileDemos.FlickToMaya})",
                 "tapControl(pull)",
                 "tapControl(file)",
@@ -40,10 +38,11 @@ class CardFileDemosTest {
     }
 
     @Test
-    fun theFlickLandsOnMayaBrooks() {
+    fun itStartsOnBenHollisAndTheFlickLandsOnMayaBrooks() {
         val deck = ContactDeck(DemoContacts)
+        assertEquals(deck.indexOf("ben-hollis"), CardFileDemos.StartIndex)
         assertEquals(
-            deck.indexOf("brooks-maya"),
+            deck.indexOf("maya-brooks"),
             CardFileDemos.StartIndex + 3 + CardFileDemos.FlickToMaya,
         )
         assertTrue(CardFileDemos.FlickToMaya > 0)

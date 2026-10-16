@@ -2,7 +2,6 @@ package dev.dimvlachos.lab.core.presentation.components.cardfile
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -21,11 +20,12 @@ import kotlin.time.TimeSource
 private val startMark = TimeSource.Monotonic.markNow()
 
 /**
- * A card file's wheel and the card pulled out of it. The wheel's [position] is in cards. A drag
- * moves it under the finger, rubber-banded past the ends; a release springs it to the whole card a
- * fling of that speed would stop on, starting at the fling's speed, so it has momentum and a
- * detent. A spring onto an end card comes to rest without swinging past it. While a card is
- * [pulled] the wheel stays put.
+ * A card file's wheel and the card pulled out of it, with the prototype's feel. The wheel's
+ * [position] is in cards. A drag moves it under the finger, rubber-banded past the ends; a release
+ * springs it to the whole card a fling of that speed would stop on, starting at the fling's speed,
+ * so it has momentum and a detent. A spring onto an end card comes to rest without swinging past
+ * it. While a card is [pulled] the wheel stays put; pushing the card down takes it back toward the
+ * rail, and let go far enough in, it files.
  */
 @Stable
 internal class CardFileState(
@@ -35,7 +35,6 @@ internal class CardFileState(
 ) {
     private val wheel = Animatable(initial.toFloat())
     private val out = Animatable(0f)
-    private val push = Animatable(0f)
     private var raw = initial.toFloat()
     private val throttle = TickThrottle(CardFileDimens.TickGapMs)
 
@@ -51,11 +50,12 @@ internal class CardFileState(
     val front: Int
         get() = if (count == 0) 0 else position.roundToInt().coerceIn(0, count - 1)
 
+    /** How far the pulled card is out: 0 in the rail, 1 facing you. */
     val pullProgress: Float
         get() = out.value
 
-    val pushDown: Float
-        get() = push.value
+    /** How far down, in dp, a pushed card goes to be all the way back in. */
+    var pushTravel = 300f
 
     var reducedMotion = false
     var canPull: (Int) -> Boolean = { true }
@@ -82,7 +82,6 @@ internal class CardFileState(
         }
         if (pulled?.let { it >= count } == true) {
             out.snapTo(0f)
-            push.snapTo(0f)
             pulled = null
         }
     }
@@ -114,7 +113,7 @@ internal class CardFileState(
         }
         val last = (count - 1).coerceAtLeast(0).toFloat()
         val position = wheel.value
-        val stiffness = Spring.StiffnessMediumLow
+        val stiffness = CardFileDimens.WheelStiffness
         val firm = target <= 0f || target >= last || position < 0f || position > last
         val start =
             if (!firm) velocity
@@ -128,7 +127,10 @@ internal class CardFileState(
         var previous = wheel.value
         wheel.animateTo(
             target,
-            spring(dampingRatio = if (firm) 1f else 0.82f, stiffness = stiffness),
+            spring(
+                dampingRatio = if (firm) 1f else CardFileDimens.WheelDamping,
+                stiffness = stiffness,
+            ),
             start,
         ) {
             tickFrom(previous)
@@ -210,8 +212,7 @@ internal class CardFileState(
      */
     suspend fun settle() {
         if (pulled != null) {
-            push.snapTo(0f)
-            if (reducedMotion) out.snapTo(1f) else out.animateTo(1f, spring())
+            if (reducedMotion) out.snapTo(1f) else out.animateTo(1f, pullSpring)
         } else if (count > 0) {
             moveTo(front.toFloat())
         }
@@ -225,37 +226,39 @@ internal class CardFileState(
         wheel.snapTo(card.toFloat())
         raw = card.toFloat()
         pulled = card
-        push.snapTo(0f)
-        if (reducedMotion) out.snapTo(1f)
-        else out.animateTo(1f, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow))
+        if (reducedMotion) out.snapTo(1f) else out.animateTo(1f, pullSpring)
         return true
     }
 
-    /** Files the pulled card back into its slot. */
-    suspend fun file() {
+    /** Files the pulled card back into its slot, starting at [velocity] (out per second). */
+    suspend fun file(velocity: Float = 0f) {
         if (pulled == null) return
-        if (reducedMotion) out.snapTo(0f)
-        else out.animateTo(0f, spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow))
-        push.snapTo(0f)
+        if (reducedMotion) out.snapTo(0f) else out.animateTo(0f, pullSpring, velocity)
         pulled = null
     }
 
-    /** The pulled card pushed down by [fraction] of its height. */
-    suspend fun pushBy(fraction: Float) {
+    /** The pulled card pushed [down] dp from where the finger took it: back toward the rail. */
+    suspend fun pushTo(down: Float) {
         if (pulled == null) return
-        push.snapTo((push.value + fraction).coerceIn(0f, 1f))
+        out.snapTo((1f - down.coerceAtLeast(0f) / pushTravel).coerceIn(0f, 1f))
     }
 
-    /** Let go of the pushed card: filed if pushed past a third or flicked down, else back out. */
+    /**
+     * Let go of the pushed card going down at [velocity] dp a second: filed if it was pushed most
+     * of the way in or flicked down, else back out.
+     */
     suspend fun releasePush(velocity: Float) {
         if (pulled == null) return
-        if (
-            push.value >= CardFileDimens.FileFraction ||
-                velocity > CardFileDimens.FlickFilesVelocity
-        )
-            file()
-        else push.animateTo(0f, spring())
+        if (out.value < CardFileDimens.FiledBelow || velocity > CardFileDimens.FlickFiles) {
+            file(-velocity.coerceAtLeast(0f) / pushTravel)
+        } else if (reducedMotion) out.snapTo(1f) else out.animateTo(1f, pullSpring)
     }
 }
+
+private val pullSpring =
+    spring<Float>(
+        dampingRatio = CardFileDimens.PullDamping,
+        stiffness = CardFileDimens.PullStiffness,
+    )
 
 @Composable internal fun rememberCardFileState(): CardFileState = remember { CardFileState() }

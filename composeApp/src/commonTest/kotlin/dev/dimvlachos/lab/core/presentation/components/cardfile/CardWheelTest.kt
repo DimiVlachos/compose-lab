@@ -1,6 +1,5 @@
 package dev.dimvlachos.lab.core.presentation.components.cardfile
 
-import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -13,10 +12,15 @@ class CardWheelTest {
     }
 
     @Test
-    fun aFlingCarriesOnItsWay() {
-        val still = CardWheel.restingCard(4f, 0f, 30)
-        assertTrue(CardWheel.restingCard(4f, 20f, 30) > still + 2)
-        assertTrue(CardWheel.restingCard(4f, -20f, 30) < still - 2)
+    fun aFlingCarriesOnForThreeTenthsOfASecond() {
+        assertEquals(10, CardWheel.restingCard(4f, 20f, 30))
+        assertEquals(-2 + 4, CardWheel.restingCard(4f, -7f, 30))
+    }
+
+    @Test
+    fun aReleaseSlowerThanOneCardAndAFifthASecondRestsOnTheNearestCard() {
+        assertEquals(4, CardWheel.restingCard(4.3f, 1.1f, 30))
+        assertEquals(5, CardWheel.restingCard(4.3f, 1.3f, 30))
     }
 
     @Test
@@ -30,10 +34,9 @@ class CardWheelTest {
     @Test
     fun pastTheEndsTheWheelGivesLessThanTheDrag() {
         assertEquals(10f, CardWheel.banded(10f, 30))
-        val over = CardWheel.banded(32f, 30) - 29f
-        assertTrue(over > 0f && over < 3f, "$over")
-        val under = CardWheel.banded(-3f, 30)
-        assertTrue(under < 0f && under > -3f, "$under")
+        // The prototype's soft band: an overshoot o goes o / (1 + 1.5 o).
+        assertEquals(29f + 1f / 2.5f, CardWheel.banded(30f, 30), 1e-4f)
+        assertEquals(-3f / 5.5f, CardWheel.banded(-3f, 30), 1e-4f)
     }
 
     @Test
@@ -45,38 +48,12 @@ class CardWheelTest {
     }
 
     @Test
-    fun theFrontCardStandsUpAndTheOthersLeanAway() {
-        assertEquals(0f, CardWheel.cardAngle(5, 5f))
-        assertTrue(CardWheel.cardAngle(6, 5f) > 0f, "cards behind lean back")
-        assertTrue(CardWheel.cardAngle(4, 5f) < 0f, "flipped cards fall forward")
-        assertTrue(CardWheel.cardAngle(8, 5f) >= CardWheel.cardAngle(6, 5f))
-        assertTrue(abs(CardWheel.cardAngle(0, 5f)) <= CardFileDimens.FlippedAngle)
-        assertTrue(CardWheel.cardAngle(20, 5f) <= CardFileDimens.BehindAngle)
-    }
-
-    @Test
-    fun flippedCardsFallPastLevelOntoAPileThatLiesFurtherOverDownIt() {
-        assertTrue(CardWheel.cardAngle(4, 5f) < -90f, "a flipped card lies past level")
-        assertTrue(CardWheel.cardAngle(3, 5f) < CardWheel.cardAngle(4, 5f))
-        assertTrue(CardWheel.cardAngle(4, 4.5f) > -90f, "halfway over, it hasn't fallen yet")
-        assertEquals(-CardFileDimens.FlippedAngle, CardWheel.cardAngle(0, 20f))
-    }
-
-    @Test
-    fun onlyTheCardsAroundTheFrontAreComposed() {
-        assertEquals(1..9, CardWheel.window(5.2f, 30))
-        assertEquals(0..4, CardWheel.window(0f, 30))
-        assertEquals(25..29, CardWheel.window(29f, 30))
-        assertTrue(CardWheel.window(0f, 0).isEmpty())
-    }
-
-    @Test
-    fun ticksAreAtLeastFortyFiveMillisecondsApart() {
+    fun ticksAreAtLeastAFrameApart() {
         val throttle = TickThrottle(CardFileDimens.TickGapMs)
         assertTrue(throttle.shouldTick(1_000))
-        assertTrue(!throttle.shouldTick(1_020))
-        assertTrue(!throttle.shouldTick(1_044))
-        assertTrue(throttle.shouldTick(1_045))
+        assertTrue(!throttle.shouldTick(1_010))
+        assertTrue(!throttle.shouldTick(1_015))
+        assertTrue(throttle.shouldTick(1_016))
     }
 
     @Test

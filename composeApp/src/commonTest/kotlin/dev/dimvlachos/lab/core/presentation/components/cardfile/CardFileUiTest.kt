@@ -1,13 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.cardfile
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,23 +12,23 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.down
+import androidx.compose.ui.test.moveTo
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
-import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.up
 import androidx.compose.ui.test.v2.runComposeUiTest
-import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -51,19 +47,35 @@ class CardFileUiTest {
             is FileCard.Entry -> "Person ${card.key}"
         }
 
+    private fun paper(card: FileCard.Entry) =
+        PaperCard.Contact("Person ${card.key}", "Friend", listOf("(802) 555-0100"), 31)
+
+    private fun ComposeUiTest.cardFile(state: CardFileState, list: List<FileCard> = cards) =
+        setContent {
+            CardFile(list, ::paper, ::describe, Modifier.fillMaxSize(), state)
+        }
+
+    /** The scene as the card file lays it out on this test's stage, for where things are drawn. */
+    private fun ComposeUiTest.scene(list: List<FileCard> = cards): CardFileScene {
+        val node = onNodeWithTag("cardfile").fetchSemanticsNode()
+        val d = density.density
+        return CardFileScene(paperCards(list, ::paper)).apply {
+            layout(node.size.width / d, node.size.height / d, d)
+        }
+    }
+
+    private fun ComposeUiTest.px(x: Float, y: Float) = Offset(x, y) * density.density
+
+    /** Half way up the front card's body. */
+    private fun ComposeUiTest.frontCard(): Offset {
+        val s = scene()
+        return px(s.cx, s.proj(R0 + CH * .5f, phiOf(0f)).y)
+    }
+
     @Test
     fun theWheelSaysWhoIsAtTheFrontAndTheArrowsFlip() = runComposeUiTest {
         val state = CardFileState(initial = 1)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
+        cardFile(state)
         onNodeWithTag("cardfile")
             .assert(
                 SemanticsMatcher.expectValue(
@@ -83,16 +95,7 @@ class CardFileUiTest {
     @Test
     fun enterPullsTheCardOutAndEscapeFilesIt() = runComposeUiTest {
         val state = CardFileState(initial = 1)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
+        cardFile(state)
         onNodeWithTag("cardfile").requestFocus()
         onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
         waitForIdle()
@@ -103,38 +106,51 @@ class CardFileUiTest {
     }
 
     @Test
+    fun tappingTheFrontCardPullsItOut() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        cardFile(state)
+        val at = frontCard()
+        onRoot().performTouchInput { click(at) }
+        waitForIdle()
+        assertEquals(1, state.pulled)
+        assertEquals(1f, state.pullProgress, 1e-3f)
+    }
+
+    @Test
     fun aPushDownFilesThePulledCard() = runComposeUiTest {
         val state = CardFileState(initial = 1)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
-        onNodeWithTag("card-a0").performClick()
+        cardFile(state)
+        onRoot().performTouchInput { click(frontCard()) }
         waitForIdle()
-        onNodeWithTag("pulled").performTouchInput { swipeDown() }
+        val s = scene()
+        val from = px(s.target.cx, s.target.cy + s.target.h * .1f)
+        // Slowly, 40% of the way back to the rail: past the 28% that files it.
+        val to = from + px(0f, s.h * .42f * .4f)
+        onRoot().performTouchInput { swipe(from, to, durationMillis = 1_500) }
         waitForIdle()
         onNodeWithTag("pulled").assertDoesNotExist()
+        assertEquals(null, state.pulled)
+    }
+
+    @Test
+    fun aShortPushLetsTheCardBackOut() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        cardFile(state)
+        onRoot().performTouchInput { click(frontCard()) }
+        waitForIdle()
+        val s = scene()
+        val from = px(s.target.cx, s.target.cy + s.target.h * .1f)
+        val to = from + px(0f, s.h * .42f * .15f)
+        onRoot().performTouchInput { swipe(from, to, durationMillis = 1_500) }
+        waitForIdle()
+        assertEquals(1, state.pulled)
+        assertEquals(1f, state.pullProgress, 1e-3f)
     }
 
     @Test
     fun enterOnADividerSpinsToItsFirstEntry() = runComposeUiTest {
         val state = CardFileState(initial = 4)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
+        cardFile(state)
         onNodeWithTag("cardfile").requestFocus()
         onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
         waitForIdle()
@@ -145,43 +161,35 @@ class CardFileUiTest {
     @Test
     fun aRaisedTabSpinsToItsLetter() = runComposeUiTest {
         val state = CardFileState(initial = 1)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
-        onNodeWithTag("tab-B").performClick()
+        cardFile(state)
+        // The B divider stands three behind a0, its tab the second step along.
+        val s = scene()
+        val phi = phiOf(3f)
+        val top = s.proj(R0 + CH + TH, phi)
+        val body = s.proj(R0 + CH, phi)
+        val at = px(s.cx + (tabX(1) + .15f - CW / 2) * s.k * top.s, (top.y + body.y) / 2)
+        onRoot().performTouchInput { click(at) }
         waitForIdle()
         assertEquals(5, state.front)
+        assertEquals(null, state.pulled)
     }
 
     @Test
-    fun spinningRecomposesOnlyAsTheWindowMoves() = runComposeUiTest {
+    fun spinningRecomposesOnlyAsTheFrontCardChanges() = runComposeUiTest {
         var compositions = 0
         val state = CardFileState(initial = 1)
         mainClock.autoAdvance = false
         setContent {
             CompositionLocalProvider(LocalCardFileCompositionProbe provides { compositions++ }) {
-                CardFile(
-                    cards,
-                    { Text(it.key) },
-                    { Text("out ${it.key}") },
-                    ::describe,
-                    Modifier.fillMaxSize(),
-                    state,
-                )
+                CardFile(cards, ::paper, ::describe, Modifier.fillMaxSize(), state)
             }
         }
         mainClock.advanceTimeBy(100)
         val before = compositions
         onNodeWithTag("cardfile").requestFocus()
         onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) }
-        mainClock.advanceTimeBy(1_000)
+        mainClock.advanceTimeBy(1_500)
+        assertEquals(2, state.front)
         assertTrue(
             compositions - before <= 2,
             "${compositions - before} recompositions for one card",
@@ -191,49 +199,34 @@ class CardFileUiTest {
     @Test
     fun aKnobTurnsTheWheelSlowly() = runComposeUiTest {
         val state = CardFileState(initial = 1)
-        setContent {
-            CardFile(
-                cards,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
-        onNodeWithTag("knob-right").performTouchInput {
-            swipeDown(endY = centerY + 4 * 56.dp.toPx())
+        cardFile(state)
+        val s = scene()
+        val knob = s.p3(CW / 2 + .2f, 0f, 0f)
+        val from = px(knob.x, knob.y)
+        // A knob takes 2.6 times the drag the cards do to turn one card.
+        val to = from + px(0f, s.pitch * 2.6f)
+        onRoot().performTouchInput { swipe(from, to, durationMillis = 2_000) }
+        waitForIdle()
+        assertEquals(2, state.front)
+    }
+
+    @Test
+    fun aDragOnTheCardsTurnsACardAPitch() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        cardFile(state)
+        val s = scene()
+        val from = frontCard()
+        onRoot().performTouchInput {
+            swipe(from, from + px(0f, s.pitch * 3f), durationMillis = 2_000)
         }
         waitForIdle()
-        assertEquals(2, state.front, "four cards of drag on a knob turns one card")
-    }
-
-    private fun androidx.compose.ui.test.ComposeUiTest.cardFile(
-        state: CardFileState,
-        list: List<FileCard> = cards,
-        face: @Composable (FileCard.Entry) -> Unit = { Text(it.key) },
-    ) = setContent {
-        CardFile(list, face, { Text("out ${it.key}") }, ::describe, Modifier.fillMaxSize(), state)
-    }
-
-    private fun androidx.compose.ui.test.ComposeUiTest.cardFileOf(
-        state: CardFileState,
-        list: () -> List<FileCard>,
-    ) = setContent {
-        CardFile(
-            list(),
-            { Text(it.key) },
-            { Text("out ${it.key}") },
-            ::describe,
-            Modifier.fillMaxSize(),
-            state,
-        )
+        assertEquals(4, state.front)
     }
 
     private fun SemanticsNode.subtree(): List<SemanticsNode> =
         listOf(this) + children.flatMap { it.subtree() }
 
-    private fun androidx.compose.ui.test.ComposeUiTest.actionLabels(): List<String> =
+    private fun ComposeUiTest.actionLabels(): List<String> =
         onNodeWithTag("cardfile")
             .fetchSemanticsNode()
             .config
@@ -244,28 +237,20 @@ class CardFileUiTest {
     @Test
     fun theWheelIsTheOnlyFocusableNodeAndCarriesTheDescriptionAndActions() = runComposeUiTest {
         cardFile(CardFileState(initial = 1))
-        // The tree accessibility services see: a cleared subtree's own nodes are left out of it.
-        val root = onNodeWithTag("cardfile").fetchSemanticsNode()
+        val root = onRoot().fetchSemanticsNode()
         val nodes = root.subtree()
         val focusable = nodes.filter { SemanticsProperties.Focused in it.config }
-        assertEquals(listOf(root.id), focusable.map { it.id }, "one focus stop for the whole file")
+        val wheel = onNodeWithTag("cardfile").fetchSemanticsNode()
+        assertEquals(listOf(wheel.id), focusable.map { it.id }, "one focus stop for the whole file")
         assertTrue(
             nodes.none { SemanticsActions.OnClick in it.config },
-            "no card or tab is its own button",
-        )
-        assertTrue(
-            nodes.none { SemanticsProperties.Text in it.config },
-            "card faces aren't read separately",
-        )
-        assertTrue(
-            nodes.any { it.config.getOrNull(SemanticsProperties.TestTag) == "card-a0" },
-            "the cards keep their test tags",
+            "nothing is its own button",
         )
         assertEquals(
             listOf("Person a0"),
-            root.config.getOrNull(SemanticsProperties.ContentDescription),
+            wheel.config.getOrNull(SemanticsProperties.ContentDescription),
         )
-        assertTrue(SemanticsActions.CustomActions in root.config)
+        assertTrue(SemanticsActions.CustomActions in wheel.config)
     }
 
     @Test
@@ -304,60 +289,26 @@ class CardFileUiTest {
     }
 
     @Test
-    fun aFaceKeepsItsRememberedStateAsTheWheelTurns() = runComposeUiTest {
-        // Long enough that the window of composed cards slides as the wheel turns.
-        val deck = listOf(FileCard.Divider('C')) + (0 until 19).map { FileCard.Entry("c$it", 'C') }
-        val state = CardFileState(initial = 1)
-        val mismatches = mutableListOf<String>()
-        cardFile(
-            state,
-            list = deck,
-            face = { card ->
-                val remembered = remember { card.key }
-                SideEffect {
-                    if (remembered != card.key) mismatches += "$remembered shown as ${card.key}"
-                }
-            },
-        )
-        onNodeWithTag("cardfile").requestFocus()
-        repeat(8) {
-            onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) }
-            waitForIdle()
-        }
-        assertEquals(9, state.front)
-        assertEquals(emptyList(), mismatches)
-    }
-
-    @Test
     fun tappingACardBehindTheFrontSpinsToIt() = runComposeUiTest {
         val state = CardFileState(initial = 1)
         cardFile(state)
         // The next card's top peeks over the front card's top edge.
-        val front = onNodeWithTag("card-a0").fetchSemanticsNode().boundsInRoot
-        onRoot().performTouchInput { click(Offset(front.center.x, front.top - 4f)) }
+        val s = scene()
+        val front = s.proj(R0 + CH, phiOf(0f)).y
+        val behind = s.proj(R0 + CH, phiOf(1f)).y
+        onRoot().performTouchInput { click(px(s.cx, (front + behind) / 2)) }
         waitForIdle()
         assertEquals(2, state.front)
         assertEquals(null, state.pulled)
     }
 
     @Test
-    fun aDragStartingOnACardSpinsTheWheel() = runComposeUiTest {
+    fun tappingOutsideThePulledCardFilesIt() = runComposeUiTest {
         val state = CardFileState(initial = 1)
         cardFile(state)
-        onNodeWithTag("card-a0", useUnmergedTree = true).performTouchInput {
-            swipeDown(durationMillis = 1_000)
-        }
+        onRoot().performTouchInput { click(frontCard()) }
         waitForIdle()
-        assertTrue(state.front > 1, "front is ${state.front}")
-    }
-
-    @Test
-    fun tappingTheScrimFilesTheCard() = runComposeUiTest {
-        val state = CardFileState(initial = 1)
-        cardFile(state)
-        onNodeWithTag("card-a0", useUnmergedTree = true).performClick()
-        waitForIdle()
-        onNodeWithTag("scrim").performTouchInput { click(Offset(10f, 10f)) }
+        onRoot().performTouchInput { click(Offset(10f, 10f)) }
         waitForIdle()
         onNodeWithTag("pulled").assertDoesNotExist()
         assertEquals(null, state.pulled)
@@ -409,18 +360,11 @@ class CardFileUiTest {
     fun aDeckThatLosesThePulledEntryFilesItInsteadOfCrashing() = runComposeUiTest {
         val state = CardFileState(initial = 1)
         var list by mutableStateOf(cards)
-        setContent {
-            CardFile(
-                list,
-                { Text(it.key) },
-                { Text("out ${it.key}") },
-                ::describe,
-                Modifier.fillMaxSize(),
-                state,
-            )
-        }
-        onNodeWithTag("card-a0", useUnmergedTree = true).performClick()
+        setContent { CardFile(list, ::paper, ::describe, Modifier.fillMaxSize(), state) }
+        onNodeWithTag("cardfile").requestFocus()
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
         waitForIdle()
+        assertEquals(1, state.pulled)
         list = listOf(FileCard.Divider('A'), FileCard.Divider('B')) + cards.drop(5)
         waitForIdle()
         onNodeWithTag("pulled").assertDoesNotExist()
@@ -429,12 +373,10 @@ class CardFileUiTest {
 
     @Test
     fun aTapWhereCardsOverlapGoesToTheNearestCard() = runComposeUiTest {
-        // Every card in the window covers the front card's middle; composed in index order, the
-        // cards behind would come last and win the tap if depth didn't order them.
+        // Every card behind covers the front card's middle; the nearest is drawn last and wins.
         val state = CardFileState(initial = 1)
         cardFile(state)
-        val front = onNodeWithTag("card-a0").fetchSemanticsNode().boundsInRoot
-        onRoot().performTouchInput { click(front.center) }
+        onRoot().performTouchInput { click(frontCard()) }
         waitForIdle()
         assertEquals(1, state.pulled, "the front card is pulled, not a card behind it spun to")
         assertEquals(1, state.front)
@@ -445,7 +387,7 @@ class CardFileUiTest {
         val big = (0 until 30).map { FileCard.Entry("e$it", 'E') }
         val state = CardFileState(initial = 20)
         var list: List<FileCard> by mutableStateOf(big)
-        cardFileOf(state) { list }
+        setContent { CardFile(list, ::paper, ::describe, Modifier.fillMaxSize(), state) }
         waitForIdle()
         assertEquals(20, state.front)
         list = big.take(10)
@@ -476,35 +418,38 @@ class CardFileUiTest {
     }
 
     @Test
-    fun theScrimIsHiddenFromAccessibilityAndAPulledCardOffersNoSpin() = runComposeUiTest {
+    fun aPulledCardOffersNoSpinAndNothingElseBecomesAButton() = runComposeUiTest {
         val state = CardFileState(initial = 1)
         cardFile(state)
         onNodeWithTag("cardfile").requestFocus()
         onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
         waitForIdle()
-        val scrim = onNodeWithTag("scrim").fetchSemanticsNode().config
-        assertTrue(SemanticsActions.OnClick !in scrim, "the scrim is no unlabelled button")
+        val nodes = onRoot().fetchSemanticsNode().subtree()
+        assertTrue(nodes.none { SemanticsActions.OnClick in it.config }, "no unlabelled button")
         assertEquals(emptyList(), actionLabels(), "no spinning while a card is out")
     }
 
     @Test
-    fun aTapOnASpinningWheelOnlyStopsIt() = runComposeUiTest {
+    fun aTapOnASpinningWheelStopsItWithoutPullingACard() = runComposeUiTest {
         val deck = listOf(FileCard.Divider('C')) + (0 until 19).map { FileCard.Entry("c$it", 'C') }
         val state = CardFileState(initial = 1)
         cardFile(state, list = deck)
-        val front = onNodeWithTag("card-c0").fetchSemanticsNode().boundsInRoot
+        val at = frontCard()
         mainClock.autoAdvance = false
         onNodeWithTag("cardfile").requestFocus()
         // A long spin, still turning when the finger lands.
         repeat(6) { onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) } }
         mainClock.advanceTimeBy(64)
         assertTrue(state.isSpinning)
-        onRoot().performTouchInput { down(front.center) }
+        onRoot().performTouchInput { down(at) }
         mainClock.advanceTimeBy(32)
         val caught = state.position
         mainClock.advanceTimeBy(200)
         assertEquals(caught, state.position, 1e-3f, "the finger holds the wheel")
-        onRoot().performTouchInput { up() }
+        onRoot().performTouchInput {
+            moveTo(at)
+            up()
+        }
         mainClock.autoAdvance = true
         waitForIdle()
         assertEquals(null, state.pulled, "the tap only stopped the wheel")
