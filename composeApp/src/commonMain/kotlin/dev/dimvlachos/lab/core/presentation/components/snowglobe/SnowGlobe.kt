@@ -52,6 +52,7 @@ import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers

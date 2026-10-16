@@ -3,6 +3,8 @@ package dev.dimvlachos.lab.core.presentation.components.snowglobe
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 
 /** How much the plain glass magnifies the interior, as the prototype's fallback scales it. */
 internal const val FallbackZoom = 1 / .86f

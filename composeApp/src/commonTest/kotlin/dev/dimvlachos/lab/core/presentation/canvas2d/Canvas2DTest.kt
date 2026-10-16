@@ -1,7 +1,13 @@
-package dev.dimvlachos.lab.core.presentation.components.snowglobe
+package dev.dimvlachos.lab.core.presentation.canvas2d
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.test.Test
@@ -168,5 +174,156 @@ class Canvas2DTest {
         val px = c.bitmap.toPixelMap()
         near(Color.Transparent, px[1, 2])
         near(Color.White, px[3, 2])
+    }
+
+    @Test
+    fun aRoundRectLeavesItsCornersOpen() {
+        val c = Canvas2D.create(20, 20)
+        c.beginPath()
+        c.roundRect(0f, 0f, 20f, 20f, 6f)
+        c.fillStyle = "#ff0000"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[10, 10])
+        near(Color.Red, px[10, 0])
+        near(Color.Transparent, px[0, 0])
+        near(Color.Transparent, px[19, 19])
+    }
+
+    @Test
+    fun aRoundRectTakesItsCornersOneByOne() {
+        // Rounded at the top only, as a divider's tab is.
+        val c = Canvas2D.create(20, 20)
+        c.beginPath()
+        c.roundRect(0f, 0f, 20f, 20f, floatArrayOf(8f, 8f, 0f, 0f))
+        c.fillStyle = "#ff0000"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Transparent, px[0, 0])
+        near(Color.Transparent, px[19, 0])
+        near(Color.Red, px[0, 19])
+        near(Color.Red, px[19, 19])
+    }
+
+    private fun tile(): ImageBitmap {
+        val t = Canvas2D.create(2, 1)
+        t.fillStyle = "#ff0000"
+        t.fillRect(0f, 0f, 1f, 1f)
+        t.fillStyle = "#0000ff"
+        t.fillRect(1f, 0f, 1f, 1f)
+        return t.bitmap
+    }
+
+    @Test
+    fun aPatternRepeatsItsImage() {
+        val c = Canvas2D.create(8, 2)
+        c.fillStyle = c.createPattern(tile())
+        c.fillRect(0f, 0f, 8f, 2f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[4, 1])
+        near(Color.Blue, px[5, 1])
+        near(Color.Blue, px[7, 0])
+    }
+
+    @Test
+    fun aPatternScalesWithTheTransform() {
+        val c = Canvas2D.create(8, 2)
+        c.scale(2f, 2f)
+        c.fillStyle = c.createPattern(tile())
+        c.fillRect(0f, 0f, 4f, 1f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 1])
+        near(Color.Blue, px[2, 1])
+        near(Color.Red, px[4, 0])
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    private fun withMeasurer(block: (TextMeasurer) -> Unit) = runComposeUiTest {
+        var measurer: TextMeasurer? = null
+        setContent { measurer = rememberTextMeasurer() }
+        waitForIdle()
+        block(checkNotNull(measurer))
+    }
+
+    private fun textCanvas(measurer: TextMeasurer, w: Int, h: Int) =
+        Canvas2D.create(w, h).apply {
+            textMeasurer = measurer
+            fonts = mapOf("MONO" to FontFamily.Monospace)
+        }
+
+    private fun inkRows(c: Canvas2D): List<Int> {
+        val px = c.bitmap.toPixelMap()
+        return (0 until c.height).filter { y ->
+            (0 until c.width).any { x -> px[x, y].alpha > .3f }
+        }
+    }
+
+    private fun inkColumns(c: Canvas2D): List<Int> {
+        val px = c.bitmap.toPixelMap()
+        return (0 until c.width).filter { x ->
+            (0 until c.height).any { y -> px[x, y].alpha > .3f }
+        }
+    }
+
+    @Test
+    fun wideTextMeasuresWider() = withMeasurer { m ->
+        val c = textCanvas(m, 10, 10)
+        c.font = "700 20px MONO"
+        val one = c.measureText("W")
+        assertTrue(one > 6f, "a 20px W is more than 6px wide: $one")
+        assertEquals(one * 3, c.measureText("WWW"), one * .2f)
+        c.font = "700 40px MONO"
+        assertEquals(one * 2, c.measureText("W"), one * .2f)
+    }
+
+    @Test
+    fun textSitsOnItsBaseline() = withMeasurer { m ->
+        val c = textCanvas(m, 80, 50)
+        c.font = "700 20px MONO"
+        c.fillStyle = "#000000"
+        c.fillText("HE", 4f, 30f)
+        val rows = inkRows(c)
+        assertTrue(rows.isNotEmpty(), "the text is drawn")
+        assertTrue(rows.max() <= 31, "nothing below the baseline: ${rows.max()}")
+        assertTrue(rows.min() in 12..22, "capitals rise about 14px: ${rows.min()}")
+    }
+
+    @Test
+    fun textAlignedRightEndsAtItsX() = withMeasurer { m ->
+        val c = textCanvas(m, 100, 50)
+        c.font = "700 20px MONO"
+        c.fillStyle = "#000000"
+        c.textAlign = "right"
+        c.fillText("HH", 80f, 30f)
+        val cols = inkColumns(c)
+        assertTrue(cols.max() <= 81, "ends at x: ${cols.max()}")
+        assertTrue(cols.min() >= 50, "starts a word's width before it: ${cols.min()}")
+    }
+
+    @Test
+    fun textCentredOnMiddleStraddlesItsPoint() = withMeasurer { m ->
+        val c = textCanvas(m, 100, 60)
+        c.font = "700 20px MONO"
+        c.fillStyle = "#000000"
+        c.textAlign = "center"
+        c.textBaseline = "middle"
+        c.fillText("H", 50f, 30f)
+        val rows = inkRows(c)
+        val cols = inkColumns(c)
+        assertTrue(rows.min() < 30 && rows.max() > 30, "rows straddle 30: $rows")
+        assertTrue(cols.min() < 50 && cols.max() > 50, "columns straddle 50: $cols")
+    }
+
+    @Test
+    fun textTurnsWithTheTransform() = withMeasurer { m ->
+        val c = textCanvas(m, 80, 80)
+        c.font = "700 20px MONO"
+        c.fillStyle = "#000000"
+        c.translate(40f, 40f)
+        c.scale(2f, 2f)
+        c.fillText("H", 0f, 0f)
+        val rows = inkRows(c)
+        // Doubled, the capital rises about 28px above the baseline at y 40.
+        assertTrue(rows.min() < 20 && rows.max() <= 41, "scaled: $rows")
     }
 }

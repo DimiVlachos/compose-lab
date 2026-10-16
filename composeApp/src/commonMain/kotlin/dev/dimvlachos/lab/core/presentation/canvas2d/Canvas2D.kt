@@ -1,11 +1,14 @@
-package dev.dimvlachos.lab.core.presentation.components.snowglobe
+package dev.dimvlachos.lab.core.presentation.canvas2d
 
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
@@ -15,6 +18,13 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.concurrent.Volatile
@@ -111,6 +121,9 @@ private constructor(
             Gradient2D(false, x0, y0, r0, x1, y1, r1)
     }
 }
+
+/** An image repeated across what is filled, made by [Canvas2D.createPattern]. */
+internal class Pattern2D(internal val image: ImageBitmap)
 
 /**
  * Enough of the browser's CanvasRenderingContext2D for the snow globe's painters to be ported line
@@ -239,6 +252,24 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             state.shadowOffsetY = value
         }
 
+    /**
+     * Measures and lays out [fillText] and [measureText]. Text needs one; it is measured at a
+     * density of 1, so a font's px are user units, and drawn under the transform.
+     */
+    var textMeasurer: TextMeasurer? = null
+
+    /** The families a [font] string names, by the name it uses for them. */
+    var fonts: Map<String, FontFamily> = emptyMap()
+
+    /** `<weight> <size>px <family>`, as the prototype writes it; the family is a key of [fonts]. */
+    var font: String = "400 10px sans-serif"
+
+    /** `left`, `right` or `center`. */
+    var textAlign: String = "left"
+
+    /** `alphabetic`, `middle` or `top`. */
+    var textBaseline: String = "alphabetic"
+
     // ---- State and transform ----
 
     fun save() {
@@ -295,6 +326,32 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         path.lineTo(x + w, y + h)
         path.lineTo(x, y + h)
         path.close()
+    }
+
+    fun roundRect(x: Float, y: Float, w: Float, h: Float, r: Float) =
+        roundRect(x, y, w, h, floatArrayOf(r))
+
+    /**
+     * A rounded rectangle as a new shape in the path. [radii] go as the browser takes them: one for
+     * every corner, or top-left and top-right, then bottom-right and bottom-left.
+     */
+    fun roundRect(x: Float, y: Float, w: Float, h: Float, radii: FloatArray) {
+        val (tl, tr, br, bl) =
+            when (radii.size) {
+                1 -> listOf(radii[0], radii[0], radii[0], radii[0])
+                2 -> listOf(radii[0], radii[1], radii[0], radii[1])
+                3 -> listOf(radii[0], radii[1], radii[2], radii[1])
+                else -> listOf(radii[0], radii[1], radii[2], radii[3])
+            }
+        path.addRoundRect(
+            RoundRect(
+                Rect(x, y, x + w, y + h),
+                CornerRadius(tl),
+                CornerRadius(tr),
+                CornerRadius(br),
+                CornerRadius(bl),
+            )
+        )
     }
 
     fun arc(x: Float, y: Float, r: Float, a0: Float, a1: Float, ccw: Boolean = false) =
@@ -394,6 +451,11 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 paint.shader = style.shader()
                 paint.alpha = state.globalAlpha
             }
+            is Pattern2D -> {
+                paint.color = Color.Black
+                paint.shader = ImageShader(style.image, TileMode.Repeated, TileMode.Repeated)
+                paint.alpha = state.globalAlpha
+            }
             is Color -> paint.color = style.copy(alpha = style.alpha * state.globalAlpha)
             else -> {
                 val c = cssColor(style.toString())
@@ -451,7 +513,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     // a unit, which Android's BlurMaskFilter can't express and drops. A gradient keeps its user
     // space coordinates, so it draws under the transform.
     private fun drawStyled(shape: Path, p: Paint, style: Any) {
-        if (state.filterBlur > 0f && style !is Gradient2D) {
+        if (state.filterBlur > 0f && style !is Gradient2D && style !is Pattern2D) {
             val device = Path().apply { addPath(shape) }
             device.transform(state.matrix)
             p.strokeWidth = state.lineWidth / scaleOf()
@@ -488,6 +550,54 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
 
     fun createRadialGradient(x0: Float, y0: Float, r0: Float, x1: Float, y1: Float, r1: Float) =
         Gradient2D.radial(x0, y0, r0, x1, y1, r1)
+
+    fun createPattern(image: ImageBitmap) = Pattern2D(image)
+
+    // ---- Text ----
+
+    private fun layout(text: String): TextLayoutResult {
+        val measurer = checkNotNull(textMeasurer) { "Text needs a textMeasurer" }
+        val parts = font.trim().split(Regex("\\s+"), limit = 3)
+        val weight = parts[0].toIntOrNull() ?: 400
+        val size = parts.getOrNull(1)?.removeSuffix("px")?.toFloatOrNull() ?: 10f
+        val family = fonts[parts.getOrNull(2)?.trim('"', '\'')] ?: FontFamily.Default
+        val style =
+            TextStyle(
+                fontFamily = family,
+                fontWeight = FontWeight(weight.coerceIn(1, 1000)),
+                fontSize = with(UnitDensity) { size.toSp() },
+            )
+        return measurer.measure(text, style, softWrap = false, density = UnitDensity)
+    }
+
+    /** How wide [text] is in the current [font], in user units. */
+    fun measureText(text: String): Float = layout(text).multiParagraph.getLineWidth(0)
+
+    /** Draws [text] at ([x], [y]) in the fill colour, placed by [textAlign] and [textBaseline]. */
+    fun fillText(text: String, x: Float, y: Float) {
+        val l = layout(text)
+        val width = l.multiParagraph.getLineWidth(0)
+        val dx =
+            when (textAlign) {
+                "right",
+                "end" -> -width
+                "center" -> -width / 2f
+                else -> 0f
+            }
+        val dy =
+            when (textBaseline) {
+                "middle" -> -l.size.height / 2f
+                "top" -> 0f
+                else -> -l.firstBaseline
+            }
+        val style = state.fillStyle
+        val c = if (style is Color) style else cssColor(style.toString())
+        val ink = c.copy(alpha = c.alpha * state.globalAlpha)
+        transformed {
+            canvas.translate(x + dx, y + dy)
+            l.multiParagraph.paint(canvas, ink)
+        }
+    }
 
     /** Draws [image] into the rectangle at ([dx], [dy]) of [dw] by [dh]. */
     fun drawImage(
@@ -545,6 +655,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         }
     }
 }
+
+private val UnitDensity = Density(1f, 1f)
 
 /**
  * Blurs what [this] paints by a Gaussian of [sigma] pixels, as CSS `blur()` does; 0 turns it off.

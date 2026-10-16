@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp

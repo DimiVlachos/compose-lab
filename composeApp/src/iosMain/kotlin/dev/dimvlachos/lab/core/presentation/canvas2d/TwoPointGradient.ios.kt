@@ -1,4 +1,4 @@
-package dev.dimvlachos.lab.core.presentation.components.snowglobe
+package dev.dimvlachos.lab.core.presentation.canvas2d
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shader

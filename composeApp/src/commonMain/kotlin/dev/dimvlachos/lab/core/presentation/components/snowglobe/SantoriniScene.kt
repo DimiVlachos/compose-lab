@@ -3,6 +3,10 @@ package dev.dimvlachos.lab.core.presentation.components.snowglobe
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.Gradient2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.min

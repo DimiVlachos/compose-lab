@@ -1,5 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
+import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot

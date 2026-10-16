@@ -12,6 +12,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.cssColor
+import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import dev.dimvlachos.lab.core.presentation.ui.SnowGlobeArt
 import kotlin.math.PI
 import kotlin.math.ceil
