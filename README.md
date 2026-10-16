@@ -34,6 +34,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Pop-up book](#pop-up-book-corepresentationcomponentspopup) | `popup` | `tour.popup` | An onboarding as a pop-up book: paper scenery stands up as a spread opens, and pull tabs sail a boat and spin windmill sails |
 | [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter) | `typewriter` | `typewriter.composer` | A chat composer that is a typewriter with its own round keys: letters strike the paper, the bell rings at the margin, and you pull the sheet out to send |
 | [Smoke delete](#smoke-delete-corepresentationcomponentssmoke) | `smoke` | `smoke.delete` | Swipe a chat away and it burns from the edge into smoke that curls up over the list; mist for the archive; Undo breathes it back |
+| [Card file](#card-file-corepresentationcomponentscardfile) | `cardfile` | `cardfile.contacts` | Contacts on a chrome rotary card file: spin the cards with momentum, tap a letter tab, pull a card out to call or message |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -52,6 +53,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
 - [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter)
 - [Smoke delete](#smoke-delete-corepresentationcomponentssmoke)
+- [Card file](#card-file-corepresentationcomponentscardfile)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -492,6 +494,30 @@ viewModel.undo(); smoke.reform(chatId)
 smoke.forget(chatId)
 ```
 
+## Card file (`core/presentation/components/cardfile/`)
+
+Contacts kept the way a desk kept them in the fifties: cream index cards on a chrome rotary card file, under a warm lamp on a walnut desk at night. Drag down over the cards and they flip toward you over the top of the wheel; drag up and they come back. Let go and the wheel carries on with the speed of the fling and settles on a whole card, as if it had a detent. Past either end it gives, harder the further it goes, and springs back. A divider before each letter stands up a raised tab; tap a tab, or a card behind the front one, and the wheel spins to it. Tap the front card and it comes out of the rail, forward and larger, over the dimmed desk, with Call and Message under it. Push it back down, tap outside it, press back or Escape, and it is filed into its slot.
+
+- **Real composables in perspective.** Each card is a composable turned on the rod with `graphicsLayer` (`rotationX` about the rod, a long camera distance, and a depth order), shaded by how far it faces away from the lamp. Only the window of about nine cards around the front is composed, keyed by card, so a card's face and anything it remembers go with it as the window slides.
+- **The wheel is measured in cards.** A drag moves the position by one card every 56 dp; a release runs the fling through a decay, rounds where it would stop to a whole card inside the deck, and springs there starting at the fling's speed. Past either end the drag is rubber-banded. The two knurled knobs turn with the wheel, and dragging one turns it at a quarter of the speed, for fine control.
+- **Ticks.** Each card that crosses the top plays a paper tick and a light haptic tick, at most one every 45 ms, so a fast spin drops ticks rather than queueing them.
+- **Keyboard and screen readers.** The wheel is one focusable node, described by its front card ("Maya Brooks, (415) 555-0142", or "Letter M" for a divider), with Previous card, Next card and Pull out as custom actions. The up and down arrows flip, Enter pulls the card out, and Escape files it.
+
+Nothing recomposes while the wheel turns but the window, once for each card it shifts: the cards' turn and shading are read in `graphicsLayer` and draw lambdas, and the desk and chrome are drawn once and cached, with only the knobs' knurling redrawn. A script spins, pulls and files through the same `CardFileState` a finger drives.
+
+The demo, `cardfile.contacts`, is thirty invented people, alphabetical by last name, each with a 555 number and a note in blue ink ("Cape house, July", "Book club, 2nd Tue"), leaning a little differently on every card. Call opens `tel:` and Message `sms:`; where neither can open, a note says so for three seconds. Its script flips three cards slowly, flicks on to Maya Brooks, pulls her card out, files it back and returns to the first card.
+
+```kotlin
+val file = rememberCardFileState()
+CardFile(
+    cards = deck.cards, // FileCard.Divider('A'), FileCard.Entry("abbott-grace", 'A'), …
+    face = { entry -> ContactCardFace(contacts.getValue(entry.key)) },
+    pulled = { entry -> PulledContact(contacts.getValue(entry.key), onCall, onMessage) },
+    describe = { card -> describe(card) },
+    state = file,
+)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -618,6 +644,8 @@ The pop-up book's leaves are rigid boards, and its frame is 1.22 times as tall a
 The typewriter composer's sheet takes 18 letters to a line and 4 lines, 72 letters at most, and what does not fit is refused, not scrolled. Its keys are a fixed QWERTY set with one page of figures and stops: no accents, no other scripts, no emoji, and a hardware key it has no key for types nothing. It types left to right only. Each sheet is one message.
 
 The smoke delete cuts a row into about 2,600 particles, at most 3,000, and fewer for a new row while more than 11,000 are in the air, so a wave of rows thins out rather than slowing down; a row is sampled from a drawing of at most 2 million pixels, a bigger one from a smaller copy. Every row of a list goes up in the one overlay, keyed by the caller's key, which must be unique in the list. A row's colours are cut down to 8. The smoke is drawn over the whole overlay, so it rises over a header above the list, though a row's hidden part makes none. Nothing about the smoke is saved: a screen made again starts with its rows whole.
+
+The card file takes any number of cards, dividers included, and composes about nine at a time. A divider can't be pulled out, a deck of one card doesn't spin, and an empty deck shows the empty file. Which card is out and where the wheel stands are not saved.
 
 ## Contributing
 

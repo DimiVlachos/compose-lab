@@ -177,4 +177,8 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun tapControl(id: String) {
         calls += now() to "tapControl($id)"
     }
+
+    override suspend fun spinCards(by: Int, duration: Duration) {
+        calls += now() to "spinCards($by)"
+    }
 }

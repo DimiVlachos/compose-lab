@@ -255,4 +255,11 @@
     <string name="cardfile_previous">Previous card</string>
     <string name="cardfile_next">Next card</string>
     <string name="cardfile_pull_out">Pull out</string>
+    <string name="demo_cardfile">Card file contacts</string>
+    <string name="demo_cardfile_description">Spin a chrome card file of contacts and pull a card out to call</string>
+    <string name="cardfile_hint">Spin the cards · tap one to pull it out</string>
+    <string name="cardfile_call">Call</string>
+    <string name="cardfile_message">Message</string>
+    <string name="cardfile_call_failed">Can’t call from this device</string>
+    <string name="cardfile_letter">Letter %1$s</string>
 </resources>

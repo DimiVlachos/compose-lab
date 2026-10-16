@@ -120,4 +120,10 @@ internal interface DemoController {
 
     /** Taps the demo's control [id], such as Undo on a snackbar, if it shows. */
     suspend fun tapControl(id: String)
+
+    /**
+     * Spins the card file [by] cards (negative goes back) over [duration] with a fingertip on the
+     * cards, and lets go. Returns once the finger has lifted and the wheel has settled.
+     */
+    suspend fun spinCards(by: Int, duration: Duration)
 }

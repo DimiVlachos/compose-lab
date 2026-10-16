@@ -6,6 +6,7 @@ import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_book_turn
+import dev.dimvlachos.lab.resources.demo_cardfile
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
@@ -45,6 +46,7 @@ class CatalogTest {
                 "tour.popup",
                 "typewriter.composer",
                 "smoke.delete",
+                "cardfile.contacts",
             ),
             Catalog.demos.map { it.id },
         )
@@ -62,6 +64,7 @@ class CatalogTest {
                 Res.string.demo_popup,
                 Res.string.demo_typewriter,
                 Res.string.demo_smoke,
+                Res.string.demo_cardfile,
             ),
             Catalog.demos.map { it.title },
         )
@@ -129,6 +132,7 @@ class CatalogTest {
                 "tour.popup",
                 "typewriter.composer",
                 "smoke.delete",
+                "cardfile.contacts",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
