@@ -148,4 +148,31 @@ class SnowGlobeUiTest {
         mainClock.advanceTimeBy(100)
         assertEquals(true, state.reducedMotion)
     }
+
+    @Test
+    fun theScenesArePaintedOnceHoweverOftenTheGlobeIsShown() = runComposeUiTest {
+        val before = SantoriniScenes.paints
+        var show by mutableStateOf(true)
+        mainClock.autoAdvance = false
+        setContent {
+            if (show) {
+                SnowGlobe(
+                    GlobeScene.Sunny,
+                    false,
+                    {},
+                    {},
+                    Modifier.size(320.dp),
+                    shakeSensorEnabled = false,
+                )
+            }
+        }
+        repeat(3) {
+            mainClock.advanceTimeBy(500)
+            show = !show
+        }
+        assertTrue(
+            SantoriniScenes.paints - before <= 1,
+            "painted ${SantoriniScenes.paints - before} times",
+        )
+    }
 }

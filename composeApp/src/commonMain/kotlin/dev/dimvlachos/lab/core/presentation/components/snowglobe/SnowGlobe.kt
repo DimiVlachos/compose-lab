@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -45,6 +46,8 @@ import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * How far the globe moves for the glass's spring [SnowGlobeState.offset], in radii per globe unit,
@@ -108,6 +111,11 @@ internal fun SnowGlobe(
     }
     ShakeImpulses(shakeSensorEnabled) { state.nudge(it) }
 
+    // Painting the three weathers takes a moment, so it happens off the main thread, once.
+    val scenes by
+        produceState<SantoriniScenes?>(null) {
+            value = withContext(Dispatchers.Default) { SantoriniScenes.shared }
+        }
     var size by remember { mutableStateOf(IntSize.Zero) }
     val place =
         layout
@@ -185,7 +193,7 @@ internal fun SnowGlobe(
                     .graphicsLayer { renderEffect = glass }
                     .drawBehind {
                         state.frame
-                        drawInterior(state, center, radius)
+                        drawInterior(state, scenes, center, radius)
                         if (glass == null) drawGlassFallback(center, radius)
                     }
             )

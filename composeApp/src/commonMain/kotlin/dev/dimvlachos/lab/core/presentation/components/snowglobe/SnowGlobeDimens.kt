@@ -46,5 +46,5 @@ internal object SnowGlobeDimens {
     const val Flutter = 0.05f
 
     /** How long a change of scene crossfades. */
-    const val SceneFadeSeconds = 0.6f
+    const val SceneFadeSeconds = 0.9f
 }

@@ -54,6 +54,12 @@ internal class SnowGlobeState(seed: Int = 7) {
     var fade = 1f
         private set
 
+    /** The windmill sails' turn, in radians, and how fast they turn: brisk in the meltemi. */
+    var sails = 0f
+        private set
+
+    private var sailSpeed = .5f
+
     /** Plays the swish, as loud as given; set by the composable. */
     var onSwish: ((Float) -> Unit)? = null
 
@@ -166,6 +172,15 @@ internal class SnowGlobeState(seed: Int = 7) {
             fade = (fade + dt / SnowGlobeDimens.SceneFadeSeconds).coerceAtMost(1f)
             if (fade >= 1f) sceneFrom = sceneTo
         }
+
+        val sailTarget =
+            when (sceneTo) {
+                GlobeScene.Sunny -> .45f
+                GlobeScene.Windy -> 3.4f
+                GlobeScene.Shower -> 1.1f
+            }
+        sailSpeed += (sailTarget - sailSpeed) * minOf(1f, dt * 1.5f)
+        sails += sailSpeed * dt
 
         glitter.step(dt, time, if (reducedMotion) 0f else energy, swirl)
         frame++
