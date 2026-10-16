@@ -326,4 +326,21 @@ class Canvas2DTest {
         // Doubled, the capital rises about 28px above the baseline at y 40.
         assertTrue(rows.min() < 20 && rows.max() <= 41, "scaled: $rows")
     }
+
+    @Test
+    fun anImageDrawsFromAFractionalSourceRectangle() {
+        // Four rows, red green blue white; the source starts half way down the green row.
+        val src = Canvas2D.create(1, 4)
+        listOf("#ff0000", "#00ff00", "#0000ff", "#ffffff").forEachIndexed { i, c ->
+            src.fillStyle = c
+            src.fillRect(0f, i.toFloat(), 1f, 1f)
+        }
+        val c = Canvas2D.create(4, 40)
+        c.drawImage(src.bitmap, 0f, 1.5f, 1f, 2f, 0f, 0f, 4f, 40f)
+        val px = c.bitmap.toPixelMap()
+        // Rows 1.5 to 3.5 stretched over 40: green's lower half, all of blue, white's upper half.
+        assertTrue(px[2, 3].green > .6f, "green at the top: ${px[2, 3]}")
+        near(Color.Blue, px[2, 20], .08f)
+        assertTrue(px[2, 37].red > .6f && px[2, 37].blue > .6f, "white at the foot: ${px[2, 37]}")
+    }
 }

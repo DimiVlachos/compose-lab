@@ -621,6 +621,20 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     ) {
         val p = styled(Color.White, true)
         p.color = Color.White.copy(alpha = state.globalAlpha)
+        if (sx % 1f != 0f || sy % 1f != 0f || sw % 1f != 0f || sh % 1f != 0f) {
+            // A source between pixels, as a card's strips are: the whole image is scaled so the
+            // source rectangle lands on the destination, and clipped to it.
+            transformed {
+                canvas.save()
+                canvas.clipRect(Rect(dx, dy, dx + dw, dy + dh))
+                canvas.translate(dx, dy)
+                canvas.scale(dw / sw, dh / sh)
+                canvas.translate(-sx, -sy)
+                canvas.drawImage(image, Offset.Zero, p)
+                canvas.restore()
+            }
+            return
+        }
         transformed {
             // Drawn into a unit box under a scale, so fractional destinations land where they
             // should.
