@@ -7,6 +7,10 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class Canvas2DTest {
     private fun near(expected: Color, actual: Color, tolerance: Float = 0.03f) {
@@ -39,6 +43,21 @@ class Canvas2DTest {
             cssColor("rgba(20,24,58,.34)"),
         )
         assertEquals(Color(red = 255, green = 238, blue = 210), cssColor("rgb(255, 238, 210)"))
+    }
+
+    @Test
+    fun coloursParseSafelyFromTwoThreadsAtOnce() = runBlocking {
+        // The scenes paint on a background thread while the room draws on the main one.
+        val jobs =
+            List(4) { worker ->
+                launch(Dispatchers.Default) {
+                    repeat(4_000) { i ->
+                        val c = cssColor("rgba(${worker},${i % 256},${i / 256},.5)")
+                        assertEquals(worker / 255f, c.red, 0.01f)
+                    }
+                }
+            }
+        jobs.joinAll()
     }
 
     @Test
@@ -109,6 +128,20 @@ class Canvas2DTest {
         c.fillRect(0f, 0f, 10f, 2f)
         val px = c.bitmap.toPixelMap()
         assertTrue(px[1, 1].red < 0.2f && px[8, 1].red > 0.8f)
+    }
+
+    @Test
+    fun aRadialGradientStartsFromItsInnerCircle() {
+        // A highlight at the upper left inside a disc centred lower down, as the dome's is.
+        val c = Canvas2D.create(40, 40)
+        val g = c.createRadialGradient(12f, 12f, 1f, 20f, 20f, 18f)
+        g.addColorStop(0f, "#ffffff")
+        g.addColorStop(1f, "#000000")
+        c.fillStyle = g
+        c.fillRect(0f, 0f, 40f, 40f)
+        val px = c.bitmap.toPixelMap()
+        assertTrue(px[12, 12].red > .9f, "the highlight sits at the inner circle: ${px[12, 12]}")
+        assertTrue(px[12, 12].red > px[20, 20].red + .1f, "brighter than the outer centre")
     }
 
     @Test

@@ -98,6 +98,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.time.Duration
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -136,6 +137,12 @@ internal fun SnowGlobeDemo(
         if (direction != 0) globe.rock(direction)
     }
 
+    // As in the prototype, the new forecast lands once the glitter has settled: the fetch starts
+    // with the shake, and its answer waits for the settle.
+    var fetching by remember { mutableStateOf(false) }
+    var fetched by remember { mutableStateOf<Pair<Int, Result<Forecast>>?>(null) }
+    var fetch by remember { mutableStateOf<Job?>(null) }
+
     DisposableEffect(state, board, globe) {
         state.setGlobeShakeHandler { duration ->
             scriptedShake(globe, duration) { fingertip.value = it }
@@ -144,6 +151,11 @@ internal fun SnowGlobeDemo(
             control.removePrefix("day-").toIntOrNull()?.let(::select)
         }
         state.setFeedResetHandler {
+            // Forget the fetch in flight too, or its answer would land on the next shake's settle.
+            fetch?.cancel()
+            fetch = null
+            fetching = false
+            fetched = null
             board.reset()
             source.reset()
             globe.reset()
@@ -155,10 +167,6 @@ internal fun SnowGlobeDemo(
         }
     }
 
-    // As in the prototype, the new forecast lands once the glitter has settled: the fetch starts
-    // with the shake, and its answer waits for the settle.
-    var fetching by remember { mutableStateOf(false) }
-    var fetched by remember { mutableStateOf<Pair<Int, Result<Forecast>>?>(null) }
     // "Updated" shows under the globe for a moment after a refresh lands.
     var justUpdated by remember { mutableStateOf(false) }
     LaunchedEffect(justUpdated) {
@@ -217,7 +225,7 @@ internal fun SnowGlobeDemo(
             onShaken = {
                 board.startRefresh()?.let { token ->
                     fetching = true
-                    scope.launch {
+                    fetch = scope.launch {
                         val result = source.refresh()
                         fetched = token to result
                         fetching = false

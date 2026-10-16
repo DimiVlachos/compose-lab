@@ -40,6 +40,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.runBlocking
 
 /**
  * How long the test that plays the demo's script through may take, in real time: on a CI runner
@@ -128,6 +129,22 @@ class SnowGlobeDemoUiTest {
         }
         mainClock.advanceTimeByFrame()
         onNodeWithTag("hint").assert(hasAnyDescendant(hasText("Updated · Light shower")))
+    }
+
+    @Test
+    fun aResetDuringARefreshLeavesTheNextShakeWhole() = runComposeUiTest {
+        val state = DemoState()
+        show(FakeForecastSource(3_000.milliseconds), state = state)
+        pressEnterOnTheGlobe()
+        // The shake counts within its 1.1 s; reset while that fetch is still out.
+        advanceUntil("the shake to count", most = 1_200) { board.refreshPending }
+        runBlocking { state.resetFeed() }
+        mainClock.advanceTimeByFrame()
+        pressEnterOnTheGlobe()
+        advanceUntil("the second shake's forecast to land", most = 14_000) {
+            board.days[1].scene == GlobeScene.Shower
+        }
+        assertFalse(board.refreshPending)
     }
 
     @Test

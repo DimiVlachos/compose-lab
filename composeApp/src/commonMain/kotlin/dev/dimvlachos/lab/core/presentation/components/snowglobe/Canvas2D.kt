@@ -12,12 +12,12 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import kotlin.concurrent.Volatile
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
@@ -38,32 +38,36 @@ internal fun mulberry(seed: Int): () -> Double {
     }
 }
 
-private val cssCache = HashMap<String, Color>()
+// Copy on write: the scenes paint on a background thread while the room draws on the main one,
+// and a plain HashMap written from both corrupts. A lost write only means parsing again.
+@Volatile private var cssCache: Map<String, Color> = emptyMap()
 
 /** A CSS colour as the prototype writes them: `#rgb`, `#rrggbb`, `rgb(...)` or `rgba(...)`. */
 internal fun cssColor(css: String): Color =
-    cssCache.getOrPut(css) {
-        val s = css.trim()
-        if (s.startsWith("#")) {
-            var h = s.substring(1)
-            if (h.length == 3) h = h.map { "$it$it" }.joinToString("")
-            val n = h.toLong(16)
-            Color(
-                red = (n shr 16 and 255).toInt(),
-                green = (n shr 8 and 255).toInt(),
-                blue = (n and 255).toInt(),
-            )
-        } else {
-            val parts = s.substringAfter("(").substringBefore(")").split(",").map { it.trim() }
-            val a = if (parts.size > 3) parts[3].toFloat() else 1f
-            Color(
-                red = parts[0].toFloat().toInt(),
-                green = parts[1].toFloat().toInt(),
-                blue = parts[2].toFloat().toInt(),
-                alpha = (a.coerceIn(0f, 1f) * 255f).toInt(),
-            )
-        }
+    cssCache[css] ?: parseCss(css).also { cssCache = cssCache + (css to it) }
+
+private fun parseCss(css: String): Color = run {
+    val s = css.trim()
+    if (s.startsWith("#")) {
+        var h = s.substring(1)
+        if (h.length == 3) h = h.map { "$it$it" }.joinToString("")
+        val n = h.toLong(16)
+        Color(
+            red = (n shr 16 and 255).toInt(),
+            green = (n shr 8 and 255).toInt(),
+            blue = (n and 255).toInt(),
+        )
+    } else {
+        val parts = s.substringAfter("(").substringBefore(")").split(",").map { it.trim() }
+        val a = if (parts.size > 3) parts[3].toFloat() else 1f
+        Color(
+            red = parts[0].toFloat().toInt(),
+            green = parts[1].toFloat().toInt(),
+            blue = parts[2].toFloat().toInt(),
+            alpha = (a.coerceIn(0f, 1f) * 255f).toInt(),
+        )
     }
+}
 
 /** A gradient made by [Canvas2D.createLinearGradient] or [Canvas2D.createRadialGradient]. */
 internal class Gradient2D
@@ -93,11 +97,9 @@ private constructor(
         return if (linear) {
             LinearGradientShader(Offset(x0, y0), Offset(x1, y1), colors, offsets)
         } else {
-            // The prototype's radial gradients share a centre (or nearly): the inner circle's
-            // radius moves the stops out along the outer one.
-            val outer = max(r1, 1e-4f)
-            val mapped = offsets.map { (r0 + it * (r1 - r0)) / outer }
-            RadialGradientShader(Offset(x1, y1), outer, colors, mapped)
+            // The browser's two-circle gradient: from the inner circle to the outer one, so a
+            // highlight offset up and to the left (the dome's, the clouds') stays there.
+            twoPointConicalShader(x0, y0, r0, x1, y1, max(r1, 1e-4f), colors, offsets)
         }
     }
 
@@ -435,13 +437,29 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         path.fillType = if (rule == "evenodd") PathFillType.EvenOdd else PathFillType.NonZero
         shadowed(path, true)
         val p = styled(state.fillStyle, true)
-        transformed { canvas.drawPath(path, p) }
+        drawStyled(path, p, state.fillStyle)
     }
 
     fun stroke() {
         shadowed(path, false)
         val p = styled(state.strokeStyle, false)
-        transformed { canvas.drawPath(path, p) }
+        drawStyled(path, p, state.strokeStyle)
+    }
+
+    // A blurred solid shape is drawn in the canvas's own pixels, with its sigma in pixels, as the
+    // browser's filter is: under a large transform the sigma in user units would be a fraction of
+    // a unit, which Android's BlurMaskFilter can't express and drops. A gradient keeps its user
+    // space coordinates, so it draws under the transform.
+    private fun drawStyled(shape: Path, p: Paint, style: Any) {
+        if (state.filterBlur > 0f && style !is Gradient2D) {
+            val device = Path().apply { addPath(shape) }
+            device.transform(state.matrix)
+            p.strokeWidth = state.lineWidth / scaleOf()
+            p.setBlur(state.filterBlur)
+            canvas.drawPath(device, p)
+        } else {
+            transformed { canvas.drawPath(shape, p) }
+        }
     }
 
     fun fillRect(x: Float, y: Float, w: Float, h: Float) {
@@ -532,3 +550,18 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
  * Blurs what [this] paints by a Gaussian of [sigma] pixels, as CSS `blur()` does; 0 turns it off.
  */
 internal expect fun Paint.setBlur(sigma: Float)
+
+/**
+ * The canvas's two-circle radial gradient: [colors] at [offsets] from the circle at ([x0], [y0]) of
+ * [r0] out to the one at ([x1], [y1]) of [r1].
+ */
+internal expect fun twoPointConicalShader(
+    x0: Float,
+    y0: Float,
+    r0: Float,
+    x1: Float,
+    y1: Float,
+    r1: Float,
+    colors: List<Color>,
+    offsets: List<Float>,
+): Shader
