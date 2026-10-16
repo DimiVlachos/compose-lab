@@ -2,7 +2,9 @@ package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
 import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.platform.shakeImpulse
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -149,6 +151,51 @@ class SnowGlobeStateTest {
             assertEquals(Offset.Zero, s.offset)
         }
         assertEquals(1, shaken)
+    }
+
+    /** The demo's scripted shake: the finger swings 0.55 each way at 2.5 Hz for 1.5 s. */
+    private fun SnowGlobeState.scriptedShake() {
+        val frame = 0.016f
+        var previous = 0f
+        repeat((1.5f / frame).toInt()) { i ->
+            val x = 0.55f * sin(i * frame * 2.5f * 2f * PI.toFloat())
+            drag(Offset(x - previous, 0f))
+            previous = x
+            step(frame, false, onShaken = { shaken++ }, onSettled = { settled++ })
+        }
+        release()
+    }
+
+    @Test
+    fun theScriptedShakeCloudsTheWaterAndItClearsAgain() {
+        val s = SnowGlobeState()
+        s.scriptedShake()
+        val g = s.glitter
+        val r = SnowGlobeDimens.InnerRadius
+        val airborne = (0 until g.count).count { g.y[it] < g.restY(g.x[it]) - 0.05f }
+        val meanY = (0 until g.count).sumOf { g.y[it].toDouble() } / g.count
+        // Crowded against the glass above the figurine: where the refraction smears it to streaks.
+        val onTheGlass =
+            (0 until g.count).count {
+                g.y[it] < 0.3f && g.x[it] * g.x[it] + g.y[it] * g.y[it] > (r - 0.1f) * (r - 0.1f)
+            }
+        assertTrue(airborne >= g.count * 0.6f, "only $airborne of ${g.count} in the water")
+        assertTrue(meanY < -0.1, "the glitter sits low, mean y $meanY")
+        assertTrue(onTheGlass < g.count * 0.25f, "$onTheGlass flakes crowd the glass")
+
+        var restedAfter = -1f
+        var t = 0f
+        while (t < 6f) {
+            s.step(1f / 60f, false, onShaken = { shaken++ }, onSettled = { settled++ })
+            t += 1f / 60f
+            if ((0 until g.count).all { g.resting[it] }) {
+                restedAfter = t
+                break
+            }
+        }
+        assertTrue(restedAfter > 0f, "still falling 6 s after the shake")
+        assertEquals(1, shaken)
+        assertEquals(1, settled)
     }
 
     private fun SnowGlobeState.feed(x: Float, y: Float) {

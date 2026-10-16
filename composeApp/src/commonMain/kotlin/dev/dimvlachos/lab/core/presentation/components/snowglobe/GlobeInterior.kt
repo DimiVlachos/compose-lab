@@ -132,7 +132,9 @@ private fun DrawScope.drawRainbow(alpha: Float) {
 private fun DrawScope.drawClouds(scene: GlobeScene, t: Float, alpha: Float) {
     val speed = if (scene == GlobeScene.Windy) 0.22f else 0.03f
     val tint = if (scene == GlobeScene.Shower) SnowGlobeArt.showerCloud else SnowGlobeArt.cloud
-    val count = if (scene == GlobeScene.Sunny) 1 else 3
+    // A sunny day is a clear sky: a cloud drifting past the rim would be magnified to a blob.
+    if (scene == GlobeScene.Sunny) return
+    val count = 3
     for (i in 0 until count) {
         val x = ((i * 0.83f + t * speed) % 2.4f) - 1.2f
         val y = -0.62f + i * 0.12f

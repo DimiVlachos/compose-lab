@@ -61,12 +61,15 @@ internal class GlitterField(val count: Int, seed: Int) {
     fun step(dt: Float, t: Float, energy: Float, swirl: Float) {
         val r = SnowGlobeDimens.InnerRadius
         val take = min(1f, dt * SnowGlobeDimens.Drag)
+        // Water too calm to lift a flake is as good as still: the glitter sinks straight down
+        // instead of hovering where a dying flow just balances its weight.
+        val stir = if (energy > SnowGlobeDimens.LiftEnergy) energy else 0f
         for (i in 0 until count) {
             if (resting[i]) {
                 if (energy <= SnowGlobeDimens.LiftEnergy) continue
                 resting[i] = false
             }
-            WaterFlow.sample(x[i], y[i], t, energy, swirl, flow)
+            WaterFlow.sample(x[i], y[i], t, stir, swirl, flow)
             val face = abs(sin(phase[i]))
             val sink = SnowGlobeDimens.Sink * (0.6f + 0.4f * face)
             vx[i] += (flow[0] + sin(phase[i]) * SnowGlobeDimens.Flutter - vx[i]) * take

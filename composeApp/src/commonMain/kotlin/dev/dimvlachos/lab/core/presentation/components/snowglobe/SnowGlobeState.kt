@@ -73,7 +73,9 @@ internal class SnowGlobeState(seed: Int = 7) {
         target =
             if (reach > SnowGlobeDimens.MaxDrag) pulled * (SnowGlobeDimens.MaxDrag / reach)
             else pulled
-        if (by.x != 0f) swirl = sign(by.x)
+        // The first stroke of a stir sets which way the water turns; swinging back doesn't reverse
+        // it, or a back-and-forth shake would cancel its own vortex.
+        if (by.x != 0f && energy < SnowGlobeDimens.SettleThreshold) swirl = sign(by.x)
     }
 
     fun release() {
@@ -85,9 +87,12 @@ internal class SnowGlobeState(seed: Int = 7) {
     fun nudge(acceleration: Offset) {
         // With reduced motion a shake of the phone still stirs the water, but the glass stays put.
         if (!reducedMotion) velocity += acceleration * 0.02f
+        // As with a drag, the first jolt of a stir sets which way the water turns.
+        if (acceleration.x != 0f && energy < SnowGlobeDimens.SettleThreshold) {
+            swirl = sign(acceleration.x)
+        }
         energy =
             (energy + acceleration.getDistance() * 0.03f).coerceAtMost(SnowGlobeDimens.MaxEnergy)
-        if (acceleration.x != 0f) swirl = sign(acceleration.x)
     }
 
     /**

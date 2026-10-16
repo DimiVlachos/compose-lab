@@ -27,12 +27,21 @@ internal object SnowGlobeDimens {
     const val MaxDrag = 0.6f
     /** A day change's rock: a sideways kick and the energy it leaves, under [ShakeThreshold]. */
     const val RockKick = 1.4f
-    const val RockEnergy = 0.3f
+    const val RockEnergy = 0.2f
     /** A keyboard or scripted shake. */
     const val ShakeEnergy = 1.2f
 
+    /**
+     * The water's flow at full swirl: how fast its vortex turns, how hard it lifts up the middle
+     * (fading toward the top of the glass, so the glitter clouds the water instead of crowding the
+     * glass), and how strong its slow eddies are.
+     */
+    const val VortexGain = 0.5f
+    const val LiftGain = 1.3f
+    const val EddyGain = 0.35f
+
     /** Sinking speed and how quickly a flake takes up the flow's velocity. */
-    const val Sink = 0.3f
+    const val Sink = 0.4f
     const val Drag = 6f
     const val Flutter = 0.05f
 

@@ -44,7 +44,16 @@ import dev.dimvlachos.lab.core.platform.SoundPlayer
 /** The sphere's radius and centre as fractions of the globe's width. */
 private const val RadiusOfWidth = 0.42f
 private const val CenterYOfWidth = 0.46f
-private const val RadiansToDegrees = 57.3f
+/**
+ * How far the globe moves for the glass's spring [SnowGlobeState.offset], in radii per globe unit,
+ * and how far it leans, in degrees per radian of [SnowGlobeState.tilt]: at the peak of a hard shake
+ * (offset about 0.5, tilt at its 0.12 limit) about 0.05 r and 3°, a carried globe, not a sliding
+ * lens.
+ */
+private const val ShiftOfOffset = 0.1f
+private const val TiltDegreesOfRadians = 25f
+/** The bottom of the walnut base, as a fraction of the globe's height: what it rocks on. */
+private const val BaseBottomOfHeight = 0.865f
 
 /**
  * A glass snow globe holding [scene]. Drag it about, shake the phone, or press it, and the water
@@ -139,27 +148,32 @@ internal fun SnowGlobe(
     ) {
         // The table doesn't move, so it redraws only when the globe is resized.
         Canvas(Modifier.fillMaxSize()) { drawTable(center, radius) }
-        Spacer(
-            Modifier.fillMaxSize()
-                .graphicsLayer {
-                    state.frame
-                    translationX = state.offset.x * radius * 0.12f
-                    translationY = state.offset.y * radius * 0.06f
-                    rotationZ = state.tilt * RadiansToDegrees
-                    transformOrigin = TransformOrigin(0.5f, 0.9f)
-                    renderEffect = glass
-                }
-                .drawBehind {
-                    state.frame
-                    drawInterior(state, center, radius)
-                    if (glass == null) drawGlassFallback(center, radius)
-                }
-        )
-        // Its own layer, so redrawing it each frame doesn't invalidate whatever holds the globe.
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-            state.frame
-            drawGlassHighlights(center, radius, state.tilt)
-            drawBase(center, radius)
+        // The globe moves as one object, rocking on its base like a globe that is carried: the
+        // water, the glass's highlights and the walnut base together. Its own layer, too, so its
+        // per-frame redraws don't invalidate whatever holds the globe.
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                state.frame
+                translationX = state.offset.x * radius * ShiftOfOffset
+                translationY = state.offset.y * radius * ShiftOfOffset
+                rotationZ = state.tilt * TiltDegreesOfRadians
+                transformOrigin = TransformOrigin(0.5f, BaseBottomOfHeight)
+            }
+        ) {
+            Spacer(
+                Modifier.fillMaxSize()
+                    .graphicsLayer { renderEffect = glass }
+                    .drawBehind {
+                        state.frame
+                        drawInterior(state, center, radius)
+                        if (glass == null) drawGlassFallback(center, radius)
+                    }
+            )
+            Canvas(Modifier.fillMaxSize()) {
+                state.frame
+                drawGlassHighlights(center, radius, state.tilt)
+                drawBase(center, radius)
+            }
         }
     }
 }
