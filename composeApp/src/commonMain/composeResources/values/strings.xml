@@ -252,4 +252,25 @@
     <string name="theme_system">Theme: follow system</string>
     <string name="theme_light">Theme: light</string>
     <string name="theme_dark">Theme: dark</string>
+    <string name="demo_snowglobe">Snow globe weather</string>
+    <string name="demo_snowglobe_description">Shake the snow globe to refresh the forecast; the gold settles on the rooftops</string>
+    <string name="snowglobe_place">Wellfleet, MA</string>
+    <string name="snowglobe_updated">Updated %1$s</string>
+    <string name="snowglobe_failed">Couldn\'t update</string>
+    <string name="snowglobe_refresh">Refresh forecast</string>
+    <string name="snowglobe_high_low">H %1$d° · L %2$d°</string>
+    <string name="snowglobe_announce">Updated. %1$s: %2$s, %3$d°</string>
+    <string name="snowglobe_day_today">Today</string>
+    <string name="snowglobe_day_fri">Fri</string>
+    <string name="snowglobe_day_sat">Sat</string>
+    <string name="snowglobe_day_sun">Sun</string>
+    <string name="snowglobe_day_mon">Mon</string>
+    <string name="snowglobe_day_tomorrow">Tomorrow</string>
+    <string name="snowglobe_sunny">Sunny</string>
+    <string name="snowglobe_breezy">Breezy</string>
+    <string name="snowglobe_shower">Light shower</string>
+    <string name="snowglobe_note_calm">Wind SW 8 mph</string>
+    <string name="snowglobe_note_gusts">Gusts 28 mph</string>
+    <string name="snowglobe_note_rain">Rain 60%</string>
+    <string name="snowglobe_note_clear">UV 5</string>
 </resources>
