@@ -191,6 +191,30 @@ class CardFileStateTest {
     }
 
     @Test
+    fun aScriptedSpinCutShortSettlesOnAWholeCard() = clocked {
+        val s = file()
+        val job = launch(StepClock()) { s.spinBy(1, 600.milliseconds) }
+        delay(150)
+        job.cancel()
+        val stopped = s.position
+        assertTrue(stopped > 0.05f && stopped < 0.95f, "stopped between cards at $stopped")
+        s.settle()
+        assertEquals(s.front.toFloat(), s.position, 1e-3f)
+    }
+
+    @Test
+    fun aPullCutShortComesAllTheWayOut() = clocked {
+        val s = file()
+        val job = launch(StepClock()) { s.pull() }
+        delay(100)
+        job.cancel()
+        assertTrue(s.pullProgress < 1f)
+        s.settle()
+        assertEquals(0, s.pulled)
+        assertEquals(1f, s.pullProgress, 1e-3f)
+    }
+
+    @Test
     fun withReducedMotionAScriptedSpinSnaps() = clocked {
         val s = file()
         s.reducedMotion = true

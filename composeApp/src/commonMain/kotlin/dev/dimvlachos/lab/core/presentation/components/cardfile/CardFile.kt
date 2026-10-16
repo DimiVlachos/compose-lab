@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -47,6 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -181,17 +185,24 @@ internal fun CardFile(
             }
 
     BoxWithConstraints(modifier.background(CardFileColors.night)) {
+        // The card grows with the stage, so the file fills a phone's width.
+        val cardSize = CardFileDimens.cardSize(maxWidth, maxHeight)
+        val centreOffset = maxHeight * (CardFileDimens.WheelCentre - 0.5f)
         val rod =
             with(screenDensity) {
                 Offset(
                     constraints.maxWidth / 2f,
-                    constraints.maxHeight * 0.52f +
-                        CardFileDimens.CardHeight.toPx() / 2 +
+                    constraints.maxHeight * CardFileDimens.WheelCentre +
+                        cardSize.height.toPx() / 2 +
                         CardFileDimens.RodDrop.toPx(),
                 )
             }
-        val halfWidth = with(screenDensity) { CardFileDimens.CardWidth.toPx() / 2 + 18.dp.toPx() }
+        val halfWidth =
+            with(screenDensity) { cardSize.width.toPx() / 2 + CardFileDimens.RodOverhang.toPx() }
+        val baseDrop = with(screenDensity) { cardSize.height.toPx() * CardFileDimens.BaseDropShare }
         Spacer(Modifier.fillMaxSize().desk(rod))
+        // The stand stands behind the cards; the rod and knobs, drawn after them, in front.
+        Spacer(Modifier.fillMaxSize().stand(rod, halfWidth, baseDrop))
 
         // The wheel: one focusable node for the whole file.
         Box(
@@ -263,6 +274,8 @@ internal fun CardFile(
                         card,
                         state,
                         zIndex = -abs(depth).toFloat() + if (depth < 0) 0.5f else 0f,
+                        size = cardSize,
+                        centreOffset = centreOffset,
                         modifier =
                             Modifier.clearAndSetSemantics { testTag = "card-${card.key}" }
                                 .pointerInput(Unit) { detectTapGestures { tapCard(index) } },
@@ -274,17 +287,18 @@ internal fun CardFile(
             // The raised tabs of the next few dividers, peeking up behind the front card.
             val tabs = window.filter { it > front && cards[it] is FileCard.Divider }.take(3)
             tabs.forEachIndexed { n, i ->
+                val tabX = cardSize.width * (-0.3f + n * 0.3f)
                 val letter = (cards[i] as FileCard.Divider).letter
                 key(letter) {
                     Box(
                         Modifier.align(Alignment.Center)
                             .offset(
-                                x = (-80 + n * 80).dp,
-                                y = -(CardFileDimens.CardHeight / 2) - 18.dp,
+                                x = tabX,
+                                y = centreOffset - cardSize.height / 2 - 20.dp,
                             )
                             // Over the cards behind, which they stand taller than; under the front.
                             .zIndex(-0.25f)
-                            .size(44.dp, 26.dp)
+                            .size(52.dp, 30.dp)
                             .background(
                                 CardFileColors.dividerPaper,
                                 RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
@@ -302,8 +316,8 @@ internal fun CardFile(
             }
         }
 
-        // The chrome frame; only its knurling redraws in a spin, reading the position as it draws.
-        Spacer(Modifier.fillMaxSize().frame(rod, halfWidth) { state.position })
+        // The rod and knobs; only the knurling redraws in a spin, reading the position as it draws.
+        Spacer(Modifier.fillMaxSize().rod(rod, halfWidth) { state.position })
 
         // A knob turns the wheel at a quarter of a finger's speed on the cards, for fine control.
         // It is turned, not flicked: letting go settles on the nearest card, with no momentum.
@@ -311,11 +325,13 @@ internal fun CardFile(
             Box(
                 Modifier.offset {
                         IntOffset(
-                            (rod.x + side * (halfWidth + 18f) - 28.dp.toPx()).toInt(),
-                            (rod.y - 28.dp.toPx()).toInt(),
+                            (rod.x + side * (halfWidth + CardFileDimens.KnobWidth.toPx() / 2) -
+                                    KnobTarget.width.toPx() / 2)
+                                .toInt(),
+                            (rod.y - KnobTarget.height.toPx() / 2).toInt(),
                         )
                     }
-                    .size(56.dp)
+                    .size(KnobTarget)
                     .testTag(tag)
                     .pointerInput(state, cardPx) {
                         detectVerticalDragGestures(
@@ -351,11 +367,15 @@ internal fun CardFile(
                             file()
                         }
                 )
+                val pulledTop = maxHeight * CardFileDimens.PulledTop
+                val slotTop = maxHeight * CardFileDimens.WheelCentre - cardSize.height / 2
                 Box(
-                    Modifier.align(Alignment.Center)
+                    Modifier.align(Alignment.TopCenter)
+                        .padding(top = pulledTop, start = 16.dp, end = 16.dp)
+                        .widthIn(max = CardFileDimens.MaxPulledWidth)
                         // At least a card's footprint, so there is a card to push down whatever is
                         // on it.
-                        .defaultMinSize(CardFileDimens.CardWidth, CardFileDimens.CardHeight)
+                        .defaultMinSize(cardSize.width, cardSize.height)
                         .testTag("pulled")
                         .focusRequester(pulledFocus)
                         .onKeyEvent { e ->
@@ -365,11 +385,19 @@ internal fun CardFile(
                             } else false
                         }
                         .graphicsLayer {
+                            // It rises out of the rail at the slot's size, then comes forward to
+                            // full size, its top edge leading.
                             val p = state.pullProgress
-                            translationY =
-                                (1f - p) * 220f * this.density + state.pushDown * size.height
-                            scaleX = 0.9f + 0.25f * p
+                            val rise = smoothStep(p / 0.6f)
+                            val forward = smoothStep((p - 0.3f) / 0.7f)
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                            val from = cardSize.width.toPx() / size.width
+                            scaleX = from + (1f - from) * forward
                             scaleY = scaleX
+                            translationY =
+                                (1f - rise) * (slotTop - pulledTop).toPx() +
+                                    state.pushDown * size.height
+                            alpha = (p * 3f).coerceIn(0f, 1f)
                         }
                         .pointerInput(state) {
                             val tracker = VelocityTracker()
@@ -397,4 +425,12 @@ internal fun CardFile(
             }
         }
     }
+}
+
+/** The knob's touch target, a little larger than the drawn knob. */
+private val KnobTarget = DpSize(56.dp, 64.dp)
+
+private fun smoothStep(t: Float): Float {
+    val x = t.coerceIn(0f, 1f)
+    return x * x * (3f - 2f * x)
 }

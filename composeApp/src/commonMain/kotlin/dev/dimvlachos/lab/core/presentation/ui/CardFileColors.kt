@@ -22,6 +22,9 @@ internal object CardFileColors {
     val chromeFoot = Color(0xFFB9BFC6)
     val base = Color(0xFF2B2420)
     val knurl = Color(0x55000000)
+    val knurlLight = Color(0x66FFFFFF)
+    val baseTop = Color(0xFF4A403A)
+    val deskShadow = Color(0x66000000)
 
     // The cards: cream stock, buff dividers with brown letters, and the notches for the rail.
     val paper = Color(0xFFF4ECD8)
@@ -29,7 +32,9 @@ internal object CardFileColors {
     val dividerInk = Color(0xFF6B4F2A)
     val cardEdge = Color(0x33000000)
     val notch = Color(0xFF1C140F)
+    /** A card's plain back, seen once it has fallen forward over the top. */
+    val cardBack = Color(0xFFCFC3A6)
 
     /** Dims the desk behind a pulled-out card. */
-    val scrim = Color(0x99000000)
+    val scrim = Color(0xE0000000)
 }

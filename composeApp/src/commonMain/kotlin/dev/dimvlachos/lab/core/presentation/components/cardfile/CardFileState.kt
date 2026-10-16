@@ -169,6 +169,20 @@ internal class CardFileState(
         raw = target
     }
 
+    /**
+     * Brings the wheel to rest after a spin or pull was cut short, as when a script is stopped
+     * mid-step: a card caught on its way out or back in comes all the way out, and a wheel caught
+     * between cards turns to the nearest one.
+     */
+    suspend fun settle() {
+        if (pulled != null) {
+            push.snapTo(0f)
+            if (reducedMotion) out.snapTo(1f) else out.animateTo(1f, spring())
+        } else if (count > 0) {
+            moveTo(front.toFloat())
+        }
+    }
+
     /** Pulls the front card out, unless it's a divider or one is already out. */
     suspend fun pull(): Boolean {
         if (pulled != null || count == 0 || !canPull(front)) return false

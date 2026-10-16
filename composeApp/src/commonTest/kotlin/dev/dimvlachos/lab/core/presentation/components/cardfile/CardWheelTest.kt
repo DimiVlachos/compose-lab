@@ -55,6 +55,14 @@ class CardWheelTest {
     }
 
     @Test
+    fun flippedCardsFallPastLevelOntoAPileThatLiesFurtherOverDownIt() {
+        assertTrue(CardWheel.cardAngle(4, 5f) < -90f, "a flipped card lies past level")
+        assertTrue(CardWheel.cardAngle(3, 5f) < CardWheel.cardAngle(4, 5f))
+        assertTrue(CardWheel.cardAngle(4, 4.5f) > -90f, "halfway over, it hasn't fallen yet")
+        assertEquals(-CardFileDimens.FlippedAngle, CardWheel.cardAngle(0, 20f))
+    }
+
+    @Test
     fun onlyTheCardsAroundTheFrontAreComposed() {
         assertEquals(1..9, CardWheel.window(5.2f, 30))
         assertEquals(0..4, CardWheel.window(0f, 30))

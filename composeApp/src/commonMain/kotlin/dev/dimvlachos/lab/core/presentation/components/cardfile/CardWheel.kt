@@ -35,14 +35,20 @@ internal object CardWheel {
 
     /**
      * Card [index]'s turn on the rod at [position], in degrees: 0 upright at the front, leaning
-     * back the further behind it is, and falling forward as it is flipped over the top.
+     * back the further behind it is, and falling forward past level as it is flipped over the top,
+     * onto the pile of cards in front.
      */
     fun cardAngle(index: Int, position: Float): Float {
         val d = index - position
         return if (d >= 0f) {
             (d * CardFileDimens.BehindStep).coerceAtMost(CardFileDimens.BehindAngle)
+        } else if (d > -1f) {
+            d * CardFileDimens.FallAngle
         } else {
-            (d * CardFileDimens.FlippedAngle).coerceAtLeast(-CardFileDimens.FlippedAngle)
+            // Further down the pile in front, each card lies a little further over.
+            -(CardFileDimens.FallAngle + (-d - 1f) * CardFileDimens.FallStep).coerceAtMost(
+                CardFileDimens.FlippedAngle
+            )
         }
     }
 

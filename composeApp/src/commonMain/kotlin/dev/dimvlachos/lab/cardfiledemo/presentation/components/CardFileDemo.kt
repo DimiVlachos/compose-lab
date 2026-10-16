@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +41,9 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.cardfile_call_failed
 import dev.dimvlachos.lab.resources.cardfile_hint
 import dev.dimvlachos.lab.resources.cardfile_letter
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /** How long the note that a call or message couldn't open stays up. */
@@ -83,18 +86,35 @@ internal fun CardFileDemo(
         callFailed = false
     }
 
+    // Stopping the script cancels the step it is on; the wheel then settles on a whole card, and a
+    // card caught half out comes all the way out, rather than either being left in between.
+    val scope = rememberCoroutineScope()
+
+    suspend fun step(block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            scope.launch { file.settle() }
+            throw e
+        }
+    }
+
     DisposableEffect(state, file) {
-        state.setCardSpinHandler { by, duration -> file.spinBy(by, duration) }
+        state.setCardSpinHandler { by, duration -> step { file.spinBy(by, duration) } }
         state.setControlTapHandler { control ->
-            when (control) {
-                CardFileDemos.Pull -> file.pull()
-                CardFileDemos.File -> file.file()
+            step {
+                when (control) {
+                    CardFileDemos.Pull -> file.pull()
+                    CardFileDemos.File -> file.file()
+                }
             }
         }
         // Puts the card back and the wheel on its first contact, so the clip loops.
         state.setFeedResetHandler {
-            file.file()
-            file.spinTo(CardFileDemos.StartIndex)
+            step {
+                file.file()
+                file.spinTo(CardFileDemos.StartIndex)
+            }
         }
         onDispose {
             state.setCardSpinHandler(null)
@@ -106,7 +126,7 @@ internal fun CardFileDemo(
     Column(Modifier.fillMaxSize().windowInsetsPadding(demoInsets(state))) {
         CardFile(
             cards = deck.cards,
-            face = { ContactCardFace(deck.contact(it)) },
+            face = { ContactCardFace(deck.contact(it), scale = 1.15f) },
             pulled = { entry ->
                 val contact = deck.contact(entry)
                 val digits = contact.number.filter { it.isDigit() }

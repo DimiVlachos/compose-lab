@@ -30,7 +30,8 @@ internal object CardFileDemos {
         at(4.seconds, lasts = 900.milliseconds) { spinCards(FlickToMaya, 900.milliseconds) }
         at(6.seconds, lasts = 500.milliseconds) { tapControl(Pull) }
         at(9.5.seconds, lasts = 700.milliseconds) { tapControl(File) }
-        at(12.seconds) { resetFeed() }
+        // The reset springs back from Maya to the first contact, which takes about a second.
+        at(11.seconds, lasts = 1200.milliseconds) { resetFeed() }
     }
 
     val all =
