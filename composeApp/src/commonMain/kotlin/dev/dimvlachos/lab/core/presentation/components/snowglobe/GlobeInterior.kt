@@ -54,7 +54,7 @@ private val CAPS =
         Cap(x, y, speed, (r() * 6).toFloat())
     }
 
-private fun ease(p: Float) = if (p < .5f) 2 * p * p else 1 - (-2 * p + 2).pow(2) / 2
+internal fun ease(p: Float) = if (p < .5f) 2 * p * p else 1 - (-2 * p + 2).pow(2) / 2
 
 private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
@@ -159,21 +159,24 @@ private fun Canvas2D.overlays(w: GlobeScene, a: Float, t: Float, scenes: Santori
 
 /**
  * The scene inside the sphere of [radius] around [center]: the baked weather (crossfading to a new
- * one), its moving overlays, the windmill's sails and the glitter.
+ * one), its moving overlays, the windmill's sails and the glitter; [zoom] times larger than the
+ * sphere, for the plain glass's magnification.
  */
 internal fun DrawScope.drawInterior(
     state: SnowGlobeState,
     scenes: SantoriniScenes?,
     center: Offset,
     radius: Float,
+    zoom: Float = 1f,
 ) {
     if (scenes == null) return
     val sphere = Path().apply { addOval(Rect(center, radius)) }
+    val drawn = radius * zoom
     clipPath(sphere) {
         drawIntoCanvas { canvas ->
             canvas.save()
-            canvas.translate(center.x - radius, center.y - radius)
-            canvas.scale(2 * radius / T, 2 * radius / T)
+            canvas.translate(center.x - drawn, center.y - drawn)
+            canvas.scale(2 * drawn / T, 2 * drawn / T)
             val c = Canvas2D(canvas, T, T)
             val t = state.time
             val prevW = state.sceneFrom

@@ -45,6 +45,7 @@ import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -123,10 +124,8 @@ internal fun SnowGlobe(
     // The physics runs in the prototype's CSS pixels.
     val density = LocalDensity.current.density
     SideEffect { state.configure(place.scale / density, radius / density) }
-    val glass =
-        remember(size, place.cx, place.cy, radius) {
-            if (size == IntSize.Zero) null else glassRenderEffect(center, radius)
-        }
+    val glass = remember { compileGlassShader() }
+    val dark = LabTheme.isDark
 
     Box(modifier.onSizeChanged { size = it }) {
         // The globe and its base take touches, focus and the globe's semantics; the room doesn't.
@@ -185,20 +184,43 @@ internal fun SnowGlobe(
                     )
             }
         ) {
+            // The prototype's glass shader over the interior, its bubble following the tilt and
+            // its reflections the room's crossfade; or, where it can't run, the plain glass.
             Spacer(
                 Modifier.fillMaxSize()
-                    .graphicsLayer { renderEffect = glass }
+                    .graphicsLayer {
+                        state.frame
+                        renderEffect =
+                            if (glass == null || size == IntSize.Zero) null
+                            else
+                                glass.effect(
+                                    glassLook(
+                                        center,
+                                        radius,
+                                        dark,
+                                        state.sceneFrom,
+                                        state.sceneTo,
+                                        state.fade,
+                                        state.tilt,
+                                    )
+                                )
+                    }
                     .drawBehind {
                         state.frame
-                        drawInterior(state, scenes, center, radius)
-                        if (glass == null) drawGlassFallback(center, radius)
+                        if (glass != null) {
+                            drawInterior(state, scenes, center, radius)
+                        } else {
+                            drawInterior(state, scenes, center, radius, zoom = FallbackZoom)
+                            drawGlassFallback(
+                                center,
+                                radius,
+                                causticsOf(state.sceneTo),
+                                glassBubble(state.tilt),
+                            )
+                        }
                     }
             )
-            Canvas(Modifier.fillMaxSize()) {
-                state.frame
-                drawGlassHighlights(center, radius, state.tilt)
-                drawBase(center, radius)
-            }
+            Canvas(Modifier.fillMaxSize()) { drawBase(center, radius) }
         }
     }
 }
