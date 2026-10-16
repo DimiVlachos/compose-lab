@@ -18,6 +18,8 @@ internal enum class Sound(val file: String) {
     BurnLoop("burn_loop"),
     MistWhoosh("mist_whoosh"),
     Inhale("inhale"),
+    GlobeSwish("globe_swish"),
+    MusicBoxPhrase("music_box_phrase"),
     CardTick("card_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */

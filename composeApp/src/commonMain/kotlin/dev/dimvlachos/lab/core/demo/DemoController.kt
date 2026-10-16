@@ -122,6 +122,12 @@ internal interface DemoController {
     suspend fun tapControl(id: String)
 
     /**
+     * Shakes the snow globe from side to side with a fingertip for [duration], and lets go. Returns
+     * once the finger has lifted; the glitter settles by itself.
+     */
+    suspend fun shakeGlobe(duration: Duration)
+
+    /**
      * Spins the card file [by] cards (negative goes back) over [duration] with a fingertip on the
      * cards, and lets go. Returns once the finger has lifted and the wheel has settled.
      */

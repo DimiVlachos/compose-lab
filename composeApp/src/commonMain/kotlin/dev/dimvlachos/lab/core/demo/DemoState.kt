@@ -47,6 +47,7 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
     private var typewriterLeverHandler: (suspend (Duration) -> Unit)? = null
     private var chatSwipeHandler: (suspend (String, Float, Duration) -> Unit)? = null
     private var controlTapHandler: (suspend (String) -> Unit)? = null
+    private var globeShakeHandler: (suspend (Duration) -> Unit)? = null
     private var cardSpinHandler: (suspend (Int, Duration) -> Unit)? = null
 
     override fun select(index: Int) {
@@ -133,6 +134,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
         controlTapHandler?.invoke(id)
     }
 
+    override suspend fun shakeGlobe(duration: Duration) {
+        globeShakeHandler?.invoke(duration)
+    }
+
     override suspend fun spinCards(by: Int, duration: Duration) {
         cardSpinHandler?.invoke(by, duration)
     }
@@ -215,6 +220,10 @@ internal class DemoState(val recording: Boolean = false, replay: Boolean = false
 
     fun setControlTapHandler(handler: (suspend (String) -> Unit)?) {
         controlTapHandler = handler
+    }
+
+    fun setGlobeShakeHandler(handler: (suspend (Duration) -> Unit)?) {
+        globeShakeHandler = handler
     }
 
     fun setCardSpinHandler(handler: (suspend (Int, Duration) -> Unit)?) {

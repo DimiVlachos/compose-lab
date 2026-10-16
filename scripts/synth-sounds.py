@@ -223,6 +223,31 @@ def inhale(rng, rate):
     return fade(normalise(mul(out, shape), 0.6), rate, 0.01, 0.02)
 
 
+def globe_swish(rng, rate):
+    """The snow globe shaken: water sloshing behind glass, a low swell with a glassy edge."""
+    n = seconds(0.55, rate)
+    base = noise(n, rng)
+    out, chunk = [], seconds(0.02, rate)
+    for s in range(0, n, chunk):
+        f = 380 + 520 * math.sin(math.pi * s / n)
+        out.extend(bandpass(base[s:s + chunk], f, 1.4, rate))
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.6 for i in range(n)]
+    glass = scale(damped_sine(n, rate, 2350, 0.18), 0.05)
+    return fade(normalise(mix(mul(out, shape), glass), 0.5), rate, 0.02, 0.06)
+
+
+def music_box_phrase(rate):
+    """A music box's comb plucked: five notes of a gentle phrase, each a bright decaying tine."""
+    notes = [(0.00, 1046.5), (0.22, 1318.5), (0.44, 1568.0), (0.66, 1318.5), (0.92, 1760.0)]
+    n = seconds(2.2, rate)
+    out = [0.0] * n
+    for start, f in notes:
+        m = seconds(1.2, rate)
+        tine = mix(damped_sine(m, rate, f, 0.45), scale(damped_sine(m, rate, f * 2.76, 0.12), 0.25))
+        place(out, tine, seconds(start, rate))
+    return fade(normalise(out, 0.55), rate, 0.002, 0.2)
+
+
 def card_tick(rng, rate):
     """An index card flicking over the top of the wheel: a dry paper tick with a soft flap."""
     n = seconds(0.07, rate)
@@ -244,6 +269,10 @@ def main():
     write("burn_loop", burn_loop(rng, soft), soft)
     write("mist_whoosh", mist_whoosh(rng, soft), soft)
     write("inhale", inhale(rng, soft), soft)
+    write("globe_swish", globe_swish(rng, soft), soft)
+    write("music_box_phrase", music_box_phrase(soft), soft)
+
+
     # Its own seed, so the clips added after it on the shared rng stay the same.
     write("card_tick", card_tick(random.Random(1016), fast), fast)
 
