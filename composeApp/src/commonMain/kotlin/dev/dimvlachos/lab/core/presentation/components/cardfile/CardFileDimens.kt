@@ -15,6 +15,8 @@ internal object CardFileDimens {
 
     /** How fast a fling dies away, per second: a fling of v cards/s carries v / Friction cards. */
     const val Friction = 4f
+    /** A release is taken at no more than this many cards a second, either way. */
+    const val MaxFlingVelocity = 40f
     /** How stiffly the wheel resists being dragged past either end. */
     const val RubberStiffness = 0.8f
 

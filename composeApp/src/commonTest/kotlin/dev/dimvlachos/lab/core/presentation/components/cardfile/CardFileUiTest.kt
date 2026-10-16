@@ -21,6 +21,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.up
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
@@ -212,6 +214,20 @@ class CardFileUiTest {
         face: @Composable (FileCard.Entry) -> Unit = { Text(it.key) },
     ) = setContent {
         CardFile(list, face, { Text("out ${it.key}") }, ::describe, Modifier.fillMaxSize(), state)
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.cardFileOf(
+        state: CardFileState,
+        list: () -> List<FileCard>,
+    ) = setContent {
+        CardFile(
+            list(),
+            { Text(it.key) },
+            { Text("out ${it.key}") },
+            ::describe,
+            Modifier.fillMaxSize(),
+            state,
+        )
     }
 
     private fun SemanticsNode.subtree(): List<SemanticsNode> =
@@ -422,5 +438,77 @@ class CardFileUiTest {
         waitForIdle()
         assertEquals(1, state.pulled, "the front card is pulled, not a card behind it spun to")
         assertEquals(1, state.front)
+    }
+
+    @Test
+    fun aDeckShrinkingUnderTheFrontCardEndsOnItsLastCard() = runComposeUiTest {
+        val big = (0 until 30).map { FileCard.Entry("e$it", 'E') }
+        val state = CardFileState(initial = 20)
+        var list: List<FileCard> by mutableStateOf(big)
+        cardFileOf(state) { list }
+        waitForIdle()
+        assertEquals(20, state.front)
+        list = big.take(10)
+        waitForIdle()
+        assertEquals(9, state.front)
+        onNodeWithTag("cardfile")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ContentDescription,
+                    listOf("Person e9"),
+                )
+            )
+    }
+
+    @Test
+    fun twoQuickDownPressesMoveTwoCards() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        cardFile(state)
+        mainClock.autoAdvance = false
+        onNodeWithTag("cardfile").requestFocus()
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) }
+        mainClock.advanceTimeBy(16)
+        assertTrue(state.position < 1.5f, "still nearer the first card at ${state.position}")
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) }
+        mainClock.autoAdvance = true
+        waitForIdle()
+        assertEquals(3, state.front)
+    }
+
+    @Test
+    fun theScrimIsHiddenFromAccessibilityAndAPulledCardOffersNoSpin() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        cardFile(state)
+        onNodeWithTag("cardfile").requestFocus()
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
+        waitForIdle()
+        val scrim = onNodeWithTag("scrim").fetchSemanticsNode().config
+        assertTrue(SemanticsActions.OnClick !in scrim, "the scrim is no unlabelled button")
+        assertEquals(emptyList(), actionLabels(), "no spinning while a card is out")
+    }
+
+    @Test
+    fun aTapOnASpinningWheelOnlyStopsIt() = runComposeUiTest {
+        val deck = listOf(FileCard.Divider('C')) + (0 until 19).map { FileCard.Entry("c$it", 'C') }
+        val state = CardFileState(initial = 1)
+        cardFile(state, list = deck)
+        val front = onNodeWithTag("card-c0").fetchSemanticsNode().boundsInRoot
+        mainClock.autoAdvance = false
+        onNodeWithTag("cardfile").requestFocus()
+        // A long spin, still turning when the finger lands.
+        repeat(6) { onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) } }
+        mainClock.advanceTimeBy(64)
+        assertTrue(state.isSpinning)
+        onRoot().performTouchInput { down(front.center) }
+        mainClock.advanceTimeBy(32)
+        val caught = state.position
+        mainClock.advanceTimeBy(200)
+        assertEquals(caught, state.position, 1e-3f, "the finger holds the wheel")
+        onRoot().performTouchInput { up() }
+        mainClock.autoAdvance = true
+        waitForIdle()
+        assertEquals(null, state.pulled, "the tap only stopped the wheel")
+        assertEquals(state.front.toFloat(), state.position, 1e-3f, "it rests on a whole card")
+        assertTrue(state.front < 7, "it stopped short of where it was spun to, on ${state.front}")
     }
 }

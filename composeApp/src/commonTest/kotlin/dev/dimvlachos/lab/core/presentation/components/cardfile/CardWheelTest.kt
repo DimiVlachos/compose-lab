@@ -78,4 +78,24 @@ class CardWheelTest {
         assertTrue(!throttle.shouldTick(1_044))
         assertTrue(throttle.shouldTick(1_045))
     }
+
+    @Test
+    fun unbandingUndoesTheBand() {
+        for (raw in listOf(-6f, -1f, -0.2f, 0f, 12f, 29f, 29.4f, 31f, 35f)) {
+            assertEquals(raw, CardWheel.unbanded(CardWheel.banded(raw, 30), 30), 1e-2f)
+        }
+    }
+
+    @Test
+    fun unbandingAWheelPastTheBandsReachSaturates() {
+        // A wheel that springs further past an end than any drag could take it, at or beyond the
+        // band's asymptote, unbands to a raw drag a few cards out, not a thousand.
+        val reach = 1f / CardFileDimens.RubberStiffness
+        for (over in listOf(reach - 0.01f, reach, reach + 3f, 50f)) {
+            val past = CardWheel.unbanded(29f + over, 30) - 29f
+            assertTrue(past > 0f && past <= 30f, "$over past the end unbands to $past")
+            val before = CardWheel.unbanded(-over, 30)
+            assertTrue(before < 0f && before >= -30f, "$over before the start unbands to $before")
+        }
+    }
 }

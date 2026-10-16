@@ -3,6 +3,8 @@ package dev.dimvlachos.lab.core.presentation.components.cardfile
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,6 +41,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
@@ -100,7 +103,10 @@ internal fun CardFile(
     remember(state, cards.size) { state.growCount(cards.size) }
     // The wheel's position moves every frame of a spin; the front card changes only as a card
     // crosses the top, so composition reads this and never the position.
-    val front by remember(state) { derivedStateOf { state.front } }
+    val stateFront by remember(state) { derivedStateOf { state.front } }
+    // The state learns of a shrunk deck a frame late, in updateCount; until then its front may lie
+    // past the deck's end, so composition clamps it to the cards it has.
+    val front = stateFront.coerceAtMost(cards.lastIndex).coerceAtLeast(0)
 
     LaunchedEffect(state, cards.size) { state.updateCount(cards.size) }
     DisposableEffect(state, cards, sounds, haptics) {
@@ -136,12 +142,17 @@ internal fun CardFile(
         if (first >= 0) scope.launch { state.spinTo(first) }
     }
 
+    val touch = remember { Touch() }
+
     // The cards' and tabs' tap detectors outlive a recomposition, so they call the latest of these.
+    // A tap that caught a turning wheel only stops it.
     val tapCard by rememberUpdatedState { i: Int ->
         // The front card pulls out; a card behind it spins to the front.
-        if (i == state.front) pullOrOpen() else scope.launch { state.spinTo(i) }
+        if (!touch.caught) {
+            if (i == state.front) pullOrOpen() else scope.launch { state.spinTo(i) }
+        }
     }
-    val tapTab by rememberUpdatedState { letter: Char -> spinToLetter(letter) }
+    val tapTab by rememberUpdatedState { letter: Char -> if (!touch.caught) spinToLetter(letter) }
 
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
@@ -154,14 +165,15 @@ internal fun CardFile(
     val nextLabel = stringResource(Res.string.cardfile_next)
     val pullOutLabel = stringResource(Res.string.cardfile_pull_out)
     val pulledIndex = state.pulled
+    // While a card is out the wheel can't turn, so it offers nothing.
     val actions =
-        if (cards.isEmpty()) emptyList()
+        if (cards.isEmpty() || pulledIndex != null) emptyList()
         else
             buildList {
                 if (front > 0) {
                     add(
                         CustomAccessibilityAction(previousLabel) {
-                            scope.launch { state.spinTo(state.front - 1) }
+                            scope.launch { state.step(-1) }
                             true
                         }
                     )
@@ -169,12 +181,12 @@ internal fun CardFile(
                 if (front < cards.lastIndex) {
                     add(
                         CustomAccessibilityAction(nextLabel) {
-                            scope.launch { state.spinTo(state.front + 1) }
+                            scope.launch { state.step(1) }
                             true
                         }
                     )
                 }
-                if (cards[front] is FileCard.Entry && pulledIndex == null) {
+                if (cards.getOrNull(front) is FileCard.Entry) {
                     add(
                         CustomAccessibilityAction(pullOutLabel) {
                             pullOrOpen()
@@ -200,9 +212,19 @@ internal fun CardFile(
         val halfWidth =
             with(screenDensity) { cardSize.width.toPx() / 2 + CardFileDimens.RodOverhang.toPx() }
         val baseDrop = with(screenDensity) { cardSize.height.toPx() * CardFileDimens.BaseDropShare }
-        Spacer(Modifier.fillMaxSize().desk(rod))
+        // The desk, stand and rod are kept across a spin's recompositions, so their caches hold.
+        val desk = remember(rod) { Modifier.fillMaxSize().desk(rod) }
+        val stand =
+            remember(rod, halfWidth, baseDrop) {
+                Modifier.fillMaxSize().stand(rod, halfWidth, baseDrop)
+            }
+        val rodAndKnobs =
+            remember(state, rod, halfWidth) {
+                Modifier.fillMaxSize().rod(rod, halfWidth) { state.position }
+            }
+        Spacer(desk)
         // The stand stands behind the cards; the rod and knobs, drawn after them, in front.
-        Spacer(Modifier.fillMaxSize().stand(rod, halfWidth, baseDrop))
+        Spacer(stand)
 
         // The wheel: one focusable node for the whole file.
         Box(
@@ -217,11 +239,11 @@ internal fun CardFile(
                     if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                     when (e.key) {
                         Key.DirectionDown -> {
-                            scope.launch { state.spinTo(state.front + 1) }
+                            scope.launch { state.step(1) }
                             true
                         }
                         Key.DirectionUp -> {
-                            scope.launch { state.spinTo(state.front - 1) }
+                            scope.launch { state.step(-1) }
                             true
                         }
                         Key.Enter,
@@ -240,10 +262,26 @@ internal fun CardFile(
                     }
                 }
                 .focusable()
+                // A finger landing on a turning wheel stops it at once, before any drag, and lets
+                // it settle on a card if it lifts without dragging. Nothing is consumed, so the
+                // cards' taps and the drag below still see the touch.
+                .pointerInput(state) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        touch.caught = state.isSpinning
+                        touch.dragged = false
+                        if (touch.caught) scope.launch { state.stop() }
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                        } while (event.changes.any { it.pressed })
+                        if (touch.caught && !touch.dragged) scope.launch { state.release(0f) }
+                    }
+                }
                 .pointerInput(state, cardPx) {
                     val tracker = VelocityTracker()
                     detectVerticalDragGestures(
                         onDragStart = {
+                            touch.dragged = true
                             tracker.resetTracking()
                             // A finger catches a spinning wheel where it is.
                             scope.launch { state.beginDrag() }
@@ -317,7 +355,7 @@ internal fun CardFile(
         }
 
         // The rod and knobs; only the knurling redraws in a spin, reading the position as it draws.
-        Spacer(Modifier.fillMaxSize().rod(rod, halfWidth) { state.position })
+        Spacer(rodAndKnobs)
 
         // A knob turns the wheel at a quarter of a finger's speed on the cards, for fine control.
         // It is turned, not flicked: letting go settles on the nearest card, with no momentum.
@@ -361,6 +399,9 @@ internal fun CardFile(
                 Box(
                     Modifier.fillMaxSize()
                         .testTag("scrim")
+                        // Back and Escape file the card for accessibility; the scrim is only a
+                        // place to tap, not a button of its own.
+                        .clearAndSetSemantics {}
                         .graphicsLayer { alpha = state.pullProgress }
                         .background(CardFileColors.scrim)
                         .clickable(remember { MutableInteractionSource() }, indication = null) {
@@ -425,6 +466,12 @@ internal fun CardFile(
             }
         }
     }
+}
+
+/** What the finger now on the wheel did: whether it caught it turning, and whether it dragged. */
+private class Touch {
+    var caught = false
+    var dragged = false
 }
 
 /** The knob's touch target, a little larger than the drawn knob. */

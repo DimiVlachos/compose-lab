@@ -83,7 +83,12 @@ internal fun BoxScope.CardLayer(
                     // Upright at the front, the card takes the lamp's full light; turned away or
                     // further back, less of it.
                     val shade = (abs(angle) / 160f + d.coerceIn(0f, 4f) * 0.07f).coerceIn(0f, 0.6f)
-                    if (shade > 0f) drawRect(Color.Black.copy(alpha = shade))
+                    if (shade > 0f) {
+                        drawRoundRect(
+                            Color.Black.copy(alpha = shade),
+                            cornerRadius = corner(6.dp.toPx()),
+                        )
+                    }
                 }
             }
             .background(

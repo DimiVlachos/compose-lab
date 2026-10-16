@@ -244,7 +244,8 @@ def main():
     write("burn_loop", burn_loop(rng, soft), soft)
     write("mist_whoosh", mist_whoosh(rng, soft), soft)
     write("inhale", inhale(rng, soft), soft)
-    write("card_tick", card_tick(rng, fast), fast)
+    # Its own seed, so the clips added after it on the shared rng stay the same.
+    write("card_tick", card_tick(random.Random(1016), fast), fast)
 
 
 if __name__ == "__main__":

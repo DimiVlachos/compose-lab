@@ -12,7 +12,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
@@ -22,7 +24,8 @@ private val startMark = TimeSource.Monotonic.markNow()
  * A card file's wheel and the card pulled out of it. The wheel's [position] is in cards. A drag
  * moves it under the finger, rubber-banded past the ends; a release springs it to the whole card a
  * fling of that speed would stop on, starting at the fling's speed, so it has momentum and a
- * detent. While a card is [pulled] the wheel stays put.
+ * detent. A spring onto an end card comes to rest without swinging past it. While a card is
+ * [pulled] the wheel stays put.
  */
 @Stable
 internal class CardFileState(
@@ -88,25 +91,48 @@ internal class CardFileState(
         get() = pulled == null && count > 1
 
     private fun tickFrom(before: Float) {
-        if (CardWheel.cardsCrossed(before, wheel.value) > 0 && throttle.shouldTick(now())) {
+        // Past an end the wheel only bands; no card crosses there.
+        val last = (count - 1).coerceAtLeast(0).toFloat()
+        val from = before.coerceIn(0f, last)
+        val to = wheel.value.coerceIn(0f, last)
+        if (CardWheel.cardsCrossed(from, to) > 0 && throttle.shouldTick(now())) {
             onTick?.invoke()
         }
     }
 
+    /**
+     * Springs the wheel to [target], starting at [velocity]. Mid-deck the spring is a little loose,
+     * for a detent. Stopping on an end card, as a fling that would carry on past it does, or coming
+     * back from past one, it is critically damped and starts no faster than it can stop from, so it
+     * never swings past the end card.
+     */
     private suspend fun moveTo(target: Float, velocity: Float = 0f) {
         if (reducedMotion) {
             wheel.snapTo(target)
             raw = target
             return
         }
-        var last = wheel.value
+        val last = (count - 1).coerceAtLeast(0).toFloat()
+        val position = wheel.value
+        val stiffness = Spring.StiffnessMediumLow
+        val firm = target <= 0f || target >= last || position < 0f || position > last
+        val start =
+            if (!firm) velocity
+            else {
+                val gap = target - position
+                // Only toward the card, and no faster than a critically damped spring stops from
+                // without crossing it: its natural frequency times the distance.
+                if (gap * velocity <= 0f) 0f
+                else velocity.coerceIn(-sqrt(stiffness) * abs(gap), sqrt(stiffness) * abs(gap))
+            }
+        var previous = wheel.value
         wheel.animateTo(
             target,
-            spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
-            velocity,
+            spring(dampingRatio = if (firm) 1f else 0.82f, stiffness = stiffness),
+            start,
         ) {
-            tickFrom(last)
-            last = value
+            tickFrom(previous)
+            previous = value
         }
         raw = target
     }
@@ -114,17 +140,24 @@ internal class CardFileState(
     /** A finger lands: stop any settle or spin and carry on from exactly where the wheel is. */
     suspend fun beginDrag() {
         wheel.stop()
-        raw = unband(wheel.value)
+        raw = CardWheel.unbanded(wheel.value, count)
     }
 
-    private fun unband(v: Float): Float {
-        val last = (count - 1).coerceAtLeast(0).toFloat()
-        val k = CardFileDimens.RubberStiffness
-        return when {
-            v < 0f -> v / (1f + v * k).coerceAtLeast(1e-3f)
-            v > last -> last + (v - last) / (1f - (v - last) * k).coerceAtLeast(1e-3f)
-            else -> v
-        }
+    /** Whether the wheel is turning on its own: settling, flung, or spun to a card. */
+    val isSpinning: Boolean
+        get() = wheel.isRunning
+
+    /** A finger lands on a turning wheel: it stops where it is. */
+    suspend fun stop() = beginDrag()
+
+    /**
+     * Turns [by] cards from the card the wheel is heading for, so a second step pressed mid-spin
+     * goes one card further rather than to the same card again.
+     */
+    suspend fun step(by: Int) {
+        if (!spinnable) return
+        val from = if (wheel.isRunning) wheel.targetValue.roundToInt() else front
+        spinTo(from + by)
     }
 
     suspend fun dragBy(cards: Float) {
@@ -141,7 +174,8 @@ internal class CardFileState(
             raw = wheel.value
             return
         }
-        moveTo(CardWheel.restingCard(wheel.value, velocity, count).toFloat(), velocity)
+        val v = velocity.coerceIn(-CardFileDimens.MaxFlingVelocity, CardFileDimens.MaxFlingVelocity)
+        moveTo(CardWheel.restingCard(wheel.value, v, count).toFloat(), v)
     }
 
     suspend fun spinTo(index: Int) {

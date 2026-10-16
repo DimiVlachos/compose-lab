@@ -29,6 +29,26 @@ internal object CardWheel {
         }
     }
 
+    /**
+     * The raw drag that [banded] turns into [position]. No drag reaches the band's asymptote, but a
+     * spring can swing the wheel there, so the overshoot is held just short of it and the raw drag
+     * stays a few cards out rather than running off.
+     */
+    fun unbanded(position: Float, count: Int): Float {
+        val last = (count - 1).coerceAtLeast(0).toFloat()
+        val k = CardFileDimens.RubberStiffness
+        val reach = 0.95f / k
+        fun unband(over: Float): Float {
+            val o = over.coerceAtMost(reach)
+            return o / (1f - o * k)
+        }
+        return when {
+            position < 0f -> -unband(-position)
+            position > last -> last + unband(position - last)
+            else -> position
+        }
+    }
+
     /** How many cards crossed the top going from [from] to [to]: one each half-card mark passed. */
     fun cardsCrossed(from: Float, to: Float): Int =
         abs(floor(to + 0.5f) - floor(from + 0.5f)).toInt()

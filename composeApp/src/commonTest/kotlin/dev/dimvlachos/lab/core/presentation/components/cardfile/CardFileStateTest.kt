@@ -45,12 +45,62 @@ class CardFileStateTest {
         assertEquals(2, s.front)
     }
 
+    /** The furthest the wheel goes either way while [block] runs. */
+    private suspend fun TestScope.span(
+        s: CardFileState,
+        block: suspend () -> Unit,
+    ): Pair<Float, Float> {
+        var low = s.position
+        var high = s.position
+        val sampler = launch {
+            while (true) {
+                low = minOf(low, s.position)
+                high = maxOf(high, s.position)
+                delay(1)
+            }
+        }
+        block()
+        sampler.cancel()
+        return low to high
+    }
+
     @Test
     fun aFlingPastTheEndSettlesOnTheLastCard() = clocked {
         val s = file()
         s.dragBy(25f)
-        s.release(400f)
+        val (_, high) = span(s) { s.release(400f) }
         assertEquals(29f, s.position, 1e-3f)
+        assertTrue(high <= 29.05f, "swung out to $high past the last card")
+    }
+
+    @Test
+    fun aFlingAtTheLastCardDoesNotSwingPastIt() = clocked {
+        for (v in listOf(40f, 400f, 4000f)) {
+            val s = file()
+            s.spinTo(28)
+            val (_, high) = span(s) { s.release(v) }
+            assertEquals(29f, s.position, 1e-3f)
+            assertTrue(high <= 29.05f, "a fling of $v swung out to $high")
+        }
+    }
+
+    @Test
+    fun aFlingAtTheFirstCardDoesNotSwingPastIt() = clocked {
+        for (v in listOf(-40f, -400f, -4000f)) {
+            val s = file()
+            s.spinTo(2)
+            val (low, _) = span(s) { s.release(v) }
+            assertEquals(0f, s.position, 1e-3f)
+            assertTrue(low >= -0.05f, "a fling of $v swung out to $low")
+        }
+    }
+
+    @Test
+    fun aFlingMidDeckStillCarriesOnItsWay() = clocked {
+        val s = file()
+        s.spinTo(5)
+        s.release(20f)
+        assertEquals(10f, s.position, 1e-3f)
     }
 
     @Test
@@ -240,6 +290,53 @@ class CardFileStateTest {
         s.onTick = { ticks++ }
         s.spinBy(20, 300.milliseconds)
         assertEquals(20f, s.position, 1e-3f)
-        assertTrue(ticks in 1 until 20, "$ticks ticks for 20 cards")
+        assertTrue(ticks in 1..(300 / 45 + 1), "$ticks ticks for 20 cards in 300 ms")
+    }
+
+    @Test
+    fun twoQuickStepsMoveTwoCards() = clocked {
+        val s = file()
+        s.spinTo(3)
+        val first = launch(StepClock()) { s.step(1) }
+        delay(32)
+        assertTrue(s.position < 3.5f, "still near 3 at ${s.position}")
+        val second = launch(StepClock()) { s.step(1) }
+        first.join()
+        second.join()
+        assertEquals(5f, s.position, 1e-3f)
+        s.step(-1)
+        assertEquals(4f, s.position, 1e-3f)
+    }
+
+    @Test
+    fun draggingPastTheEndsTicksNoPhantomCards() = clocked {
+        val s = file(now = { testScheduler.currentTime })
+        var ticks = 0
+        s.onTick = { ticks++ }
+        s.dragBy(-3f)
+        delay(100)
+        s.dragBy(3f)
+        assertEquals(0, ticks, "no card crossed going past the first card and back")
+        s.spinTo(29)
+        delay(100)
+        ticks = 0
+        s.dragBy(3f)
+        delay(100)
+        s.dragBy(-3f)
+        assertEquals(0, ticks, "no card crossed going past the last card and back")
+    }
+
+    @Test
+    fun aStoppedWheelRestsWhereItWasCaught() = clocked {
+        val s = file()
+        val job = launch(StepClock()) { s.spinTo(8) }
+        delay(100)
+        assertTrue(s.isSpinning)
+        s.stop()
+        val caught = s.position
+        delay(200)
+        assertEquals(caught, s.position)
+        assertFalse(s.isSpinning)
+        job.cancel()
     }
 }

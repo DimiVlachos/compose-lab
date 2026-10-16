@@ -262,4 +262,5 @@
     <string name="cardfile_message">Message</string>
     <string name="cardfile_call_failed">Can’t call from this device</string>
     <string name="cardfile_letter">Letter %1$s</string>
+    <string name="cardfile_hint_pulled">Push it down or tap outside to file it</string>
 </resources>

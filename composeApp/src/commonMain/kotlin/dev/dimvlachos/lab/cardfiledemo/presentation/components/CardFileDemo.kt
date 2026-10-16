@@ -40,9 +40,12 @@ import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.cardfile_call_failed
 import dev.dimvlachos.lab.resources.cardfile_hint
+import dev.dimvlachos.lab.resources.cardfile_hint_pulled
 import dev.dimvlachos.lab.resources.cardfile_letter
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -87,14 +90,15 @@ internal fun CardFileDemo(
     }
 
     // Stopping the script cancels the step it is on; the wheel then settles on a whole card, and a
-    // card caught half out comes all the way out, rather than either being left in between.
+    // card caught half out comes all the way out, rather than either being left in between. A step
+    // cut short by the user's own spin or file is left to the user: only a cancelled step settles.
     val scope = rememberCoroutineScope()
 
     suspend fun step(block: suspend () -> Unit) {
         try {
             block()
         } catch (e: CancellationException) {
-            scope.launch { file.settle() }
+            if (currentCoroutineContext().job.isCancelled) scope.launch { file.settle() }
             throw e
         }
     }
@@ -151,16 +155,25 @@ internal fun CardFileDemo(
             // on every frame of a spin.
             val front by
                 remember(deck, file) { derivedStateOf { deck.cards.getOrNull(file.front) } }
+            val isPulled by remember(file) { derivedStateOf { file.pulled != null } }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    (front as? FileCard.Entry)?.let { deck.contact(it).name } ?: "",
+                    when (val card = front) {
+                        is FileCard.Entry -> deck.contact(card).name
+                        is FileCard.Divider ->
+                            stringResource(Res.string.cardfile_letter, card.letter.toString())
+                        null -> ""
+                    },
                     style = LabTheme.typography.subtitle,
                     color = LabTheme.colors.textPrimary,
                 )
                 if (deck.cards.isNotEmpty() || callFailed) {
                     Text(
-                        if (callFailed) stringResource(Res.string.cardfile_call_failed)
-                        else stringResource(Res.string.cardfile_hint),
+                        when {
+                            callFailed -> stringResource(Res.string.cardfile_call_failed)
+                            isPulled -> stringResource(Res.string.cardfile_hint_pulled)
+                            else -> stringResource(Res.string.cardfile_hint)
+                        },
                         style = LabTheme.typography.label,
                         // The note stands out from the muted hint it replaces.
                         color =
