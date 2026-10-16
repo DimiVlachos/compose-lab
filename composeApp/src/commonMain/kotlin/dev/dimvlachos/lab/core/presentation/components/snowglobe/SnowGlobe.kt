@@ -75,7 +75,8 @@ internal fun SnowGlobe(
     SideEffect { state.reducedMotion = reducedMotion }
     LaunchedEffect(state, scene) { state.showScene(scene) }
     LaunchedEffect(state, sounds) {
-        state.onSwish = { volume -> sounds.play(Sound.GlobeSwish, volume) }
+        val swish: (Float) -> Unit = { volume -> sounds.play(Sound.GlobeSwish, volume) }
+        state.onSwish = swish
         try {
             var last = 0L
             while (true) {
@@ -87,21 +88,25 @@ internal fun SnowGlobe(
                 }
             }
         } finally {
-            state.onSwish = null
+            // Leaving the screen lets go of the glass, so a hoisted state isn't left mid-drag.
+            state.release()
+            if (state.onSwish === swish) state.onSwish = null
         }
     }
     ShakeImpulses(shakeSensorEnabled) { state.nudge(it) }
 
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    val radius = size.width * RadiusOfWidth
-    val center = Offset(size.width / 2f, size.width * CenterYOfWidth)
+    var globeSize by remember { mutableStateOf(IntSize.Zero) }
+    val radius = globeSize.width * RadiusOfWidth
+    val center = Offset(globeSize.width / 2f, globeSize.width * CenterYOfWidth)
     val glass =
-        remember(size) { if (size == IntSize.Zero) null else glassRenderEffect(center, radius) }
+        remember(globeSize) {
+            if (globeSize == IntSize.Zero) null else glassRenderEffect(center, radius)
+        }
 
     Box(
         modifier
             .aspectRatio(0.86f)
-            .onSizeChanged { size = it }
+            .onSizeChanged { globeSize = it }
             .testTag("snowglobe")
             .semantics {
                 role = Role.Button
@@ -125,16 +130,15 @@ internal fun SnowGlobe(
                     onDragCancel = { state.release() },
                 ) { change, drag ->
                     change.consume()
-                    // The pointer scope's own size, so a resize never leaves a stale radius here.
+                    // PointerInputScope.size, current on every drag, unlike a radius captured when
+                    // this block started (pointerInput is keyed on the state, not the size).
                     val r = (size.width * RadiusOfWidth).coerceAtLeast(1f)
                     state.drag(drag / r)
                 }
             }
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            state.frame
-            drawTable(center, radius)
-        }
+        // The table doesn't move, so it redraws only when the globe is resized.
+        Canvas(Modifier.fillMaxSize()) { drawTable(center, radius) }
         Spacer(
             Modifier.fillMaxSize()
                 .graphicsLayer {
@@ -151,7 +155,8 @@ internal fun SnowGlobe(
                     if (glass == null) drawGlassFallback(center, radius)
                 }
         )
-        Canvas(Modifier.fillMaxSize()) {
+        // Its own layer, so redrawing it each frame doesn't invalidate whatever holds the globe.
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             drawGlassHighlights(center, radius, state.tilt)
             drawBase(center, radius)

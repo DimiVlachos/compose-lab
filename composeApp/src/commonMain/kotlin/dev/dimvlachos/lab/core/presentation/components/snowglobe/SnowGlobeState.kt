@@ -89,13 +89,16 @@ internal class SnowGlobeState(seed: Int = 7) {
         if (acceleration.x != 0f) swirl = sign(acceleration.x)
     }
 
-    /** A keyboard or scripted shake, as hard as [strength]. */
+    /**
+     * A keyboard or scripted shake, as hard as [strength]. With reduced motion it still stirs the
+     * water enough to refresh, but the glass stays still.
+     */
     fun shake(strength: Float = 1f) {
         energy =
             (energy + SnowGlobeDimens.ShakeEnergy * strength).coerceAtMost(
                 SnowGlobeDimens.MaxEnergy
             )
-        velocity += Offset(SnowGlobeDimens.RockKick * swirl, 0f)
+        if (!reducedMotion) velocity += Offset(SnowGlobeDimens.RockKick * swirl, 0f)
         swirl = -swirl
     }
 

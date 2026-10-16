@@ -118,7 +118,10 @@ class SnowGlobeStateTest {
         val s = SnowGlobeState()
         s.reducedMotion = true
         s.shake()
-        s.run(8f)
+        repeat(960) {
+            s.run(1f / 120f)
+            assertEquals(Offset.Zero, s.offset)
+        }
         assertEquals(1, shaken)
         assertEquals(1, settled)
         assertTrue((0 until s.glitter.count).all { s.glitter.resting[it] })

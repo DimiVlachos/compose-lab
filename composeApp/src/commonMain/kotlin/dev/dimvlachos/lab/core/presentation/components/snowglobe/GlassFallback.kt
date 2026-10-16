@@ -7,25 +7,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import dev.dimvlachos.lab.core.presentation.ui.SnowGlobeArt
+
+// Drawn in globe units (the sphere's centre at 0,0, its radius 1), so the brushes are built once.
+private val GlassRim =
+    Brush.radialGradient(
+        0.70f to Color.Transparent,
+        0.93f to SnowGlobeArt.glassRimShade,
+        1f to SnowGlobeArt.glassFresnel,
+        center = Offset.Zero,
+        radius = 1f,
+    )
+private val GlassWindow = Brush.radialGradient(listOf(SnowGlobeArt.glassWindow, Color.Transparent))
+private val RimLine = Stroke(width = 0.012f)
+private val Bubble = Offset(0f, -0.86f)
+private val BubbleBrush =
+    Brush.radialGradient(
+        listOf(SnowGlobeArt.bubbleEdge, SnowGlobeArt.bubbleBody),
+        center = Bubble,
+        radius = 0.08f,
+    )
 
 /** Plain glass where the shader can't run: a darkening rim, a fresnel ring and the window. */
 internal fun DrawScope.drawGlassFallback(center: Offset, radius: Float) {
-    drawCircle(
-        Brush.radialGradient(
-            0.70f to Color.Transparent,
-            0.93f to Color(0x22101826),
-            1f to Color(0x55E8F0FF),
-            center = center,
-            radius = radius,
-        ),
-        radius,
-        center,
-    )
-    drawOval(
-        Brush.radialGradient(listOf(Color(0x8CFFFFFF), Color.Transparent)),
-        topLeft = center + Offset(-radius * 0.62f, -radius * 0.74f),
-        size = Size(radius * 0.52f, radius * 0.30f),
-    )
+    inGlobeUnits(center, radius) {
+        drawCircle(GlassRim, 1f, Offset.Zero)
+        drawOval(GlassWindow, topLeft = Offset(-0.62f, -0.74f), size = Size(0.52f, 0.30f))
+    }
 }
 
 /**
@@ -33,17 +41,14 @@ internal fun DrawScope.drawGlassFallback(center: Offset, radius: Float) {
  * [tilt].
  */
 internal fun DrawScope.drawGlassHighlights(center: Offset, radius: Float, tilt: Float) {
-    drawCircle(Color(0x40FFFFFF), radius, center, style = Stroke(width = radius * 0.012f))
-    rotate(degrees = tilt * 57.3f, pivot = center) {
-        val bubble = center + Offset(0f, -radius * 0.86f)
-        drawOval(
-            Brush.radialGradient(
-                listOf(Color(0x30FFFFFF), Color(0x70FFFFFF)),
-                center = bubble,
-                radius = radius * 0.08f,
-            ),
-            topLeft = bubble - Offset(radius * 0.11f, radius * 0.035f),
-            size = Size(radius * 0.22f, radius * 0.07f),
-        )
+    inGlobeUnits(center, radius) {
+        drawCircle(SnowGlobeArt.glassRimLine, 1f, Offset.Zero, style = RimLine)
+        rotate(degrees = tilt * 57.3f, pivot = Offset.Zero) {
+            drawOval(
+                BubbleBrush,
+                topLeft = Bubble - Offset(0.11f, 0.035f),
+                size = Size(0.22f, 0.07f),
+            )
+        }
     }
 }
