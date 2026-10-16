@@ -83,7 +83,8 @@ internal class SnowGlobeState(seed: Int = 7) {
 
     /** A real shake of the phone, its linear acceleration in m/s². */
     fun nudge(acceleration: Offset) {
-        velocity += acceleration * 0.02f
+        // With reduced motion a shake of the phone still stirs the water, but the glass stays put.
+        if (!reducedMotion) velocity += acceleration * 0.02f
         energy =
             (energy + acceleration.getDistance() * 0.03f).coerceAtMost(SnowGlobeDimens.MaxEnergy)
         if (acceleration.x != 0f) swirl = sign(acceleration.x)

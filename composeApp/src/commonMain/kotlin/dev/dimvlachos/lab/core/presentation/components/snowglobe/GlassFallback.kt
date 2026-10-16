@@ -18,7 +18,16 @@ private val GlassRim =
         center = Offset.Zero,
         radius = 1f,
     )
-private val GlassWindow = Brush.radialGradient(listOf(SnowGlobeArt.glassWindow, Color.Transparent))
+private val WindowTopLeft = Offset(-0.62f, -0.74f)
+private val WindowSize = Size(0.52f, 0.30f)
+// An explicit centre and radius: left unspecified they'd resolve against the drawn oval's size
+// from the origin, not the oval's own place, and the window would come out transparent.
+private val GlassWindow =
+    Brush.radialGradient(
+        listOf(SnowGlobeArt.glassWindow, Color.Transparent),
+        center = Offset(-0.36f, -0.59f),
+        radius = 0.28f,
+    )
 private val RimLine = Stroke(width = 0.012f)
 private val Bubble = Offset(0f, -0.86f)
 private val BubbleBrush =
@@ -32,7 +41,7 @@ private val BubbleBrush =
 internal fun DrawScope.drawGlassFallback(center: Offset, radius: Float) {
     inGlobeUnits(center, radius) {
         drawCircle(GlassRim, 1f, Offset.Zero)
-        drawOval(GlassWindow, topLeft = Offset(-0.62f, -0.74f), size = Size(0.52f, 0.30f))
+        drawOval(GlassWindow, topLeft = WindowTopLeft, size = WindowSize)
     }
 }
 

@@ -139,6 +139,18 @@ class SnowGlobeStateTest {
         assertEquals(0, settled)
     }
 
+    @Test
+    fun withReducedMotionAShakeOfThePhoneRefreshesWithoutMovingTheGlass() {
+        val s = SnowGlobeState()
+        s.reducedMotion = true
+        repeat(36) { i ->
+            s.nudge(Offset(if (i % 6 < 3) 12f else -12f, 2f))
+            s.step(1f / 60f, false, onShaken = { shaken++ }, onSettled = { settled++ })
+            assertEquals(Offset.Zero, s.offset)
+        }
+        assertEquals(1, shaken)
+    }
+
     private fun SnowGlobeState.feed(x: Float, y: Float) {
         shakeImpulse(x, y)?.let(::nudge)
         step(1f / 60f, false, onShaken = { shaken++ }, onSettled = { settled++ })
