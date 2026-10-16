@@ -2,13 +2,16 @@ package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /*
@@ -190,8 +193,8 @@ internal fun DrawScope.drawInterior(
             if (mix < 1f && prevW != curW) c.overlays(prevW, 1 - me, t, scenes)
             c.overlays(curW, if (mix >= 1f || prevW == curW) 1f else me, t, scenes)
             c.drawSails(LIT.getValue(curW), state.sails)
-            c.drawGlitter(state)
-            val haze = ((state.energy - .18f) * .32f).coerceIn(0f, .26f)
+            c.drawGlitter(state, t)
+            val haze = ((state.turb - .18f) * .32f).coerceIn(0f, .26f)
             if (haze > .005f) {
                 c.fillStyle = rgba("255,228,170", haze.toDouble())
                 c.fillRect(-1.2f, -1.2f, 2.4f, 2.4f)
@@ -201,14 +204,59 @@ internal fun DrawScope.drawInterior(
     }
 }
 
-// The glitter, until its own port lands: gold specks where the field has them.
-private fun Canvas2D.drawGlitter(state: SnowGlobeState) {
-    val g = state.glitter
+// The prototype's drawGlitter: each flake a tumbling gold quad, the brightest falling ones with a
+// glow, and the few near the glass as out-of-focus bokeh over the rest.
+private fun Canvas2D.drawGlitter(state: SnowGlobeState, t: Float) {
+    val g = state.glitter ?: return
+    val tilt = state.tilt
+    val shift = state.shift
     for (i in 0 until g.count) {
-        val shine = g.glint(i)
-        fillStyle = if (shine > .6f) "#fff4cf" else "#e9c46a"
+        if (g.near[i] && !g.rest[i]) continue
+        val b = g.brightness(i, t, tilt, shift)
+        val s = g.s[i]
+        val cs = cos(g.rot[i])
+        val sn = sin(g.rot[i])
+        val hw = s * .5f
+        val hh = s * .5f * if (g.rest[i]) .55f else max(.2f, abs(sin(g.ang[i])))
+        fillStyle =
+            if (b > .6f) {
+                val k = (b - .6f) / .4f
+                Color(255, lerp(220f, 248f, k).roundToInt(), lerp(140f, 220f, k).roundToInt())
+            } else {
+                val k = b / .6f
+                Color(
+                    lerp(196f, 246f, k).roundToInt(),
+                    lerp(140f, 196f, k).roundToInt(),
+                    lerp(46f, 92f, k).roundToInt(),
+                )
+            }
+        val fx = g.x[i]
+        val fy = g.y[i]
         beginPath()
-        arc(g.x[i], g.y[i], g.size[i] * (.7f + .6f * shine), 0f, TAU)
+        moveTo(fx + cs * hw - sn * hh, fy + sn * hw + cs * hh)
+        lineTo(fx - cs * hw - sn * hh, fy - sn * hw + cs * hh)
+        lineTo(fx - cs * hw + sn * hh, fy - sn * hw - cs * hh)
+        lineTo(fx + cs * hw + sn * hh, fy + sn * hw - cs * hh)
         fill()
+        if (b > .86f && !g.rest[i]) {
+            val k = (b - .86f) / .14f
+            val z = s * (1.6f + 2.4f * k)
+            globalCompositeOperation = "lighter"
+            globalAlpha = .75f * k
+            drawImage(glowSprite, fx - z, fy - z, 2 * z, 2 * z)
+            globalAlpha = 1f
+            globalCompositeOperation = "source-over"
+        }
     }
+    globalCompositeOperation = "lighter"
+    for (i in 0 until g.count) {
+        if (!g.near[i] || g.rest[i]) continue
+        val z = g.s[i] * 1.3f
+        val b = abs(cos(g.ang[i])).pow(6)
+        if (b < .05f) continue
+        globalAlpha = .4f * b
+        drawImage(bokehSprite, g.x[i] - z, g.y[i] - z, 2 * z, 2 * z)
+    }
+    globalCompositeOperation = "source-over"
+    globalAlpha = 1f
 }

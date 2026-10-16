@@ -49,14 +49,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * How far the globe moves for the glass's spring [SnowGlobeState.offset], in radii per globe unit,
- * and how far it leans, in degrees per radian of [SnowGlobeState.tilt]: at the peak of a hard shake
- * (offset about 0.5, tilt at its 0.12 limit) about 0.05 r and 3°, a carried globe, not a sliding
- * lens.
- */
-private const val ShiftOfOffset = 0.1f
-private const val TiltDegreesOfRadians = 25f
+private const val DegreesPerRadian = (180 / kotlin.math.PI).toFloat()
 
 /**
  * A glass snow globe holding [scene]. Drag it about, shake the phone, or press it, and the water
@@ -116,6 +109,7 @@ internal fun SnowGlobe(
         produceState<SantoriniScenes?>(null) {
             value = withContext(Dispatchers.Default) { SantoriniScenes.shared }
         }
+    LaunchedEffect(state, scenes) { scenes?.let { state.useFloor(it::floorAt) } }
     var size by remember { mutableStateOf(IntSize.Zero) }
     val place =
         layout
@@ -126,6 +120,9 @@ internal fun SnowGlobe(
             )
     val radius = place.radius
     val center = Offset(place.cx, place.cy)
+    // The physics runs in the prototype's CSS pixels.
+    val density = LocalDensity.current.density
+    SideEffect { state.configure(place.scale / density, radius / density) }
     val glass =
         remember(size, place.cx, place.cy, radius) {
             if (size == IntSize.Zero) null else glassRenderEffect(center, radius)
@@ -160,13 +157,13 @@ internal fun SnowGlobe(
                     } else false
                 }
                 .focusable()
-                .pointerInput(state, radius) {
+                .pointerInput(state, density) {
                     detectDragGestures(
                         onDragEnd = { state.release() },
                         onDragCancel = { state.release() },
                     ) { change, drag ->
                         change.consume()
-                        state.drag(drag / radius.coerceAtLeast(1f))
+                        state.drag(drag.x / density)
                     }
                 }
         )
@@ -178,9 +175,9 @@ internal fun SnowGlobe(
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 state.frame
-                translationX = state.offset.x * radius * ShiftOfOffset
-                translationY = state.offset.y * radius * ShiftOfOffset
-                rotationZ = state.tilt * TiltDegreesOfRadians
+                translationX = state.offset.x * density
+                translationY = state.offset.y * density
+                rotationZ = state.tilt * DegreesPerRadian
                 transformOrigin =
                     TransformOrigin(
                         place.cx / size.width.coerceAtLeast(1).toFloat(),

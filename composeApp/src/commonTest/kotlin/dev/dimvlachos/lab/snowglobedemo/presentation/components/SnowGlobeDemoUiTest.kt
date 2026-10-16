@@ -25,8 +25,9 @@ import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.presentation.components.snowglobe.GlitterField
 import dev.dimvlachos.lab.core.presentation.components.snowglobe.GlobeScene
-import dev.dimvlachos.lab.core.presentation.components.snowglobe.SnowGlobeDimens
+import dev.dimvlachos.lab.core.presentation.components.snowglobe.SantoriniScenes
 import dev.dimvlachos.lab.core.presentation.components.snowglobe.SnowGlobeState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.snowglobedemo.FakeForecastSource
@@ -60,6 +61,8 @@ class SnowGlobeDemoUiTest {
         onScriptEnd: () -> Unit = {},
     ) {
         mainClock.autoAdvance = false
+        // Painted once per run; warm it here so the glitter arrives within a frame or two.
+        SantoriniScenes.shared
         setContent {
             LabTheme {
                 Box(Modifier.size(400.dp, 800.dp)) {
@@ -74,6 +77,7 @@ class SnowGlobeDemoUiTest {
             }
         }
         mainClock.advanceTimeByFrame()
+        advanceUntil("the glitter to be seeded", most = 2_000) { globe.glitter != null }
     }
 
     // Steps the clock a frame at a time until [done], failing after [most] ms with [what].
@@ -91,7 +95,7 @@ class SnowGlobeDemoUiTest {
         onNodeWithTag("snowglobe").performKeyInput { pressKey(Key.Enter) }
     }
 
-    private fun allResting() = globe.glitter.resting.all { it }
+    private fun glitter() = checkNotNull(globe.glitter)
 
     @Test
     fun enterOnTheGlobeRefreshesAndTomorrowBecomesAShower() = runComposeUiTest {
@@ -108,6 +112,22 @@ class SnowGlobeDemoUiTest {
                     listOf("Updated. Tomorrow · Thu 15: Light shower, 22 degrees."),
                 )
             )
+    }
+
+    @Test
+    fun theNewForecastWaitsForTheGlitterToSettle() = runComposeUiTest {
+        show()
+        pressEnterOnTheGlobe()
+        // The keyboard's shake lasts 1.1 s; the forecast is back after 0.3 s, but the water is
+        // still cloudy, so it waits.
+        mainClock.advanceTimeBy(1_300)
+        assertEquals(GlobeScene.Sunny, board.days[1].scene)
+        onNodeWithTag("hint").assert(hasAnyDescendant(hasText("Settling…")))
+        advanceUntil("the glitter to settle", most = 8_000) {
+            board.days[1].scene == GlobeScene.Shower
+        }
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag("hint").assert(hasAnyDescendant(hasText("Updated · Light shower")))
     }
 
     @Test
@@ -185,10 +205,11 @@ class SnowGlobeDemoUiTest {
     @Test
     fun withReducedMotionEnterStillRefreshesAndTheGlitterStaysDown() = runComposeUiTest {
         show(reducedMotion = true)
+        val before = glitter().y.copyOf()
         pressEnterOnTheGlobe()
         repeat(8_000 / 16) {
             mainClock.advanceTimeByFrame()
-            assertTrue(allResting(), "the glitter must stay at rest")
+            assertTrue(before.contentEquals(glitter().y), "the glitter must stay put")
         }
         assertFalse(board.refreshPending)
         assertEquals(GlobeScene.Shower, board.days[1].scene)
@@ -218,10 +239,9 @@ class SnowGlobeDemoUiTest {
             advanceUntil("the script to end", most = 10_000) { ended }
             assertEquals(1, board.selected, "the clip ends back on tomorrow")
             assertEquals(GlobeScene.Sunny, board.days[1].scene, "the forecast is put back")
-            assertTrue(
-                globe.energy < SnowGlobeDimens.SettleThreshold,
-                "the globe has calmed: ${globe.energy}",
-            )
-            assertTrue(allResting(), "the glitter is at rest as it began")
+            assertTrue(globe.turb < .34f, "the globe has calmed: ${globe.turb}")
+            // The reset seeds the glitter again: what lies at rest lies where it began.
+            val seeded = GlitterField(SantoriniScenes.shared::floorAt)
+            for (i in 26 until seeded.count) assertEquals(seeded.y[i], glitter().y[i], "flake $i")
         }
 }

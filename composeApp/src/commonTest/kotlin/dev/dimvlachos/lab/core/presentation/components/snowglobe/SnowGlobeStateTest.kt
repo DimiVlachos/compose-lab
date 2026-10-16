@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.platform.shakeImpulse
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,14 +21,17 @@ class SnowGlobeStateTest {
         }
     }
 
+    private fun stateWithGlitter() =
+        SnowGlobeState().apply { useFloor(SantoriniScenes.shared::floorAt) }
+
     @Test
-    fun energyBuildsWithAShakeAndFadesAway() {
+    fun aShakeStirsTheWaterAndItCalmsAgain() {
         val s = SnowGlobeState()
         s.shake()
-        s.run(0.05f)
-        assertTrue(s.energy > SnowGlobeDimens.ShakeThreshold)
+        s.run(1.1f)
+        assertTrue(s.turb > .6f, "turb ${s.turb}")
         s.run(6f)
-        assertTrue(s.energy < SnowGlobeDimens.SettleThreshold)
+        assertTrue(s.turb < .34f, "turb ${s.turb}")
     }
 
     @Test
@@ -46,8 +50,7 @@ class SnowGlobeStateTest {
         s.run(8f, pending = true)
         assertEquals(1, shaken)
         assertEquals(0, settled)
-        assertTrue(s.energy >= SnowGlobeDimens.PendingFloor - 1e-3f)
-        s.run(8f, pending = false)
+        s.run(1f, pending = false)
         assertEquals(1, settled)
     }
 
@@ -55,9 +58,9 @@ class SnowGlobeStateTest {
     fun aShakeDuringAPendingRefreshDoesNotShakeAgain() {
         val s = SnowGlobeState()
         s.shake()
-        s.run(1f, pending = true)
+        s.run(1.2f, pending = true)
         s.shake()
-        s.run(1f, pending = true)
+        s.run(1.2f, pending = true)
         assertEquals(1, shaken)
     }
 
@@ -65,6 +68,8 @@ class SnowGlobeStateTest {
     fun aRockStirsButNeverRefreshes() {
         val s = SnowGlobeState()
         s.rock(1)
+        s.run(0.2f)
+        assertTrue(s.turb > .1f)
         s.run(4f)
         assertEquals(0, shaken)
         assertEquals(0, settled)
@@ -73,9 +78,10 @@ class SnowGlobeStateTest {
     @Test
     fun draggingTheGlassBackAndForthShakesIt() {
         val s = SnowGlobeState()
+        s.drag(60f)
         repeat(12) { i ->
-            s.drag(Offset(if (i % 2 == 0) 0.25f else -0.25f, 0f))
             s.run(0.08f)
+            s.drag(if (i % 2 == 0) -120f else 120f)
         }
         s.release()
         s.run(0.1f)
@@ -83,25 +89,40 @@ class SnowGlobeStateTest {
     }
 
     @Test
+    fun aSlowDragIsNotAShake() {
+        val s = SnowGlobeState()
+        repeat(3) {
+            s.drag(40f)
+            s.run(0.6f)
+            s.drag(-40f)
+            s.run(0.6f)
+        }
+        s.release()
+        s.run(1f)
+        assertEquals(0, shaken)
+    }
+
+    @Test
     fun theGlassSpringsBackAfterAFling() {
         val s = SnowGlobeState()
-        s.drag(Offset(3f, -3f))
+        s.drag(300f)
         s.run(0.05f)
         s.release()
         s.run(3f)
-        assertTrue(abs(s.offset.x) < 0.01f && abs(s.offset.y) < 0.01f, "${s.offset}")
+        assertTrue(abs(s.offset.x) < 0.5f && abs(s.offset.y) < 0.5f, "${s.offset}")
     }
 
     @Test
     fun aLongFlingCannotRunTheGlassAway() {
         val s = SnowGlobeState()
-        s.drag(Offset(3f, -3f))
+        s.drag(2000f)
         var most = 0f
         repeat(120) {
             s.run(1f / 120f)
-            most = maxOf(most, s.offset.getDistance())
+            most = maxOf(most, abs(s.offset.x))
         }
-        assertTrue(most <= 0.75f, "the glass ran to $most")
+        // The prototype's rubber band: 74 px at most, give or take the spring's overshoot.
+        assertTrue(most <= 80f, "the glass ran to $most")
     }
 
     @Test
@@ -116,17 +137,41 @@ class SnowGlobeStateTest {
     }
 
     @Test
-    fun withReducedMotionTheGlitterStaysDownButTheShakeStillRefreshes() {
+    fun theHintFollowsTheShake() {
         val s = SnowGlobeState()
+        s.drag(60f)
+        assertEquals(GlobeHint.Idle, s.hint)
+        var sawKeepShaking = false
+        var sawLetItSettle = false
+        repeat(12) { i ->
+            s.run(0.08f)
+            sawKeepShaking = sawKeepShaking || s.hint == GlobeHint.KeepShaking
+            sawLetItSettle = sawLetItSettle || s.hint == GlobeHint.LetItSettle
+            s.drag(if (i % 2 == 0) -120f else 120f)
+        }
+        assertTrue(sawKeepShaking && sawLetItSettle)
+        s.release()
+        s.run(0.05f)
+        assertEquals(GlobeHint.Settling, s.hint)
+        s.run(8f)
+        assertEquals(GlobeHint.Idle, s.hint)
+    }
+
+    @Test
+    fun withReducedMotionTheGlitterStaysPutButTheShakeStillRefreshes() {
+        val s = stateWithGlitter()
         s.reducedMotion = true
+        val g = checkNotNull(s.glitter)
+        val before = g.y.copyOf()
         s.shake()
         repeat(960) {
             s.run(1f / 120f)
             assertEquals(Offset.Zero, s.offset)
+            assertEquals(0f, s.tilt)
         }
         assertEquals(1, shaken)
         assertEquals(1, settled)
-        assertTrue((0 until s.glitter.count).all { s.glitter.resting[it] })
+        assertTrue(before.contentEquals(g.y))
     }
 
     @Test
@@ -135,7 +180,7 @@ class SnowGlobeStateTest {
         s.reducedMotion = true
         s.rock(1)
         s.run(1f)
-        assertEquals(0f, s.energy)
+        assertEquals(0f, s.turb)
         assertEquals(Offset.Zero, s.offset)
         assertEquals(0, shaken)
         assertEquals(0, settled)
@@ -153,47 +198,50 @@ class SnowGlobeStateTest {
         assertEquals(1, shaken)
     }
 
-    /** The demo's scripted shake: the finger swings 0.55 each way at 2.5 Hz for 1.5 s. */
+    /**
+     * The prototype's demo shake: the finger swings 64 px at 3.4 Hz for 1.5 s, easing in and out.
+     */
     private fun SnowGlobeState.scriptedShake() {
-        val frame = 0.016f
+        val frame = 1f / 60f
         var previous = 0f
-        repeat((1.5f / frame).toInt()) { i ->
-            val x = 0.55f * sin(i * frame * 2.5f * 2f * PI.toFloat())
-            drag(Offset(x - previous, 0f))
+        val frames = (1.5f / frame).toInt()
+        for (i in 0..frames) {
+            val p = i.toFloat() / frames
+            val ease = if (p < .85f) 1f else 1f - smoothstep((p - .85f) / .15f)
+            val x =
+                64f *
+                    sin(p * 2f * PI.toFloat() * 3.4f) *
+                    sin(min(1f, p * 1.6f) * PI.toFloat() / 2f) *
+                    ease
+            drag(x - previous)
             previous = x
             step(frame, false, onShaken = { shaken++ }, onSettled = { settled++ })
         }
         release()
     }
 
+    private fun smoothstep(t: Float) = t * t * (3 - 2 * t)
+
     @Test
     fun theScriptedShakeCloudsTheWaterAndItClearsAgain() {
-        val s = SnowGlobeState()
+        val s = stateWithGlitter()
         s.scriptedShake()
-        val g = s.glitter
-        val r = SnowGlobeDimens.InnerRadius
-        val airborne = (0 until g.count).count { g.y[it] < g.restY(g.x[it]) - 0.05f }
-        val meanY = (0 until g.count).sumOf { g.y[it].toDouble() } / g.count
-        // Crowded against the glass above the figurine: where the refraction smears it to streaks.
-        val onTheGlass =
-            (0 until g.count).count {
-                g.y[it] < 0.3f && g.x[it] * g.x[it] + g.y[it] * g.y[it] > (r - 0.1f) * (r - 0.1f)
-            }
+        val g = checkNotNull(s.glitter)
+        val airborne = (0 until g.count).count { !g.rest[it] }
         assertTrue(airborne >= g.count * 0.6f, "only $airborne of ${g.count} in the water")
-        assertTrue(meanY < -0.1, "the glitter sits low, mean y $meanY")
-        assertTrue(onTheGlass < g.count * 0.25f, "$onTheGlass flakes crowd the glass")
+        assertEquals(1, shaken)
 
         var restedAfter = -1f
         var t = 0f
-        while (t < 6f) {
+        while (t < 12f) {
             s.step(1f / 60f, false, onShaken = { shaken++ }, onSettled = { settled++ })
             t += 1f / 60f
-            if ((0 until g.count).all { g.resting[it] }) {
+            if ((10 until g.count).all { g.rest[it] }) {
                 restedAfter = t
                 break
             }
         }
-        assertTrue(restedAfter > 0f, "still falling 6 s after the shake")
+        assertTrue(restedAfter > 2f, "settled too soon, after $restedAfter s")
         assertEquals(1, shaken)
         assertEquals(1, settled)
     }
@@ -207,9 +255,7 @@ class SnowGlobeStateTest {
     fun walkingWithThePhoneNeverRefreshes() {
         val s = SnowGlobeState()
         // A heel strike twice a second: six samples at 60 Hz of a pocket jolt, then the sway.
-        repeat(600) { i ->
-            if (i % 30 < 6) s.feed(0.5f, 5f) else s.feed(0.3f, 1f)
-        }
+        repeat(600) { i -> if (i % 30 < 6) s.feed(0.5f, 5f) else s.feed(0.3f, 1f) }
         assertEquals(0, shaken)
     }
 
@@ -219,5 +265,20 @@ class SnowGlobeStateTest {
         repeat(36) { i -> s.feed(if (i % 6 < 3) 12f else -12f, 2f) }
         repeat(480) { s.feed(0f, 0f) }
         assertEquals(1, shaken)
+        assertEquals(1, settled)
+    }
+
+    @Test
+    fun aResetPutsTheGlitterBackAndForgetsTheShake() {
+        val s = stateWithGlitter()
+        val g = checkNotNull(s.glitter)
+        val seeded = g.y.copyOf()
+        s.shake()
+        s.run(0.6f)
+        s.reset()
+        assertTrue(seeded.contentEquals(g.y))
+        assertEquals(0f, s.turb)
+        s.run(8f)
+        assertEquals(0, shaken)
     }
 }

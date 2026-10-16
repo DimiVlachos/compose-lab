@@ -46,7 +46,8 @@ class SnowGlobeUiTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         onNodeWithTag("snowglobe").requestFocus()
         onNodeWithTag("snowglobe").performKeyInput { pressKey(Key.Enter) }
-        mainClock.advanceTimeBy(500)
+        // The keyboard's shake swings the glass for 1.1 s; its third swing back counts.
+        mainClock.advanceTimeBy(1_200)
         assertEquals(1, shaken)
         mainClock.advanceTimeBy(8_000)
         assertEquals(1, settled)
@@ -67,7 +68,8 @@ class SnowGlobeUiTest {
             )
         }
         onNodeWithTag("snowglobe").performSemanticsAction(SemanticsActions.OnClick)
-        mainClock.advanceTimeBy(500)
+        // The keyboard's shake swings the glass for 1.1 s; its third swing back counts.
+        mainClock.advanceTimeBy(1_200)
         assertEquals(1, shaken)
     }
 

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,7 @@ import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.rememberReducedMotion
 import dev.dimvlachos.lab.core.platform.rememberSoundPlayer
+import dev.dimvlachos.lab.core.presentation.components.snowglobe.GlobeHint
 import dev.dimvlachos.lab.core.presentation.components.snowglobe.SnowGlobe
 import dev.dimvlachos.lab.core.presentation.components.snowglobe.SnowGlobeState
 import dev.dimvlachos.lab.core.presentation.components.snowglobe.globeLayout
@@ -79,6 +81,8 @@ import dev.dimvlachos.lab.resources.snowglobe_day_label
 import dev.dimvlachos.lab.resources.snowglobe_extra
 import dev.dimvlachos.lab.resources.snowglobe_failed
 import dev.dimvlachos.lab.resources.snowglobe_hint_idle
+import dev.dimvlachos.lab.resources.snowglobe_hint_keep
+import dev.dimvlachos.lab.resources.snowglobe_hint_let_settle
 import dev.dimvlachos.lab.resources.snowglobe_hint_settling
 import dev.dimvlachos.lab.resources.snowglobe_hint_updated
 import dev.dimvlachos.lab.resources.snowglobe_place
@@ -86,9 +90,11 @@ import dev.dimvlachos.lab.resources.snowglobe_refresh
 import dev.dimvlachos.lab.resources.snowglobe_updated_now
 import dev.dimvlachos.lab.snowglobedemo.DayForecast
 import dev.dimvlachos.lab.snowglobedemo.FakeForecastSource
+import dev.dimvlachos.lab.snowglobedemo.Forecast
 import dev.dimvlachos.lab.snowglobedemo.WeatherBoard
 import dev.dimvlachos.lab.snowglobedemo.rememberWeatherBoard
 import kotlin.math.PI
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.time.Duration
@@ -140,11 +146,25 @@ internal fun SnowGlobeDemo(
         state.setFeedResetHandler {
             board.reset()
             source.reset()
+            globe.reset()
         }
         onDispose {
             state.setGlobeShakeHandler(null)
             state.setControlTapHandler(null)
             state.setFeedResetHandler(null)
+        }
+    }
+
+    // As in the prototype, the new forecast lands once the glitter has settled: the fetch starts
+    // with the shake, and its answer waits for the settle.
+    var fetching by remember { mutableStateOf(false) }
+    var fetched by remember { mutableStateOf<Pair<Int, Result<Forecast>>?>(null) }
+    // "Updated" shows under the globe for a moment after a refresh lands.
+    var justUpdated by remember { mutableStateOf(false) }
+    LaunchedEffect(justUpdated) {
+        if (justUpdated) {
+            delay(2400)
+            justUpdated = false
         }
     }
 
@@ -193,13 +213,25 @@ internal fun SnowGlobeDemo(
     ) {
         SnowGlobe(
             scene = day.scene,
-            refreshPending = board.refreshPending,
+            refreshPending = fetching,
             onShaken = {
                 board.startRefresh()?.let { token ->
-                    scope.launch { board.finishRefresh(token, source.refresh()) }
+                    fetching = true
+                    scope.launch {
+                        val result = source.refresh()
+                        fetched = token to result
+                        fetching = false
+                    }
                 }
             },
-            onSettled = { if (!board.failed) sounds.play(Sound.MusicBoxPhrase, 0.8f) },
+            onSettled = {
+                fetched?.let { (token, result) -> board.finishRefresh(token, result) }
+                fetched = null
+                if (!board.failed) {
+                    sounds.play(Sound.MusicBoxPhrase, 0.8f)
+                    justUpdated = true
+                }
+            },
             modifier =
                 Modifier.fillMaxSize().drawWithContent {
                     drawContent()
@@ -339,10 +371,16 @@ internal fun SnowGlobeDemo(
         // The hint under the globe's base.
         if (layout != null) {
             val hint =
-                when {
-                    board.refreshPending -> stringResource(Res.string.snowglobe_hint_settling)
-                    fresh -> stringResource(Res.string.snowglobe_hint_updated, conditions)
-                    else -> stringResource(Res.string.snowglobe_hint_idle)
+                when (globe.hint) {
+                    GlobeHint.LetItSettle -> stringResource(Res.string.snowglobe_hint_let_settle)
+                    GlobeHint.Settling -> stringResource(Res.string.snowglobe_hint_settling)
+                    GlobeHint.KeepShaking -> stringResource(Res.string.snowglobe_hint_keep)
+                    GlobeHint.Idle ->
+                        if (justUpdated && fresh) {
+                            stringResource(Res.string.snowglobe_hint_updated, conditions)
+                        } else {
+                            stringResource(Res.string.snowglobe_hint_idle)
+                        }
                 }
             Hint(
                 hint,
@@ -505,15 +543,23 @@ private suspend fun scriptedShake(
     duration: Duration,
     show: (Float?) -> Unit,
 ) {
-    val frames = (duration.inWholeMilliseconds / 16).toInt()
+    // The prototype's demo: a grip at 0.35 r right of centre, swinging 64 px at 3.4 Hz, easing in
+    // over the first stretch and out over the last 15 %.
+    val frames = (duration.inWholeMilliseconds / 16).toInt().coerceAtLeast(1)
     var previous = 0f
     try {
-        repeat(frames) { i ->
-            val t = i * 0.016f
-            val x = 0.55f * sin(t * 2.5f * 2f * PI.toFloat())
-            globe.drag(Offset(x - previous, 0f))
+        for (i in 0..frames) {
+            val p = i.toFloat() / frames
+            val out = if (p < .85f) 1f else 1f - smoothstep((p - .85f) / .15f)
+            val x =
+                64f *
+                    globe.scale *
+                    sin(p * 2f * PI.toFloat() * 3.4f) *
+                    sin(min(1f, p * 1.6f) * PI.toFloat() / 2f) *
+                    out
+            globe.drag(x - previous)
             previous = x
-            show(x)
+            show(.35f + globe.offset.x / globe.radius)
             delay(16)
         }
     } finally {
@@ -521,3 +567,5 @@ private suspend fun scriptedShake(
         show(null)
     }
 }
+
+private fun smoothstep(t: Float) = t * t * (3 - 2 * t)
