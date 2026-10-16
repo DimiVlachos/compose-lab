@@ -91,6 +91,18 @@ class SnowGlobeStateTest {
     }
 
     @Test
+    fun aLongFlingCannotRunTheGlassAway() {
+        val s = SnowGlobeState()
+        s.drag(Offset(3f, -3f))
+        var most = 0f
+        repeat(120) {
+            s.run(1f / 120f)
+            most = maxOf(most, s.offset.getDistance())
+        }
+        assertTrue(most <= 0.75f, "the glass ran to $most")
+    }
+
+    @Test
     fun aNewSceneCrossfadesIn() {
         val s = SnowGlobeState()
         s.showScene(GlobeScene.Shower)

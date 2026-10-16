@@ -23,6 +23,8 @@ internal object SnowGlobeDimens {
     const val SpringStiffness = 260f
     const val SpringDamping = 18f
     const val AccelToEnergy = 0.0016f
+    /** How far the finger can pull the glass from its rest, so a long fling can't run it away. */
+    const val MaxDrag = 0.6f
     /** A day change's rock: a sideways kick and the energy it leaves, under [ShakeThreshold]. */
     const val RockKick = 1.4f
     const val RockEnergy = 0.3f

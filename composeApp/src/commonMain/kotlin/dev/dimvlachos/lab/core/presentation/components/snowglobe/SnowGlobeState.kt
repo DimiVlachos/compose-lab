@@ -68,7 +68,11 @@ internal class SnowGlobeState(seed: Int = 7) {
 
     fun drag(by: Offset) {
         dragging = true
-        target += by
+        val pulled = target + by
+        val reach = pulled.getDistance()
+        target =
+            if (reach > SnowGlobeDimens.MaxDrag) pulled * (SnowGlobeDimens.MaxDrag / reach)
+            else pulled
         if (by.x != 0f) swirl = sign(by.x)
     }
 
