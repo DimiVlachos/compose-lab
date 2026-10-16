@@ -223,6 +223,14 @@ def inhale(rng, rate):
     return fade(normalise(mul(out, shape), 0.6), rate, 0.01, 0.02)
 
 
+def card_tick(rng, rate):
+    """An index card flicking over the top of the wheel: a dry paper tick with a soft flap."""
+    n = seconds(0.07, rate)
+    tick = mul(highpass(noise(n, rng), 2400, rate), env_exp(n, rate, 0.006))
+    flap = scale(mul(bandpass(noise(n, rng), 900, 1.2, rate), env_exp(n, rate, 0.02, attack=0.004)), 0.5)
+    return fade(normalise(mix(tick, flap), 0.55), rate, 0.001, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -236,6 +244,7 @@ def main():
     write("burn_loop", burn_loop(rng, soft), soft)
     write("mist_whoosh", mist_whoosh(rng, soft), soft)
     write("inhale", inhale(rng, soft), soft)
+    write("card_tick", card_tick(rng, fast), fast)
 
 
 if __name__ == "__main__":
