@@ -20,6 +20,10 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -129,6 +133,40 @@ class SnowGlobeUiTest {
         mainClock.advanceTimeBy(1_000)
         assertEquals(frame, state.frame)
         assertEquals(0, shaken)
+    }
+
+    private class Owner : LifecycleOwner {
+        override val lifecycle =
+            LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+    }
+
+    @Test
+    fun aPausedAppStopsTheLoopAndAResumedOneStartsItAgain() = runComposeUiTest {
+        val owner = Owner()
+        val state = SnowGlobeState()
+        mainClock.autoAdvance = false
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                SnowGlobe(
+                    GlobeScene.Sunny,
+                    false,
+                    {},
+                    {},
+                    Modifier.size(320.dp),
+                    state = state,
+                    shakeSensorEnabled = false,
+                )
+            }
+        }
+        mainClock.advanceTimeBy(200)
+        owner.lifecycle.currentState = Lifecycle.State.STARTED
+        mainClock.advanceTimeBy(100)
+        val paused = state.frame
+        mainClock.advanceTimeBy(1_000)
+        assertEquals(paused, state.frame, "the loop ran in the background")
+        owner.lifecycle.currentState = Lifecycle.State.RESUMED
+        mainClock.advanceTimeBy(500)
+        assertTrue(state.frame > paused + 10, "the loop didn't come back")
     }
 
     @Test

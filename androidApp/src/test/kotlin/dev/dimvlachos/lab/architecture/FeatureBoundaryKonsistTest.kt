@@ -43,6 +43,8 @@ class FeatureBoundaryKonsistTest {
                         name == "dev.dimvlachos.lab.typewriterdemo" ||
                         name.startsWith("dev.dimvlachos.lab.smokedemo.") ||
                         name == "dev.dimvlachos.lab.smokedemo" ||
+                        name.startsWith("dev.dimvlachos.lab.snowglobedemo.") ||
+                        name == "dev.dimvlachos.lab.snowglobedemo" ||
                         name == "dev.dimvlachos.lab.App"
                 }
             }

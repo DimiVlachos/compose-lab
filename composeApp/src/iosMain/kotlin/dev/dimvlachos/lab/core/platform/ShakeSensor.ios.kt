@@ -22,8 +22,10 @@ internal actual fun ShakeImpulses(enabled: Boolean, onImpulse: (Offset) -> Unit)
         manager.deviceMotionUpdateInterval = 1.0 / 60.0
         manager.startDeviceMotionUpdatesToQueue(NSOperationQueue.mainQueue) { motion, _ ->
             motion?.userAcceleration?.useContents {
-                // userAcceleration is in g.
-                shakeImpulse(x.toFloat() * StandardGravity, y.toFloat() * StandardGravity)?.let {
+                // userAcceleration is in g, and Core Motion's axes point the other way to Android's
+                // linear acceleration and the browser's devicemotion, which the glass's swing is
+                // written for: a push to the right reads negative here.
+                shakeImpulse(-x.toFloat() * StandardGravity, -y.toFloat() * StandardGravity)?.let {
                     latest(it)
                 }
             }

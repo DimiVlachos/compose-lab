@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -44,6 +45,9 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toOffset
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.ShakeImpulses
 import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
 import dev.dimvlachos.lab.core.platform.Sound
@@ -87,26 +91,38 @@ internal fun SnowGlobe(
 
     SideEffect { state.reducedMotion = reducedMotion }
     LaunchedEffect(state, scene) { state.showScene(scene) }
-    LaunchedEffect(state, sounds) {
+    // The globe moves only while the app is in front: in the background the loop and the shake
+    // sensor stop, and the first frame back moves nothing.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val resumed by lifecycle.currentStateFlow.collectAsState()
+    LaunchedEffect(state, sounds, lifecycle) {
         val swish: (Float) -> Unit = { volume -> sounds.play(Sound.GlobeSwish, volume) }
         state.onSwish = swish
         try {
-            var last = 0L
-            while (true) {
-                withFrameNanos { now ->
-                    // The first frame moves nothing; a stall can't blow the spring up.
-                    val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(0.05f)
-                    last = now
-                    state.step(dt, pending, { shaken() }, { settled() })
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                var last = 0L
+                try {
+                    while (true) {
+                        withFrameNanos { now ->
+                            // The first frame moves nothing; a stall can't blow the spring up.
+                            val dt =
+                                if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(0.05f)
+                            last = now
+                            state.step(dt, pending, { shaken() }, { settled() })
+                        }
+                    }
+                } finally {
+                    // Pausing or leaving lets go of the glass, so it isn't left mid-drag.
+                    state.release()
                 }
             }
         } finally {
-            // Leaving the screen lets go of the glass, so a hoisted state isn't left mid-drag.
-            state.release()
             if (state.onSwish === swish) state.onSwish = null
         }
     }
-    ShakeImpulses(shakeSensorEnabled) { state.nudge(it) }
+    ShakeImpulses(shakeSensorEnabled && resumed.isAtLeast(Lifecycle.State.RESUMED)) {
+        state.nudge(it)
+    }
 
     // Painting the three weathers takes a moment, so it happens off the main thread, once.
     val scenes by
