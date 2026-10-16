@@ -27,6 +27,11 @@ internal object CardFileDimens {
     /** A pulled-out card pushed down past this share of its height is filed. */
     const val FileFraction = 0.3f
 
+    /**
+     * A pulled card flicked down faster than this, in fractions of its height per second, is filed.
+     */
+    const val FlickFilesVelocity = 1.5f
+
     val CardWidth = 280.dp
     val CardHeight = 168.dp
     /** How far the rod sits under the card's bottom edge: the pivot of each card's turn. */
