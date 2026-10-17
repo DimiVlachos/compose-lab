@@ -1,5 +1,9 @@
 package dev.dimvlachos.lab.snowglobedemo.presentation.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,15 +28,18 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -45,7 +52,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -57,6 +67,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -94,6 +106,8 @@ import dev.dimvlachos.lab.snowglobedemo.Forecast
 import dev.dimvlachos.lab.snowglobedemo.WeatherBoard
 import dev.dimvlachos.lab.snowglobedemo.rememberWeatherBoard
 import kotlin.math.PI
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -368,6 +382,7 @@ internal fun SnowGlobeDemo(
                 colors,
                 onSelect = ::select,
                 rtl = rtl,
+                reducedMotion = reducedMotion,
                 modifier =
                     Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp)
                         .onGloballyPositioned {
@@ -440,15 +455,65 @@ private fun DayStrip(
     colors: SnowGlobeScreenColors,
     onSelect: (Int) -> Unit,
     rtl: Boolean,
+    reducedMotion: Boolean,
     modifier: Modifier,
 ) {
     val strip = RoundedCornerShape(24.dp)
-    Row(
+    val pill = RoundedCornerShape(17.dp)
+    val gap = 2.dp
+    // The highlight slides from the day it leaves to the one chosen, as one piece.
+    val at by
+        animateFloatAsState(
+            selected.toFloat(),
+            if (reducedMotion) snap() else spring(dampingRatio = .82f, stiffness = 420f),
+            label = "day highlight",
+        )
+    Box(
         modifier
             .fillMaxWidth()
             .background(colors.card, strip)
             .border(1.dp, colors.cardLine, strip)
             .padding(7.dp)
+    ) {
+        // Where the row placed each day, left edge and width: the highlight runs between them.
+        val placed = remember { mutableStateMapOf<Int, DaySpan>() }
+        Box(
+            Modifier.matchParentSize()
+                .layout { measurable, constraints ->
+                    val a = placed[floor(at).toInt()]
+                    val b = placed[ceil(at).toInt()] ?: a
+                    if (a == null || b == null) return@layout layout(0, 0) {}
+                    val f = at - floor(at)
+                    val x = (a.left + (b.left - a.left) * f).roundToInt()
+                    val w = (a.width + (b.width - a.width) * f).roundToInt()
+                    val placeable = measurable.measure(Constraints.fixed(w, constraints.maxHeight))
+                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(x, 0) }
+                }
+                .testTag("day-indicator")
+                .background(colors.selected, pill)
+        )
+        DayRow(days, selected, colors, onSelect, rtl, gap, pill) { i, x, w ->
+            placed[i] = DaySpan(x, w)
+        }
+    }
+}
+
+/** Where the row placed a day: its [left] edge and [width], in pixels. */
+private data class DaySpan(val left: Int, val width: Int)
+
+@Composable
+private fun DayRow(
+    days: List<DayForecast>,
+    selected: Int,
+    colors: SnowGlobeScreenColors,
+    onSelect: (Int) -> Unit,
+    rtl: Boolean,
+    gap: Dp,
+    pill: Shape,
+    onPlaced: (day: Int, left: Int, width: Int) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth()
             .selectableGroup()
             // Left and right move along the days, as the selection follows focus in a tab strip.
             .onPreviewKeyEvent { e ->
@@ -462,7 +527,7 @@ private fun DayStrip(
                 }
                 false
             },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap),
     ) {
         days.forEachIndexed { i, d ->
             val on = i == selected
@@ -474,13 +539,13 @@ private fun DayStrip(
                     d.high,
                     d.low,
                 )
+            val dayInk by animateColorAsState(if (on) colors.ink else colors.muted, label = "day")
             Column(
                 Modifier.weight(1f)
                     .heightIn(min = 44.dp)
-                    .background(
-                        if (on) colors.selected else Color.Transparent,
-                        RoundedCornerShape(17.dp),
-                    )
+                    .onPlaced { onPlaced(i, it.positionInParent().x.roundToInt(), it.size.width) }
+                    // The press ripple stays inside the day's pill.
+                    .clip(pill)
                     .selectable(selected = on, role = Role.Tab, onClick = { onSelect(i) })
                     .semantics { contentDescription = label }
                     .testTag("day-$i")
@@ -490,8 +555,7 @@ private fun DayStrip(
             ) {
                 BasicText(
                     stringResource(d.short),
-                    style =
-                        TextStyle(if (on) colors.ink else colors.muted, 12.sp, FontWeight.SemiBold),
+                    style = TextStyle(dayInk, 12.sp, FontWeight.SemiBold),
                     maxLines = 1,
                 )
                 Image(rememberVectorPainter(WeatherIcons.of(d.scene)), null, Modifier.size(26.dp))

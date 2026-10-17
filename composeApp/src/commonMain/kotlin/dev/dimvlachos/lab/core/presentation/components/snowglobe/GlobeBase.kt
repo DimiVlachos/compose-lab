@@ -255,8 +255,8 @@ internal fun paintBase(
     return BaseArt(backImage, frontImage)
 }
 
-/** The island's name on the plaque, in Greek as the souvenir would have it. */
-private const val Engraving = "ΣΑΝΤΟΡΙΝΗ"
+/** The island's name on the plaque. */
+private const val Engraving = "SANTORINI"
 
 /**
  * The room the globe stands in, each frame: the prototype's drawRoom, the wall down to the horizon
