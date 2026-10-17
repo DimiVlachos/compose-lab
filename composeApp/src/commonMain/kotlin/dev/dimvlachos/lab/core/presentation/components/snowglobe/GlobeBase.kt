@@ -245,6 +245,8 @@ internal fun paintBase(
         drawText(engraving, SnowGlobeArt.plaqueLight, at + Offset(0f, .8f * s))
         drawText(engraving, SnowGlobeArt.plaqueInk, at)
     }
+    backImage.freeze()
+    frontImage.freeze()
     return BaseArt(backImage, frontImage)
 }
 
