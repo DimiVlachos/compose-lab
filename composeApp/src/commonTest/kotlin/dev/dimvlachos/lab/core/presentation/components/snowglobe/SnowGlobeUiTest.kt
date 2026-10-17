@@ -27,35 +27,44 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+
+/**
+ * How long a test that paints a whole shake and settle may take in real time: on a CI runner with
+ * few cores, longer than the test runner's own 60 s.
+ */
+private val SlowGlobeTest: Duration = 3.minutes
 
 @OptIn(ExperimentalTestApi::class)
 class SnowGlobeUiTest {
     @Test
-    fun theGlobeIsARefreshButtonAndEnterShakesIt() = runComposeUiTest {
-        var shaken = 0
-        var settled = 0
-        mainClock.autoAdvance = false
-        setContent {
-            SnowGlobe(
-                scene = GlobeScene.Sunny,
-                refreshPending = false,
-                onShaken = { shaken++ },
-                onSettled = { settled++ },
-                modifier = Modifier.size(320.dp),
-                shakeSensorEnabled = false,
-                description = "Refresh forecast",
-            )
+    fun theGlobeIsARefreshButtonAndEnterShakesIt() =
+        runComposeUiTest(testTimeout = SlowGlobeTest) {
+            var shaken = 0
+            var settled = 0
+            mainClock.autoAdvance = false
+            setContent {
+                SnowGlobe(
+                    scene = GlobeScene.Sunny,
+                    refreshPending = false,
+                    onShaken = { shaken++ },
+                    onSettled = { settled++ },
+                    modifier = Modifier.size(320.dp),
+                    shakeSensorEnabled = false,
+                    description = "Refresh forecast",
+                )
+            }
+            onNodeWithTag("snowglobe")
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            onNodeWithTag("snowglobe").requestFocus()
+            onNodeWithTag("snowglobe").performKeyInput { pressKey(Key.Enter) }
+            // The keyboard's shake swings the glass for 1.1 s; its third swing back counts.
+            mainClock.advanceTimeBy(1_200)
+            assertEquals(1, shaken)
+            mainClock.advanceTimeBy(8_000)
+            assertEquals(1, settled)
         }
-        onNodeWithTag("snowglobe")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-        onNodeWithTag("snowglobe").requestFocus()
-        onNodeWithTag("snowglobe").performKeyInput { pressKey(Key.Enter) }
-        // The keyboard's shake swings the glass for 1.1 s; its third swing back counts.
-        mainClock.advanceTimeBy(1_200)
-        assertEquals(1, shaken)
-        mainClock.advanceTimeBy(8_000)
-        assertEquals(1, settled)
-    }
 
     @Test
     fun clickingTheGlobeShakesIt() = runComposeUiTest {
