@@ -13,6 +13,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -145,6 +146,40 @@ class SnowGlobeDemoUiTest {
             board.days[1].scene == GlobeScene.Shower
         }
         assertFalse(board.refreshPending)
+    }
+
+    @Test
+    fun theSelectedDaysHighlightSlidesToTheDayTapped() = runComposeUiTest {
+        show()
+        fun left(tag: String) = onNodeWithTag(tag).getBoundsInRoot().left
+        // Each day's width is rounded to whole pixels as the row shares it out: within one.
+        val from = left("day-${board.selected}")
+        val target = (board.selected + 2) % board.days.size
+        val to = left("day-$target")
+        assertEquals(from.value, left("day-indicator").value, 1f)
+        onNodeWithTag("day-$target").performClick()
+        mainClock.advanceTimeBy(80)
+        // On its way: past the day it left, not yet at the one tapped.
+        val mid = left("day-indicator")
+        assertTrue(
+            mid.value in minOf(from, to).value + 2..maxOf(from, to).value - 2,
+            "the highlight at $mid, between $from and $to",
+        )
+        mainClock.advanceTimeBy(1500)
+        assertEquals(to.value, left("day-indicator").value, 1f)
+    }
+
+    @Test
+    fun withReducedMotionTheHighlightMovesAtOnce() = runComposeUiTest {
+        show(reducedMotion = true)
+        onNodeWithTag("day-2").performClick()
+        mainClock.advanceTimeByFrame()
+        mainClock.advanceTimeByFrame()
+        assertEquals(
+            onNodeWithTag("day-2").getBoundsInRoot().left.value,
+            onNodeWithTag("day-indicator").getBoundsInRoot().left.value,
+            1f,
+        )
     }
 
     @Test
