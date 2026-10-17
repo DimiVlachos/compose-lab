@@ -34,6 +34,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Pop-up book](#pop-up-book-corepresentationcomponentspopup) | `popup` | `tour.popup` | An onboarding as a pop-up book: paper scenery stands up as a spread opens, and pull tabs sail a boat and spin windmill sails |
 | [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter) | `typewriter` | `typewriter.composer` | A chat composer that is a typewriter with its own round keys: letters strike the paper, the bell rings at the margin, and you pull the sheet out to send |
 | [Smoke delete](#smoke-delete-corepresentationcomponentssmoke) | `smoke` | `smoke.delete` | Swipe a chat away and it burns from the edge into smoke that curls up over the list; mist for the archive; Undo breathes it back |
+| [Snow globe](#snow-globe-corepresentationcomponentssnowglobe) | `snowglobe` | `snowglobe.weather` | A weather screen whose snow globe refreshes the forecast when shaken: glitter swirls through real refracting glass, over Oia's caldera |
 | [Card file](#card-file-corepresentationcomponentscardfile) | `cardfile` | `cardfile.contacts` | Contacts on a chrome rotary card file: spin the cards with momentum, tap a letter tab, pull a card out to call or message |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -53,6 +54,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Pop-up book](#pop-up-book-corepresentationcomponentspopup)
 - [Typewriter composer](#typewriter-composer-corepresentationcomponentstypewriter)
 - [Smoke delete](#smoke-delete-corepresentationcomponentssmoke)
+- [Snow globe](#snow-globe-corepresentationcomponentssnowglobe)
 - [Card file](#card-file-corepresentationcomponentscardfile)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -300,6 +302,8 @@ val cliffs: Set<String> = table.results["cliffs"].orEmpty()
 
 ## Fishing refresh (`core/presentation/components/fishing/`)
 
+![](docs/media/feed.fishing.gif)
+
 Pull-to-refresh doesn't have to be a boring spinner going round while you wait. Here refreshing is fishing, and the wait is part of the fun. Pull a list down from its top and a rod bends over it, its line tightening, more the further you pull, with a tick of haptics at the threshold. Let go past it and the line is cast: a bobber flies out in an arc and lands in a band of water over the top of the list with a splash, and floats there, bobbing and sending out ripples, for as long as the refresh takes. Then the outcome plays out on the water:
 
 - **A catch.** The bobber is pulled under with a jolt of haptics and the list darkens into the deep. Down there, small and faint on the line, hang the new cards, one under another; the reel hauls them up, growing and clearing as they come, until they reach their places at the top of the list just as it moves down to make room, and the sea clears.
@@ -408,6 +412,8 @@ PopUpBook(
 
 ## Typewriter composer (`core/presentation/components/typewriter/`)
 
+![](docs/media/typewriter.composer.gif)
+
 A chat composer that is a typewriter, typed on its own keys. Round, chrome-rimmed keys with celluloid tops sit in the machine's enamel body where the phone's keyboard would be, and every key strikes the sheet in the roller: the key dips on its lever, a type bar flies up from the basket, the ribbon lifts, the letter lands a moment later and the carriage steps on. Five letters before the margin the bell rings; at the margin, or at the next space once the bell has rung, the lever swings and the carriage returns by itself, banging into its stop. Delete runs the carriage back while the correction tape lifts the letter off the paper. To send, pull the sheet up out of the roller: it gives like a rubber band and the ratchet clicks under your finger. Let go too early and it slides back in; past the threshold, or flung, it zips out, trims down to its text and flies into the thread as a slip of paper. Replies come back as plain bubbles.
 
 - **A machine, not a picture of one.** It is a 1950s portable seen a little from above: a low, rounded enamel shell, wider at the front, with a fine orange-peel grain and a soft studio light across it, sitting in its own shadow. The keys stand in a well, a tier higher for each row towards the back, each a celluloid top in a thin chrome ring on a chrome stem that goes down into its slot, and a pressed key sinks along its stem. Behind them, through an opening in the deck, the type bars lie in a fan, and the struck one swings up to the printing point and falls back; the ribbon runs from a spool on either side through the vibrator, which lifts it to the line. The carriage carries a rubber platen with chrome knobs, knurled and turning with the paper, and a paper bail with its scale and rollers; it slides the sheet a letter at a time and slams home on a return. A brass bell's hammer taps it at the margin, and every strike gives the whole machine a tiny shudder. The parts that never move are drawn once into a layer of their own; only the moving ones are drawn each frame.
@@ -456,6 +462,8 @@ SlipFlightStage(flights, atlas, machine.unit) // over both: where the sheets fly
 
 ## Smoke delete (`core/presentation/components/smoke/`)
 
+![](docs/media/smoke.delete.gif)
+
 Deleting a chat doesn't slide it away. Swipe it to the left and it burns in from its right edge, the burning edge right under your finger, along a ragged, flickering edge of char, ember and a white-hot core, and the row turns to fine smoke that curls up over the list, still carrying the shapes of its words and its avatar for a moment. Change your mind mid-swipe and draw the finger back: the smoke flows back down into the row behind it, like a film run backwards, and the row comes back column by column as its smoke lands; go forward again and it burns again from wherever its smoke is. Let go before a third of it has burnt (or fling it back) and the rest of the smoke is drawn back in the same way, and the row is whole again; past that, or flung, it burns the rest of the way while the list closes underneath. Swipe to the right and the row goes in mist instead, cooler, low and drifting aside, to the archive. Undo breathes the smoke back into its row. The sides are the layout's start and end, so in a right-to-left layout they mirror: a swipe to the right deletes.
 
 - **Every pixel becomes a particle.** As a swipe starts, the row's drawing, recorded into a `GraphicsLayer` on every draw, is taken as a bitmap (`toImageBitmap`) and cut into about 2,600 particles in the background: the ink at its own colour, and a sparse sample of the card's own colour, which blooms into haze. The row's colours are cut down to a few, so particles can be drawn a colour at a time. While many rows are in the air, a new one is cut into fewer, so the total stays near 11,000.
@@ -494,25 +502,61 @@ viewModel.undo(); smoke.reform(chatId)
 smoke.forget(chatId)
 ```
 
+## Snow globe (`core/presentation/components/snowglobe/`)
+
+![](docs/media/snowglobe.weather.gif)
+
+A weather screen whose forecast lives in a snow globe. Shake the globe and the gold glitter swirls up through the water, the forecast refreshes while it settles, and each day's weather shows inside the glass over Oia's caldera: sun with glints and whitecaps, a shower with rain and a rainbow, the meltemi with windmill sails turning. A new day's scene fades in over the last.
+
+- **Real glass.** One refraction shader, run as AGSL on Android 13 and up and as SkSL on iOS, bends the scene through the dome and gives it a window's reflection, a fresnel rim, a caustic and an air bubble. Where the shader can't run, the glass is drawn instead.
+- **On a walnut base.** The globe stands on a turned walnut base with a brass plaque engraved SANTORINI. The room is lit by the globe, which throws its shadow and its caustic onto the table.
+- **Shaken three ways.** Drag the glass sideways and it swings on a rubber band; shake the phone (the linear accelerometer on Android, Core Motion on iOS, with the jostle of walking with it in a pocket ignored); or press Enter or Space. A shake calls `onShaken` once, and the settle is held for as long as a refresh is pending.
+- **Glitter as water moves it.** The water lags the glass, so a shove sends it the other way through the middle and back round the top and bottom, and each turn of a shake sheds a pair of eddies. Each flake wanders on its own. Heavier flakes lag the water, are thrown further against a shove and sink faster, so the finest land last, on the roofs, the dome or the sea.
+- **Feel.** A synthesized swish of water behind glass for the shake and a music-box phrase for the settled forecast, through the lab's internal `SoundPlayer`.
+- **Reduced motion.** The glass stays still and the water never clouds, and Enter still refreshes.
+
+Nothing recomposes while the globe swirls, and the frame loop and the shake sensor stop while the app is in the background. On iOS the scenes, the base and the sprites are drawn from their own pixels instead of being copied on every draw. The scene is painted with the shared `canvas2d` adapter, which the card file uses too.
+
+The demo, `snowglobe.weather`, is Oia, Santorini: today and four days ahead in a day strip whose highlight slides to the day chosen. A fake forecast service's refresh turns tomorrow into a shower, or fails on cue. Its script shakes the globe by dragging it, lets the glitter settle on the new forecast, and taps through the days.
+
+```kotlin
+SnowGlobe(
+    scene = day.scene, // GlobeScene.Sunny, Windy or Shower: a change crossfades inside the glass
+    refreshPending = fetching, // the glitter waits to settle while this is true
+    onShaken = { viewModel.refresh() },
+    onSettled = { viewModel.showForecast() },
+    description = "Snow globe",
+    stateDescription = day.conditions,
+)
+```
+
 ## Card file (`core/presentation/components/cardfile/`)
 
-Contacts kept the way a desk kept them in the fifties: cream index cards on a chrome rotary card file, under a warm lamp on a walnut desk at night. Drag down over the cards and they flip toward you over the top of the wheel; drag up and they come back. Let go and the wheel carries on with the speed of the fling and settles on a whole card, as if it had a detent. Past either end it gives, harder the further it goes, and springs back. A divider before each letter stands up a raised tab; tap a tab, or a card behind the front one, and the wheel spins to it. Tap the front card and it comes out of the rail, forward and larger, over the dimmed desk, with Call and Message under it. Push it back down, tap outside it, press back or Escape, and it is filed into its slot.
+![](docs/media/cardfile.contacts.gif)
 
-- **Real composables in perspective.** Each card is a composable turned on the rod with `graphicsLayer` (`rotationX` about the rod, a long camera distance, and a depth order), shaded by how far it faces away from the lamp. Only the window of about nine cards around the front is composed, keyed by card, so a card's face and anything it remembers go with it as the window slides.
-- **The wheel is measured in cards.** A drag moves the position by one card every 56 dp; a release runs the fling through a decay, rounds where it would stop to a whole card inside the deck, and springs there starting at the fling's speed. Past either end the drag is rubber-banded. The two knurled knobs turn with the wheel, and dragging one turns it at a quarter of the speed, for fine control.
-- **Ticks.** Each card that crosses the top plays a paper tick and a light haptic tick, at most one every 45 ms, so a fast spin drops ticks rather than queueing them.
-- **Keyboard and screen readers.** The wheel is one focusable node, described by its front card ("Maya Brooks, (415) 555-0142", or "Letter M" for a divider), with Previous card, Next card and Pull out as custom actions. The up and down arrows flip, Enter pulls the card out, and Escape files it.
+Contacts kept the way a desk kept them in the fifties: cream index cards on a chrome rotary card file, under a warm lamp on a walnut desk at night. Drag the cards and they flip over the top of the wheel; let go and the wheel carries on with the speed of the fling and settles on a whole card, as if it had a detent. Past either end it gives, harder the further it goes, and springs back without swinging past the end card. A divider before each letter stands up a tab; tap a tab, or a card behind the front one, and the wheel spins to it. Tap the front card and it comes up out of its rail and face on, with Call and Message on the sheet under it. Push it back down, tap outside it, press back or Escape, and it is filed into its slot.
 
-Nothing recomposes while the wheel turns but the window, once for each card it shifts: the cards' turn and shading are read in `graphicsLayer` and draw lambdas, and the desk and chrome are drawn once and cached, with only the knobs' knurling redrawn. A script spins, pulls and files through the same `CardFileState` a finger drives.
+- **Painted in one canvas.** The desk, the lamp, the enamel stand, the knurled knobs and every card are painted through the lab's `canvas2d` adapter, shared with the snow globe. The cards are seen from above in perspective strips on the rod, each with its own hit test.
+- **Cards baked once.** Each card is grained paper with a red margin and blue rules, the name typed in Courier Prime and the details written in Caveat, and the A–Z dividers' tabs step across the top. A card is baked into a bitmap once and drawn from it.
+- **A wheel with weight.** A drag moves the wheel under the finger, a card a notch, and each card ticks as it crosses the top. A release springs it to the whole card a fling of that speed would stop on, starting at the fling's speed. The knobs turn with the wheel, and dragging one turns it more slowly, for fine control.
+- **A pile that stays whole.** Seven fallen cards lie in front and fifteen behind. Past them, cards lie exactly beneath the last one shown, so nothing pops or fades as the wheel settles, and a buried divider's tab still shows.
+- **Pull and file.** A pulled card lifts from the wheel's shading into its own shadow. Pushed down far enough, or flicked down, it files back and lands exactly as the wheel draws it, without a flash. A card's notches stay open however it is drawn.
+- **A frosted sheet.** The sheet under the wheel names the front card, crossfading as each one comes round, or a divider and how many cards stand behind its tab. With a card out it offers Call and Message, and lets go of a filed card as the card starts back.
+- **Keyboard and screen readers.** The wheel is one focusable node, described by its front card. The arrow keys spin it, Enter pulls the front card and Escape files it, and focus moves to the pulled card once it is out.
+- **Reduced motion.** Spins and pulls go straight to where they end.
 
-The demo, `cardfile.contacts`, is thirty invented people, alphabetical by last name, each with a 555 number and a note in blue ink ("Cape house, July", "Book club, 2nd Tue"), leaning a little differently on every card. Call opens `tel:` and Message `sms:`; where neither can open, a note says so for three seconds. Its script flips three cards slowly, flicks on to Maya Brooks, pulls her card out, files it back and returns to the first card.
+Nothing recomposes while the wheel turns: composition reads only which card is in front, never the wheel's position. A script spins, pulls and files through the same `CardFileState` a finger drives.
+
+The demo, `cardfile.contacts`, is 23 invented people, alphabetical by first name and starting on Ben Hollis, each with a 555 number, a line and a note in blue ink. Call opens `tel:` and Message `sms:`; where neither can open, a note says so. Its script flips three cards slowly, flicks on to Maya Brooks, pulls her card out, files it back and returns to the first card.
 
 ```kotlin
 val file = rememberCardFileState()
 CardFile(
-    cards = deck.cards, // FileCard.Divider('A'), FileCard.Entry("abbott-grace", 'A'), …
-    face = { entry -> ContactCardFace(contacts.getValue(entry.key)) },
-    pulled = { entry -> PulledContact(contacts.getValue(entry.key), onCall, onMessage) },
+    cards = deck.cards, // FileCard.Divider('A'), FileCard.Entry("abby-carter", 'A'), …
+    paper = { entry ->
+        val c = deck.contact(entry)
+        PaperCard.Contact(c.name, c.kind, listOf(c.number, c.line, c.note), c.seed)
+    },
     describe = { card -> describe(card) },
     state = file,
 )
@@ -623,6 +667,7 @@ scripts/side-by-side.sh navbar.all                 # out/navbar.all-both.mp4
 scripts/gif.sh navbar.all                          # docs/media/navbar.all.gif
 scripts/record.py android book.turn --landscape    # a landscape demo: 1920×1080 (Android only)
 scripts/record.py android feed.fishing --tall      # a tall demo: 1080×1920
+scripts/record.py android smoke.delete --tall --sound   # keeps the phone's sound, through scrcpy (Android, portrait; ringer on)
 ```
 
 Needs Python 3 and ffmpeg.
