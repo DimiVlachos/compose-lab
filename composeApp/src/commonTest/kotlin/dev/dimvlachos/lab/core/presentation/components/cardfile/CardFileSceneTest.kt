@@ -55,13 +55,16 @@ class CardFileSceneTest {
         assertEquals(back, phiOf(40f), 1e-5f)
     }
 
+    // A 40-card wheel with a divider every fourth card, its tab in slot i / 4 % 5.
+    private fun tabEvery4(i: Int): Int? = if (i % 4 == 0) i / 4 % 5 else null
+
     @Test
     fun noCardPopsInOrOutAsTheWheelSettles() {
-        // Settling creeps onto a card from either side and stops on it. A card that is drawn on
-        // one side of that and not the other must lie where a card drawn on both sides lies, so
-        // nothing shows up or goes as the wheel comes to rest.
-        fun slots(p: Float) = wheelSlots(p, 40, -1).associateBy { it.i }
-        for (n in listOf(12, 20)) {
+        // Settling creeps onto a card from either side and stops on it. A card drawn on one side
+        // of that and not the other must lie where a card drawn on both lies, and a divider where
+        // a divider with its tab in the same place lies, so nothing shows up or goes.
+        fun slots(p: Float) = wheelSlots(p, 40, -1, ::tabEvery4).associateBy { it.i }
+        for (n in listOf(12, 20, 27)) {
             val rest = slots(n.toFloat())
             for (near in listOf(n - 1e-3f, n + 1e-3f)) {
                 val moving = slots(near)
@@ -69,8 +72,12 @@ class CardFileSceneTest {
                 for (frame in listOf(rest, moving)) {
                     for ((i, slot) in frame) {
                         if (i in both) continue
+                        val tab = tabEvery4(i)
                         assertTrue(
-                            both.any { abs(frame.getValue(it).phi - slot.phi) < .01f },
+                            both.any {
+                                abs(frame.getValue(it).phi - slot.phi) < .01f &&
+                                    (tab == null || tabEvery4(it) == tab)
+                            },
                             "card $i near $near shows on its own",
                         )
                     }
@@ -82,8 +89,45 @@ class CardFileSceneTest {
     @Test
     fun aSettledWheelShowsThePrototypesCards() {
         // At rest, seven fallen cards in front and fifteen behind.
-        assertEquals((13..35).toList(), wheelSlots(20f, 40, -1).map { it.i })
+        assertEquals((13..35).toSet(), wheelSlots(20f, 40, -1).map { it.i }.toSet())
         assertFalse(wheelSlots(20f, 40, 21).any { it.i == 21 })
+    }
+
+    @Test
+    fun aBuriedDividersTabStillShows() {
+        // Deeper than the pile's ends a card lies hidden, all but a divider's tab: the nearest
+        // divider with its tab in each place is still drawn there, and no deeper one.
+        fun tabs(i: Int): Int? =
+            when (i) {
+                4,
+                9 -> 0
+                6 -> 1
+                38,
+                39 -> 2
+                else -> null
+            }
+        val buried = wheelSlots(20f, 40, -1, ::tabs).filter { it.buried }.map { it.i }.toSet()
+        assertEquals(setOf(9, 6, 38), buried)
+    }
+
+    @Test
+    fun aWheelPastItsDeckOnlyAsksAfterItsCards() {
+        // A deck can shrink under the wheel, leaving it past either end for a moment.
+        val tabs = List(10) { it % 5 }
+        for (p in listOf(20f, -30f)) {
+            val asked = wheelSlots(p, 10, -1) { tabs[it] }.map { it.i }
+            assertTrue(asked.all { it in 0 until 10 }, "at $p")
+        }
+    }
+
+    @Test
+    fun cardsLyingTogetherPaintTheNearerLast() {
+        // Card 35 is the last shown behind; the divider at 38 lies beneath it, so is painted first.
+        val order = wheelSlots(20f, 40, -1) { if (it == 38) 2 else null }.map { it.i }
+        assertTrue(38 in order && order.indexOf(38) < order.indexOf(35))
+        // In front, the buried divider at 9 lies beneath card 13.
+        val front = wheelSlots(20f, 40, -1) { if (it == 9) 0 else null }.map { it.i }
+        assertTrue(9 in front && front.indexOf(9) < front.indexOf(13))
     }
 
     @Test

@@ -70,17 +70,27 @@ internal fun phiOf(d: Float): Float =
         else -> lerp(FALLEN, UPRIGHT, smooth(d + 1)) * DEG
     }
 
-/** Card [i] of the wheel, [d] cards behind its position, leaning [phi]. */
-internal class WheelSlot(val i: Int, val d: Float, val phi: Float) {
+/**
+ * Card [i] of the wheel, [d] cards behind its position, leaning [phi]; a [buried] card lies beneath
+ * the pile's last shown one, so only its tab shows.
+ */
+internal class WheelSlot(val i: Int, val d: Float, val phi: Float, val buried: Boolean = false) {
     val depth: Float = sin(phi + E) * (R0 + .6f)
 }
 
 /**
- * The cards of a [count]-card wheel at [p] that are drawn, all but [pulled]: those less than a card
- * past the pile's last shown ones. Any further out lie exactly beneath the nearest of those, so
- * leaving them out changes nothing on screen, however the wheel moves.
+ * The cards of a [count]-card wheel at [p] to paint, all but [pulled], in the order they are
+ * painted: those less than a card past the pile's last shown ones, and beyond them the nearest
+ * divider with its tab in each of the five places [tabOf] gives (null for a card with no tab).
+ * Anything further out lies exactly beneath one of those, so leaving it out changes nothing on
+ * screen, however the wheel moves.
  */
-internal fun wheelSlots(p: Float, count: Int, pulled: Int): List<WheelSlot> {
+internal fun wheelSlots(
+    p: Float,
+    count: Int,
+    pulled: Int,
+    tabOf: (Int) -> Int? = { null },
+): List<WheelSlot> {
     val lo = max(0, floor(p - PILE_FRONT - 1).toInt() + 1)
     val hi = min(count - 1, ceil(p + PILE_BACK + 1).toInt() - 1)
     val list = ArrayList<WheelSlot>()
@@ -89,7 +99,19 @@ internal fun wheelSlots(p: Float, count: Int, pulled: Int): List<WheelSlot> {
         val d = i - p
         list += WheelSlot(i, d, phiOf(d))
     }
-    return list
+    fun bury(deeper: IntProgression) {
+        val seen = HashSet<Int>()
+        for (i in deeper) {
+            if (seen.size == 5) return
+            val tab = tabOf(i) ?: continue
+            if (i != pulled && seen.add(tab)) list += WheelSlot(i, i - p, phiOf(i - p), true)
+        }
+    }
+    // The wheel can rest past either end of a deck that shrank under it.
+    bury(min(lo, count) - 1 downTo 0)
+    bury(max(hi + 1, 0) until count)
+    // Cards lying together paint the deeper first, so the nearer covers it.
+    return list.sortedWith(compareBy<WheelSlot> { it.depth }.thenByDescending { abs(it.d) })
 }
 
 /** A point [y] on screen and the perspective scale [s] there. */
@@ -568,7 +590,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
     }
 
     private fun drawWheel(g: Canvas2D, p: Float, pulled: Int) {
-        val list = wheelSlots(p, cards.size, pulled).sortedBy { it.depth }
+        val list =
+            wheelSlots(p, cards.size, pulled) { (cards[it] as? PaperCard.Divider)?.ordinal?.rem(5) }
         val out = ArrayList<Drawn>(list.size)
         // The lamp's direction (y, z), normalised.
         val ln = hypot(hypot(.35f, .8f), .55f)
@@ -586,6 +609,11 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             else if (c.d < -.5f) dark += .12f * smooth((-c.d - .5f) * 2)
             val polys = ArrayList<List<Offset>>(2)
             val r = cardStrips(g, tex, c.phi, clamp(dark, 0f, .75f), card, polys)
+            if (c.buried) {
+                // It lies on the card covering it, with no gap between them to shade or light.
+                out += Drawn(c.i, polys)
+                continue
+            }
             // The gap above each card: a soft contact shadow on the card behind, then a lit paper
             // edge.
             if (front) {
