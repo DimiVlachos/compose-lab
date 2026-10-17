@@ -1,7 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.snowglobe
 
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -52,11 +54,24 @@ class GlitterFieldTest {
     }
 
     @Test
-    fun aStrongFlowLiftsTheGlitter() {
+    fun aShakeLiftsTheGlitterIntoTheWater() {
+        // A second of shaking, the glass jolted one way and back three times a second: the water
+        // it sets going carries the gold up off the roofs and the sea and through the water, not up
+        // against the dome.
         val g = field()
-        val before = g.meanY()
-        g.run(seconds = 1f, turb = 1f)
-        assertTrue(g.meanY() < before - 0.2, "mean y ${g.meanY()} vs $before")
+        var t = 0f
+        repeat((1f / dt).toInt()) {
+            val aN = 300f * sin(t * 2 * PI.toFloat() * 3)
+            g.step(dt, t, turb = 1f, swirl = .7f, am = abs(aN), aN = aN, tilt = 0f)
+            t += dt
+        }
+        val flakes = g.count - 10
+        val free = (10 until g.count).filter { !g.rest[it] }
+        val high = free.count { g.y[it] < -.25f }
+        val pinned = free.count { g.y[it] < 0f && hypot(g.x[it], g.y[it]) > .85f }
+        assertTrue(free.size > flakes * .85f, "${free.size} of $flakes in the water")
+        assertTrue(high > free.size * .4f, "$high of ${free.size} high in the water")
+        assertTrue(pinned < free.size * .2f, "$pinned of ${free.size} against the dome")
     }
 
     @Test
@@ -182,8 +197,16 @@ class GlitterFieldTest {
 
     @Test
     fun theFinestFlakesAreTheLastToLand() {
+        // Let go together from one height in still water, over the same spot of sea.
         val g = field()
-        var t = g.run(seconds = 1.5f, turb = 1f)
+        for (i in 10 until g.count) {
+            g.rest[i] = false
+            g.x[i] = -.2f + (i % 9) * .005f
+            g.y[i] = -.6f
+            g.vx[i] = 0f
+            g.vy[i] = 0f
+        }
+        var t = 0f
         val landed = mutableListOf<Int>()
         repeat((8f / dt).toInt()) {
             val was = BooleanArray(g.count) { g.rest[it] }
