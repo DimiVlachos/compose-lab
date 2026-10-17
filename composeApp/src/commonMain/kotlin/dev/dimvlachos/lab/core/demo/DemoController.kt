@@ -126,4 +126,10 @@ internal interface DemoController {
      * once the finger has lifted; the glitter settles by itself.
      */
     suspend fun shakeGlobe(duration: Duration)
+
+    /**
+     * Spins the card file [by] cards (negative goes back) over [duration] with a fingertip on the
+     * cards, and lets go. Returns once the finger has lifted and the wheel has settled.
+     */
+    suspend fun spinCards(by: Int, duration: Duration)
 }

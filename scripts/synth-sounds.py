@@ -248,6 +248,14 @@ def music_box_phrase(rate):
     return fade(normalise(out, 0.55), rate, 0.002, 0.2)
 
 
+def card_tick(rng, rate):
+    """An index card flicking over the top of the wheel: a dry paper tick with a soft flap."""
+    n = seconds(0.07, rate)
+    tick = mul(highpass(noise(n, rng), 2400, rate), env_exp(n, rate, 0.006))
+    flap = scale(mul(bandpass(noise(n, rng), 900, 1.2, rate), env_exp(n, rate, 0.02, attack=0.004)), 0.5)
+    return fade(normalise(mix(tick, flap), 0.55), rate, 0.001, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -263,6 +271,10 @@ def main():
     write("inhale", inhale(rng, soft), soft)
     write("globe_swish", globe_swish(rng, soft), soft)
     write("music_box_phrase", music_box_phrase(soft), soft)
+
+
+    # Its own seed, so the clips added after it on the shared rng stay the same.
+    write("card_tick", card_tick(random.Random(1016), fast), fast)
 
 
 if __name__ == "__main__":

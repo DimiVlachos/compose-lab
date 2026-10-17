@@ -181,4 +181,8 @@ internal class FakeController(private val now: () -> Long) : DemoController {
     override suspend fun shakeGlobe(duration: Duration) {
         calls += now() to "shakeGlobe(${duration.inWholeMilliseconds})"
     }
+
+    override suspend fun spinCards(by: Int, duration: Duration) {
+        calls += now() to "spinCards($by)"
+    }
 }

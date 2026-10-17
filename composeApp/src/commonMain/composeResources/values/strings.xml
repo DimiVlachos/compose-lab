@@ -288,4 +288,18 @@
     <string name="snowglobe_note_calm_sea">Calm sea</string>
     <string name="snowglobe_note_north">N 24 km/h</string>
     <string name="snowglobe_note_rain">Rain 60%</string>
+    <string name="cardfile_previous">Previous card</string>
+    <string name="cardfile_next">Next card</string>
+    <string name="cardfile_pull_out">Pull out</string>
+    <string name="demo_cardfile">Card file contacts</string>
+    <string name="demo_cardfile_description">Spin a rotary card file of contacts on a lamplit desk and pull a card out to call</string>
+    <string name="cardfile_hint">Spin the cards · tap one to pull it out</string>
+    <string name="cardfile_call">Call</string>
+    <string name="cardfile_message">Message</string>
+    <string name="cardfile_call_failed">Can’t call from this device</string>
+    <string name="cardfile_letter">Letter %1$s</string>
+    <string name="cardfile_hint_pulled">Push the card down to file it</string>
+    <string name="cardfile_kind_number">%1$s · %2$s</string>
+    <string name="cardfile_one_behind_tab">1 card behind this tab</string>
+    <string name="cardfile_many_behind_tab">%1$d cards behind this tab</string>
 </resources>
