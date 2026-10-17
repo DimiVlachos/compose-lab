@@ -251,6 +251,46 @@ class CardFileSceneTest {
     }
 
     @Test
+    fun aCardFiledBackIntoItsRailLooksAsTheWheelDrawsIt() {
+        // The last frame of filing and the first after it: nothing may change as the card lands, a
+        // shade or two of the paper's grain apart.
+        var filed: PixelMap? = null
+        var wheel: PixelMap? = null
+        painted(4f, pulled = 4, q = 0f) { _, g -> filed = g.bitmap.toPixelMap() }
+        painted(4f) { _, g -> wheel = g.bitmap.toPixelMap() }
+        val a = checkNotNull(filed)
+        val b = checkNotNull(wheel)
+        var off = 0
+        for (y in 0 until a.height) for (x in 0 until a.width) {
+            val p = a[x, y]
+            val q = b[x, y]
+            val d = abs(p.red - q.red) + abs(p.green - q.green) + abs(p.blue - q.blue)
+            if (d > 30f / 255) off++
+        }
+        assertTrue(off < 40, "$off pixels change as the card lands")
+    }
+
+    @Test
+    fun aCardLeavingItsRailChangesNothingAsItLiftsFree() {
+        // A rising card is handed from the wheel to the front as it clears its rail; a frame either
+        // side of that, it must look the same, but for the paper's grain sampled a shade apart.
+        var rail: PixelMap? = null
+        var free: PixelMap? = null
+        painted(4f, pulled = 4, q = .3199f) { _, g -> rail = g.bitmap.toPixelMap() }
+        painted(4f, pulled = 4, q = .3201f) { _, g -> free = g.bitmap.toPixelMap() }
+        val a = checkNotNull(rail)
+        val b = checkNotNull(free)
+        var off = 0
+        for (y in 0 until a.height) for (x in 0 until a.width) {
+            val p = a[x, y]
+            val q = b[x, y]
+            val d = abs(p.red - q.red) + abs(p.green - q.green) + abs(p.blue - q.blue)
+            if (d > 30f / 255) off++
+        }
+        assertTrue(off < 40, "$off pixels change as the card lifts free")
+    }
+
+    @Test
     fun theTexturesAreKeptWithinReach() =
         painted(4f) { s, _ ->
             assertTrue(

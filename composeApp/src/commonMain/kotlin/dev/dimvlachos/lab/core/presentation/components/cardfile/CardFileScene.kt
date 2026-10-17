@@ -539,8 +539,9 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         alphaDark: Float,
         card: PaperCard,
         polysOut: MutableList<List<Offset>>,
+        rOff: Float = 0f,
     ): Strips {
-        val rTop = R0 + CH + TH
+        val rTop = R0 + CH + TH + rOff
         val n = 14
         val th = tex.height.toFloat() / n
         val pts = List(n + 1) { j -> proj(rTop - (j.toFloat() / n) * (CH + TH), phi) }
@@ -582,67 +583,150 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         return Strips(tb.y, hwT)
     }
 
-    private fun drawWheel(g: Canvas2D, p: Float, pulled: Int) {
-        val list =
-            wheelSlots(p, cards.size, pulled) { (cards[it] as? PaperCard.Divider)?.ordinal?.rem(5) }
-        val out = ArrayList<Drawn>(list.size)
+    /**
+     * How dark the lamp leaves a card [d] behind the wheel's position, leaning [phi]: the raw
+     * figure, which the paper's shading clamps and its lit edge reads as it is.
+     */
+    private fun darkOf(d: Float, phi: Float, front: Boolean): Float {
         // The lamp's direction (y, z), normalised.
         val ln = hypot(hypot(.35f, .8f), .55f)
-        val ly = .8f / ln
-        val lz = .55f / ln
+        val nDotL = (-sin(phi) * .8f / ln + cos(phi) * .55f / ln) * (if (front) 1 else -1)
+        val lit = .5f + .62f * max(0f, nDotL)
+        var dark = clamp(1 - lit, 0f, .55f)
+        if (d > 0) dark += min(.32f, .028f * d)
+        if (!front) dark += .2f + min(.3f, .05f * max(0f, -d - 1))
+        else if (d < -.5f) dark += .12f * smooth((-d - .5f) * 2)
+        return dark
+    }
+
+    /**
+     * The gap above a card standing [front] on, its top edge at [r]: a soft contact shadow on the
+     * card behind, then a lit paper edge. A fallen card shows its back, its top edge now its lower
+     * one, lit, with the gap's shadow below it. [fade] fades both, as a card rises out of the gap.
+     */
+    private fun drawGap(g: Canvas2D, r: Strips, front: Boolean, dark: Float, fade: Float = 1f) {
+        g.save()
+        g.globalAlpha = fade
+        if (front) {
+            val sh = g.createLinearGradient(0f, r.topY - 7, 0f, r.topY)
+            sh.addColorStop(0f, "rgba(15,8,2,0)")
+            sh.addColorStop(1f, "rgba(15,8,2,.32)")
+            g.fillStyle = sh
+            g.fillRect(cx - r.hwT + 3, r.topY - 7, r.hwT * 2 - 6, 7f)
+            g.fillStyle =
+                Color(
+                    red = 255,
+                    green = 236,
+                    blue = 200,
+                    alpha = (.55f * (1 - dark) * 255).toInt().coerceIn(0, 255),
+                )
+            g.fillRect(cx - r.hwT + 4, r.topY - .2f, r.hwT * 2 - 8, 1f)
+        } else {
+            val sh = g.createLinearGradient(0f, r.topY, 0f, r.topY + 6)
+            sh.addColorStop(0f, "rgba(15,8,2,.4)")
+            sh.addColorStop(1f, "rgba(15,8,2,0)")
+            g.fillStyle = sh
+            g.fillRect(cx - r.hwT + 3, r.topY, r.hwT * 2 - 6, 6f)
+            g.fillStyle =
+                Color(
+                    red = 255,
+                    green = 226,
+                    blue = 180,
+                    alpha = (.35f * (1 - dark) * 255).toInt().coerceIn(0, 255),
+                )
+            g.fillRect(cx - r.hwT + 4, r.topY - 1, r.hwT * 2 - 8, 1f)
+        }
+        g.restore()
+    }
+
+    private fun drawWheel(g: Canvas2D, p: Float, pulled: Int, q: Float, reduced: Boolean) {
+        var list =
+            wheelSlots(p, cards.size, pulled) { (cards[it] as? PaperCard.Divider)?.ordinal?.rem(5) }
+        // A pulled card still in its rail stands among the others, painted in its turn, so it
+        // leaves and lands among them as the wheel draws them.
+        val rail = pulled in cards.indices && pulledPose(q, reduced).qb <= 0f
+        if (rail) {
+            list =
+                (list + WheelSlot(pulled, pulled - p, phiOf(pulled - p))).sortedWith(
+                    compareBy<WheelSlot> { it.depth }.thenByDescending { abs(it.d) }
+                )
+        }
+        val out = ArrayList<Drawn>(list.size)
         for (c in list) {
+            if (rail && c.i == pulled) {
+                drawInRail(g, c, q)
+                continue
+            }
             val card = cards[c.i]
             val front = cos(c.phi + E) > 0
             val tex = if (front) faceOf(c.i) else backOf(c.i)
-            val nDotL = (-sin(c.phi) * ly + cos(c.phi) * lz) * (if (front) 1 else -1)
-            val lit = .5f + .62f * max(0f, nDotL)
-            var dark = clamp(1 - lit, 0f, .55f)
-            if (c.d > 0) dark += min(.32f, .028f * c.d)
-            if (!front) dark += .2f + min(.3f, .05f * max(0f, -c.d - 1))
-            else if (c.d < -.5f) dark += .12f * smooth((-c.d - .5f) * 2)
+            val dark = darkOf(c.d, c.phi, front)
             val polys = ArrayList<List<Offset>>(2)
             val r = cardStrips(g, tex, c.phi, clamp(dark, 0f, .75f), card, polys)
-            if (c.buried) {
-                // It lies on the card covering it, with no gap between them to shade or light.
-                out += Drawn(c.i, polys)
-                continue
-            }
-            // The gap above each card: a soft contact shadow on the card behind, then a lit paper
-            // edge.
-            if (front) {
-                val sh = g.createLinearGradient(0f, r.topY - 7, 0f, r.topY)
-                sh.addColorStop(0f, "rgba(15,8,2,0)")
-                sh.addColorStop(1f, "rgba(15,8,2,.32)")
-                g.fillStyle = sh
-                g.fillRect(cx - r.hwT + 3, r.topY - 7, r.hwT * 2 - 6, 7f)
-                g.fillStyle =
-                    Color(
-                        red = 255,
-                        green = 236,
-                        blue = 200,
-                        alpha = (.55f * (1 - dark) * 255).toInt().coerceIn(0, 255),
-                    )
-                g.fillRect(cx - r.hwT + 4, r.topY - .2f, r.hwT * 2 - 8, 1f)
-            } else {
-                // A fallen card shows its back; its top edge is now its lower edge, lit, with the
-                // gap shadow below it.
-                val sh = g.createLinearGradient(0f, r.topY, 0f, r.topY + 6)
-                sh.addColorStop(0f, "rgba(15,8,2,.4)")
-                sh.addColorStop(1f, "rgba(15,8,2,0)")
-                g.fillStyle = sh
-                g.fillRect(cx - r.hwT + 3, r.topY, r.hwT * 2 - 6, 6f)
-                g.fillStyle =
-                    Color(
-                        red = 255,
-                        green = 226,
-                        blue = 180,
-                        alpha = (.35f * (1 - dark) * 255).toInt().coerceIn(0, 255),
-                    )
-                g.fillRect(cx - r.hwT + 4, r.topY - 1, r.hwT * 2 - 8, 1f)
-            }
+            // A buried card lies on the card covering it, with no gap between them to shade or
+            // light.
+            if (!c.buried) drawGap(g, r, front, dark)
             out += Drawn(c.i, polys)
         }
         drawn = out
+    }
+
+    /**
+     * The pulled card [c] sliding up out of its rail, [q] of the way out: shaded as the wheel
+     * shades it, its gap fading as it rises from it and the shadow it lifts with growing in.
+     */
+    private fun drawInRail(g: Canvas2D, c: WheelSlot, q: Float) {
+        val qa = clamp(q / .32f, 0f, 1f)
+        val rOff = .78f * easeOut(qa)
+        val top = proj(R0 + CH + rOff, c.phi)
+        val bottom = proj(R0 + rOff, c.phi)
+        val hwm = k * top.s * CW / 2
+        val hwB = k * bottom.s * CW / 2
+        if (qa > 0f) liftedShadow(g, top.y, bottom.y, hwm, hwB, qa, 0f)
+        val dark = darkOf(c.d, c.phi, true)
+        val polys = ArrayList<List<Offset>>(2)
+        val r = cardStrips(g, faceOf(c.i), c.phi, clamp(dark, 0f, .75f), cards[c.i], polys, rOff)
+        drawGap(g, r, true, dark, 1 - qa)
+        pulledPoly = polys.first()
+    }
+
+    /**
+     * The shadow a lifted card casts, its body from [bodyTop] to [yB], [hwm] and [hwB] across at
+     * them, [lift] of the way to its full strength and [qb] of the way to the front. It is cast
+     * from a paper-coloured fill clipped from under the card, so that only the shadow shows round
+     * it and its notches show what lies behind.
+     */
+    private fun liftedShadow(
+        g: Canvas2D,
+        bodyTop: Float,
+        yB: Float,
+        hwm: Float,
+        hwB: Float,
+        lift: Float,
+        qb: Float,
+    ) {
+        g.save()
+        g.beginPath()
+        g.rect(-w, -h, w * 3, h * 3)
+        g.moveTo(cx - hwm, bodyTop)
+        g.lineTo(cx + hwm, bodyTop)
+        g.lineTo(cx + hwB, yB)
+        g.lineTo(cx - hwB, yB)
+        g.closePath()
+        g.clip("evenodd")
+        // In hundredths, so the colour cache sees a hundred strings, not one a frame.
+        g.shadowColor = "rgba(0,0,0,${((.25f + .35f * qb) * lift * 100).roundToInt() / 100f})"
+        g.shadowBlur = (6 + 34 * qb) * dpr
+        g.shadowOffsetY = (3 + 22 * qb) * dpr
+        g.fillStyle = "#e9dfc9"
+        g.beginPath()
+        g.moveTo(cx - hwm, bodyTop + 1)
+        g.lineTo(cx + hwm, bodyTop + 1)
+        g.lineTo(cx + hwB - 1, yB - 2)
+        g.lineTo(cx - hwB + 1, yB - 2)
+        g.closePath()
+        g.fill()
+        g.restore()
     }
 
     // ---------- The pulled card ----------
@@ -673,6 +757,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             return
         }
         val pose = pulledPose(q, reduced)
+        // Still in its rail, the wheel paints it.
+        if (pose.qb <= 0f) return
         val midY = (pose.yT + pose.yB) / 2
         if (pose.qb > 0) {
             g.fillStyle =
@@ -684,34 +770,26 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         g.translate(pose.cx, midY)
         g.rotate(pose.rot)
         g.translate(-pose.cx, -midY)
+        // Down the card, [a] of the way from its top: where it is, and its half width there. Just
+        // out of its rail it is in the rail's perspective, as the wheel drew it; it eases to lying
+        // flat as it comes to the front.
+        val inRail = { a: Float -> proj(R0 + CH + TH + .78f - a * (CH + TH), phiOf(0f)) }
+        val yAt = { a: Float -> lerp(inRail(a).y, lerp(pose.yT, pose.yB, a), pose.qb) }
+        val hwAt = { a: Float ->
+            lerp(k * inRail(a).s * CW / 2, lerp(pose.hwT, pose.hwB, a), pose.qb)
+        }
         // Lifted shadow.
-        val bodyTop = lerp(pose.yT, pose.yB, TH / (CH + TH))
-        val hwm = lerp(pose.hwT, pose.hwB, TH / (CH + TH))
-        g.save()
-        // Cast from a paper-coloured fill, clipped from under the card so that only the shadow
-        // shows round it and its notches show what lies behind, as they do on the wheel.
-        g.beginPath()
-        g.rect(-w, -h, w * 3, h * 3)
-        g.moveTo(pose.cx - hwm, bodyTop)
-        g.lineTo(pose.cx + hwm, bodyTop)
-        g.lineTo(pose.cx + pose.hwB, pose.yB)
-        g.lineTo(pose.cx - pose.hwB, pose.yB)
-        g.closePath()
-        g.clip("evenodd")
-        // In hundredths, so the colour cache sees a hundred strings, not one a frame.
-        g.shadowColor = "rgba(0,0,0,${((.25f + .35f * pose.qb) * 100).roundToInt() / 100f})"
-        g.shadowBlur = (6 + 34 * pose.qb) * dpr
-        g.shadowOffsetY = (3 + 22 * pose.qb) * dpr
-        g.fillStyle = "#e9dfc9"
-        g.beginPath()
-        g.moveTo(pose.cx - hwm, bodyTop + 1)
-        g.lineTo(pose.cx + hwm, bodyTop + 1)
-        g.lineTo(pose.cx + pose.hwB - 1, pose.yB - 2)
-        g.lineTo(pose.cx - pose.hwB + 1, pose.yB - 2)
-        g.closePath()
-        g.fill()
-        g.restore()
-        val n = 16
+        val bodyTop = yAt(TH / (CH + TH))
+        val hwm = hwAt(TH / (CH + TH))
+        val yB = yAt(1f)
+        val hwB = hwAt(1f)
+        liftedShadow(g, bodyTop, yB, hwm, hwB, 1f, pose.qb)
+        // The lamp's shading it had in its rail, gone as it comes to the front.
+        val dark = clamp(darkOf(0f, phiOf(0f), true), 0f, .75f) * (1 - pose.qb)
+        g.imageShade = Color(red = 22, green = 12, blue = 4, alpha = (dark * 255).toInt())
+        // As many strips as the wheel draws a card in, so it is sampled alike as it leaves the
+        // rail.
+        val n = 14
         val sh = tex.height.toFloat() / n
         // The card in a layer of its own, so the sheen below lands on its paper and not its
         // notches.
@@ -719,9 +797,9 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         for (j in 0 until n) {
             val a = j.toFloat() / n
             val b = (j + 1).toFloat() / n
-            val y0 = lerp(pose.yT, pose.yB, a)
-            val y1 = lerp(pose.yT, pose.yB, b)
-            val hw = lerp(pose.hwT, pose.hwB, (a + b) / 2)
+            val y0 = yAt(a)
+            val y1 = yAt(b)
+            val hw = (hwAt(a) + hwAt(b)) / 2
             g.drawImage(
                 tex,
                 0f,
@@ -752,8 +830,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             g.beginPath()
             g.moveTo(pose.cx - hwm, bodyTop)
             g.lineTo(pose.cx + hwm, bodyTop)
-            g.lineTo(pose.cx + pose.hwB, pose.yB)
-            g.lineTo(pose.cx - pose.hwB, pose.yB)
+            g.lineTo(pose.cx + hwB, yB)
+            g.lineTo(pose.cx - hwB, yB)
             g.closePath()
             g.fill()
         }
@@ -763,8 +841,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             listOf(
                 Offset(pose.cx - hwm, bodyTop),
                 Offset(pose.cx + hwm, bodyTop),
-                Offset(pose.cx + pose.hwB, pose.yB),
-                Offset(pose.cx - pose.hwB, pose.yB),
+                Offset(pose.cx + hwB, yB),
+                Offset(pose.cx - hwB, yB),
             )
     }
 
@@ -776,7 +854,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         if (w <= 0f || h <= 0f) return
         val room = bg ?: renderBg().also { bg = it }
         g.drawImage(room, 0f, 0f, w, h)
-        drawWheel(g, position, pulled)
+        drawWheel(g, position, pulled, q, reduced)
         drawKnobs(g, position)
         drawPulled(g, pulled, q, reduced)
         trimCache(position)
