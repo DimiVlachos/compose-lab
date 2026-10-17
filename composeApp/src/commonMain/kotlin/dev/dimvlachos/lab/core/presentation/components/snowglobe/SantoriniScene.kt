@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.Gradient2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.PI
 import kotlin.math.floor
@@ -680,6 +681,7 @@ internal val cloudSprite: Canvas2D by lazy {
     g.addColorStop(1f, "rgba(110,125,150,.45)")
     x.fillStyle = g
     x.fillRect(0f, 0f, 256f, 128f)
+    x.bitmap.freeze()
     x
 }
 
@@ -912,6 +914,7 @@ private constructor(
                     c.globalAlpha = 1f
                 }
                 paintPlinth(c, w, il)
+                c.bitmap.freeze()
                 scenes[w] = c.bitmap
             }
             // Where glitter can come to rest: the roofs, the dome and the cliff, scanned from the
@@ -952,6 +955,7 @@ internal val glowSprite: Canvas2D by lazy {
     x.moveTo(4f, 24f)
     x.lineTo(44f, 24f)
     x.stroke()
+    x.bitmap.freeze()
     x
 }
 
@@ -964,5 +968,6 @@ internal val bokehSprite: Canvas2D by lazy {
     g.addColorStop(1f, "rgba(255,214,140,0)")
     x.fillStyle = g
     x.fillRect(0f, 0f, 32f, 32f)
+    x.bitmap.freeze()
     x
 }

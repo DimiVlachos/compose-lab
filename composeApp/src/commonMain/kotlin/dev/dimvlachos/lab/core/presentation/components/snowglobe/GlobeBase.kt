@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 import dev.dimvlachos.lab.core.presentation.canvas2d.cssColor
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import dev.dimvlachos.lab.core.presentation.ui.SnowGlobeArt
 import kotlin.math.PI
@@ -249,6 +250,8 @@ internal fun paintBase(
         drawText(engraving, SnowGlobeArt.plaqueLight, at + Offset(0f, .8f * s))
         drawText(engraving, SnowGlobeArt.plaqueInk, at)
     }
+    backImage.freeze()
+    frontImage.freeze()
     return BaseArt(backImage, frontImage)
 }
 
