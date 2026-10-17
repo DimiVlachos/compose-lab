@@ -23,14 +23,16 @@ import kotlinx.coroutines.withContext
 @Composable
 internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
     val context = LocalContext.current.applicationContext
-    val player = remember(context) { SoundPoolPlayer(context) }
+    val capturable = LocalSoundCapturable.current
+    val player = remember(context, capturable) { SoundPoolPlayer(context, capturable) }
     LaunchedEffect(player, sounds) { player.load(sounds) }
     DisposableEffect(player) { onDispose { player.release() } }
     return player
 }
 
 /**
- * Plays clips through a [SoundPool]. Loops are [LiveLoop]s, started once their clip has loaded and
+ * Plays clips through a [SoundPool], as a game's sounds when [capturable] so a screen recorder can
+ * take them ([LocalSoundCapturable]). Loops are [LiveLoop]s, started once their clip has loaded and
  * paused while the ringer is on silent or vibrate, as [ringer] reports it.
  *
  * The pool loads from files, so each clip's bytes are copied out of the app's resources into the
@@ -38,13 +40,16 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
  * gets a fresh copy. A copy is written beside its name and moved into place, so one cut short by
  * the app being killed is never played.
  */
-private class SoundPoolPlayer(private val context: Context) : SoundPlayer {
+private class SoundPoolPlayer(private val context: Context, capturable: Boolean) : SoundPlayer {
     private val pool =
         SoundPool.Builder()
             .setMaxStreams(MaxStreams)
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setUsage(
+                        if (capturable) AudioAttributes.USAGE_GAME
+                        else AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
+                    )
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )

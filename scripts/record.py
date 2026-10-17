@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record one compose-lab demo and encode a social-ready clip: 4:5, 9:16 for a tall demo, or 16:9 for a landscape demo.
 
-Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape | --tall]
+Usage: scripts/record.py <android|ios> <demoId> [--label] [--landscape | --tall] [--sound]
 
 The app logs LAB_DEMO_START / LAB_DEMO_DONE (via Kermit, tag LabRecorder) when
 the demo starts and ends, and the clip is cut between those two moments (timed
@@ -9,8 +9,14 @@ on this machine). Every script holds a still frame at both ends, so small
 timing errors don't show. Android needs the app installed
 (./gradlew :androidApp:installDebug) and one device connected. iOS needs a
 booted simulator with the app installed (scripts/install-ios.sh).
+
+With --sound (Android only) the clip keeps the phone's sound: scrcpy records the screen and
+the audio the app plays instead of screenrecord, which has none, and the sound is raised until
+its loudest moment peaks at PEAK_DB. The phone must not be on silent or vibrate, or the lab's
+sound player stays quiet.
 """
 import argparse
+import re
 import pathlib
 import queue
 import signal
@@ -31,6 +37,8 @@ LANDSCAPE_TIMEOUT_S = 10
 LANDSCAPE_ANIMATION_S = 0.8
 # screenrecord captures its first frame about this long before the file has any bytes (measured on a Galaxy S23 Ultra).
 ANDROID_CAPTURE_LEAD_S = 0.08
+# How loud a clip with sound peaks.
+PEAK_DB = -1.0
 
 
 def run(cmd):
@@ -161,6 +169,66 @@ def record_android(demo_id, label, raw, landscape):
     return start, done
 
 
+def record_android_with_sound(demo_id, label, raw):
+    """Record with scrcpy, which keeps the audio the app plays; the clip is cut as screenrecord's is.
+
+    scrcpy's file starts its clock when it starts capturing but writes its first bytes seconds
+    later, so the file is timed from its end instead: its audio runs without a gap until scrcpy is
+    stopped, so the file began its audio's length before that.
+    """
+    width, height = android_record_size()
+    run(["adb", "logcat", "-c"])
+    log = subprocess.Popen(
+        ["adb", "logcat", "-v", "raw", "-s", "LabRecorder:V"], stdout=subprocess.PIPE, text=True
+    )
+    lines = stream_lines(log)
+    launch = ["adb", "shell", "am", "start", "-S", "-n", ACTIVITY, "--es", "demo", demo_id, "--ez", "record", "true"]
+    if label:
+        launch += ["--ez", "label", "true"]
+    raw.unlink(missing_ok=True)
+    # The demo's warm-up run plays before its start marker, so the recorder is up well before it.
+    run(launch)
+    recorder = subprocess.Popen(
+        ["scrcpy", "--no-window", "--no-control", "--audio-source=playback", "--audio-dup",
+         f"--max-size={max(width, height)}", "--video-bit-rate=20M", f"--record={raw}"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        start, done = wait_for_markers(lines, demo_id, 0.0)
+    finally:
+        time.sleep(0.5)
+        stopped = time.monotonic()
+        recorder.send_signal(signal.SIGINT)
+        recorder.wait()
+        log.terminate()
+    if not raw.exists() or raw.stat().st_size == 0:
+        sys.exit("scrcpy recorded nothing (is it installed, and the phone connected?)")
+    began = stopped - audio_end(raw)
+    return start - began, done - began
+
+
+def audio_end(path):
+    """Where a file's audio stream ends, in seconds from the file's start."""
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "packet=pts_time,duration_time",
+         "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    pts, duration = out[-1].split(",")[:2]
+    return float(pts) + float(duration or 0)
+
+
+def peak_db_of_cut(path, cut, duration):
+    """The loudest sample of the clip's cut of a file's audio, in dB below full scale."""
+    out = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(path), "-map", "0:a:0", "-af", f"{cut},volumedetect",
+         "-t", f"{duration:.3f}", "-f", "null", "-"],
+        capture_output=True, text=True, check=True,
+    ).stderr
+    return float(re.search(r"max_volume: (-?[\d.]+) dB", out).group(1))
+
+
 def record_ios(demo_id, label, raw):
     recorder = subprocess.Popen(
         ["xcrun", "simctl", "io", "booted", "recordVideo", "--codec=h264", "--force", str(raw)],
@@ -189,7 +257,7 @@ def record_ios(demo_id, label, raw):
     return start, done
 
 
-def encode(raw, start, done, dest, landscape, tall):
+def encode(raw, start, done, dest, landscape, tall, sound=False):
     """Cut [start, done], crop the centred stage (4:5, 9:16 for a tall demo, or 16:9 in landscape) and raise the CRF until the clip fits in MAX_BYTES.
 
     Recorders only write a frame when the screen changes, so still holds are gaps in the raw file.
@@ -203,6 +271,12 @@ def encode(raw, start, done, dest, landscape, tall):
         if tall
         else "crop=iw:iw*5/4:0:(ih-iw*5/4)/2,scale=1080:1350"
     )
+    audio = ["-an"]
+    if sound:
+        # The audio is cut on the same clock as the video, padded with silence for a still tail.
+        cut = f"atrim=start={start:.3f},asetpts=PTS-STARTPTS,apad"
+        gain = PEAK_DB - peak_db_of_cut(raw, cut, done - start)
+        audio = ["-map", "0:a:0", "-af", f"{cut},volume={gain:.1f}dB", "-c:a", "aac", "-b:a", "128k"]
     crf = 18
     while True:
         run([
@@ -212,8 +286,9 @@ def encode(raw, start, done, dest, landscape, tall):
             "-vf", f"fps=60,trim=start={start:.3f},setpts=PTS-STARTPTS,"
                    "tpad=stop_mode=clone:stop_duration=3,"
                    f"{frame}:flags=lanczos,format=yuv420p",
+            *audio,
             "-t", f"{done - start:.3f}",
-            "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-movflags", "+faststart", "-an", str(dest),
+            "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-movflags", "+faststart", str(dest),
         ])
         size = dest.stat().st_size
         if size <= MAX_BYTES:
@@ -231,23 +306,29 @@ def main():
     frame = parser.add_mutually_exclusive_group()
     frame.add_argument("--landscape", action="store_true", help="the demo runs in landscape: a 16:9 clip (Android only)")
     frame.add_argument("--tall", action="store_true", help="the demo has a tall stage: a 9:16 clip")
+    parser.add_argument("--sound", action="store_true", help="keep the phone's sound, recorded with scrcpy (Android only)")
     args = parser.parse_args()
+    if args.sound and (args.platform == "ios" or args.landscape):
+        sys.exit("--sound records on Android only, in portrait")
     if args.landscape and args.platform == "ios":
         sys.exit("--landscape records on Android only; the simulator can't be turned from here")
 
     OUT.mkdir(exist_ok=True)
     suffix = "-labeled" if args.label else ""
-    raw = OUT / f"{args.demo_id}-{args.platform}-raw.{'mp4' if args.platform == 'android' else 'mov'}"
+    raw_ext = "mkv" if args.sound else "mp4" if args.platform == "android" else "mov"
+    raw = OUT / f"{args.demo_id}-{args.platform}-raw.{raw_ext}"
     dest = OUT / f"{args.demo_id}-{args.platform}{suffix}.mp4"
     try:
-        if args.platform == "android":
+        if args.sound:
+            start, done = record_android_with_sound(args.demo_id, args.label, raw)
+        elif args.platform == "android":
             start, done = record_android(args.demo_id, args.label, raw, args.landscape)
         else:
             start, done = record_ios(args.demo_id, args.label, raw)
     except SystemExit:
         raw.unlink(missing_ok=True)
         raise
-    size = encode(raw, start, done, dest, args.landscape, args.tall)
+    size = encode(raw, start, done, dest, args.landscape, args.tall, args.sound)
     raw.unlink()
     print(f"{dest.relative_to(ROOT)}  {done - start:.1f}s  {size / 1e6:.1f} MB")
 
