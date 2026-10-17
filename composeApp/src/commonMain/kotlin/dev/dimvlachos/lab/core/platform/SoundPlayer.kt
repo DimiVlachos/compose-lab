@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
  * The short clips the demos play, synthesized by `scripts/synth-sounds.py` into
@@ -66,6 +67,13 @@ internal object SilentSoundPlayer : SoundPlayer {
         override fun stop() = Unit
     }
 }
+
+/**
+ * Whether a screen recorder may capture what the players under it play: true while a demo is
+ * recorded as a clip. On Android, an app's own capture only takes media and game sounds, so a
+ * recorded demo's clicks go out as a game's; otherwise they are the system's sonification.
+ */
+internal val LocalSoundCapturable = staticCompositionLocalOf { false }
 
 /**
  * The platform's player, loading only [sounds], and letting them go when it leaves the composition.

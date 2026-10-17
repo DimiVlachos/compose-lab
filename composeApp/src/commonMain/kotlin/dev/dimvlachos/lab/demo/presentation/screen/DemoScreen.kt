@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -31,6 +32,7 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
+import dev.dimvlachos.lab.core.platform.LocalSoundCapturable
 import dev.dimvlachos.lab.core.platform.LockLandscape
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
@@ -78,7 +80,9 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
     // The stage: the demo and, on a multi-platform capture, its platform label.
     val stage: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier.clipToBounds()) {
-            key(runId) { demo.content(state) }
+            CompositionLocalProvider(LocalSoundCapturable provides record) {
+                key(runId) { demo.content(state) }
+            }
             if (label != null) {
                 Text(
                     label,
