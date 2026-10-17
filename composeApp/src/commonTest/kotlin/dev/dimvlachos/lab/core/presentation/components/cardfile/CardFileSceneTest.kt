@@ -1,5 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.cardfile
 
+import androidx.compose.ui.graphics.PixelMap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.text.TextMeasurer
@@ -149,7 +151,7 @@ class CardFileSceneTest {
         position: Float,
         pulled: Int = -1,
         q: Float = 0f,
-        check: (CardFileScene) -> Unit,
+        check: (CardFileScene, Canvas2D) -> Unit,
     ) = runComposeUiTest {
         var measurer: TextMeasurer? = null
         setContent { measurer = rememberTextMeasurer() }
@@ -164,12 +166,12 @@ class CardFileSceneTest {
         s.layout(390f, 700f, 1f)
         val g = Canvas2D.create(390, 700)
         s.paint(g, position, pulled, q, reduced = false)
-        check(s)
+        check(s, g)
     }
 
     @Test
     fun aTapOnTheFrontCardFindsIt() =
-        painted(4f) { s ->
+        painted(4f) { s, _ ->
             // Half way up the front card's body.
             val y = s.proj(R0 + CH * .5f, phiOf(0f)).y
             assertEquals(4, s.cardAt(s.cx, y))
@@ -178,7 +180,7 @@ class CardFileSceneTest {
 
     @Test
     fun aDividersTabPeeksOverTheCardsInFront() =
-        painted(1f) { s ->
+        painted(1f) { s, _ ->
             // The B divider stands two behind Abby; its tab is the second step along.
             val phi = phiOf(2f)
             val top = s.proj(R0 + CH + TH, phi)
@@ -190,7 +192,7 @@ class CardFileSceneTest {
 
     @Test
     fun theKnobsAreFoundBesideTheCards() =
-        painted(4f) { s ->
+        painted(4f) { s, _ ->
             val (kx, ky) = s.p3(CW / 2 + .2f, 0f, 0f)
             assertTrue(s.knobAt(kx, ky), "the right knob")
             assertTrue(s.knobAt(2 * s.cx - kx, ky), "the left knob")
@@ -199,14 +201,58 @@ class CardFileSceneTest {
 
     @Test
     fun aPulledCardIsFoundWhereItHangs() =
-        painted(4f, pulled = 4, q = 1f) { s ->
+        painted(4f, pulled = 4, q = 1f) { s, _ ->
             assertTrue(s.inPulled(s.target.cx, s.target.cy + s.target.h * .1f))
             assertFalse(s.inPulled(s.target.cx, s.target.cy + s.target.h))
         }
 
     @Test
+    fun aPulledCardsHolesShowWhatIsBehindIt() =
+        painted(4f, pulled = 4, q = 1f) { s, g ->
+            // The left of the two notches at the card's foot, the card hanging face on.
+            val t = s.target
+            val x = t.cx - t.w / 2 + t.w * .34f
+            val y = t.cy + t.h / 2 - t.h * .085f / (CH + TH)
+            val c = g.bitmap.toPixelMap()[x.toInt(), y.toInt()]
+            val paper = listOf(233, 223, 201)
+            val rgb = listOf(c.red, c.green, c.blue).map { (it * 255).toInt() }
+            val off = rgb.zip(paper).sumOf { (a, b) -> abs(a - b) }
+            assertTrue(off > 90, "the hole shows paper, $rgb")
+        }
+
+    @Test
+    fun aCardsNotchesShowWhatIsBehindItHoweverItIsShaded() {
+        // The front card's left notch, shaded by the lamp on the wheel, and the same card unshaded
+        // as a pulled card still in its rail: what lies behind is the same, so the notch must be,
+        // to the level. The dark wood behind it shows a shade over the hole as only a level or two.
+        fun notch(s: CardFileScene): Pair<Int, Int> {
+            val p = s.proj(R0 + .085f, phiOf(0f))
+            return (s.cx + (CW * .34f - CW / 2) * s.k * p.s).toInt() to p.y.toInt()
+        }
+        fun rgb(m: PixelMap, x: Int, y: Int) =
+            (-2..2 step 2).flatMap { dy ->
+                val c = m[x, y + dy]
+                listOf(c.red, c.green, c.blue).map { (it * 255).toInt() }
+            }
+        var shaded = emptyList<Int>()
+        var plain = emptyList<Int>()
+        painted(4f) { s, g ->
+            val (x, y) = notch(s)
+            shaded = rgb(g.bitmap.toPixelMap(), x, y)
+        }
+        painted(4f, pulled = 4, q = 0f) { s, g ->
+            val (x, y) = notch(s)
+            plain = rgb(g.bitmap.toPixelMap(), x, y)
+        }
+        assertTrue(
+            shaded.zip(plain).all { (a, b) -> abs(a - b) <= 1 },
+            "the notch shows $shaded, behind the card $plain",
+        )
+    }
+
+    @Test
     fun theTexturesAreKeptWithinReach() =
-        painted(4f) { s ->
+        painted(4f) { s, _ ->
             assertTrue(
                 s.cachedFaces in 1..cards.size,
                 "faces baked for the cards drawn: ${s.cachedFaces}",

@@ -67,6 +67,41 @@ class Canvas2DTest {
     }
 
     @Test
+    fun aShadedImageDarkensItsPaperAndLeavesItsHolesClear() {
+        // White paper on the left half, a hole on the right.
+        val paper = Canvas2D.create(4, 2)
+        paper.fillStyle = "#ffffff"
+        paper.fillRect(0f, 0f, 2f, 2f)
+        val c = Canvas2D.create(4, 2)
+        c.fillStyle = "#0000ff"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.imageShade = Color(red = 0, green = 0, blue = 0, alpha = 128)
+        c.drawImage(paper.bitmap, 0f, 0f)
+        val px = c.bitmap.toPixelMap()
+        near(Color(.5f, .5f, .5f), px[0, 0])
+        near(Color.Blue, px[3, 0])
+    }
+
+    @Test
+    fun aLayerKeepsSourceAtopToWhatWasPaintedInIt() {
+        val paper = Canvas2D.create(4, 2)
+        paper.fillStyle = "#ffffff"
+        paper.fillRect(0f, 0f, 2f, 2f)
+        val c = Canvas2D.create(4, 2)
+        c.fillStyle = "#0000ff"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.beginLayer()
+        c.drawImage(paper.bitmap, 0f, 0f)
+        c.globalCompositeOperation = "source-atop"
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.endLayer()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[0, 0])
+        near(Color.Blue, px[3, 0])
+    }
+
+    @Test
     fun aFilledRectLandsUnderTheTransform() {
         val c = Canvas2D.create(8, 8)
         c.setTransform(4f, 0f, 0f, 4f, 4f, 4f) // [-1, 1] across the bitmap, as the prototype paints

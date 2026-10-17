@@ -7,6 +7,8 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.LinearGradientShader
@@ -153,6 +155,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         var shadowColor: Color,
         var shadowBlur: Float,
         var shadowOffsetY: Float,
+        var imageShade: Color,
     ) {
         fun copy() =
             State(
@@ -167,6 +170,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 shadowColor,
                 shadowBlur,
                 shadowOffsetY,
+                imageShade,
             )
     }
 
@@ -183,6 +187,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             Color.Transparent,
             0f,
             0f,
+            Color.Transparent,
         )
     private val stack = ArrayDeque<State>()
     private var path = Path()
@@ -427,6 +432,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
 
     private fun styled(style: Any, fill: Boolean): Paint {
         paint.shader = null
+        paint.colorFilter = null
         paint.style = if (fill) PaintingStyle.Fill else PaintingStyle.Stroke
         paint.strokeWidth = state.lineWidth
         paint.strokeCap =
@@ -536,10 +542,33 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         transformed { canvas.drawRect(Rect(x, y, x + w, y + h), p) }
     }
 
-    fun clip() {
+    /**
+     * Not the canvas's own: a colour each [drawImage] is shaded toward, by its alpha, over the
+     * image's own pixels only, so what the image leaves clear stays clear. Saved and restored.
+     */
+    var imageShade: Color
+        get() = state.imageShade
+        set(value) {
+            state.imageShade = value
+        }
+
+    /**
+     * Not the canvas's own: [save], painting from here into a layer of its own that [endLayer] lays
+     * down, so a `source-atop` in it lands only on what was painted in it.
+     */
+    fun beginLayer() {
+        stack.addLast(state.copy())
+        canvas.saveLayer(Rect(0f, 0f, width.toFloat(), height.toFloat()), Paint())
+    }
+
+    /** Lays down the layer [beginLayer] began, restoring what was saved with it. */
+    fun endLayer() = restore()
+
+    fun clip(rule: String = "nonzero") {
         val device =
             Path().apply {
                 addPath(path)
+                fillType = if (rule == "evenodd") PathFillType.EvenOdd else PathFillType.NonZero
                 transform(state.matrix)
             }
         canvas.clipPath(device)
@@ -621,6 +650,38 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     ) {
         val p = styled(Color.White, true)
         p.color = Color.White.copy(alpha = state.globalAlpha)
+        val shade = state.imageShade
+        if (shade.alpha > 0f) {
+            val a = shade.alpha
+            val k = 1 - a
+            p.colorFilter =
+                ColorFilter.colorMatrix(
+                    ColorMatrix(
+                        floatArrayOf(
+                            k,
+                            0f,
+                            0f,
+                            0f,
+                            shade.red * a * 255,
+                            0f,
+                            k,
+                            0f,
+                            0f,
+                            shade.green * a * 255,
+                            0f,
+                            0f,
+                            k,
+                            0f,
+                            shade.blue * a * 255,
+                            0f,
+                            0f,
+                            0f,
+                            1f,
+                            0f,
+                        )
+                    )
+                )
+        }
         if (sx % 1f != 0f || sy % 1f != 0f || sw % 1f != 0f || sh % 1f != 0f) {
             // A source between pixels, as a card's strips are: the whole image is scaled so the
             // source rectangle lands on the destination, and clipped to it.

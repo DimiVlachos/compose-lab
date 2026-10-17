@@ -544,6 +544,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         val n = 14
         val th = tex.height.toFloat() / n
         val pts = List(n + 1) { j -> proj(rTop - (j.toFloat() / n) * (CH + TH), phi) }
+        // The lamp's shading goes on the paper itself, so the notches stay open.
+        g.imageShade = Color(red = 22, green = 12, blue = 4, alpha = (alphaDark * 255).toInt())
         for (j in 0 until n) {
             val a = pts[j]
             val b = pts[j + 1]
@@ -552,6 +554,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             val hw = k * (a.s + b.s) / 2 * CW / 2
             g.drawImage(tex, 0f, j * th, tex.width.toFloat(), th, cx - hw, y0 - .2f, hw * 2, hgt)
         }
+        g.imageShade = Color.Transparent
         val t = pts[0]
         val tb = proj(rTop - TH, phi)
         val bb = pts[n]
@@ -575,16 +578,6 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
                     Offset(cx + u1 * k * tb.s, tb.y),
                     Offset(cx + u0 * k * tb.s, tb.y),
                 )
-        }
-        if (alphaDark > .005f) {
-            g.fillStyle = Color(red = 22, green = 12, blue = 4, alpha = (alphaDark * 255).toInt())
-            for (poly in polysOut) {
-                g.beginPath()
-                g.moveTo(poly[0].x, poly[0].y)
-                for (i in 1 until 4) g.lineTo(poly[i].x, poly[i].y)
-                g.closePath()
-                g.fill()
-            }
         }
         return Strips(tb.y, hwT)
     }
@@ -695,6 +688,16 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         val bodyTop = lerp(pose.yT, pose.yB, TH / (CH + TH))
         val hwm = lerp(pose.hwT, pose.hwB, TH / (CH + TH))
         g.save()
+        // Cast from a paper-coloured fill, clipped from under the card so that only the shadow
+        // shows round it and its notches show what lies behind, as they do on the wheel.
+        g.beginPath()
+        g.rect(-w, -h, w * 3, h * 3)
+        g.moveTo(pose.cx - hwm, bodyTop)
+        g.lineTo(pose.cx + hwm, bodyTop)
+        g.lineTo(pose.cx + pose.hwB, pose.yB)
+        g.lineTo(pose.cx - pose.hwB, pose.yB)
+        g.closePath()
+        g.clip("evenodd")
         // In hundredths, so the colour cache sees a hundred strings, not one a frame.
         g.shadowColor = "rgba(0,0,0,${((.25f + .35f * pose.qb) * 100).roundToInt() / 100f})"
         g.shadowBlur = (6 + 34 * pose.qb) * dpr
@@ -710,6 +713,9 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         g.restore()
         val n = 16
         val sh = tex.height.toFloat() / n
+        // The card in a layer of its own, so the sheen below lands on its paper and not its
+        // notches.
+        g.beginLayer()
         for (j in 0 until n) {
             val a = j.toFloat() / n
             val b = (j + 1).toFloat() / n
@@ -742,6 +748,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
                 Color(red = 40, green = 20, blue = 5, alpha = (.12f * pose.qb * 255).toInt()),
             )
             g.fillStyle = gl
+            g.globalCompositeOperation = "source-atop"
             g.beginPath()
             g.moveTo(pose.cx - hwm, bodyTop)
             g.lineTo(pose.cx + hwm, bodyTop)
@@ -750,6 +757,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             g.closePath()
             g.fill()
         }
+        g.endLayer()
         g.restore()
         pulledPoly =
             listOf(
