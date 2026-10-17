@@ -226,8 +226,9 @@ internal class GlitterField(private val floorAt: (Float) -> Float) {
             // A flat flake falling through still water swings from side to side as it goes.
             val flut = sin(t * fl[i] + ph[i]) * .3f * sk * calm
             val tvx = flow[0] + nx[i] + gxl * sk + flut * gyl
-            // Water churned hard holds the gold up; it sinks as the churning dies down.
-            val tvy = flow[1] + ny[i] + gyl * sk - flut * gxl - turb * Suspends
+            // Churned water holds the gold up, at most as hard as it sinks, so it hangs rather than
+            // rising to the dome; it sinks as the churning dies down.
+            val tvy = flow[1] + ny[i] + gyl * sk * (1 - min(turb, 1f)) - flut * gxl
             val follow = min(1f, dt / lag[i])
             vx[i] += (tvx - vx[i]) * follow
             vy[i] += (tvy - vy[i]) * follow
@@ -285,6 +286,5 @@ internal class GlitterField(private val floorAt: (Float) -> Float) {
         const val CurrentFades = .9f
         const val WanderSize = .42f
         const val WanderTurns = .45f
-        const val Suspends = .36f
     }
 }
