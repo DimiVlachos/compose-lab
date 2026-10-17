@@ -120,4 +120,10 @@ internal interface DemoController {
 
     /** Taps the demo's control [id], such as Undo on a snackbar, if it shows. */
     suspend fun tapControl(id: String)
+
+    /**
+     * Shakes the snow globe from side to side with a fingertip for [duration], and lets go. Returns
+     * once the finger has lifted; the glitter settles by itself.
+     */
+    suspend fun shakeGlobe(duration: Duration)
 }
