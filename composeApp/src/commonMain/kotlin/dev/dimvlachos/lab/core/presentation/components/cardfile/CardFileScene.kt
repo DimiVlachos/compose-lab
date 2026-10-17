@@ -37,6 +37,10 @@ private const val FALLEN = 72f
 private const val FALL_STEP = 3.4f
 private const val FALL_MAX = 100f
 
+// The wheel's pile ends: a card this many in front of, or behind, its position is no longer drawn.
+private const val WHEEL_FRONT = 8f
+private const val WHEEL_BACK = 16f
+
 /** Where the stage leaves room: under the app bar, and over the sheet at the foot. */
 private const val TOP = 24f
 private const val BOTTOM = 104f
@@ -63,6 +67,29 @@ internal fun phiOf(d: Float): Float =
         d <= -1f -> min(FALL_MAX, FALLEN + FALL_STEP * (-d - 1)) * DEG
         else -> lerp(FALLEN, UPRIGHT, smooth(d + 1)) * DEG
     }
+
+/** Card [i] of the wheel, [d] cards behind its position, leaning [phi], drawn at [alpha]. */
+internal class WheelSlot(val i: Int, val d: Float, val phi: Float, val alpha: Float) {
+    val depth: Float = sin(phi + E) * (R0 + .6f)
+}
+
+/**
+ * The cards of a [count]-card wheel at [p] that are drawn, all but [pulled]: seven fallen in front
+ * and fifteen behind. The prototype cut the pile off at whole cards, so a card at either end popped
+ * out as the wheel settled onto one; here the card past each end fades with its distance instead.
+ */
+internal fun wheelSlots(p: Float, count: Int, pulled: Int): List<WheelSlot> {
+    val lo = max(0, ceil(p - WHEEL_FRONT).toInt())
+    val hi = min(count - 1, floor(p + WHEEL_BACK).toInt())
+    val list = ArrayList<WheelSlot>()
+    for (i in lo..hi) {
+        if (i == pulled) continue
+        val d = i - p
+        val alpha = clamp(d + WHEEL_FRONT, 0f, 1f) * clamp(WHEEL_BACK - d, 0f, 1f)
+        if (alpha > 0f) list += WheelSlot(i, d, phiOf(d), alpha)
+    }
+    return list
+}
 
 /** A point [y] on screen and the perspective scale [s] there. */
 internal data class Proj(val y: Float, val s: Float)
@@ -539,19 +566,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         return Strips(tb.y, hwT)
     }
 
-    private class Slot(val i: Int, val d: Float, val phi: Float, val depth: Float)
-
     private fun drawWheel(g: Canvas2D, p: Float, pulled: Int) {
-        val lo = max(0, floor(p).toInt() - 7)
-        val hi = min(cards.size - 1, ceil(p).toInt() + 15)
-        val list = ArrayList<Slot>()
-        for (i in lo..hi) {
-            if (i == pulled) continue
-            val d = i - p
-            val phi = phiOf(d)
-            list += Slot(i, d, phi, sin(phi + E) * (R0 + .6f))
-        }
-        list.sortBy { it.depth }
+        val list = wheelSlots(p, cards.size, pulled).sortedBy { it.depth }
         val out = ArrayList<Drawn>(list.size)
         // The lamp's direction (y, z), normalised.
         val ln = hypot(hypot(.35f, .8f), .55f)
@@ -568,6 +584,8 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             if (!front) dark += .2f + min(.3f, .05f * max(0f, -c.d - 1))
             else if (c.d < -.5f) dark += .12f * smooth((-c.d - .5f) * 2)
             val polys = ArrayList<List<Offset>>(2)
+            g.save()
+            g.globalAlpha = c.alpha
             val r = cardStrips(g, tex, c.phi, clamp(dark, 0f, .75f), card, polys)
             // The gap above each card: a soft contact shadow on the card behind, then a lit paper
             // edge.
@@ -602,6 +620,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
                     )
                 g.fillRect(cx - r.hwT + 4, r.topY - 1, r.hwT * 2 - 8, 1f)
             }
+            g.restore()
             out += Drawn(c.i, polys)
         }
         drawn = out

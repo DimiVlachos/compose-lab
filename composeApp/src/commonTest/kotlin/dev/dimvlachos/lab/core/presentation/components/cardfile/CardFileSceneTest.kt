@@ -42,6 +42,31 @@ class CardFileSceneTest {
     }
 
     @Test
+    fun noCardPopsInOrOutAsTheWheelSettles() {
+        // Settling creeps onto a card from either side and stops on it: each card's opacity there
+        // must be what it was a hair away, or the pile's ends flicker as the wheel comes to rest.
+        fun alphas(p: Float) = wheelSlots(p, 40, -1).associate { it.i to it.alpha }
+        for (n in listOf(12, 20)) {
+            val rest = alphas(n.toFloat())
+            for (near in listOf(n - 1e-3f, n + 1e-3f)) {
+                val moving = alphas(near)
+                for (i in rest.keys + moving.keys) {
+                    assertEquals(rest[i] ?: 0f, moving[i] ?: 0f, .01f, "card $i near $near")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun aSettledWheelShowsThePrototypesCards() {
+        // At rest, seven fallen cards in front and fifteen behind, all of them whole.
+        val slots = wheelSlots(20f, 40, -1).filter { it.alpha > 0f }
+        assertEquals((13..35).toList(), slots.map { it.i })
+        assertTrue(slots.all { it.alpha == 1f })
+        assertFalse(wheelSlots(20f, 40, 21).any { it.i == 21 })
+    }
+
+    @Test
     fun theStageLaysOutAsThePrototypeDoes() {
         val s = CardFileScene(cards)
         s.layout(390f, 700f, 2f)
