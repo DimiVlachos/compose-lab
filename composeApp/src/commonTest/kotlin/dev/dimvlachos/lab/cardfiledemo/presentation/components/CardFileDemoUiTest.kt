@@ -120,6 +120,30 @@ class CardFileDemoUiTest {
     }
 
     @Test
+    fun theSheetCrossfadesFromOneNameToTheNext() = runComposeUiTest {
+        val deck = ContactDeck(DemoContacts)
+        val start = CardFileDemos.StartIndex
+        val file = CardFileState(initial = start)
+        lateinit var scope: CoroutineScope
+        setContent {
+            scope = rememberCoroutineScope()
+            CardFileDemo(DemoState(), deck, file)
+        }
+        waitForIdle()
+        onNodeWithText("Ben Hollis").assertExists()
+        mainClock.autoAdvance = false
+        scope.launch { file.spinTo(start + 1) }
+        var frames = 0
+        while (file.front == start && frames++ < 200) mainClock.advanceTimeByFrame()
+        mainClock.advanceTimeBy(48)
+        // Just after the next card comes to the front, the last name is still fading out.
+        onNodeWithText("Ben Hollis").assertExists()
+        mainClock.autoAdvance = true
+        waitForIdle()
+        onNodeWithText("Ben Hollis").assertDoesNotExist()
+    }
+
+    @Test
     fun stoppingTheScriptMidSpinSettlesOnAWholeCard() = runComposeUiTest {
         val deck = ContactDeck(DemoContacts)
         val file = CardFileState(initial = CardFileDemos.StartIndex)

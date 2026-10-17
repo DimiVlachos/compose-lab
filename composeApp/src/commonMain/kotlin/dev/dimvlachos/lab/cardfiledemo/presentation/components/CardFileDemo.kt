@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.cardfiledemo.presentation.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -291,29 +292,33 @@ private fun Sheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(Modifier.weight(1f)) {
-                    val (title, sub) = describe(deck, card, out)
-                    Text(
-                        title,
-                        color = colors.ink,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        if (callFailed) stringResource(Res.string.cardfile_call_failed) else sub,
-                        color = colors.muted,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier =
-                            if (callFailed)
-                                Modifier.testTag("call-failed").semantics {
-                                    liveRegion = LiveRegionMode.Polite
-                                }
-                            else Modifier,
-                    )
+                // As a spin brings each card to the front, its name fades in over the last one's.
+                Crossfade(card, Modifier.weight(1f), tween(220), label = "sheet name") { card ->
+                    Column {
+                        val (title, sub) = describe(deck, card, out)
+                        Text(
+                            title,
+                            color = colors.ink,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            if (callFailed) stringResource(Res.string.cardfile_call_failed)
+                            else sub,
+                            color = colors.muted,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier =
+                                if (callFailed)
+                                    Modifier.testTag("call-failed").semantics {
+                                        liveRegion = LiveRegionMode.Polite
+                                    }
+                                else Modifier,
+                        )
+                    }
                 }
                 if (out && card is FileCard.Entry) {
                     val contact = deck.contact(card)
