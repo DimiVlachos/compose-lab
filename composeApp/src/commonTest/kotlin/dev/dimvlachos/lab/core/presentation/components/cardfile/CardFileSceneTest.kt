@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,22 +37,43 @@ class CardFileSceneTest {
         assertEquals((-6f - 4.6f * 3) * deg, phiOf(3f), 1e-5f)
         assertEquals(72f * deg, phiOf(-1f), 1e-5f)
         assertEquals(33f * deg, phiOf(-.5f), 1e-5f)
-        // Further down the pile in front, each lies 3.4° further over, up to 100°.
+        // Further down the pile in front, each lies 3.4° further over.
         assertEquals((72f + 3.4f * 2) * deg, phiOf(-3f), 1e-5f)
-        assertEquals(100f * deg, phiOf(-20f), 1e-5f)
+    }
+
+    @Test
+    fun thePileStopsLeaningAtTheCardsTheWheelShows() {
+        // The seventh card in front and the fifteenth behind lie as far over as any: deeper ones
+        // rest exactly beneath them, so the pile looks as the prototype's did at rest.
+        val front = (72f + 3.4f * 6) * deg
+        val back = (-6f - 4.6f * 15) * deg
+        assertEquals(front, phiOf(-7f), 1e-5f)
+        assertEquals(front, phiOf(-8f), 1e-5f)
+        assertEquals(front, phiOf(-30f), 1e-5f)
+        assertEquals(back, phiOf(15f), 1e-5f)
+        assertEquals(back, phiOf(16f), 1e-5f)
+        assertEquals(back, phiOf(40f), 1e-5f)
     }
 
     @Test
     fun noCardPopsInOrOutAsTheWheelSettles() {
-        // Settling creeps onto a card from either side and stops on it: each card's opacity there
-        // must be what it was a hair away, or the pile's ends flicker as the wheel comes to rest.
-        fun alphas(p: Float) = wheelSlots(p, 40, -1).associate { it.i to it.alpha }
+        // Settling creeps onto a card from either side and stops on it. A card that is drawn on
+        // one side of that and not the other must lie where a card drawn on both sides lies, so
+        // nothing shows up or goes as the wheel comes to rest.
+        fun slots(p: Float) = wheelSlots(p, 40, -1).associateBy { it.i }
         for (n in listOf(12, 20)) {
-            val rest = alphas(n.toFloat())
+            val rest = slots(n.toFloat())
             for (near in listOf(n - 1e-3f, n + 1e-3f)) {
-                val moving = alphas(near)
-                for (i in rest.keys + moving.keys) {
-                    assertEquals(rest[i] ?: 0f, moving[i] ?: 0f, .01f, "card $i near $near")
+                val moving = slots(near)
+                val both = rest.keys intersect moving.keys
+                for (frame in listOf(rest, moving)) {
+                    for ((i, slot) in frame) {
+                        if (i in both) continue
+                        assertTrue(
+                            both.any { abs(frame.getValue(it).phi - slot.phi) < .01f },
+                            "card $i near $near shows on its own",
+                        )
+                    }
                 }
             }
         }
@@ -59,10 +81,8 @@ class CardFileSceneTest {
 
     @Test
     fun aSettledWheelShowsThePrototypesCards() {
-        // At rest, seven fallen cards in front and fifteen behind, all of them whole.
-        val slots = wheelSlots(20f, 40, -1).filter { it.alpha > 0f }
-        assertEquals((13..35).toList(), slots.map { it.i })
-        assertTrue(slots.all { it.alpha == 1f })
+        // At rest, seven fallen cards in front and fifteen behind.
+        assertEquals((13..35).toList(), wheelSlots(20f, 40, -1).map { it.i })
         assertFalse(wheelSlots(20f, 40, 21).any { it.i == 21 })
     }
 

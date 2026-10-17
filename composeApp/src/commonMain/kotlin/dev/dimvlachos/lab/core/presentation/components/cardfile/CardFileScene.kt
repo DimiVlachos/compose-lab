@@ -28,18 +28,20 @@ private const val DIST = 7f
 /** How far the cards' bottom edges sit from the rod. */
 internal const val R0 = .2f
 
+// The wheel shows this many fallen cards in front of its position and this many behind it.
+private const val PILE_FRONT = 7
+private const val PILE_BACK = 15
+
 // A card's lean, in degrees: upright cards tip back by BACK_STEP each further behind the front, a
 // card flipped over the top falls to FALLEN, and those under it on the pile lie FALL_STEP further
-// over, up to FALL_MAX.
+// over. The pile's last shown cards lean furthest, BACK_MAX and FALL_MAX; deeper ones rest exactly
+// beneath them, hidden.
 private const val UPRIGHT = -6f
 private const val BACK_STEP = 4.6f
+private const val BACK_MAX = UPRIGHT - BACK_STEP * PILE_BACK
 private const val FALLEN = 72f
 private const val FALL_STEP = 3.4f
-private const val FALL_MAX = 100f
-
-// The wheel's pile ends: a card this many in front of, or behind, its position is no longer drawn.
-private const val WHEEL_FRONT = 8f
-private const val WHEEL_BACK = 16f
+private const val FALL_MAX = FALLEN + FALL_STEP * (PILE_FRONT - 1)
 
 /** Where the stage leaves room: under the app bar, and over the sheet at the foot. */
 private const val TOP = 24f
@@ -63,30 +65,29 @@ private fun smooth(t0: Float): Float {
  */
 internal fun phiOf(d: Float): Float =
     when {
-        d >= 0f -> (UPRIGHT - BACK_STEP * d) * DEG
+        d >= 0f -> max(BACK_MAX, UPRIGHT - BACK_STEP * d) * DEG
         d <= -1f -> min(FALL_MAX, FALLEN + FALL_STEP * (-d - 1)) * DEG
         else -> lerp(FALLEN, UPRIGHT, smooth(d + 1)) * DEG
     }
 
-/** Card [i] of the wheel, [d] cards behind its position, leaning [phi], drawn at [alpha]. */
-internal class WheelSlot(val i: Int, val d: Float, val phi: Float, val alpha: Float) {
+/** Card [i] of the wheel, [d] cards behind its position, leaning [phi]. */
+internal class WheelSlot(val i: Int, val d: Float, val phi: Float) {
     val depth: Float = sin(phi + E) * (R0 + .6f)
 }
 
 /**
- * The cards of a [count]-card wheel at [p] that are drawn, all but [pulled]: seven fallen in front
- * and fifteen behind. The prototype cut the pile off at whole cards, so a card at either end popped
- * out as the wheel settled onto one; here the card past each end fades with its distance instead.
+ * The cards of a [count]-card wheel at [p] that are drawn, all but [pulled]: those less than a card
+ * past the pile's last shown ones. Any further out lie exactly beneath the nearest of those, so
+ * leaving them out changes nothing on screen, however the wheel moves.
  */
 internal fun wheelSlots(p: Float, count: Int, pulled: Int): List<WheelSlot> {
-    val lo = max(0, ceil(p - WHEEL_FRONT).toInt())
-    val hi = min(count - 1, floor(p + WHEEL_BACK).toInt())
+    val lo = max(0, floor(p - PILE_FRONT - 1).toInt() + 1)
+    val hi = min(count - 1, ceil(p + PILE_BACK + 1).toInt() - 1)
     val list = ArrayList<WheelSlot>()
     for (i in lo..hi) {
         if (i == pulled) continue
         val d = i - p
-        val alpha = clamp(d + WHEEL_FRONT, 0f, 1f) * clamp(WHEEL_BACK - d, 0f, 1f)
-        if (alpha > 0f) list += WheelSlot(i, d, phiOf(d), alpha)
+        list += WheelSlot(i, d, phiOf(d))
     }
     return list
 }
@@ -584,8 +585,6 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
             if (!front) dark += .2f + min(.3f, .05f * max(0f, -c.d - 1))
             else if (c.d < -.5f) dark += .12f * smooth((-c.d - .5f) * 2)
             val polys = ArrayList<List<Offset>>(2)
-            g.save()
-            g.globalAlpha = c.alpha
             val r = cardStrips(g, tex, c.phi, clamp(dark, 0f, .75f), card, polys)
             // The gap above each card: a soft contact shadow on the card behind, then a lit paper
             // edge.
@@ -620,7 +619,6 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
                     )
                 g.fillRect(cx - r.hwT + 4, r.topY - 1, r.hwT * 2 - 8, 1f)
             }
-            g.restore()
             out += Drawn(c.i, polys)
         }
         drawn = out
