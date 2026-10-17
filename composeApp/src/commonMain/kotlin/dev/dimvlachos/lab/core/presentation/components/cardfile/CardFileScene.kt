@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.Gradient2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.PI
 import kotlin.math.abs
@@ -331,6 +332,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         v.addColorStop(1f, "rgba(0,0,0,.5)")
         g.fillStyle = v
         g.fillRect(0f, 0f, w, h)
+        g.bitmap.freeze()
         return g.bitmap
     }
 

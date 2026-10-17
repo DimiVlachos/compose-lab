@@ -8,6 +8,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -82,6 +83,7 @@ internal fun makeGrain(): ImageBitmap {
         g.lineTo(x + cos(a) * l, y + sin(a) * l)
         g.stroke()
     }
+    image.freeze()
     return image
 }
 
@@ -250,6 +252,7 @@ internal fun bakeFace(card: PaperCard, s: Float, dpr: Float, ink: CardInk): Canv
     }
     edgeStroke(g, card, s)
     notches(g, s)
+    g.bitmap.freeze()
     return g
 }
 
@@ -269,5 +272,6 @@ internal fun bakeBack(card: PaperCard, s: Float, dpr: Float, ink: CardInk): Canv
     g.restore()
     edgeStroke(g, card, s)
     notches(g, s)
+    g.bitmap.freeze()
     return g
 }

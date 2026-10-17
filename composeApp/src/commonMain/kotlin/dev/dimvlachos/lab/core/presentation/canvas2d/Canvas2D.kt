@@ -691,3 +691,10 @@ internal expect fun twoPointConicalShader(
     colors: List<Color>,
     offsets: List<Float>,
 ): Shader
+
+/**
+ * Marks a bitmap that is done being painted as unchanging, so it is drawn from its own pixels: Skia
+ * copies a changeable bitmap into a new image every time it is drawn, which a texture drawn in
+ * strips every frame can't afford. Nothing may paint into it afterwards.
+ */
+internal expect fun ImageBitmap.freeze()

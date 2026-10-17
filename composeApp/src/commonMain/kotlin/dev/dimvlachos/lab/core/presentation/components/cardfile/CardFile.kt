@@ -13,9 +13,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -57,6 +60,7 @@ import dev.dimvlachos.lab.resources.caveat_semibold
 import dev.dimvlachos.lab.resources.courier_prime_bold
 import dev.dimvlachos.lab.resources.courier_prime_regular
 import kotlin.math.abs
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -107,6 +111,7 @@ internal fun CardFile(
     val haptics = LocalHapticFeedback.current
     val wheelFocus = remember { FocusRequester() }
     val pulledFocus = remember { FocusRequester() }
+    var focusPulled by remember { mutableStateOf(false) }
     // The deck size is known now, so the first frame shows the starting card, not card 0. Done
     // before `front` is read below; a shrink still goes through updateCount.
     remember(state, cards.size) { state.growCount(cards.size) }
@@ -159,7 +164,12 @@ internal fun CardFile(
     fun pullOrOpen() = scope.launch {
         when (cards.getOrNull(state.front)) {
             is FileCard.Divider -> state.spinTo(firstContactFrom(state.front))
-            is FileCard.Entry -> if (state.pull()) pulledFocus.requestFocus()
+            is FileCard.Entry -> {
+                // Focus moves to the card once it is all the way out, from the pulled card's own
+                // effect: under reduced motion it is out before its focus target is composed.
+                focusPulled = true
+                state.pull()
+            }
             null -> Unit
         }
     }
@@ -367,6 +377,11 @@ internal fun CardFile(
                     wheelFocus.requestFocus()
                 }
             } else {
+                LaunchedEffect(out) {
+                    snapshotFlow { state.pullProgress >= 1f }.first { it }
+                    if (focusPulled) pulledFocus.requestFocus()
+                    focusPulled = false
+                }
                 val t = scene.target
                 Box(
                     Modifier.offset {

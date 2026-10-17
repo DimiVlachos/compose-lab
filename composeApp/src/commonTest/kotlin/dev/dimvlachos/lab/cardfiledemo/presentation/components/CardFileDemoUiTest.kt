@@ -225,4 +225,14 @@ class CardFileDemoUiTest {
         onNodeWithTag("call").assertExists()
         onNodeWithTag("message").assertExists()
     }
+
+    @Test
+    fun aTapOnTheSheetLeavesThePulledCardOut() = runComposeUiTest {
+        val state = mayaPulledOut()
+        // Her name on the sheet, under the desk: the sheet is not the desk.
+        onNodeWithText("Maya Brooks").performClick()
+        waitForIdle()
+        assertEquals(ContactDeck(DemoContacts).indexOf("maya-brooks"), state.pulled)
+        onNodeWithTag("call").assertExists()
+    }
 }

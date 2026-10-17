@@ -456,4 +456,16 @@ class CardFileUiTest {
         assertEquals(state.front.toFloat(), state.position, 1e-3f, "it rests on a whole card")
         assertTrue(state.front < 7, "it stopped short of where it was spun to, on ${state.front}")
     }
+
+    @Test
+    fun withReducedMotionFocusStillGoesToThePulledCard() = runComposeUiTest {
+        val state = CardFileState(initial = 1)
+        state.reducedMotion = true
+        cardFile(state)
+        onNodeWithTag("cardfile").requestFocus()
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Enter) }
+        waitForIdle()
+        assertEquals(1, state.pulled)
+        onNodeWithTag("pulled").assertIsFocused()
+    }
 }

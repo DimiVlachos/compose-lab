@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +49,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -228,7 +232,8 @@ private fun Hint(file: CardFileState) {
         if (pulled) stringResource(Res.string.cardfile_hint_pulled)
         else stringResource(Res.string.cardfile_hint)
     Row(
-        Modifier.alpha(alpha)
+        Modifier.swallowTouches()
+            .alpha(alpha)
             .clip(RoundedCornerShape(50))
             .background(CardFileSheetColors.HintPill)
             .border(1.dp, CardFileSheetColors.HintEdge, RoundedCornerShape(50))
@@ -265,6 +270,7 @@ private fun Sheet(
     val shape = RoundedCornerShape(22.dp)
     Box(
         Modifier.fillMaxWidth()
+            .swallowTouches()
             .shadow(18.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(shape)
             .background(colors.sheet)
@@ -388,6 +394,18 @@ private fun SheetButton(
         Text(label, color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+/**
+ * Keeps touches that land here off the card file under it, as the prototype's sheet is a page
+ * element over its canvas: a tap on the sheet must not file the pulled card. Buttons inside still
+ * get their taps.
+ */
+private fun Modifier.swallowTouches(): Modifier =
+    pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final).consume()
+        }
+    }
 
 /** The hint's arrow, pointing down: push the cards toward you. */
 private val DownArrow: ImageVector =
