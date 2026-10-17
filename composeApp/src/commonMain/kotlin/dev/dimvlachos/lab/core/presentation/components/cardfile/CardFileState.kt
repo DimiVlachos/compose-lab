@@ -44,6 +44,10 @@ internal class CardFileState(
     var pulled by mutableStateOf<Int?>(null)
         private set
 
+    /** Whether the [pulled] card is on its way back into the rail, to be filed. */
+    var filing by mutableStateOf(false)
+        private set
+
     val position: Float
         get() = wheel.value
 
@@ -233,8 +237,13 @@ internal class CardFileState(
     /** Files the pulled card back into its slot, starting at [velocity] (out per second). */
     suspend fun file(velocity: Float = 0f) {
         if (pulled == null) return
-        if (reducedMotion) out.snapTo(0f) else out.animateTo(0f, pullSpring, velocity)
-        pulled = null
+        filing = true
+        try {
+            if (reducedMotion) out.snapTo(0f) else out.animateTo(0f, pullSpring, velocity)
+            pulled = null
+        } finally {
+            filing = false
+        }
     }
 
     /** The pulled card pushed [down] dp from where the finger took it: back toward the rail. */

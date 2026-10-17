@@ -104,6 +104,21 @@ class CardFileDemoUiTest {
     }
 
     @Test
+    fun theSheetLetsGoOfAFiledCardAsItGoesBackNotWhenItLands() = runComposeUiTest {
+        val state = mayaPulledOut()
+        onNodeWithTag("call").assertExists()
+        mainClock.autoAdvance = false
+        // Escape files the pulled card.
+        onNodeWithTag("cardfile").performKeyInput { pressKey(Key.Escape) }
+        mainClock.advanceTimeBy(300)
+        assertTrue(state.pulled != null, "the card is still on its way back")
+        onNodeWithTag("call").assertDoesNotExist()
+        mainClock.autoAdvance = true
+        waitForIdle()
+        onNodeWithText("Maya Brooks").assertExists()
+    }
+
+    @Test
     fun aPulledCardsHintSaysHowToFileIt() = runComposeUiTest {
         mayaPulledOut()
         onNodeWithText("Push the card down to file it").assertExists()

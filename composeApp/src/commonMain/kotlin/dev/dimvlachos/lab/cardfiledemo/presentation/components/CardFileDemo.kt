@@ -261,11 +261,12 @@ private fun Sheet(
 ) {
     val colors = if (LabTheme.isDark) CardFileSheetColors.Dark else CardFileSheetColors.Light
     // Read through derivedStateOf, so the sheet recomposes as the front card changes, not on every
-    // frame of a spin.
+    // frame of a spin. A card being filed lets go of the sheet as it starts back, not as it lands.
     val shown by
         remember(deck, file) {
             derivedStateOf {
-                deck.cards.getOrNull(file.pulled ?: file.front) to (file.pulled != null)
+                deck.cards.getOrNull(file.pulled ?: file.front) to
+                    (file.pulled != null && !file.filing)
             }
         }
     val shape = RoundedCornerShape(22.dp)
