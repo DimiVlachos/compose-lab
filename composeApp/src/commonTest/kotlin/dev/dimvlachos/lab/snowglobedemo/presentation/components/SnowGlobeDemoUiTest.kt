@@ -44,8 +44,8 @@ import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.runBlocking
 
 /**
- * How long the test that plays the demo's script through may take, in real time: on a CI runner
- * with few cores, longer than the test runner's own 60 s.
+ * How long a test that paints a whole shake and settle, or plays the demo's script through, may
+ * take in real time: on a CI runner with few cores, longer than the test runner's own 60 s.
  */
 private val SlowSnowGlobeTest: Duration = 3.minutes
 
@@ -100,21 +100,22 @@ class SnowGlobeDemoUiTest {
     private fun glitter() = checkNotNull(globe.glitter)
 
     @Test
-    fun enterOnTheGlobeRefreshesAndTomorrowBecomesAShower() = runComposeUiTest {
-        show()
-        pressEnterOnTheGlobe()
-        mainClock.advanceTimeBy(8_000)
-        assertFalse(board.refreshPending)
-        assertEquals(GlobeScene.Shower, board.days[1].scene)
-        onNodeWithTag("updated").assertTextEquals("Updated just now")
-        onNodeWithTag("live")
-            .assert(
-                SemanticsMatcher.expectValue(
-                    SemanticsProperties.ContentDescription,
-                    listOf("Updated. Tomorrow · Thu 15: Light shower, 22 degrees."),
+    fun enterOnTheGlobeRefreshesAndTomorrowBecomesAShower() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            show()
+            pressEnterOnTheGlobe()
+            mainClock.advanceTimeBy(8_000)
+            assertFalse(board.refreshPending)
+            assertEquals(GlobeScene.Shower, board.days[1].scene)
+            onNodeWithTag("updated").assertTextEquals("Updated just now")
+            onNodeWithTag("live")
+                .assert(
+                    SemanticsMatcher.expectValue(
+                        SemanticsProperties.ContentDescription,
+                        listOf("Updated. Tomorrow · Thu 15: Light shower, 22 degrees."),
+                    )
                 )
-            )
-    }
+        }
 
     @Test
     fun theNewForecastWaitsForTheGlitterToSettle() = runComposeUiTest {
@@ -133,20 +134,21 @@ class SnowGlobeDemoUiTest {
     }
 
     @Test
-    fun aResetDuringARefreshLeavesTheNextShakeWhole() = runComposeUiTest {
-        val state = DemoState()
-        show(FakeForecastSource(3_000.milliseconds), state = state)
-        pressEnterOnTheGlobe()
-        // The shake counts within its 1.1 s; reset while that fetch is still out.
-        advanceUntil("the shake to count", most = 1_200) { board.refreshPending }
-        runBlocking { state.resetFeed() }
-        mainClock.advanceTimeByFrame()
-        pressEnterOnTheGlobe()
-        advanceUntil("the second shake's forecast to land", most = 14_000) {
-            board.days[1].scene == GlobeScene.Shower
+    fun aResetDuringARefreshLeavesTheNextShakeWhole() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            val state = DemoState()
+            show(FakeForecastSource(3_000.milliseconds), state = state)
+            pressEnterOnTheGlobe()
+            // The shake counts within its 1.1 s; reset while that fetch is still out.
+            advanceUntil("the shake to count", most = 1_200) { board.refreshPending }
+            runBlocking { state.resetFeed() }
+            mainClock.advanceTimeByFrame()
+            pressEnterOnTheGlobe()
+            advanceUntil("the second shake's forecast to land", most = 14_000) {
+                board.days[1].scene == GlobeScene.Shower
+            }
+            assertFalse(board.refreshPending)
         }
-        assertFalse(board.refreshPending)
-    }
 
     @Test
     fun theSelectedDaysHighlightSlidesToTheDayTapped() = runComposeUiTest {
@@ -183,20 +185,23 @@ class SnowGlobeDemoUiTest {
     }
 
     @Test
-    fun tappingADayChangesTheHeaderAndTheGlobesState() = runComposeUiTest {
-        show()
-        onNodeWithTag("snowglobe")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Sunny"))
-        onNodeWithTag("day-2").performClick()
-        mainClock.advanceTimeBy(100)
-        onNodeWithTag("day-2").assertIsSelected()
-        onNodeWithTag("temperature").assertTextEquals("23°")
-        onNodeWithTag("snowglobe")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Meltemi"))
-        mainClock.advanceTimeBy(4_000)
-        assertFalse(board.refreshPending, "changing day never refreshes")
-        onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
-    }
+    fun tappingADayChangesTheHeaderAndTheGlobesState() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            show()
+            onNodeWithTag("snowglobe")
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Sunny"))
+            onNodeWithTag("day-2").performClick()
+            mainClock.advanceTimeBy(100)
+            onNodeWithTag("day-2").assertIsSelected()
+            onNodeWithTag("temperature").assertTextEquals("23°")
+            onNodeWithTag("snowglobe")
+                .assert(
+                    SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Meltemi")
+                )
+            mainClock.advanceTimeBy(4_000)
+            assertFalse(board.refreshPending, "changing day never refreshes")
+            onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
+        }
 
     @Test
     fun theArrowKeysMoveTheDayTabs() = runComposeUiTest {
@@ -217,21 +222,22 @@ class SnowGlobeDemoUiTest {
     }
 
     @Test
-    fun aSwipeOutsideTheGlobeChangesDayWithoutARefresh() = runComposeUiTest {
-        show()
-        onNodeWithText("Oia, Santorini").performTouchInput {
-            down(center)
-            // 100 dp: past one day's 64 dp step and short of two.
-            repeat(10) { moveBy(Offset(-10f * density, 0f)) }
-            up()
+    fun aSwipeOutsideTheGlobeChangesDayWithoutARefresh() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            show()
+            onNodeWithText("Oia, Santorini").performTouchInput {
+                down(center)
+                // 100 dp: past one day's 64 dp step and short of two.
+                repeat(10) { moveBy(Offset(-10f * density, 0f)) }
+                up()
+            }
+            mainClock.advanceTimeBy(100)
+            assertEquals(2, board.selected)
+            onNodeWithTag("temperature").assertTextEquals("23°")
+            mainClock.advanceTimeBy(4_000)
+            assertFalse(board.refreshPending, "changing day never refreshes")
+            onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
         }
-        mainClock.advanceTimeBy(100)
-        assertEquals(2, board.selected)
-        onNodeWithTag("temperature").assertTextEquals("23°")
-        mainClock.advanceTimeBy(4_000)
-        assertFalse(board.refreshPending, "changing day never refreshes")
-        onNodeWithTag("updated").assertTextEquals("Updated 3 h ago")
-    }
 
     @Test
     fun aSwipeOnTheGlobeStirsItAndLeavesTheDay() = runComposeUiTest {
@@ -246,27 +252,29 @@ class SnowGlobeDemoUiTest {
     }
 
     @Test
-    fun aFailedRefreshSaysSo() = runComposeUiTest {
-        show(FakeForecastSource(300.milliseconds).apply { failNext = true })
-        pressEnterOnTheGlobe()
-        mainClock.advanceTimeBy(8_000)
-        onNodeWithTag("updated").assertTextEquals("Couldn’t update")
-        assertEquals(GlobeScene.Sunny, board.days[1].scene)
-    }
+    fun aFailedRefreshSaysSo() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            show(FakeForecastSource(300.milliseconds).apply { failNext = true })
+            pressEnterOnTheGlobe()
+            mainClock.advanceTimeBy(8_000)
+            onNodeWithTag("updated").assertTextEquals("Couldn’t update")
+            assertEquals(GlobeScene.Sunny, board.days[1].scene)
+        }
 
     @Test
-    fun withReducedMotionEnterStillRefreshesAndTheGlitterStaysDown() = runComposeUiTest {
-        show(reducedMotion = true)
-        val before = glitter().y.copyOf()
-        pressEnterOnTheGlobe()
-        repeat(8_000 / 16) {
-            mainClock.advanceTimeByFrame()
-            assertTrue(before.contentEquals(glitter().y), "the glitter must stay put")
+    fun withReducedMotionEnterStillRefreshesAndTheGlitterStaysDown() =
+        runComposeUiTest(testTimeout = SlowSnowGlobeTest) {
+            show(reducedMotion = true)
+            val before = glitter().y.copyOf()
+            pressEnterOnTheGlobe()
+            repeat(8_000 / 16) {
+                mainClock.advanceTimeByFrame()
+                assertTrue(before.contentEquals(glitter().y), "the glitter must stay put")
+            }
+            assertFalse(board.refreshPending)
+            assertEquals(GlobeScene.Shower, board.days[1].scene)
+            onNodeWithTag("updated").assertTextEquals("Updated just now")
         }
-        assertFalse(board.refreshPending)
-        assertEquals(GlobeScene.Shower, board.days[1].scene)
-        onNodeWithTag("updated").assertTextEquals("Updated just now")
-    }
 
     @Test
     fun theDayCardsShowEachDaysHighAndLowAndTheHintSaysShake() = runComposeUiTest {
