@@ -535,6 +535,7 @@ private fun ShelfHero(
 ) {
     val density = LocalDensity.current.density
     val edge = ShelfTheme.colors.background
+    if (assets != null) SideEffect { state.ready = true }
     // Clipped to its bounds, as the ring's hero is, so its wall paints nothing past its edges when
     // the list it sits in stretches or blurs.
     Box(

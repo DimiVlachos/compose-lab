@@ -12,7 +12,8 @@ private const val RING_SPREAD = 0.2f
 private const val RING_TALLEST = 240f
 private const val RING_PLANK_Y = 0.8f
 private const val RING_BOOK_BAND = 0.62f
-private const val RING_RADIUS = 0.62f
+// Wide, so on a phone the shelf curves away only past the screen's edges.
+private const val RING_RADIUS = 1.3f
 // The ring is an oval: its depth is this share of its width, so it curves gently away.
 private const val RING_OVAL = 0.5f
 private const val RING_GAP = 2.5f
@@ -23,7 +24,7 @@ private const val EDGE_FROM = 0.6f
 private const val EDGE_TO = 1.5f
 private const val EDGE_DARK = 0.55f
 private const val VISIBLE_ANGLE = 1.75f
-private const val ARC_SAMPLES = 512
+private const val ARC_SAMPLES = 2048
 private const val ARC_STEP = 2.5f / ARC_SAMPLES
 
 internal data class RingBook(

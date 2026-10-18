@@ -66,6 +66,10 @@ internal class ShelfState(
     /** The ring a shelf of [ShelfStyle.Ring] spins on, once it is shown: a script turns it. */
     internal var ringSpin: RingState? = null
 
+    /** Whether the shelf's books are baked and drawn whole, so a screen can show it all at once. */
+    var ready by mutableStateOf(false)
+        internal set
+
     var mode by mutableStateOf(ShelfMode.Shelf)
         private set
 

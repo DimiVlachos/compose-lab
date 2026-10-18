@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -101,6 +102,8 @@ private const val FLING_FRICTION = 1.6f
 private const val SNAP_DAMPING = 0.82f
 private const val SNAP_STIFFNESS = 140f
 private const val SPINE_WINDOW = 8
+private const val REVEAL_WINDOW = 5
+private const val REVEAL_MS = 200
 private const val SHELL_WINDOW = 3
 private const val EVICT_MARGIN = 4
 private const val SHELL_FADE_MS = 250
@@ -248,7 +251,24 @@ internal fun RingShelfHero(
     val previous = stringResource(Res.string.bookshelf_carousel_previous)
     val next = stringResource(Res.string.bookshelf_carousel_next)
     val takeOut = stringResource(Res.string.bookshelf_shelf_take_out)
-    Box(modifier.clipToBounds()) {
+    // The ring shows once every book a screen holds has its spine, so none is seen arriving blank.
+    val reveal = remember(hero) { Animatable(0f) }
+    LaunchedEffect(hero) {
+        snapshotFlow {
+            val target = spin.ring
+            target != null &&
+                ringReady(
+                    target.books.map { it.id },
+                    spin.centredIndex,
+                    hasLight = hero.maps != null && hero.backdrop != null,
+                    baked = hero.textures.spines.keys,
+                )
+        }
+            .first { it }
+        shelf.ready = true
+        reveal.animateTo(1f, tween(REVEAL_MS))
+    }
+    Box(modifier.clipToBounds().graphicsLayer { alpha = reveal.value }) {
         Canvas(
             Modifier.fillMaxSize()
                 .pointerInput(spin, ring, shelf) {
@@ -608,10 +628,18 @@ internal class RingTextures {
                 evict(ring, centre)
                 val window = around(centre, SPINE_WINDOW, ring.books.lastIndex)
                 val shellWindow = around(centre, SHELL_WINDOW, ring.books.lastIndex)
-                val spineAt = window.firstOrNull { ring.books[it].id !in spines }
+                val missing = window.filter { ring.books[it].id !in spines }
+                val spineAt = missing.firstOrNull()
                 val shellAt = shellWindow.firstOrNull { stale(ring.books[it].id, coverFor) }
                 when {
-                    spineAt != null -> bakeSpine(ring, spineAt, entries[spineAt], density, kit)
+                    // Every missing spine at once, as many in parallel as the platform's text
+                    // bakers allow; each is stored back here, on the ring's own thread.
+                    spineAt != null ->
+                        kotlinx.coroutines.coroutineScope {
+                            missing.forEach { i ->
+                                launch { bakeSpine(ring, i, entries[i], density, kit) }
+                            }
+                        }
                     shellAt != null -> {
                         val id = ring.books[shellAt].id
                         val fresh = id !in shells
@@ -698,6 +726,14 @@ internal class RingTextures {
     private fun stale(id: Int, coverFor: (Int) -> Bitmap?): Boolean =
         id !in shells || coverFor(id) !== shellCovers[id]
 }
+
+/**
+ * Whether the ring can be shown whole: its light is baked, and so is the spine of every book within
+ * [REVEAL_WINDOW] of the one in front, all a screen shows, so no book is seen arriving blank.
+ */
+internal fun ringReady(ids: List<Int>, centre: Int, hasLight: Boolean, baked: Set<Int>): Boolean =
+    hasLight &&
+        around(centre.coerceAtLeast(0), REVEAL_WINDOW, ids.lastIndex).all { ids[it] in baked }
 
 private fun around(centre: Int, window: Int, last: Int): List<Int> = buildList {
     add(centre)

@@ -44,12 +44,15 @@ class ShelfRingTest {
         // Measured where the eye sees them: the spines' own front corners, along the oval.
         var scroll = ring.start
         while (scroll <= ring.end) {
-            // Past the oval's sides the books face away, round behind; only fronts that face the
-            // viewer can be seen to touch.
+            // Only spines on screen can be seen to touch: far round the ring, off the screen,
+            // books stand nearly side on.
             val placed =
                 ring.books.indices
                     .mapNotNull { ring.place(it, scroll) }
-                    .filter { abs(it.angle) < kotlin.math.PI.toFloat() / 2f }
+                    .filter {
+                        it.pose.map(Vec3(it.pose.dimensions.thickness / 2f, 0f, 0f)).x in
+                            0f..ring.width
+                    }
                     .sortedBy { it.angle }
             placed.zipWithNext { a, b ->
                 val aRight = a.pose.map(Vec3(a.pose.dimensions.thickness, 0f, 0f)).x
@@ -64,12 +67,14 @@ class ShelfRingTest {
     }
 
     @Test
-    fun aboutSevenSpinesFaceTheViewer() {
-        val facing =
+    fun aScreenfulOfSpinesFacesTheViewer() {
+        // On a ring this wide, what is on screen is the gentle front of the curve.
+        val onScreen =
             ring.visible(ring.books[20].centre).count {
-                abs(it.angle) < (50.0 * kotlin.math.PI / 180.0)
+                val x = it.pose.map(Vec3(it.pose.dimensions.thickness / 2f, 0f, 0f)).x
+                x in 0f..ring.width
             }
-        assertTrue(facing in 6..9)
+        assertTrue(onScreen in 8..16, "on screen: $onScreen")
     }
 
     @Test
@@ -173,7 +178,31 @@ class ShelfRingTest {
 
     @Test
     fun theRingKeepsItsRadiusHoweverManyBooks() {
-        assertEquals(412f * 0.62f, ring.radius, 1e-3f)
-        assertEquals(384f * 0.62f, ShelfRing(384f, 330f, specs.take(8)).radius, 1e-3f)
+        assertEquals(412f * 1.3f, ring.radius, 1e-3f)
+        assertEquals(384f * 1.3f, ShelfRing(384f, 330f, specs.take(8)).radius, 1e-3f)
+    }
+
+    @Test
+    fun booksStayNearlyFullWidthRightUpToTheScreensEdge() {
+        // A phone's ring: the shelf curves away only past the screen, so a book at its edge is
+        // still seen almost square on, never crowded side-on into the distance.
+        val phone = ShelfRing(width = 384f, height = 330f, specs = specs)
+        var scroll = phone.books[20].centre
+        repeat(60) {
+            for (placed in phone.visible(scroll)) {
+                val pose = placed.pose
+                val t = pose.dimensions.thickness
+                val left = phone.camera.project(pose.map(Vec3(0f, 0f, 0f)))
+                val right = phone.camera.project(pose.map(Vec3(t, 0f, 0f)))
+                val onScreen = minOf(left.x, right.x) >= 0f && maxOf(left.x, right.x) <= phone.width
+                if (onScreen) {
+                    assertTrue(
+                        abs(right.x - left.x) >= 0.85f * t,
+                        "book ${placed.index} at ${placed.angle}: ${abs(right.x - left.x)} of $t",
+                    )
+                }
+            }
+            scroll += 3.1f
+        }
     }
 }

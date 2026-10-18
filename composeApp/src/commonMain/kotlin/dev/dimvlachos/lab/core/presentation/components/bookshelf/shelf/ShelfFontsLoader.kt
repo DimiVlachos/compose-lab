@@ -18,15 +18,17 @@ import dev.dimvlachos.lab.resources.instrument_sans_bold
 import dev.dimvlachos.lab.resources.instrument_sans_medium
 import dev.dimvlachos.lab.resources.instrument_serif_italic
 import dev.dimvlachos.lab.resources.instrument_serif_regular
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import org.jetbrains.compose.resources.Font
 
 /**
- * Where everything that sets text for the shelf is baked: one bake at a time, off the main thread.
- * Text is laid out through the platform's font machinery, which is not made to be entered from
- * several threads at once.
+ * Where everything that sets text for the shelf is baked, off the main thread: several at once
+ * where the platform's font machinery can be entered from several threads, one at a time where it
+ * cannot.
  */
-internal val ShelfTextBakers = Dispatchers.Default.limitedParallelism(1)
+internal val ShelfTextBakers: CoroutineDispatcher = shelfTextBakers()
+
+internal expect fun shelfTextBakers(): CoroutineDispatcher
 
 /**
  * The shelf's four faces, Instrument Serif and Sans. Textures are baked on background threads, so
