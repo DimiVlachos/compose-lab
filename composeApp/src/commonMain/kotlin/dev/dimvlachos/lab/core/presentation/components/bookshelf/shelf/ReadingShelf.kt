@@ -4,12 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import dev.dimvlachos.lab.core.platform.Sound
+import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookChapterPages
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookPageSetting
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.ChapterPaginator
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.WordRef
@@ -17,6 +19,7 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.PageTu
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.rememberPageTurnState
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.bookshelf_open_book_page
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 
 /** A chapter to read: its [title], and its paragraphs split into [words]. */
@@ -43,11 +46,19 @@ internal fun ReadingShelf(
     val activeId = state.activeBookId
     val chapter = remember(activeId) { activeId?.let(chapterFor) }
     val ready = setting
+    // Set into pages by the bakers, the only thread the shelf's text is set on.
+    // Another book's or layout's pages are dropped at once, not kept until these are set.
     val pages =
-        remember(ready, activeId, chapter) {
-            if (ready == null || activeId == null || chapter == null) null
-            else paginator.paginate(ready, activeId, chapter.words)
-        }
+        produceState<BookChapterPages?>(null, ready, activeId, chapter) {
+                value = null
+                if (ready != null && activeId != null && chapter != null) {
+                    value =
+                        withContext(ShelfTextBakers) {
+                            paginator.paginate(ready, activeId, chapter.words)
+                        }
+                }
+            }
+            .value
     val source =
         remember(pages, chapter, spread) {
             if (pages == null || chapter == null) null

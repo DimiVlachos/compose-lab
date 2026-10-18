@@ -19,6 +19,10 @@ internal class BookChapterPages(
     fun pageAt(ref: WordRef?): Int {
         val paragraph = ref?.paragraph?.takeIf { it in words.indices } ?: return 0
         val text = PageText(listOf(words[paragraph]), paragraph)
+        val offset = text.rangeOf(ref)?.first ?: 0
+        // A paragraph's first word is on its first line: nothing to lay out, so this can be asked
+        // from any thread.
+        if (offset == 0) return pages.indexAtLine(lines[paragraph].firstLine, lines)
         val layout =
             measured?.takeIf { it.first == paragraph }?.second
                 ?: setting
@@ -29,7 +33,6 @@ internal class BookChapterPages(
                         )
                     )
                     .also { measured = paragraph to it }
-        val offset = text.rangeOf(ref)?.first ?: 0
         return pages.indexAtLine(
             lines[paragraph].firstLine + layout.getLineForOffset(offset),
             lines,
