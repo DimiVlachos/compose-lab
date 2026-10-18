@@ -19,5 +19,7 @@ internal actual fun imageBitmapOf(pixels: IntArray, width: Int, height: Int): Im
     val bitmap = Bitmap()
     bitmap.allocPixels(ImageInfo.makeN32(width, height, ColorAlphaType.UNPREMUL))
     bitmap.installPixels(bytes)
+    // Never painted again, and Skia copies a changeable bitmap every time it is drawn.
+    bitmap.setImmutable()
     return bitmap.asComposeImageBitmap()
 }

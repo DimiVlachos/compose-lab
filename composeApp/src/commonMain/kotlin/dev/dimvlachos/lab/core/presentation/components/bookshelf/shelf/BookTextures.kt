@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookPageSetting
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.Binding
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.BookDimensions
@@ -306,6 +307,7 @@ internal fun createRibbonBand(dims: BookDimensions, pxPerUnit: Float): Bitmap {
         scale(pageWidth / d, pageHeight / h)
         drawPageRibbon(d, h)
     }
+    bitmap.freeze()
     return bitmap
 }
 
@@ -319,6 +321,8 @@ private fun face(w: Float, h: Float, pxPerUnit: Float, draw: Canvas.() -> Unit):
         scale(bitmap.width / w, bitmap.height / h)
         draw()
     }
+    // Drawn every frame from now on, so frozen: see freeze.
+    bitmap.freeze()
     return bitmap
 }
 
