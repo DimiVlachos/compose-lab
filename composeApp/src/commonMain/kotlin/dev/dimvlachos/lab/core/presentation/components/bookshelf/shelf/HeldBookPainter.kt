@@ -60,10 +60,11 @@ internal fun Canvas.drawHeldBook(
     hidePages: Boolean = false,
     shade: Float = 1f,
     castShadow: Float = 1f,
+    coverOnly: Boolean = false,
 ) {
-    val faces = buildBookFaces(pose, readFraction)
+    val faces = buildBookFaces(pose, readFraction, coverOnly)
     if (faces.isEmpty()) return
-    if (castShadow > 0f) drawBookShadow(pose, readFraction, scale, castShadow)
+    if (castShadow > 0f) drawBookShadow(pose, readFraction, scale, castShadow, coverOnly)
     val onLeftPage = ribbonTail == RibbonSide.Left
     val openTail = ribbonTail != null && tailMotion != null
     if (shelfRibbonBookId != null) {
@@ -72,14 +73,14 @@ internal fun Canvas.drawHeldBook(
             pose,
             scale,
             lighting,
-            ribbonAnchors(pose, readFraction, onLeftPage),
+            ribbonAnchors(pose, readFraction, onLeftPage, coverOnly),
             openTail,
         )
     }
     fun tail() {
         if (!openTail || tailMotion == null || pose.open <= OPEN_TAIL_FROM) return
         drawRibbonTail(
-            ribbonAnchors(pose, readFraction, onLeftPage),
+            ribbonAnchors(pose, readFraction, onLeftPage, coverOnly),
             smoothStep(OPEN_TAIL_FROM, OPEN_TAIL_SHOWN, pose.open),
             lighting,
             tailMotion,
@@ -235,7 +236,13 @@ internal fun polygon(points: List<Point2>) =
         close()
     }
 
-private fun Canvas.drawBookShadow(pose: BookPose, readFraction: Float?, k: Float, alpha: Float) {
+private fun Canvas.drawBookShadow(
+    pose: BookPose,
+    readFraction: Float?,
+    k: Float,
+    alpha: Float,
+    coverOnly: Boolean,
+) {
     val depth = pose.dimensions.depth
     val reach = SHADOW_REACH * k
     val shape =
@@ -244,6 +251,7 @@ private fun Canvas.drawBookShadow(pose: BookPose, readFraction: Float?, k: Float
             readFraction,
             Point2(SUN_SHADOW_DX * k / depth, SUN_SHADOW_DY * k / depth),
             reach,
+            coverOnly,
         )
     val fade = smoothStep(0f, SHADOW_FADE_IN * k, shape.height) * alpha
     if (fade <= 0f || shape.outline.size < 3) return

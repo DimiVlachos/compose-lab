@@ -150,8 +150,26 @@ internal object TiltPaths {
         0.08f * sin(PI_F * smoothStep(0.2f, 1f, travel)) * (1f - smoothStep(0.85f, 1f, travel))
 }
 
-internal fun hingeX(thickness: Float, readFraction: Float?): Float {
+/**
+ * How much of a book's thickness its cover board is: all that swings when the cover closes alone.
+ */
+internal const val COVER_BOARD = 0.04f
+
+/**
+ * Where an open book splits: at its bookmark, or, with [coverOnly], just inside its cover, as when
+ * the cover is closed from the first page.
+ */
+internal fun hingeX(thickness: Float, readFraction: Float?, coverOnly: Boolean = false): Float {
+    if (coverOnly) return thickness * (1f - COVER_BOARD)
     val read =
         if (readFraction != null && readFraction > 0f) readFraction.coerceIn(0.12f, 0.88f) else 0.1f
     return thickness * (1f - read)
 }
+
+/**
+ * How far a book whose cover closes on its own is moved back through its thickness, so its open
+ * pages stay where its bookmark put them; nothing once the cover has shut.
+ */
+internal fun coverOnlyShift(thickness: Float, readFraction: Float?, open: Float): Float =
+    (hingeX(thickness, readFraction, coverOnly = true) - hingeX(thickness, readFraction)) *
+        open.coerceIn(0f, 1f)

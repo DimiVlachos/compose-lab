@@ -89,6 +89,8 @@ internal class ShelfState(
     private var vanish by mutableFloatStateOf(0f)
     private var arch by mutableFloatStateOf(0f)
     private var push by mutableFloatStateOf(0f)
+    // The cover is being closed from the first page, so it swings alone, without the read pages.
+    private var coverOnly by mutableStateOf(false)
     private var releaseTilt by mutableFloatStateOf(0f)
     private var path by mutableStateOf(TiltPath.Direct)
     private var grabStartTilt = 0f
@@ -101,7 +103,7 @@ internal class ShelfState(
                 travel <= 0f -> tilt
                 else -> TiltPaths.out(releaseTilt, travel)
             }
-        ShelfMotion(activeBookId, travel, open, effectiveTilt, vanish, arch, push)
+        ShelfMotion(activeBookId, travel, open, effectiveTilt, vanish, arch, push, coverOnly)
     }
 
     val isBookOut: Boolean
@@ -119,6 +121,7 @@ internal class ShelfState(
         open = 0f
         vanish = 0f
         arch = 0f
+        coverOnly = false
         listening = false
         path = TiltPath.Direct
         grabStartTilt = maxOf(TiltGesture.MIN_GRAB_TILT, start)
@@ -181,6 +184,7 @@ internal class ShelfState(
         cancelMotion()
         // The first of the close flattens the arched pages; the cover closes over the rest.
         val c = closed.coerceIn(0f, 1f)
+        coverOnly = true
         val flatten = TiltGesture.COVER_FLATTEN
         arch = 1f - smoothStep(0f, flatten, c)
         open = 1f - ((c - flatten) / (1f - flatten)).coerceIn(0f, 1f)
@@ -198,6 +202,7 @@ internal class ShelfState(
             animate(0f, 1f, animationSpec = tween(PUSH_RELAX_MS, easing = LinearEasing)) { p, _ ->
                 open = start + (1f - start) * easeOutCubic(p)
             }
+            coverOnly = false
             ease(arch, 1f, PUSH_RELAX_MS) { arch = it }
         }
     }

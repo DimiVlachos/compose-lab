@@ -32,15 +32,20 @@ internal data class ProjectedFace(
     val insideRow: List<Point2> = emptyList(),
 )
 
-internal fun buildBookFaces(pose: BookTransform, readFraction: Float?): List<ProjectedFace> {
+internal fun buildBookFaces(
+    pose: BookTransform,
+    readFraction: Float?,
+    coverOnly: Boolean = false,
+): List<ProjectedFace> {
     val (t, h, d) = pose.dimensions
     val alpha = coverAngle(pose.open)
-    val hingeAt = hingeX(t, readFraction)
+    val hingeAt = hingeX(t, readFraction, coverOnly)
     val hinge = Hinge(hingeAt, cos(alpha), sin(alpha))
+    val shift = if (coverOnly) coverOnlyShift(t, readFraction, pose.open) else 0f
     val faces = mutableListOf<ProjectedFace>()
 
     fun add(texture: FaceTexture, uv: UvRect, corners: List<Vec3>, normal: Vec3, hinged: Boolean) {
-        val world = corners.map { pose.map(if (hinged) hinge.point(it) else it) }
+        val world = corners.map { pose.map((if (hinged) hinge.point(it) else it).shifted(shift)) }
         val n = pose.mapDirection(if (hinged) hinge.direction(normal) else normal)
         val centre = (world[0] + world[2]) * 0.5f
         val camera = pose.camera
@@ -184,17 +189,22 @@ internal fun ribbonAnchors(
     pose: BookPose,
     readFraction: Float?,
     onLeftPage: Boolean = false,
+    coverOnly: Boolean = false,
 ): Pair<Point2, Point2> {
     val (t, _, d) = pose.dimensions
-    val x = hingeX(t, readFraction)
+    val x = hingeX(t, readFraction, coverOnly)
     val alpha = coverAngle(pose.open)
     val hinge = Hinge(x, cos(alpha), sin(alpha))
+    val shift = if (coverOnly) coverOnlyShift(t, readFraction, pose.open) else 0f
     fun anchor(depth: Float): Point2 {
         val local = Vec3(x, 0f, -d * depth)
-        return pose.camera.project(pose.map(if (onLeftPage) hinge.point(local) else local))
+        val placed = (if (onLeftPage) hinge.point(local) else local).shifted(shift)
+        return pose.camera.project(pose.map(placed))
     }
     return anchor(RIBBON_NEAR) to anchor(RIBBON_FAR)
 }
+
+private fun Vec3.shifted(dx: Float) = if (dx == 0f) this else Vec3(x - dx, y, z)
 
 private class Hinge(private val at: Float, private val cosA: Float, private val sinA: Float) {
     fun point(p: Vec3): Vec3 {
@@ -250,19 +260,22 @@ internal fun bookShadow(
     readFraction: Float?,
     light: Point2,
     reach: Float,
+    coverOnly: Boolean = false,
 ): ShadowShape {
     val (t, h, d) = pose.dimensions
-    val hingeAt = hingeX(t, readFraction)
+    val hingeAt = hingeX(t, readFraction, coverOnly)
     val alpha = coverAngle(pose.open)
     val hinge = Hinge(hingeAt, cos(alpha), sin(alpha))
+    val shift = if (coverOnly) coverOnlyShift(t, readFraction, pose.open) else 0f
     val corners =
         listOf(0f, h).flatMap { y ->
             listOf(0f, -d).flatMap { z ->
                 listOf(
-                    Vec3(0f, y, z),
-                    Vec3(hingeAt, y, z),
-                    hinge.point(Vec3(t, y, z)),
-                )
+                        Vec3(0f, y, z),
+                        Vec3(hingeAt, y, z),
+                        hinge.point(Vec3(t, y, z)),
+                    )
+                    .map { it.shifted(shift) }
             }
         }
     var total = 0f

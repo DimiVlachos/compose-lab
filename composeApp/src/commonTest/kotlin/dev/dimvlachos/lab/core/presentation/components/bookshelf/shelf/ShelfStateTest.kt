@@ -298,6 +298,7 @@ class ShelfStateTest {
         settle()
 
         state.dragCover(0.3f)
+        assertTrue(state.motion.value.coverOnly, "only the cover swings")
         assertEquals(0f, state.motion.value.arch, 1e-3f, "the pages flatten first")
         assertTrue(state.motion.value.open in 0.7f..0.8f, "then the cover closes")
         state.releaseCover(velocity = 0f)
@@ -305,6 +306,7 @@ class ShelfStateTest {
 
         assertEquals(ShelfMode.Open, state.mode, "a short drag lets the cover fall open again")
         assertEquals(1f, state.motion.value.open, 1e-3f)
+        assertFalse(state.motion.value.coverOnly, "open again, the book splits at its bookmark")
         job.cancel()
     }
 
@@ -321,6 +323,8 @@ class ShelfStateTest {
 
         assertEquals(ShelfMode.Shelf, state.mode)
         assertEquals(listOf(3), closed)
+        state.openDirect(3)
+        assertFalse(state.motion.value.coverOnly, "taken out again, it opens at its bookmark")
         job.cancel()
     }
 }

@@ -170,6 +170,7 @@ internal data class ShelfMotion(
     val vanish: Float = 0f,
     val arch: Float = 0f,
     val push: Float = 0f,
+    val coverOnly: Boolean = false,
 )
 
 internal data class HeldGeometry(
@@ -767,6 +768,7 @@ private fun ShelfStage(
                     pose = pose,
                     faceBitmap = ::faceBitmap,
                     readFraction = entry.readFraction,
+                    coverOnly = m.coverOnly,
                     ribbonTail = side.takeIf { flatTail == null && bandShown },
                     lighting = lighting,
                     scale = assets.layout.scale,

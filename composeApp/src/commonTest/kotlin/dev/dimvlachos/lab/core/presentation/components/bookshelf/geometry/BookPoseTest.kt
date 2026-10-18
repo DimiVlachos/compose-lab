@@ -85,6 +85,32 @@ class BookPoseTest {
     }
 
     @Test
+    fun aCoverClosingOnItsOwnLeavesTheOpenPagesWhereTheBookmarkPutThem() {
+        fun rightPage(coverOnly: Boolean) =
+            buildBookFaces(pose(travel = 1f, open = 1f), readFraction = 0.45f, coverOnly)
+                .single { it.texture == FaceTexture.RightPage }
+                .corners
+
+        rightPage(coverOnly = false).zip(rightPage(coverOnly = true)).forEach { (a, b) ->
+            assertEquals(a.x, b.x, EPS)
+            assertEquals(a.y, b.y, EPS)
+        }
+    }
+
+    @Test
+    fun aCoverClosedOnItsOwnLandsTheBookWhereItsShelfPlaceIs() {
+        fun cover(coverOnly: Boolean) =
+            buildBookFaces(pose(travel = 1f, open = 1e-5f), readFraction = 0.45f, coverOnly)
+                .single { it.texture == FaceTexture.Cover }
+                .corners
+
+        cover(coverOnly = false).zip(cover(coverOnly = true)).forEach { (a, b) ->
+            assertEquals(a.x, b.x, 0.05f)
+            assertEquals(a.y, b.y, 0.05f)
+        }
+    }
+
+    @Test
     fun facesAreOrderedFromFarToNear() {
         val depths = buildBookFaces(pose(travel = 0.5f, tilt = 0.2f), null).map { it.depth }
 
@@ -96,6 +122,12 @@ class BookPoseTest {
         assertEquals(30f * (1f - 0.45f), hingeX(30f, 0.45f), EPS)
         assertEquals(30f * (1f - 0.12f), hingeX(30f, 0.01f), EPS)
         assertEquals(30f * (1f - 0.1f), hingeX(30f, null), EPS)
+    }
+
+    @Test
+    fun aCoverClosedOnItsOwnHingesJustInsideTheBoard() {
+        assertEquals(30f * (1f - COVER_BOARD), hingeX(30f, 0.45f, coverOnly = true), EPS)
+        assertTrue(COVER_BOARD < 0.1f, "thinner than any stack of read pages")
     }
 
     @Test
