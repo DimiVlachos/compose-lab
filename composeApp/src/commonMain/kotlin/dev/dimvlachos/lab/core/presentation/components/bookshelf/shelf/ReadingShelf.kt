@@ -1,8 +1,5 @@
 package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,9 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookPageSetting
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.ChapterPaginator
@@ -115,17 +110,9 @@ internal fun ReadingShelf(
         spread = spread,
         // Nothing reads the page aloud here, so its text stays in the page itself.
         liveText = false,
-        // Room above the open book for its close button.
-        openReserve = PaddingValues(top = 64.dp),
-        chrome = { alpha ->
-            Box(Modifier.fillMaxSize()) {
-                ShelfCloseButton(
-                    alpha,
-                    onClose = { state.putBack() },
-                    Modifier.align(Alignment.TopStart),
-                )
-            }
-        },
+        // Swiped down, or right from its first page, or Back, it goes back; screen readers have
+        // the same as an action on the open book.
+        chrome = { ShelfCloseAction(onClose = { state.putBack() }) },
         body = body,
     )
 }
