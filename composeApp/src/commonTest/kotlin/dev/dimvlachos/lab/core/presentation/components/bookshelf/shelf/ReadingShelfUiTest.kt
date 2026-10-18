@@ -20,6 +20,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -155,6 +156,61 @@ class ReadingShelfUiTest {
         waitUntil(timeoutMillis = 10_000) { held.turns.page == 1 }
         act("Close the book")
         waitUntil(timeoutMillis = 10_000) { held.shelf.mode == ShelfMode.Shelf }
+    }
+
+    // Takes Bayou Lanterns out and waits until it lies open at [page].
+    private fun ComposeUiTest.openAt(page: Int): Held {
+        val held = planks(withChapter = true)
+        runOnIdle { held.shelf.openDirect(13) }
+        waitUntil(timeoutMillis = 20_000) {
+            held.shelf.mode == ShelfMode.Open &&
+                onAllNodes(hasCloseAction).fetchSemanticsNodes().singleOrNull()?.let { node ->
+                    node.config[SemanticsActions.CustomActions].any { it.label == "Next page" }
+                } == true
+        }
+        repeat(page) { n ->
+            runOnIdle { held.turns.tap(forward = true) }
+            waitUntil(timeoutMillis = 10_000) { held.turns.page == n + 1 && !held.turns.isTurning }
+        }
+        return held
+    }
+
+    // A swipe from and to points given as fractions of the screen.
+    private fun ComposeUiTest.swipeAcrossTheBook(from: Offset, to: Offset) =
+        onRoot().performTouchInput {
+            swipe(
+                Offset(width * from.x, height * from.y),
+                Offset(width * to.x, height * to.y),
+                durationMillis = 300,
+            )
+        }
+
+    @Test
+    fun swipingTheOpenBookDownPutsItBack() = runComposeUiTest {
+        val held = openAt(page = 1)
+
+        swipeAcrossTheBook(Offset(0.55f, 0.4f), Offset(0.55f, 0.8f))
+
+        waitUntil(timeoutMillis = 10_000) { held.shelf.mode == ShelfMode.Shelf }
+    }
+
+    @Test
+    fun swipingRightOnTheFirstPageClosesTheCover() = runComposeUiTest {
+        val held = openAt(page = 0)
+
+        swipeAcrossTheBook(Offset(0.3f, 0.5f), Offset(0.95f, 0.5f))
+
+        waitUntil(timeoutMillis = 10_000) { held.shelf.mode == ShelfMode.Shelf }
+    }
+
+    @Test
+    fun swipingRightFurtherInTurnsBackAPageAndKeepsTheBookOpen() = runComposeUiTest {
+        val held = openAt(page = 2)
+
+        swipeAcrossTheBook(Offset(0.3f, 0.5f), Offset(0.95f, 0.5f))
+
+        waitUntil(timeoutMillis = 10_000) { held.turns.page == 1 && !held.turns.isTurning }
+        assertEquals(ShelfMode.Open, held.shelf.mode)
     }
 
     private val hasCloseAction =
