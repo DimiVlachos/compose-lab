@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry
 
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -10,6 +11,8 @@ private const val RING_TALLEST = 240f
 private const val RING_PLANK_Y = 0.8f
 private const val RING_BOOK_BAND = 0.62f
 private const val RING_RADIUS = 0.62f
+// The ring is an oval: its depth is this share of its width, so it curves gently away.
+private const val RING_OVAL = 0.5f
 private const val RING_GAP = 2.5f
 private const val RING_CAMERA_LIFT = 150f
 private const val RING_MIN_FOCAL = 900f
@@ -18,8 +21,6 @@ private const val EDGE_FROM = 0.6f
 private const val EDGE_TO = 1.5f
 private const val EDGE_DARK = 0.55f
 private const val VISIBLE_ANGLE = 1.75f
-private const val YAW_FROM = 0.15f
-private const val YAW_FULL = 1.2f
 
 internal data class RingBook(
     val id: Int,
@@ -39,7 +40,6 @@ internal class RingPlacement(
 internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfBookSpec>) {
     val scale = height * RING_BOOK_BAND / RING_TALLEST
     val plankY = height * RING_PLANK_Y
-    val radius = width * RING_RADIUS
     val centreX = width / 2f
     val camera =
         ShelfCamera(
@@ -49,6 +49,8 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
             fixed = true,
         )
     val books: List<RingBook>
+    val radius: Float
+    val oval = RING_OVAL
 
     init {
         var edge = 0f
@@ -59,6 +61,7 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
                 edge += t
             }
         }
+        radius = width * RING_RADIUS
     }
 
     val start: Float
@@ -103,7 +106,7 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
         val neighbour = nearer.maxByOrNull { abs(it.angle) }?.pose
         return BookRest(
             x = centreX + radius * sin(a) - books[book.index].thickness / 2f,
-            z = -radius * (1f - cos(a)),
+            z = -radius * (1f - cos(a)) * oval,
             yaw = book.pose.yaw,
             shade = book.shade,
             occluders =
@@ -130,6 +133,7 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
                 radius = radius,
                 centreX = centreX,
                 camera = camera,
+                oval = oval,
             )
         val shade = 1f - EDGE_DARK * smoothStep(EDGE_FROM, EDGE_TO, abs(angle))
         return RingPlacement(index, angle, shade, pose)
@@ -146,12 +150,14 @@ internal class RingBookPose(
     radius: Float,
     centreX: Float,
     override val camera: ShelfCamera,
+    oval: Float,
 ) : BookTransform {
     override val open: Float = 0f
-    val yaw = ringYaw(angle)
+    val yaw = ringYaw(angle, oval)
     private val cosA = cos(yaw)
     private val sinA = sin(yaw)
-    private val anchor = Vec3(centreX + radius * sin(angle), plankY, -radius * (1f - cos(angle)))
+    private val anchor =
+        Vec3(centreX + radius * sin(angle), plankY, -radius * (1f - cos(angle)) * oval)
 
     override fun map(local: Vec3): Vec3 {
         val r = rotate(Vec3(local.x - dimensions.thickness / 2f, local.y, local.z))
@@ -166,7 +172,8 @@ internal class RingBookPose(
     private fun rotate(q: Vec3) = Vec3(q.x * cosA + q.z * sinA, q.y, -q.x * sinA + q.z * cosA)
 }
 
-internal fun ringYaw(angle: Float): Float = angle * smoothStep(YAW_FROM, YAW_FULL, abs(angle))
+// Each book faces square out from the oval, its spine along the curve, as on a carousel.
+internal fun ringYaw(angle: Float, oval: Float): Float = atan2(oval * sin(angle), cos(angle))
 
 internal fun ringThicknessFor(spineThickness: Float): Float {
     val t =

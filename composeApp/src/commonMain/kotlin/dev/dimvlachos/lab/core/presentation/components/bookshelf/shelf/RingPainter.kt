@@ -302,7 +302,9 @@ internal class RingPainter {
     private fun facesCamera(ring: ShelfRing, radius: Float, angle: Float, y: Float): Boolean {
         val p = Ring(radius, angle, y).world(ring)
         val camera = ring.camera
-        return (camera.vanishingX - p.x) * sin(angle) + (camera.focal - p.z) * cos(angle) > 0f
+        // The oval's outward normal at this angle.
+        return (camera.vanishingX - p.x) * ring.oval * sin(angle) +
+            (camera.focal - p.z) * cos(angle) > 0f
     }
 
     private data class Ring(val radius: Float, val angle: Float, val y: Float) {
@@ -310,7 +312,7 @@ internal class RingPainter {
             Vec3(
                 ring.centreX + radius * sin(angle),
                 y,
-                -ring.radius + radius * cos(angle),
+                (-ring.radius + radius * cos(angle)) * ring.oval,
             )
     }
 }

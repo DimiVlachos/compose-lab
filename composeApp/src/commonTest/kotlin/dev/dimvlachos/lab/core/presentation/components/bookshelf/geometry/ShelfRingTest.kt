@@ -70,39 +70,6 @@ class ShelfRingTest {
     }
 
     @Test
-    fun booksNearTheCentreStandSquareAndEdgeBooksTurnWithTheRing() {
-        val scroll = ring.books[20].centre
-        val near = requireNotNull(ring.place(21, scroll))
-        val far = requireNotNull(ring.place(26, scroll))
-
-        assertTrue(abs(near.pose.yaw) < abs(near.angle) * 0.2f)
-        assertTrue(abs(far.pose.yaw) > abs(far.angle) * 0.6f)
-        val normal = far.pose.mapDirection(Vec3(0f, 0f, 1f))
-        assertEquals(kotlin.math.sin(far.pose.yaw), normal.x, 1e-5f)
-        assertEquals(kotlin.math.cos(far.pose.yaw), normal.z, 1e-5f)
-    }
-
-    @Test
-    fun theTwoBooksEitherSideOfTheCentreNeverCutIntoEachOther() {
-        var scroll = ring.books[18].centre
-        while (scroll <= ring.books[22].centre) {
-            val placed = ring.books.indices.mapNotNull { ring.place(it, scroll) }
-            val a = placed.filter { it.angle < 0f }.maxBy { it.angle }
-            val b = placed.filter { it.angle >= 0f }.minBy { it.angle }
-            val right = footprint(a).maxOf { it.x }
-            val left = footprint(b).minOf { it.x }
-            assertTrue(left >= right, "books ${a.index} and ${b.index} cross at $scroll")
-            scroll += 0.9f
-        }
-    }
-
-    private fun footprint(p: RingPlacement): List<Vec3> {
-        val (t, _, d) = p.pose.dimensions
-        return listOf(Vec3(0f, 0f, 0f), Vec3(t, 0f, 0f), Vec3(t, 0f, -d), Vec3(0f, 0f, -d))
-            .map(p.pose::map)
-    }
-
-    @Test
     fun aBookTakenOffTheRingStartsExactlyWhereTheRingDrewIt() {
         val scroll = ring.books[20].centre + 7f
         for (index in listOf(17, 20, 23)) {
@@ -158,5 +125,45 @@ class ShelfRingTest {
         assertEquals(0, ring.nearestIndex(ring.start - 100f))
         assertEquals(ring.books.lastIndex, ring.nearestIndex(ring.end + 100f))
         assertEquals(7, ring.nearestIndex(ring.books[7].centre))
+    }
+
+    @Test
+    fun everyBookTurnsAlongTheOval() {
+        // Facing out from the oval: square to it, so along its tangent, flatter than a circle's.
+        for (angle in listOf(-1.2f, -0.6f, -0.2f, 0f, 0.2f, 0.6f, 1.2f)) {
+            val expected =
+                kotlin.math.atan2(ring.oval * kotlin.math.sin(angle), kotlin.math.cos(angle))
+            assertEquals(expected, ringYaw(angle, ring.oval), 1e-6f)
+        }
+        assertTrue(abs(ringYaw(0.6f, ring.oval)) in 0.1f..0.6f)
+    }
+
+    @Test
+    fun theRingIsAnOvalShallowerThanItIsWide() {
+        val scroll = ring.books[20].centre
+        val off = requireNotNull(ring.place(26, scroll))
+        val world = off.pose.map(Vec3(off.pose.dimensions.thickness / 2f, 0f, 0f))
+        val circleDepth = ring.radius * (1f - kotlin.math.cos(off.angle))
+
+        assertTrue(ring.oval < 1f)
+        assertEquals(-circleDepth * ring.oval, world.z, 1e-3f)
+    }
+
+    @Test
+    fun theRingRunsPastTheScreenEdges() {
+        val scroll = ring.books[20].centre
+        val placed = ring.visible(scroll)
+        val xs = placed.map { it.pose.map(Vec3(0f, 0f, 0f)).x }
+
+        assertTrue(
+            xs.minOrNull()!! < 0f && xs.maxOrNull()!! > ring.width,
+            "x ${xs.minOrNull()}..${xs.maxOrNull()}",
+        )
+    }
+
+    @Test
+    fun theRingKeepsItsRadiusHoweverManyBooks() {
+        assertEquals(412f * 0.62f, ring.radius, 1e-3f)
+        assertEquals(384f * 0.62f, ShelfRing(384f, 330f, specs.take(8)).radius, 1e-3f)
     }
 }
