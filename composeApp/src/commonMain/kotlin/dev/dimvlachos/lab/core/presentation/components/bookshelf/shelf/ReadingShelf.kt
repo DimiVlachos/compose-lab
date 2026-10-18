@@ -10,17 +10,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookPageSetting
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.ChapterPaginator
+import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.WordRef
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.PageTurnState
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.rememberPageTurnState
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filterNotNull
 
 /** A chapter to read: its [title], and its paragraphs split into [words]. */
 internal class ShelfChapter(val title: String, val words: List<List<String>>)
@@ -44,7 +43,7 @@ internal fun ReadingShelf(
     val reader = rememberShelfReader(turns)
     var setting by remember { mutableStateOf<BookPageSetting?>(null) }
     val activeId = state.activeBookId
-    val chapter = activeId?.let(chapterFor)
+    val chapter = remember(activeId) { activeId?.let(chapterFor) }
     val ready = setting
     val pages =
         remember(ready, activeId, chapter) {
@@ -57,9 +56,24 @@ internal fun ReadingShelf(
             else ChapterSource(pages, chapter.title, spread = spread)
         }
     val readFraction = activeId?.let { content.entries[it]?.readFraction }
-    val bookmark =
+    // The page it opens at: its bookmark, or the page being read when only the layout changed.
+    val place = remember { ReadingPlace() }
+    val startLeaf =
         remember(source, readFraction) {
-            source?.let { it.leafOf(bookmarkPage(it.book.pages.size, readFraction)) }
+            source?.let {
+                val shown = Snapshot.withoutReadObservation { turns.page }
+                val page =
+                    place.pageFor(
+                        activeId,
+                        spread,
+                        it.book.pages,
+                        shown,
+                        bookmarkPage(it.book.pages.size, readFraction),
+                    ) { paragraph ->
+                        it.book.pageAt(WordRef(paragraph, 0))
+                    }
+                it.leafOf(page)
+            }
         }
 
     LaunchedEffect(activeId, spread) { reader.clear() }
@@ -72,15 +86,15 @@ internal fun ReadingShelf(
                 mode = next
             }
     }
-    LaunchedEffect(turns) {
+    LaunchedEffect(turns, activeId, spread) {
         // A page turned in an open book; the jump to its bookmark as it opens is not one.
-        snapshotFlow { turns.page.takeIf { state.mode == ShelfMode.Open } }
-            .filterNotNull()
-            .distinctUntilChanged()
-            .drop(1)
-            .collect { sounds.play(Sound.PageFlip, volume = 0.7f) }
+        val cue = PageFlipCue()
+        snapshotFlow { (state.mode == ShelfMode.Open) to turns.page }
+            .collect { (open, page) ->
+                if (cue.next(open, page)) sounds.play(Sound.PageFlip, volume = 0.7f)
+            }
     }
-    LaunchedEffect(source, bookmark) { reader.show(source, bookmark) { 0 } }
+    LaunchedEffect(source, startLeaf) { reader.show(source, startLeaf) { 0 } }
 
     PhysicalShelfHost(
         content = content,

@@ -535,8 +535,10 @@ private fun ShelfHero(
 ) {
     val density = LocalDensity.current.density
     val edge = ShelfTheme.colors.background
+    // Clipped to its bounds, as the ring's hero is, so its wall paints nothing past its edges when
+    // the list it sits in stretches or blurs.
     Box(
-        modifier.pointerInput(assets, state) {
+        modifier.clipToBounds().pointerInput(assets, state) {
             val ready = assets ?: return@pointerInput
             awaitEachGesture { handleShelfGesture(ready.layout, state, density) }
         }

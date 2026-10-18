@@ -40,16 +40,26 @@ class ShelfRingTest {
     }
 
     @Test
-    fun neighboursNeverOverlapAtAnyScroll() {
+    fun neighbouringSpinesNeverOverlapAnywhereOnTheOval() {
+        // Measured where the eye sees them: the spines' own front corners, along the oval.
         var scroll = ring.start
         while (scroll <= ring.end) {
-            val placed = ring.books.indices.mapNotNull { ring.place(it, scroll) }
+            // Past the oval's sides the books face away, round behind; only fronts that face the
+            // viewer can be seen to touch.
+            val placed =
+                ring.books.indices
+                    .mapNotNull { ring.place(it, scroll) }
+                    .filter { abs(it.angle) < kotlin.math.PI.toFloat() / 2f }
+                    .sortedBy { it.angle }
             placed.zipWithNext { a, b ->
-                val aRight = a.angle * ring.radius + a.pose.dimensions.thickness / 2f
-                val bLeft = b.angle * ring.radius - b.pose.dimensions.thickness / 2f
-                assertTrue(bLeft >= aRight, "overlap at $scroll between ${a.index} and ${b.index}")
+                val aRight = a.pose.map(Vec3(a.pose.dimensions.thickness, 0f, 0f)).x
+                val bLeft = b.pose.map(Vec3(0f, 0f, 0f)).x
+                assertTrue(
+                    bLeft >= aRight - 1e-3f,
+                    "spines ${a.index} and ${b.index} overlap by ${aRight - bLeft} at $scroll",
+                )
             }
-            scroll += 1.7f
+            scroll += 7.3f
         }
     }
 

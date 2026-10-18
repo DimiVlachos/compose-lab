@@ -3,7 +3,9 @@ package dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.sign
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 private const val RING_THICKNESS = 46f
 private const val RING_SPREAD = 0.2f
@@ -21,6 +23,8 @@ private const val EDGE_FROM = 0.6f
 private const val EDGE_TO = 1.5f
 private const val EDGE_DARK = 0.55f
 private const val VISIBLE_ANGLE = 1.75f
+private const val ARC_SAMPLES = 512
+private const val ARC_STEP = 2.5f / ARC_SAMPLES
 
 internal data class RingBook(
     val id: Int,
@@ -52,6 +56,10 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
     val radius: Float
     val oval = RING_OVAL
 
+    // How far along the oval each angle lies, from its front: books are spaced along the curve,
+    // not by angle, so they stand as far apart at the edges as in front.
+    private val arcs: FloatArray
+
     init {
         var edge = 0f
         books = specs.mapIndexed { i, spec ->
@@ -62,6 +70,11 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
             }
         }
         radius = width * RING_RADIUS
+        arcs = FloatArray(ARC_SAMPLES + 1)
+        for (i in 1..ARC_SAMPLES) {
+            val mid = (i - 0.5f) * ARC_STEP
+            arcs[i] = arcs[i - 1] + radius * ovalSpeed(mid, oval) * ARC_STEP
+        }
     }
 
     val start: Float
@@ -121,9 +134,30 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
         )
     }
 
+    /** The angle round the oval that lies [arc] along it from its front, either way. */
+    fun angleAt(arc: Float): Float {
+        val d = abs(arc)
+        if (d >= arcs[ARC_SAMPLES]) return (ARC_SAMPLES * ARC_STEP) * sign(arc)
+        var low = 0
+        var high = ARC_SAMPLES
+        while (high - low > 1) {
+            val mid = (low + high) / 2
+            if (arcs[mid] <= d) low = mid else high = mid
+        }
+        val t = (d - arcs[low]) / (arcs[high] - arcs[low])
+        return (low + t) * ARC_STEP * sign(arc)
+    }
+
+    /** How far along the oval from its front the point at [angle] lies, either way. */
+    fun arcAt(angle: Float): Float {
+        val d = (abs(angle) / ARC_STEP).coerceAtMost(ARC_SAMPLES.toFloat())
+        val i = d.toInt().coerceAtMost(ARC_SAMPLES - 1)
+        return (arcs[i] + (arcs[i + 1] - arcs[i]) * (d - i)) * sign(angle)
+    }
+
     fun place(index: Int, scroll: Float): RingPlacement? {
         val book = books.getOrNull(index) ?: return null
-        val angle = (book.centre - scroll) / radius
+        val angle = angleAt(book.centre - scroll)
         if (abs(angle) > VISIBLE_ANGLE) return null
         val pose =
             RingBookPose(
@@ -170,6 +204,13 @@ internal class RingBookPose(
     }
 
     private fun rotate(q: Vec3) = Vec3(q.x * cosA + q.z * sinA, q.y, -q.x * sinA + q.z * cosA)
+}
+
+// How fast a point moves along the oval per radian round it, for a radius of one.
+private fun ovalSpeed(angle: Float, oval: Float): Float {
+    val c = cos(angle)
+    val s = oval * sin(angle)
+    return sqrt(c * c + s * s)
 }
 
 // Each book faces square out from the oval, its spine along the curve, as on a carousel.

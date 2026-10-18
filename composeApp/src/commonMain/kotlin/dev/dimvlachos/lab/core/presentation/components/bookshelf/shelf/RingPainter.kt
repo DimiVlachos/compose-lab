@@ -267,7 +267,7 @@ internal class RingPainter {
             var a = -PLANK_REACH
             var first = true
             while (a <= PLANK_REACH) {
-                val arc = a * ring.radius + scroll
+                val arc = ring.arcAt(a) + scroll
                 val yy =
                     y +
                         frontH * (0.12f + i * 0.12f) +

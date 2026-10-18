@@ -21,9 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val MAX_TEXTURE_SCALE = 4.2f
-private const val FACE_BAKERS = 4
-
-private val FaceBakers = Dispatchers.Default.limitedParallelism(FACE_BAKERS)
 
 internal class ShelfAssets(
     val layout: ShelfLayout,
@@ -50,7 +47,7 @@ internal fun rememberShelfAssets(
     }
     LaunchedEffect(content, size, lighting) {
         assets =
-            withContext(Dispatchers.Default) {
+            withContext(ShelfTextBakers) {
                 bakeShelfAssets(content, size, density, lighting, kit)
             }
     }
@@ -134,7 +131,7 @@ internal fun rememberBookShell(
     }
     LaunchedEffect(request, cover) {
         if (cache[id].isBakedWith(cover)) return@LaunchedEffect
-        val shell = withContext(Dispatchers.Default) { request.shell(cover, kit) }
+        val shell = withContext(ShelfTextBakers) { request.shell(cover, kit) }
         val keep = setOf(id, content.readingBookId)
         cache.keys.filter { it !in keep }.dropLast(1).forEach(cache::remove)
         cache[id] = shell
@@ -166,7 +163,7 @@ internal fun rememberBookPages(
     }
     LaunchedEffect(request, wanted, metrics, typeset, bookSetting) {
         pages =
-            withContext(Dispatchers.Default) {
+            withContext(ShelfTextBakers) {
                 request.pages(wanted, metrics, typeset, bookSetting, kit)
             }
     }
@@ -230,7 +227,7 @@ internal fun rememberLeafFaces(
             .forEach { face ->
                 launch {
                     baked.bitmaps[face] =
-                        withContext(FaceBakers) {
+                        withContext(ShelfTextBakers) {
                             bakeRequest.face(
                                 face.content,
                                 face.right,

@@ -641,7 +641,7 @@ internal class RingTextures {
         val book = ring.books[index]
         val k = ring.scale
         spines[book.id] =
-            withContext(Dispatchers.Default) {
+            withContext(ShelfTextBakers) {
                 createSpineBitmap(
                         entry.visual,
                         book.thickness / k,
@@ -667,7 +667,7 @@ internal class RingTextures {
         val cover = coverFor(book.id)
         shellCovers[book.id] = cover
         shells[book.id] =
-            withContext(Dispatchers.Default) {
+            withContext(ShelfTextBakers) {
                 createBookShell(
                         entry.visual,
                         BookDimensions(book.thickness / k, book.height / k, book.depth / k),
