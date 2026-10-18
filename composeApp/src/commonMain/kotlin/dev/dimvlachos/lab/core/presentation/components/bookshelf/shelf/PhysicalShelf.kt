@@ -751,13 +751,14 @@ private fun ShelfStage(
                         )
                     }
             if (bookLayout != null && restingBook != null) {
+                val (leftAlpha, rightAlpha) = stackAlphas(m.open, m.push)
                 with(leafPainter) {
                     drawStacks(
                         bookLayout,
                         restingBook,
                         lighting.pageLight(),
-                        leftAlpha = smoothStep(LEFT_STACK_FROM, 1f, m.open),
-                        rightAlpha = smoothStep(0f, RIGHT_STACK_TO, m.open),
+                        leftAlpha = leftAlpha,
+                        rightAlpha = rightAlpha,
                     )
                 }
             }
@@ -1057,6 +1058,16 @@ internal fun plainFaceColor(face: FaceTexture, style: ShelfBookStyle): Int =
         FaceTexture.LeftPage,
         FaceTexture.RightPage -> argb(PAGE_PAPER)
     }
+
+/**
+ * How much of the flat page stacks shows for a cover [open] and a [push]: they fade as the cover
+ * closes, the left first, and over a push's first stretch, gone before the book moves in 3D.
+ */
+internal fun stackAlphas(open: Float, push: Float): Pair<Float, Float> {
+    val kept = 1f - smoothStep(0f, TiltGesture.PUSH_FLATTEN, push)
+    return smoothStep(LEFT_STACK_FROM, 1f, open) * kept to
+        smoothStep(0f, RIGHT_STACK_TO, open) * kept
+}
 
 internal fun DrawScope.drawEdgeFades(edge: Color, fade: Float) {
     drawRect(
