@@ -360,4 +360,32 @@ class ShelfStateTest {
         assertFalse(state.motion.value.coverOnly)
         job.cancel()
     }
+
+    @Test
+    fun aSettlingBookWhoseShelfMovesDropsStraightBackIntoPlace() = runTest {
+        val (state, job) = shelf()
+        state.nudge(3)
+        advanceTimeBy(50)
+        assertEquals(ShelfMode.Settle, state.mode)
+
+        state.shelfMoved()
+
+        assertEquals(ShelfMode.Shelf, state.mode)
+        assertNull(state.activeBookId)
+        assertEquals(0f, state.motion.value.tilt, 1e-3f)
+        job.cancel()
+    }
+
+    @Test
+    fun anOpenBookStaysOpenWhenItsShelfMoves() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.shelfMoved()
+
+        assertEquals(ShelfMode.Open, state.mode)
+        job.cancel()
+    }
 }

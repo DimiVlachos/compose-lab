@@ -434,7 +434,12 @@ internal fun PhysicalShelfHost(
 
     val hero: @Composable (Modifier) -> Unit = { heroModifier ->
         val measured =
-            heroModifier.onSizeChanged { heroSize = it }.onGloballyPositioned { anchors.hero = it }
+            heroModifier
+                .onSizeChanged { heroSize = it }
+                .onGloballyPositioned {
+                    anchors.hero = it
+                    if (anchors.heroMoved()) state.shelfMoved()
+                }
         if (ring != null) {
             RingShelfHero(content, ring, state, lighting, clock.sway, measured)
         } else {
@@ -919,10 +924,20 @@ private class ShelfAnchors {
     var stage: LayoutCoordinates? = null
     var hero: LayoutCoordinates? = null
 
+    private var lastOrigin: Offset? = null
+
     fun heroOrigin(): Offset {
         val stage = stage?.takeIf { it.isAttached } ?: return Offset.Zero
         val hero = hero?.takeIf { it.isAttached } ?: return Offset.Zero
         return stage.localPositionOf(hero, Offset.Zero)
+    }
+
+    // Whether the hero has moved on the stage since it was last placed.
+    fun heroMoved(): Boolean {
+        val origin = heroOrigin()
+        val moved = lastOrigin != null && origin != lastOrigin
+        lastOrigin = origin
+        return moved
     }
 }
 

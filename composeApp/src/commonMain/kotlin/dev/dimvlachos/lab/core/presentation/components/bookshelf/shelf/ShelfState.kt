@@ -296,6 +296,16 @@ internal class ShelfState(
         finishSettle()
     }
 
+    /**
+     * The shelf moved on the screen (its list scrolled): a book still settling back drops straight
+     * into place, since it is drawn where the shelf was.
+     */
+    fun shelfMoved() {
+        if (mode != ShelfMode.Settle) return
+        cancelMotion()
+        finishSettle()
+    }
+
     private fun takeOut() {
         val bookId = activeBookId ?: return
         mode = ShelfMode.Out

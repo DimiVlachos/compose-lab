@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
@@ -114,6 +115,20 @@ class ReadingShelfUiTest {
 
         assertTrue(held.scroll.value > 0, "scrolled ${held.scroll.value}")
         assertEquals(null, held.shelf.activeBookId)
+    }
+
+    @Test
+    fun scrollingWhileABookSettlesDropsItIntoPlace() = runComposeUiTest {
+        val held = planks()
+        onNodeWithContentDescription(spine).performTouchInput { click() }
+        mainClock.autoAdvance = false
+        mainClock.advanceTimeByFrame()
+        assertEquals(ShelfMode.Settle, held.shelf.mode, "a tap nudges the book")
+
+        runOnIdle { held.scroll.dispatchRawDelta(120f) }
+        mainClock.advanceTimeByFrame()
+
+        assertEquals(ShelfMode.Shelf, held.shelf.mode, "back in place, not left where it was")
     }
 
     @Test
