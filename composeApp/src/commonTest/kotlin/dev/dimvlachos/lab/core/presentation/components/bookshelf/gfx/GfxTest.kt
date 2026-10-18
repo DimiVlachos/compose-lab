@@ -25,6 +25,35 @@ class GfxTest {
         )
     }
 
+    // A wall with holes cut out for the books: the holes stay empty however their outlines run.
+    @Test
+    fun aPathWithHolesCutOutKeepsTheFillRuleThatLeavesThemEmpty() {
+        val wall = Path().apply { addRect(0f, 0f, 100f, 100f, Path.Direction.CW) }
+        val books =
+            Path().apply {
+                addRect(10f, 10f, 40f, 90f, Path.Direction.CW)
+                addRect(60f, 10f, 90f, 90f, Path.Direction.CW)
+            }
+        val expected =
+            androidx.compose.ui.graphics.Path.combine(
+                    androidx.compose.ui.graphics.PathOperation.Difference,
+                    wall.compose,
+                    books.compose,
+                )
+                .fillType
+
+        wall.op(books, Path.Op.DIFFERENCE)
+        val copy = Path().apply { set(wall) }
+
+        assertEquals(expected, wall.compose.fillType)
+        assertEquals(expected, copy.compose.fillType)
+        val bitmap = createBitmap(100, 100)
+        Canvas(bitmap).drawPath(copy, Paint().apply { color = Rust })
+        val px = IntArray(100 * 100).also { bitmap.getPixels(it, 0, 100, 0, 0, 100, 100) }
+        assertEquals(0, px[50 * 100 + 25] ushr 24, "inside a hole")
+        assertEquals(0xFF, px[50 * 100 + 50] ushr 24, "the wall between the holes")
+    }
+
     @Test
     fun polyToPolyTakesEachSourceCornerToItsTarget() {
         val src = floatArrayOf(0f, 0f, 100f, 0f, 100f, 200f, 0f, 200f)

@@ -420,6 +420,8 @@ internal class Path {
         val result = ComposePath.combine(op.compose, compose, path.compose)
         compose.reset()
         compose.addPath(result)
+        // Its holes are only holes under the fill rule the operation chose.
+        compose.fillType = result.fillType
         return true
     }
 
@@ -433,6 +435,7 @@ internal class Path {
     fun set(src: Path) {
         compose.reset()
         compose.addPath(src.compose)
+        compose.fillType = src.compose.fillType
     }
 }
 
