@@ -84,6 +84,21 @@ class ShelfRingTest {
         assertEquals(20, placed.last().index)
     }
 
+    // A book tipped off the ring is clipped against the row it stands in: the book beside it on
+    // its own side of the front, not one across the ring.
+    @Test
+    fun aTippedBooksRowIsTheBookBesideItOnItsOwnSide() {
+        val scroll = ring.books[20].centre + 7f
+        for ((index, beside) in listOf(23 to 22, 17 to 18)) {
+            val row = requireNotNull(ring.rest(ring.books[index].id, scroll)?.row)
+            val pose = requireNotNull(ring.place(beside, scroll)).pose
+            val expected = pose.map(Vec3(pose.dimensions.thickness / 2f, 0f, 0f))
+
+            assertEquals(expected.x, row.point.x, 1e-3f, message = "book $index")
+            assertEquals(expected.z, row.point.z, 1e-3f, message = "book $index")
+        }
+    }
+
     @Test
     fun aBookTakenOffTheRingStartsExactlyWhereTheRingDrewIt() {
         val scroll = ring.books[20].centre + 7f

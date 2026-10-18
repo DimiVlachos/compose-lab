@@ -117,7 +117,9 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
         val book = placed.firstOrNull { books[it.index].id == bookId } ?: return null
         val a = book.angle
         val nearer = placed.filter { abs(it.angle) < abs(a) }
-        val neighbour = nearer.maxByOrNull { abs(it.angle) }?.pose
+        // Its row is the book beside it, a step nearer the front, not one across the ring.
+        val towardFront = book.index - sign(a).toInt()
+        val neighbour = nearer.firstOrNull { it.index == towardFront }?.pose
         return BookRest(
             x = centreX + radius * sin(a) - books[book.index].thickness / 2f,
             z = -radius * (1f - cos(a)) * oval,
