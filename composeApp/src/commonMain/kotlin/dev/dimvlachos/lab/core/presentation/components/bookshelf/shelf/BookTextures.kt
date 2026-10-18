@@ -46,6 +46,9 @@ import kotlin.math.sin
 internal const val PAGE_PAPER = 0xFBF6EB
 internal const val PAGE_EDGE = 0xF6EFDE
 internal const val RIBBON_BAND_SPAN = 0.16f
+
+// The smallest a title is set, of its size, to keep every word on the cover or title page.
+private const val MIN_TITLE_SCALE = 0.7f
 internal const val PAGE_RIBBON_FOOT_X = 0.085f
 internal const val PAGE_RIBBON_WIDTH = 0.026f
 private const val PAGE_INK = 0x261E18
@@ -375,12 +378,13 @@ private fun Canvas.drawGeneratedCover(book: ShelfBookVisual, w: Float, h: Float,
         text.typeface = kit.fonts.serif
         text.textSize = size
         text.letterSpacing = 0.1f
-        wrap(book.title.uppercase(), text, w * 0.74f).forEachIndexed { i, line ->
-            val y = h * 0.26f + i * size * 1.3f
+        val title = text.fitTitle(book.title.uppercase(), w * 0.74f, maxLines = 3, size)
+        title.lines.forEachIndexed { i, line ->
+            val y = h * 0.26f + i * title.size * 1.3f
             text.shader = null
             text.color = black(0.35f)
             drawText(line, w / 2f, y + 0.6f, text)
-            text.shader = giltShader(0f, y - size, 0f, y)
+            text.shader = giltShader(0f, y - title.size, 0f, y)
             drawText(line, w / 2f, y, text)
         }
         text.letterSpacing = 0f
@@ -395,10 +399,10 @@ private fun Canvas.drawGeneratedCover(book: ShelfBookVisual, w: Float, h: Float,
         drawRect(0f, 0f, w, h * 0.26f, fillPaint(ink))
         drawCircle(w * 0.5f, h * 0.52f, w * 0.16f, fillPaint(argb(book.style.accent)))
         text.typeface = kit.fonts.sansBold
-        text.textSize = w * 0.1f
         text.color = argb(book.style.base)
-        wrap(book.title.uppercase(), text, w * 0.84f).take(2).forEachIndexed { i, line ->
-            drawText(line, w / 2f, h * 0.12f + i * w * 0.11f, text)
+        val title = text.fitTitle(book.title.uppercase(), w * 0.84f, maxLines = 2, w * 0.1f)
+        title.lines.forEachIndexed { i, line ->
+            drawText(line, w / 2f, h * 0.12f + i * title.size * 1.1f, text)
         }
         text.typeface = kit.fonts.sans
         text.textSize = w * 0.065f
@@ -732,9 +736,10 @@ private fun Canvas.drawTitlePage(
             color = argb(PAGE_INK, 0.92f)
             textAlign = Paint.Align.CENTER
         }
-    val lines = wrap(page.title.uppercase(), title, textWidth).take(4)
-    lines.forEachIndexed { i, line -> drawText(line, w / 2f, h * 0.3f + i * size * 1.25f, title) }
-    val ruleY = h * 0.3f + lines.size * size * 1.25f
+    val fitted = title.fitTitle(page.title.uppercase(), textWidth, maxLines = 4, size)
+    val step = fitted.size * 1.25f
+    fitted.lines.forEachIndexed { i, line -> drawText(line, w / 2f, h * 0.3f + i * step, title) }
+    val ruleY = h * 0.3f + fitted.lines.size * step
     drawLine(
         w * 0.42f,
         ruleY,
@@ -816,20 +821,16 @@ private fun Canvas.drawPageRibbon(w: Float, h: Float) {
     )
 }
 
-private fun wrap(text: String, paint: Paint, maxWidth: Float): List<String> {
-    val lines = mutableListOf<String>()
-    var current = ""
-    for (word in text.split(' ')) {
-        val candidate = if (current.isEmpty()) word else "$current $word"
-        if (paint.measureText(candidate) > maxWidth && current.isNotEmpty()) {
-            lines += current
-            current = word
-        } else {
-            current = candidate
+// [title] set in this paint to fit, as small as [MIN_TITLE_SCALE] of [size]; the paint is left at
+// the size it fitted at.
+private fun Paint.fitTitle(title: String, maxWidth: Float, maxLines: Int, size: Float): CoverTitle {
+    val fitted =
+        fitCoverTitle(title, maxWidth, maxLines, size, size * MIN_TITLE_SCALE) { line, s ->
+            textSize = s
+            measureText(line)
         }
-    }
-    if (current.isNotEmpty()) lines += current
-    return lines
+    textSize = fitted.size
+    return fitted
 }
 
 private fun centreCrop(bitmap: Bitmap, aspect: Float): Rect {
