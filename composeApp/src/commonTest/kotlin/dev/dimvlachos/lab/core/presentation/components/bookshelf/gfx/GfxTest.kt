@@ -113,4 +113,21 @@ class GfxTest {
             )
         }
     }
+
+    @Test
+    fun aSpaceKeepsItsWidthAtTheSmallSizesBooksAreDrawnIn() = runComposeUiTest {
+        lateinit var measurer: TextMeasurer
+        setContent { measurer = rememberTextMeasurer() }
+        runOnIdle {
+            // Spines and title pages set text a few units tall and scale the canvas up after.
+            val paint =
+                Paint().apply {
+                    typeface = Typeface(FontFamily.Serif, measurer)
+                    textSize = 4f
+                }
+            val gap = paint.measureText("A B") - paint.measureText("AB")
+
+            assertTrue(gap > 4f * 0.15f, "space at 4 units: $gap")
+        }
+    }
 }

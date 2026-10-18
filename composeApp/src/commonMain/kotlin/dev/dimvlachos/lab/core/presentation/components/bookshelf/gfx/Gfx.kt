@@ -125,7 +125,7 @@ internal abstract class Shader {
     }
 
     /** The Compose shader, its space moved by ([dx], [dy]) for text drawn translated. */
-    internal abstract fun compose(dx: Float = 0f, dy: Float = 0f): ComposeShader
+    internal abstract fun compose(dx: Float = 0f, dy: Float = 0f, scale: Float = 1f): ComposeShader
 
     enum class TileMode(internal val compose: androidx.compose.ui.graphics.TileMode) {
         CLAMP(androidx.compose.ui.graphics.TileMode.Clamp),
@@ -156,19 +156,20 @@ internal class LinearGradient(
 
     private var cached: ComposeShader? = null
 
-    override fun compose(dx: Float, dy: Float): ComposeShader {
-        if (dx == 0f && dy == 0f)
+    override fun compose(dx: Float, dy: Float, scale: Float): ComposeShader {
+        val plain = dx == 0f && dy == 0f && scale == 1f
+        if (plain)
             cached?.let {
                 return it
             }
         return LinearGradientShader(
-                Offset(x0 - dx, y0 - dy),
-                Offset(x1 - dx, y1 - dy),
+                Offset((x0 - dx) * scale, (y0 - dy) * scale),
+                Offset((x1 - dx) * scale, (y1 - dy) * scale),
                 colors.map { Color(it) },
                 positions?.toList(),
                 tile.compose,
             )
-            .also { if (dx == 0f && dy == 0f) cached = it }
+            .also { if (plain) cached = it }
     }
 }
 
@@ -179,7 +180,7 @@ internal class BitmapShader(
 ) : Shader() {
     private val shader by lazy { ImageShader(bitmap, tileX.compose, tileY.compose) }
 
-    override fun compose(dx: Float, dy: Float): ComposeShader = shader
+    override fun compose(dx: Float, dy: Float, scale: Float): ComposeShader = shader
 }
 
 /** `BlurMaskFilter`: blurs what is drawn by [radius], as Skia turns a radius into a sigma. */
@@ -321,7 +322,7 @@ internal class Paint(flags: Int = 0) {
             fontFamily = face.family,
             fontWeight = face.weight,
             fontStyle = face.style,
-            fontSize = textSize.sp,
+            fontSize = (textSize * TEXT_OVERSAMPLE).sp,
             letterSpacing = letterSpacing.em,
         )
     }
@@ -332,7 +333,7 @@ internal class Paint(flags: Int = 0) {
             .measure(text, textStyle(), softWrap = false, maxLines = 1, density = PxDensity)
 
     fun measureText(text: String): Float =
-        if (text.isEmpty()) 0f else layout(text).multiParagraph.getLineWidth(0)
+        if (text.isEmpty()) 0f else layout(text).multiParagraph.getLineWidth(0) / TEXT_OVERSAMPLE
 
     fun ascent(): Float = fontMetrics.ascent
 
@@ -341,8 +342,8 @@ internal class Paint(flags: Int = 0) {
     val fontMetrics: FontMetrics
         get() {
             val line = layout("Hg")
-            val ascent = -line.firstBaseline
-            val descent = line.size.height - line.firstBaseline
+            val ascent = -line.firstBaseline / TEXT_OVERSAMPLE
+            val descent = (line.size.height - line.firstBaseline) / TEXT_OVERSAMPLE
             return FontMetrics(ascent, descent, ascent, descent)
         }
 
@@ -358,6 +359,11 @@ internal typealias TextPaint = Paint
 
 // Text is measured at one px to the sp, so a Paint's textSize is in the canvas's own units.
 private val PxDensity = Density(1f, 1f)
+
+// Text is laid out this many times larger and drawn scaled back down: the painters set text a
+// few units tall on a canvas scaled up after, and at that size glyph positions round to whole
+// units, swallowing spaces.
+private const val TEXT_OVERSAMPLE = 8f
 
 internal class Path {
     internal val compose = ComposePath()
@@ -661,22 +667,23 @@ internal class Canvas(internal val compose: ComposeCanvas) {
     fun drawText(text: String, x: Float, y: Float, paint: Paint) {
         if (text.isEmpty()) return
         val line = paint.layout(text)
-        val width = line.multiParagraph.getLineWidth(0)
+        val width = line.multiParagraph.getLineWidth(0) / TEXT_OVERSAMPLE
         val left =
             when (paint.textAlign) {
                 Paint.Align.LEFT -> x
                 Paint.Align.CENTER -> x - width / 2f
                 Paint.Align.RIGHT -> x - width
             }
-        val top = y - line.firstBaseline
+        val top = y - line.firstBaseline / TEXT_OVERSAMPLE
         compose.save()
         compose.translate(left, top)
+        compose.scale(1f / TEXT_OVERSAMPLE, 1f / TEXT_OVERSAMPLE)
         val shader = paint.shader
         val color = Color(paint.color)
         if (shader != null)
             line.multiParagraph.paint(
                 compose,
-                ShaderBrush(shader.compose(left, top)),
+                ShaderBrush(shader.compose(left, top, TEXT_OVERSAMPLE)),
                 alpha = color.alpha,
                 blendMode = paint.blendMode?.compose ?: ComposeBlendMode.SrcOver,
             )
@@ -688,11 +695,14 @@ internal class Canvas(internal val compose: ComposeCanvas) {
             )
         if (paint.isFakeBoldText) {
             // Fake bold strokes each glyph's outline a little, as Skia does.
-            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(paint.textSize / 34f)
+            val stroke =
+                androidx.compose.ui.graphics.drawscope.Stroke(
+                    paint.textSize * TEXT_OVERSAMPLE / 34f
+                )
             if (shader != null)
                 line.multiParagraph.paint(
                     compose,
-                    ShaderBrush(shader.compose(left, top)),
+                    ShaderBrush(shader.compose(left, top, TEXT_OVERSAMPLE)),
                     alpha = color.alpha,
                     drawStyle = stroke,
                 )
