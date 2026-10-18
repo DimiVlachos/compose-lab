@@ -256,6 +256,45 @@ def card_tick(rng, rate):
     return fade(normalise(mix(tick, flap), 0.55), rate, 0.001, 0.01)
 
 
+def book_slide(rng, rate):
+    """A book drawn off the shelf: cloth sliding on wood, a band of noise that rises as it frees."""
+    n = seconds(0.3, rate)
+    base = noise(n, rng)
+    out, chunk = [], seconds(0.015, rate)
+    for s in range(0, n, chunk):
+        f = 700 + 1300 * (s / n)
+        out.extend(bandpass(base[s:s + chunk], f, 0.9, rate))
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.2 for i in range(n)]
+    return fade(normalise(mul(out, shape), 0.5), rate, 0.01, 0.05)
+
+
+def book_open(rng, rate):
+    """The cover laid open: a low board thump under a breath of paper."""
+    n = seconds(0.18, rate)
+    thump = mul(lowpass(noise(n, rng), 260, rate), env_exp(n, rate, 0.03, attack=0.002))
+    body = scale(damped_sine(n, rate, 110, 0.05), 0.35)
+    paper = scale(mul(bandpass(noise(n, rng), 3000, 0.8, rate), env_exp(n, rate, 0.05, attack=0.01)), 0.3)
+    return fade(normalise(mix(thump, body, paper), 0.6), rate, 0.001, 0.03)
+
+
+def page_flip(rng, rate):
+    """A page turned over: a bright paper flick that falls away fast."""
+    n = seconds(0.14, rate)
+    flick = mul(highpass(noise(n, rng), 1800, rate), env_exp(n, rate, 0.035, attack=0.006))
+    air = scale(mul(bandpass(noise(n, rng), 1100, 1.0, rate), env_exp(n, rate, 0.05, attack=0.01)), 0.4)
+    return fade(normalise(mix(flick, air), 0.5), rate, 0.002, 0.03)
+
+
+def ring_tick(rng, rate):
+    """A book settling at the front of the ring: a short wooden click."""
+    n = seconds(0.025, rate)
+    click = mix(
+        mul(bandpass(noise(n, rng), 2400, 4.0, rate), env_exp(n, rate, 0.003, 0.0002)),
+        scale(damped_sine(n, rate, 2400, 0.004), 0.4),
+    )
+    return fade(normalise(click, 0.45), rate, 0.0002, 0.005)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -275,6 +314,11 @@ def main():
 
     # Its own seed, so the clips added after it on the shared rng stay the same.
     write("card_tick", card_tick(random.Random(1016), fast), fast)
+    shelf = random.Random(1018)
+    write("book_slide", book_slide(shelf, soft), soft)
+    write("book_open", book_open(shelf, fast), fast)
+    write("page_flip", page_flip(shelf, fast), fast)
+    write("ring_tick", ring_tick(shelf, fast), fast)
 
 
 if __name__ == "__main__":
