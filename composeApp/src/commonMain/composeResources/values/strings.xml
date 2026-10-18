@@ -318,4 +318,7 @@
     <string name="bookshelf_reading_now">Reading now</string>
     <string name="bookshelf_on_the_shelves">On the shelves</string>
     <string name="bookshelf_close_book">Close the book</string>
+    <string name="bookshelf_next_page">Next page</string>
+    <string name="bookshelf_previous_page">Previous page</string>
+    <string name="bookshelf_open_book_page">%1$s, page %2$d of %3$d</string>
 </resources>

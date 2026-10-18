@@ -566,7 +566,7 @@ CardFile(
 
 ## Bookshelf (`core/presentation/components/bookshelf/`)
 
-A reading list kept on shelves in the light of a window. The books being read stand on a ring that runs off both sides of the screen: drag it and it spins, past the books you can see, and settles with a book square in front. Below, two oak planks hold the books to read next and the books already read. Pull a book down by the top of its spine and it tips forward, slides out, turns its cover to you and opens; one being read opens at its ribbon, a new one at its title page. Its pages turn under the finger. Push it down and it goes down and tips back under the finger; from its first page, drag right and its cover closes with the finger. Let go far or fast enough, or press back, or tap beside it, and it goes back to its place; a short drag lets it settle open again.
+A reading list kept on shelves in the light of a window. The books being read stand on a ring that runs off both sides of the screen: drag it and it spins, past the books you can see, and settles with a book square in front. Below, two oak planks hold the books to read next and the books already read. Pull a book down by the top of its spine and it tips forward, slides out, turns its cover to you and opens; one being read opens at its ribbon, a new one at its title page. Its pages turn under the finger. Push it down and it goes down and tips back under the finger; from its first page, drag right and its cover closes with the finger. Let go far or fast enough, or press back, and it goes back to its place; a short drag lets it settle open again.
 
 - **Books in perspective.** Each book is a box of six faces, posed in 3D and projected through one camera: spine, covers, head and fore edge, and the pages, each face its own bitmap mapped onto its quad exactly, lit by where it faces. Books further round the ring turn along its curve and dim.
 - **Window light.** The wall, the ring's plank and the oak planks stand in a light baked once at a quarter of the screen's resolution: sun through a window, the shadows of an olive branch swaying gently across it, a shadow behind each book. By day the light is warm and white; in the dark theme, a dusk.
@@ -575,10 +575,10 @@ A reading list kept on shelves in the light of a window. The books being read st
 - **Paper that follows the hand.** A page turns from wherever it is taken: the held point stays under the finger, a corner pulled on a slant peels first, the leaf bows and casts a soft shadow on the page under it, and a flick finishes the turn. Several leaves can be in the air at once.
 - **A ribbon.** The bookmark is a satin ribbon that lies over its page as a cord with weight, and turns with its leaf.
 - **Feel and sound.** Each book that comes to the front of the ring ticks, and a book slides out, opens and has its pages turned with sounds of its own.
-- **Screen readers.** Each spine is a button labelled with its title and author, and for a book being read its chapter and the time left in it; the ring has previous and next actions, an open book has a Close action, and taking a book out or putting it back is announced.
+- **Screen readers.** Each spine is a button labelled with its title and author, and for a book being read its chapter and the time left in it; the ring has previous and next actions; an open book says its title and page and has Next page, Previous page and Close actions; and taking a book out or putting it back is announced.
 - **Reduced motion.** The leaves stop swaying and nothing animates that need not.
 
-Nothing recomposes while the ring spins or a book is in hand: its pose is read in drawing only. Pages, spines and light are baked off the main thread.
+Nothing recomposes while a book is in hand, and the ring recomposes only as a new book comes to the front: the spin and the pose are read in drawing only. Spines, covers, pages and light are baked off the main thread; a chapter is broken into pages as its book opens.
 
 The demo, `bookshelf.reading`, has twenty invented American books being read on the ring, with *The Salt Road to Galveston* in front, and sixteen on the planks. Three of them have a chapter of their own, set in a Galveston cotton exchange, a Vermont farmhouse in the first snow and a Chicago diner at closing time; the other books being read share one.
 

@@ -44,7 +44,7 @@ internal class ReadingPlace {
 }
 
 // The first page a leaf shows: a spread's leaf n shows pages 2n and 2n + 1.
-private fun pageOfLeaf(leaf: Int, spread: Boolean): Int = if (spread) leaf * 2 else leaf
+internal fun pageOfLeaf(leaf: Int, spread: Boolean): Int = if (spread) leaf * 2 else leaf
 
 /** Whether a page turned: the page changed while the book stayed open, not as it opened. */
 internal class PageFlipCue {

@@ -15,6 +15,9 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.ChapterPag
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.WordRef
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.PageTurnState
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.rememberPageTurnState
+import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.bookshelf_open_book_page
+import org.jetbrains.compose.resources.stringResource
 
 /** A chapter to read: its [title], and its paragraphs split into [words]. */
 internal class ShelfChapter(val title: String, val words: List<List<String>>)
@@ -111,9 +114,28 @@ internal fun ReadingShelf(
         spread = spread,
         // Nothing reads the page aloud here, so its text stays in the page itself.
         liveText = false,
-        // Swiped down, or right from its first page, or Back, it goes back; screen readers have
-        // the same as an action on the open book.
-        chrome = { ShelfCloseAction(onClose = { state.putBack() }) },
+        // Swiped down, or right from its first page, or Back, it goes back, and swiped across its
+        // pages turn; screen readers have the same as actions on the open book.
+        chrome = {
+            val title = activeId?.let { content.entries[it]?.visual?.title }.orEmpty()
+            val pages = source?.book?.pages?.size?.takeIf { reader.hasPages }
+            val leaf = turns.page
+            OpenBookActions(
+                description =
+                    if (pages == null) title
+                    else
+                        stringResource(
+                            Res.string.bookshelf_open_book_page,
+                            title,
+                            pageOfLeaf(leaf, spread) + 1,
+                            pages,
+                        ),
+                onClose = { state.putBack() },
+                onNext =
+                    { turns.tap(forward = true) }.takeIf { pages != null && leaf < turns.lastPage },
+                onPrevious = { turns.tap(forward = false) }.takeIf { pages != null && leaf > 0 },
+            )
+        },
         body = body,
     )
 }
