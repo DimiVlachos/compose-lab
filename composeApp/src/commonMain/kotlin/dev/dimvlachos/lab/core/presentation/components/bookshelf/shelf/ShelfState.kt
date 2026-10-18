@@ -157,6 +157,9 @@ internal class ShelfState(
     fun dragPush(dragY: Float) {
         if (mode != ShelfMode.Open) return
         cancelMotion()
+        // A cover let go just before is open again, not left ajar where its fall was cut off.
+        open = 1f
+        coverOnly = false
         push = TiltGesture.pushFor(dragY)
         arch = archFor(push)
     }
@@ -182,6 +185,8 @@ internal class ShelfState(
     fun dragCover(closed: Float) {
         if (mode != ShelfMode.Open) return
         cancelMotion()
+        // A push let go just before is over, not left frozen where its relax was cut off.
+        push = 0f
         // The first of the close flattens the arched pages; the cover closes over the rest.
         val c = closed.coerceIn(0f, 1f)
         coverOnly = true

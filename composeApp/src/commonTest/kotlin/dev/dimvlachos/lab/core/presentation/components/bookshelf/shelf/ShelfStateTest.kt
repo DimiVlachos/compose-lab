@@ -327,4 +327,37 @@ class ShelfStateTest {
         assertFalse(state.motion.value.coverOnly, "taken out again, it opens at its bookmark")
         job.cancel()
     }
+
+    @Test
+    fun closingTheCoverRightAfterAPushLeavesTheBookWhereItWas() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragPush(40f)
+        state.releasePush(velocityY = 0f)
+        advanceTimeBy(50)
+        state.dragCover(0.3f)
+
+        assertEquals(0f, state.motion.value.push, 1e-3f, "the push is let go, not frozen")
+        job.cancel()
+    }
+
+    @Test
+    fun pushingRightAfterTheCoverFallsOpenLeavesItOpen() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragCover(0.3f)
+        state.releaseCover(velocity = 0f)
+        advanceTimeBy(50)
+        state.dragPush(20f)
+
+        assertEquals(1f, state.motion.value.open, 1e-3f, "the cover is open, not left ajar")
+        assertFalse(state.motion.value.coverOnly)
+        job.cancel()
+    }
 }

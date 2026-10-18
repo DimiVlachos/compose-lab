@@ -91,19 +91,28 @@ internal suspend fun AwaitPointerEventScope.handlePageGesture(
             val atFirstPage = (turns?.page ?: 0) == 0
             when {
                 delta.y > 0f && abs(delta.y) > abs(delta.x) -> {
-                    val velocity =
-                        followDrag(down, claim.change) { at ->
-                            state.dragPush((at.y - down.position.y) / density)
-                        }
-                    state.releasePush(velocity.y / density)
+                    var velocity = Offset.Zero
+                    try {
+                        velocity =
+                            followDrag(down, claim.change) { at ->
+                                state.dragPush((at.y - down.position.y) / density)
+                            }
+                    } finally {
+                        // Cut off (the screen turned, say), it is let go where it is.
+                        state.releasePush(velocity.y / density)
+                    }
                 }
                 atFirstPage && delta.x > 0f && abs(delta.x) >= abs(delta.y) -> {
                     val across = page.width() * density
-                    val velocity =
-                        followDrag(down, claim.change) { at ->
-                            state.dragCover((at.x - down.position.x) / across)
-                        }
-                    state.releaseCover(velocity.x / across)
+                    var velocity = Offset.Zero
+                    try {
+                        velocity =
+                            followDrag(down, claim.change) { at ->
+                                state.dragCover((at.x - down.position.x) / across)
+                            }
+                    } finally {
+                        state.releaseCover(velocity.x / across)
+                    }
                 }
             }
         }
