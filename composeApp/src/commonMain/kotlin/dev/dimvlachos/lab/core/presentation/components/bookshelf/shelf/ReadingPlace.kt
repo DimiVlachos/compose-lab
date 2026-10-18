@@ -35,6 +35,12 @@ internal class ReadingPlace {
         this.pages = pages
         return kept?.let(pageOf) ?: bookmarkPage
     }
+
+    /** The book was put back: taken out again, even the same one opens at its bookmark. */
+    fun forget() {
+        id = null
+        kept = null
+    }
 }
 
 // The first page a leaf shows: a spread's leaf n shows pages 2n and 2n + 1.

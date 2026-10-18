@@ -72,6 +72,7 @@ internal fun ReadingShelf(
         }
 
     LaunchedEffect(activeId, spread) { reader.clear() }
+    LaunchedEffect(activeId) { if (activeId == null) place.forget() }
     val sounds = LocalShelfSounds.current
     LaunchedEffect(state) {
         var mode = state.mode

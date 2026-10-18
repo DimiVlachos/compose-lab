@@ -36,6 +36,28 @@ class ReadingPlaceTest {
     }
 
     @Test
+    fun aBookPutBackOpensAtItsBookmarkAgain() {
+        val place = ReadingPlace()
+        place.pageFor(1, spread = false, narrow, shownLeaf = 0, bookmarkPage = 1, pageIn(narrow))
+        // The screen turned while it was being read, at its last page.
+        place.pageFor(1, spread = true, wide, shownLeaf = 2, bookmarkPage = 1, pageIn(wide))
+
+        place.forget()
+
+        assertEquals(
+            1,
+            place.pageFor(
+                1,
+                spread = true,
+                wide,
+                shownLeaf = 0,
+                bookmarkPage = 1,
+                pageIn(wide),
+            ),
+        )
+    }
+
+    @Test
     fun turningTheScreenKeepsThePlaceInTheText() {
         val place = ReadingPlace()
         place.pageFor(1, spread = false, narrow, shownLeaf = 0, bookmarkPage = 0, pageIn(narrow))
