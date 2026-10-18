@@ -302,4 +302,15 @@
     <string name="cardfile_kind_number">%1$s · %2$s</string>
     <string name="cardfile_one_behind_tab">1 card behind this tab</string>
     <string name="cardfile_many_behind_tab">%1$d cards behind this tab</string>
+
+    <!-- Bookshelf -->
+    <string name="bookshelf_shelf_take_out">Take the book out</string>
+    <string name="bookshelf_carousel_previous">Previous book</string>
+    <string name="bookshelf_carousel_next">Next book</string>
+    <string name="bookshelf_shelf_opened">%1$s is open</string>
+    <string name="bookshelf_shelf_returned">%1$s is back on the shelf</string>
+    <string name="bookshelf_shelf_book">%1$s by %2$s</string>
+    <string name="bookshelf_shelf_book_in_progress">%1$s by %2$s, %3$s, %4$s</string>
+    <string name="bookshelf_minutes_left">%1$d min left</string>
+    <string name="bookshelf_hours_minutes_left">%1$dh %2$dm left</string>
 </resources>
