@@ -36,6 +36,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Smoke delete](#smoke-delete-corepresentationcomponentssmoke) | `smoke` | `smoke.delete` | Swipe a chat away and it burns from the edge into smoke that curls up over the list; mist for the archive; Undo breathes it back |
 | [Snow globe](#snow-globe-corepresentationcomponentssnowglobe) | `snowglobe` | `snowglobe.weather` | A weather screen whose snow globe refreshes the forecast when shaken: glitter swirls through real refracting glass, over Oia's caldera |
 | [Card file](#card-file-corepresentationcomponentscardfile) | `cardfile` | `cardfile.contacts` | Contacts on a chrome rotary card file: spin the cards with momentum, tap a letter tab, pull a card out to call or message |
+| [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf) | `bookshelf` | `bookshelf.reading` | A reading list on real shelves: books on a ring that spins and on oak planks; tip one out by its spine and it opens at your bookmark, its pages turning like paper |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -56,6 +57,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Smoke delete](#smoke-delete-corepresentationcomponentssmoke)
 - [Snow globe](#snow-globe-corepresentationcomponentssnowglobe)
 - [Card file](#card-file-corepresentationcomponentscardfile)
+- [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -562,6 +564,32 @@ CardFile(
 )
 ```
 
+## Bookshelf (`core/presentation/components/bookshelf/`)
+
+A reading list kept on shelves in the light of a window. The books being read stand on a ring that runs off both sides of the screen: drag it and it spins, past the books you can see, and settles with a book square in front. Below, two oak planks hold the books to read next and the books already read. Pull a book down by the top of its spine and it tips forward, slides out, turns its cover to you and opens; one being read opens at its ribbon, a new one at its title page. Its pages turn under the finger. Press back, the close button over it, or tap beside the book, and it goes back to its place.
+
+- **Books in perspective.** Each book is a box of six faces, posed in 3D and projected through one camera: spine, covers, head and fore edge, and the pages, each face its own bitmap mapped onto its quad exactly, lit by where it faces. Books further round the ring turn along its curve and dim.
+- **Window light.** The wall, the ring's plank and the oak planks stand in a light baked once at a quarter of the screen's resolution: sun through a window, the shadows of an olive branch swaying gently across it, a shadow behind each book. By day the light is warm and white; in the dark theme, a dusk.
+- **Spines baked once.** Cloth bindings in dark colours with gilt titles in Instrument Serif, or paper ones lettered in Instrument Sans, each chosen and coloured from the book itself, so the same book always looks the same. Covers are drawn too: a gilt emblem on cloth, a band and a disc on paper.
+- **Typeset pages.** A chapter is set in Instrument Serif, justified, each paragraph after the first indented, and broken into pages that each show what fits. The page's texture is baked from the same setting that counts its lines.
+- **Paper that follows the hand.** A page turns from wherever it is taken: the held point stays under the finger, a corner pulled on a slant peels first, the leaf bows and casts a soft shadow on the page under it, and a flick finishes the turn. Several leaves can be in the air at once.
+- **A ribbon.** The bookmark is a satin ribbon that lies over its page as a cord with weight, and turns with its leaf.
+- **Feel and sound.** Each book that comes to the front of the ring ticks, and a book slides out, opens and has its pages turned with sounds of its own.
+- **Screen readers.** Each spine is a button labelled with its title and author, and for a book being read its chapter and the time left in it; the ring has previous and next actions, an open book has a close button beside it, and taking a book out or putting it back is announced.
+- **Reduced motion.** The leaves stop swaying and nothing animates that need not.
+
+Nothing recomposes while the ring spins or a book is in hand: its pose is read in drawing only. Pages, spines and light are baked off the main thread.
+
+The demo, `bookshelf.reading`, has twenty invented American books being read on the ring, with *The Salt Road to Galveston* in front, and sixteen on the planks. Three of them have a chapter of their own, set in a Galveston cotton exchange, a Vermont farmhouse in the first snow and a Chicago diner at closing time; the other books being read share one.
+
+```kotlin
+val shelf = rememberShelfState()
+val content = rememberShelfContent(listOf(books), readingBookId = books.first().id)
+ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfStyle.Ring) { hero ->
+    Column { hero(Modifier.fillMaxWidth().height(320.dp)) }
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -691,6 +719,8 @@ The typewriter composer's sheet takes 18 letters to a line and 4 lines, 72 lette
 The smoke delete cuts a row into about 2,600 particles, at most 3,000, and fewer for a new row while more than 11,000 are in the air, so a wave of rows thins out rather than slowing down; a row is sampled from a drawing of at most 2 million pixels, a bigger one from a smaller copy. Every row of a list goes up in the one overlay, keyed by the caller's key, which must be unique in the list. A row's colours are cut down to 8. The smoke is drawn over the whole overlay, so it rises over a header above the list, though a row's hidden part makes none. Nothing about the smoke is saved: a screen made again starts with its rows whole.
 
 The card file takes any number of cards, dividers included, and composes about nine at a time. A divider can't be pulled out, a deck of one card doesn't spin, and an empty deck shows the empty file. Which card is out and where the wheel stands are not saved.
+
+The bookshelf's ring takes as many books as you like and draws those within reach of the front; a plank takes at most nine. A book being read opens at a chapter set from its words, one chapter at a time, and a book not begun at its title page. The open page is a picture of its text, not text you can select. Which book is out and the page it is open at are not saved, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 

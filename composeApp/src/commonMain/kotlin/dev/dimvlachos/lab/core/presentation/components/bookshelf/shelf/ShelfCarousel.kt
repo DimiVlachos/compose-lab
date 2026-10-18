@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -67,6 +68,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toIntSize
+import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.BookDimensions
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.PlankLayout
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.Point2
@@ -211,6 +213,8 @@ internal fun RingShelfHero(
 ) {
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
+    val sounds = LocalShelfSounds.current
+    SideEffect { shelf.ringSpin = hero.spin }
     val edge = ShelfTheme.colors.background
     val entries = remember(content) { content.planks.flatten() }
     val spin = hero.spin
@@ -228,7 +232,10 @@ internal fun RingShelfHero(
             .filter { it >= 0 }
             .distinctUntilChanged()
             .drop(1)
-            .collect { haptics.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+            .collect {
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                sounds.play(Sound.RingTick, volume = 0.5f)
+            }
     }
 
     fun takeOutCentred() {

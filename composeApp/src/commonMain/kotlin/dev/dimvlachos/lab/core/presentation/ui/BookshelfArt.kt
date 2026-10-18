@@ -21,4 +21,13 @@ internal object BookshelfArt {
 
     /** A page's running head and folio, lighter than its text. */
     val BookCaptionInk = Color(0xCC3C2E22)
+
+    /** The open book's close button: a disc of the books' warm ink, over the dimmed shelf. */
+    val CloseDisc = Color(0xC7261E18)
+
+    /** A hairline of gilt round the close button's disc, as on a cloth spine. */
+    val CloseRim = Color(0x66F1D590)
+
+    /** The close button's cross, in the pages' paper. */
+    val ClosePaper = Color(0xFFFBF6EB)
 }

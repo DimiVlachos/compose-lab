@@ -217,6 +217,8 @@ internal fun PhysicalShelfHost(
     overlay: @Composable (OpenPageSlot) -> Unit = {},
     backdrop: @Composable () -> Unit = {},
     chrome: @Composable (alpha: () -> Float) -> Unit = {},
+    // Whether the [overlay] draws the open page's text live; if not, the page keeps its baked text.
+    liveText: Boolean = true,
     body: @Composable (hero: @Composable (Modifier) -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -241,7 +243,8 @@ internal fun PhysicalShelfHost(
     val textOnPage =
         remember(state, turns) {
             derivedStateOf {
-                state.mode == ShelfMode.Open &&
+                liveText &&
+                    state.mode == ShelfMode.Open &&
                     !state.listening &&
                     state.motion.value.open >= 1f &&
                     turns?.isTurning != true &&

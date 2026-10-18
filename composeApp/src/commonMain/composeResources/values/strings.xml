@@ -293,6 +293,8 @@
     <string name="cardfile_pull_out">Pull out</string>
     <string name="demo_cardfile">Card file contacts</string>
     <string name="demo_cardfile_description">Spin a rotary card file of contacts on a lamplit desk and pull a card out to call</string>
+    <string name="demo_bookshelf">Bookshelf</string>
+    <string name="demo_bookshelf_description">Tip a book out by its spine; it turns, opens at your bookmark, and its pages turn like paper</string>
     <string name="cardfile_hint">Spin the cards · tap one to pull it out</string>
     <string name="cardfile_call">Call</string>
     <string name="cardfile_message">Message</string>
@@ -313,4 +315,7 @@
     <string name="bookshelf_shelf_book_in_progress">%1$s by %2$s, %3$s, %4$s</string>
     <string name="bookshelf_minutes_left">%1$d min left</string>
     <string name="bookshelf_hours_minutes_left">%1$dh %2$dm left</string>
+    <string name="bookshelf_reading_now">Reading now</string>
+    <string name="bookshelf_on_the_shelves">On the shelves</string>
+    <string name="bookshelf_close_book">Close the book</string>
 </resources>

@@ -63,6 +63,9 @@ internal class ShelfState(
     private val onOpened: (Int) -> Unit,
     private val onClosed: (Int) -> Unit,
 ) {
+    /** The ring a shelf of [ShelfStyle.Ring] spins on, once it is shown: a script turns it. */
+    internal var ringSpin: RingState? = null
+
     var mode by mutableStateOf(ShelfMode.Shelf)
         private set
 
