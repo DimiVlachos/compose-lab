@@ -576,7 +576,7 @@ A reading list kept on shelves in the light of a window. The books being read st
 - **A ribbon.** The bookmark is a satin ribbon that lies over its page as a cord with weight, and turns with its leaf.
 - **Feel and sound.** Each book that comes to the front of the ring ticks, and a book slides out, opens and has its pages turned with sounds of its own.
 - **Screen readers.** Each spine is a button labelled with its title and author, and for a book being read its chapter and the time left in it; the ring has previous and next actions; an open book says its title and page and has Next page, Previous page and Close actions; and taking a book out or putting it back is announced.
-- **Reduced motion.** The leaves stop swaying and nothing animates that need not.
+- **Reduced motion.** The leaves' shadows stop swaying; the ribbon still settles where it lies.
 
 Nothing recomposes while a book is in hand, and the ring recomposes only as a new book comes to the front: the spin and the pose are read in drawing only. Spines, covers, pages and light are baked off the main thread; a chapter is broken into pages as its book opens.
 

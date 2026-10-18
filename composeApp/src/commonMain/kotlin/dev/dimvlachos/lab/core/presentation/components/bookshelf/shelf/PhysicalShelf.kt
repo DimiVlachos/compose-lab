@@ -138,7 +138,7 @@ private const val RIBBON_LAY_MS = 1_700
 private const val RIBBON_LAND_SETTLE_MS = 400L
 private const val RIBBON_SEEK_WINDOW_MS = 1_500L
 private const val WARM_UP_DELAY_MS = 1_200L
-private const val SWAY_FRAME_STRIDE = 4L
+internal const val SWAY_FRAME_STRIDE = 4L
 private const val LEFT_STACK_FROM = 0.85f
 private const val RIGHT_STACK_TO = 0.3f
 private const val REST_SHADE_GONE = 0.5f
@@ -399,18 +399,18 @@ internal fun PhysicalShelfHost(
         state.pagesReadyFor = pages?.takeIf { !it.pages.pending }?.bookId
         turns?.canTurn = { leaf -> turnKeys(leaf).all { leaves[it]?.exact == true } }
     }
-    if (!inspection && !reducedMotion) {
-        LaunchedEffect(lifecycle) {
+    if (!inspection) {
+        LaunchedEffect(lifecycle, reducedMotion) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 var frame = 0L
                 while (true) {
                     withFrameMillis { now ->
                         frame++
-                        if (clock.moving()) clock.physics.longValue = now
                         val shelfShown = !state.isBookOut && state.mode != ShelfMode.Back
-                        if (shelfShown && frame % SWAY_FRAME_STRIDE == 0L) {
-                            clock.sway.longValue = now
-                        }
+                        val ticks =
+                            shelfFrameTicks(clock.moving(), shelfShown, frame, reducedMotion)
+                        if (ticks.physics) clock.physics.longValue = now
+                        if (ticks.sway) clock.sway.longValue = now
                     }
                 }
             }
@@ -1192,6 +1192,23 @@ private fun rememberRibbonStow(
     }
     return stow
 }
+
+internal data class ShelfFrameTicks(val physics: Boolean, val sway: Boolean)
+
+/**
+ * What a frame moves on: the ribbon's physics while anything moves, so it always settles, and the
+ * leaves' sway every few frames while the shelf shows, never with reduced motion.
+ */
+internal fun shelfFrameTicks(
+    moving: Boolean,
+    shelfShown: Boolean,
+    frame: Long,
+    reducedMotion: Boolean,
+) =
+    ShelfFrameTicks(
+        physics = moving,
+        sway = !reducedMotion && shelfShown && frame % SWAY_FRAME_STRIDE == 0L,
+    )
 
 private class ShelfClock {
     val sway = mutableLongStateOf(0L)
