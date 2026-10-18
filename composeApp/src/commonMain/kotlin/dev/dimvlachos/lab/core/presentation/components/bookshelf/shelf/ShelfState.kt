@@ -20,6 +20,7 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.TiltGe
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.TiltPaths
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.easeInOutCubic
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.easeOutCubic
+import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.smoothStep
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,6 +37,7 @@ private const val TRAVEL_MS = 1150
 private const val OPEN_MS = 1000
 private const val CLOSE_MS = 600
 private const val RETURN_MS = 900
+private const val PUSH_RELAX_MS = 300
 private const val VANISH_MS = 450
 private const val ARCH_MS = 650
 private const val ARCH_CLOSE_MS = 220
@@ -86,6 +88,7 @@ internal class ShelfState(
     private var open by mutableFloatStateOf(0f)
     private var vanish by mutableFloatStateOf(0f)
     private var arch by mutableFloatStateOf(0f)
+    private var push by mutableFloatStateOf(0f)
     private var releaseTilt by mutableFloatStateOf(0f)
     private var path by mutableStateOf(TiltPath.Direct)
     private var grabStartTilt = 0f
@@ -98,7 +101,7 @@ internal class ShelfState(
                 travel <= 0f -> tilt
                 else -> TiltPaths.out(releaseTilt, travel)
             }
-        ShelfMotion(activeBookId, travel, open, effectiveTilt, vanish, arch)
+        ShelfMotion(activeBookId, travel, open, effectiveTilt, vanish, arch, push)
     }
 
     val isBookOut: Boolean
@@ -147,6 +150,58 @@ internal class ShelfState(
         takeOut()
     }
 
+    /** Pushes the open book down after a finger [dragY] dp down it. */
+    fun dragPush(dragY: Float) {
+        if (mode != ShelfMode.Open) return
+        cancelMotion()
+        push = TiltGesture.pushFor(dragY)
+        arch = archFor(push)
+    }
+
+    /** Lets the push go at [velocityY] dp a second: far or fast enough, the book goes back. */
+    fun releasePush(velocityY: Float) {
+        if (mode != ShelfMode.Open) return
+        if (TiltGesture.shouldPutBack(push, velocityY)) return putBack()
+        val start = push
+        run {
+            animate(0f, 1f, animationSpec = tween(PUSH_RELAX_MS, easing = LinearEasing)) { p, _ ->
+                push = start * (1f - easeOutCubic(p))
+                arch = archFor(push)
+            }
+        }
+    }
+
+    // The pages lie arched until a push starts, and flatten over its first stretch, so the book
+    // is flat when it begins to move.
+    private fun archFor(push: Float) = 1f - smoothStep(0f, TiltGesture.PUSH_FLATTEN, push)
+
+    /** Closes the open book's cover by [closed] of the way, with a finger on its first page. */
+    fun dragCover(closed: Float) {
+        if (mode != ShelfMode.Open) return
+        cancelMotion()
+        // The first of the close flattens the arched pages; the cover closes over the rest.
+        val c = closed.coerceIn(0f, 1f)
+        val flatten = TiltGesture.COVER_FLATTEN
+        arch = 1f - smoothStep(0f, flatten, c)
+        open = 1f - ((c - flatten) / (1f - flatten)).coerceIn(0f, 1f)
+    }
+
+    /**
+     * Lets the cover go, closing at [velocity] of the way a second: shut far or fast enough, the
+     * book goes back; else the cover falls open again.
+     */
+    fun releaseCover(velocity: Float) {
+        if (mode != ShelfMode.Open) return
+        if (TiltGesture.shouldCloseCover(open, velocity)) return putBack()
+        val start = open
+        run {
+            animate(0f, 1f, animationSpec = tween(PUSH_RELAX_MS, easing = LinearEasing)) { p, _ ->
+                open = start + (1f - start) * easeOutCubic(p)
+            }
+            ease(arch, 1f, PUSH_RELAX_MS) { arch = it }
+        }
+    }
+
     fun listen() {
         if (mode != ShelfMode.Open || listening) return
         listening = true
@@ -176,6 +231,7 @@ internal class ShelfState(
             ease(vanish, 0f, VANISH_MS) { vanish = it }
             ease(arch, 0f, ARCH_CLOSE_MS) { arch = it }
             val openStart = open
+            val pushStart = push
             animate(
                 0f,
                 1f,
@@ -183,7 +239,9 @@ internal class ShelfState(
             ) { p, _ ->
                 val e = easeInOutCubic(p)
                 open = openStart * (1f - e)
+                push = pushStart * (1f - e)
             }
+            push = 0f
             path = TiltPath.Back
             val travelStart = travel
             animate(
@@ -209,6 +267,7 @@ internal class ShelfState(
         open = pose.open
         vanish = pose.vanish
         arch = pose.arch
+        push = pose.push
         listening = false
         tilt = pose.tilt
         releaseTilt = pose.tilt

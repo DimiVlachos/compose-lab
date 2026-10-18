@@ -59,4 +59,25 @@ class TiltGestureTest {
         assertFalse(TiltGesture.shouldTakeOut(tilt = 0.11f, velocityY = 900f))
         assertFalse(TiltGesture.shouldTakeOut(tilt = 0.3f, velocityY = 100f))
     }
+
+    @Test
+    fun pushPutsTheBookBackPastTheDistanceThresholdOrOnAFastFlick() {
+        assertTrue(TiltGesture.shouldPutBack(push = 71f, velocityY = 0f))
+        assertTrue(TiltGesture.shouldPutBack(push = 10f, velocityY = 701f))
+        assertFalse(TiltGesture.shouldPutBack(push = 60f, velocityY = 300f))
+    }
+
+    @Test
+    fun pushResistanceSoftensBeyondTheFirstStretch() {
+        assertEquals(85f, TiltGesture.pushFor(dragY = 100f), 1e-3f)
+        assertEquals(200f * 0.85f - 60f * 0.5f, TiltGesture.pushFor(dragY = 200f), 1e-3f)
+        assertEquals(0f, TiltGesture.pushFor(dragY = -40f), 1e-3f)
+    }
+
+    @Test
+    fun theCoverClosesWhenMostlyShutOrFlicked() {
+        assertTrue(TiltGesture.shouldCloseCover(open = 0.35f, velocity = 0f))
+        assertTrue(TiltGesture.shouldCloseCover(open = 0.9f, velocity = 1.5f))
+        assertFalse(TiltGesture.shouldCloseCover(open = 0.7f, velocity = 0.2f))
+    }
 }

@@ -8,6 +8,8 @@ private const val PI_F = PI.toFloat()
 private const val SHELF_CAMERA_RELEASE = 0.3f
 private const val SHELF_FOCAL_STRETCH = 2.5f
 private const val PULL_END = 1f
+// How far an open book pushed down tips back, per unit it is pushed.
+private const val PUSH_TILT_PER_UNIT = 0.0012f
 
 internal data class BookDimensions(val thickness: Float, val height: Float, val depth: Float)
 
@@ -74,6 +76,7 @@ internal class BookPose(
     restZ: Float = 0f,
     restYaw: Float = 0f,
     row: RowPlane? = null,
+    push: Float = 0f,
 ) : BookTransform {
     val swing: Float
     override val camera: ShelfCamera
@@ -105,14 +108,15 @@ internal class BookPose(
         anchor =
             Vec3(
                 mix(start, onScreen, across),
-                mix(plankY, heldY, across) - sin(PI_F * across) * liftArc,
+                mix(plankY, heldY + push / held.scale, across) - sin(PI_F * across) * liftArc,
                 z,
             )
         pivot = Vec3(t / 2f, h / 2f * across, pivotZ)
         this.row = row ?: RowPlane(Vec3(start, plankY, restZ), Vec3(sin(restYaw), 0f, cos(restYaw)))
         val turn = mix(restYaw, -PI_F / 2f, smoothStep(0f, 0.9f, swing))
-        cosTilt = cos(tilt)
-        sinTilt = sin(tilt)
+        val theta = if (travel > 0f) tilt - push * PUSH_TILT_PER_UNIT else tilt
+        cosTilt = cos(theta)
+        sinTilt = sin(theta)
         cosTurn = cos(turn)
         sinTurn = sin(turn)
     }

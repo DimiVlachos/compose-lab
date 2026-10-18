@@ -254,4 +254,73 @@ class ShelfStateTest {
     private companion object {
         const val FRAME_MS = 16L
     }
+
+    @Test
+    fun aShortPushRelaxesAndKeepsTheBookOpen() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragPush(40f)
+        assertTrue(state.motion.value.push > 0f)
+        state.releasePush(velocityY = 0f)
+        settle(1_000)
+
+        assertEquals(ShelfMode.Open, state.mode)
+        assertEquals(0f, state.motion.value.push, 1e-3f)
+        assertEquals(1f, state.motion.value.arch, 1e-3f, "the pages arch again")
+        job.cancel()
+    }
+
+    @Test
+    fun aLongPushDownPutsTheBookBack() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragPush(120f)
+        state.releasePush(velocityY = 0f)
+        settle()
+
+        assertEquals(ShelfMode.Shelf, state.mode)
+        assertEquals(0f, state.motion.value.push, 1e-3f)
+        assertEquals(listOf(3), closed)
+        job.cancel()
+    }
+
+    @Test
+    fun draggingTheFirstPageRightClosesTheCoverWithTheFinger() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragCover(0.3f)
+        assertEquals(0f, state.motion.value.arch, 1e-3f, "the pages flatten first")
+        assertTrue(state.motion.value.open in 0.7f..0.8f, "then the cover closes")
+        state.releaseCover(velocity = 0f)
+        settle(1_000)
+
+        assertEquals(ShelfMode.Open, state.mode, "a short drag lets the cover fall open again")
+        assertEquals(1f, state.motion.value.open, 1e-3f)
+        job.cancel()
+    }
+
+    @Test
+    fun closingTheCoverFarEnoughPutsTheBookBack() = runTest {
+        val (state, job) = shelf()
+        state.pagesReady(3)
+        state.openDirect(3)
+        settle()
+
+        state.dragCover(0.65f)
+        state.releaseCover(velocity = 0f)
+        settle()
+
+        assertEquals(ShelfMode.Shelf, state.mode)
+        assertEquals(listOf(3), closed)
+        job.cancel()
+    }
 }

@@ -96,6 +96,7 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.ShelfC
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.ShelfLayout
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.ShelfLighting
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.ShelfSlot
+import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.TiltGesture
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.Vec3
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.buildBookFaces
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.mix
@@ -168,6 +169,7 @@ internal data class ShelfMotion(
     val tilt: Float = 0f,
     val vanish: Float = 0f,
     val arch: Float = 0f,
+    val push: Float = 0f,
 )
 
 internal data class HeldGeometry(
@@ -642,7 +644,8 @@ private fun ShelfStage(
             val geometry = heldGeometry(assets.layout, active) ?: return@Canvas
             val openPages = pages?.takeIf { it.bookId == active }
             val showsText = textOnPage.value && openPages != null && fresh
-            val flights = turns?.flights?.takeIf { it.isNotEmpty() }
+            // A book pushed down is held still: no leaf flies while it is.
+            val flights = turns?.flights?.takeIf { m.push == 0f && it.isNotEmpty() }
             val resting = flights?.let { turns?.restingPages(it) }
             val rightPage = resting?.second ?: turns?.page
             val rest = geometry.restOf?.takeIf { m.travel < 1f }?.invoke()
@@ -657,7 +660,10 @@ private fun ShelfStage(
             val tailUnder =
                 bookmark.mark != null && (rightPage?.let(bookmark::alpha) ?: 0f) < BAND_SHOWN
             val flatTail = bookLayout?.takeIf {
-                bookmark.mark != null && state.mode == ShelfMode.Open && m.open >= 1f
+                bookmark.mark != null &&
+                    state.mode == ShelfMode.Open &&
+                    m.open >= 1f &&
+                    m.push == 0f
             }
             val tailMotion =
                 TailMotion(
@@ -696,7 +702,8 @@ private fun ShelfStage(
                     )
                 }
             }
-            val arched = bookLayout?.takeIf { m.open >= 1f }
+            // Arched while it rests; flat, in 3D, once a push or a cover's close has flattened it.
+            val arched = bookLayout?.takeIf { m.open >= 1f && (m.push == 0f || m.arch > 0f) }
             fun restingTail() {
                 if (flatTail != null && side != null && bandShown) {
                     val left = side == RibbonSide.Left
@@ -996,6 +1003,7 @@ private fun HeldGeometry.pose(motion: ShelfMotion, scale: Float, rest: BookRest?
         restZ = rest?.z ?: 0f,
         restYaw = rest?.yaw ?: 0f,
         row = rest?.row,
+        push = (motion.push - TiltGesture.PUSH_FLATTEN).coerceAtLeast(0f),
     )
 
 private fun recordShelf(

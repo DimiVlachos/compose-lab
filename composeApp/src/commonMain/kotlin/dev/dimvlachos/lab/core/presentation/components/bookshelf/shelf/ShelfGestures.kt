@@ -22,8 +22,6 @@ private const val TOP_SLOP_DP = 6f
 private const val PAGE_EDGE_SLOP_DP = 6f
 private const val TURN_EDGE_FRACTION = 0.15f
 private const val FLING_HOLD_MS = 100L
-private const val CLOSE_SWIPE_DP = 72f
-private const val CLOSE_FLING_DP = 600f
 
 private data class SpineTouch(val bookId: Int, val grabHeight: Float, val canTip: Boolean)
 
@@ -87,43 +85,49 @@ internal suspend fun AwaitPointerEventScope.handlePageGesture(
                 turnDrag(down, claim.change, turns)
                 return
             }
-            // Not a page turn: a swipe down, or right on the first page, puts the book back.
-            val (drag, velocity) = trackSwipe(down, claim.change)
+            // Not a page turn. Down, the book goes down with the finger and, let go far or fast
+            // enough, back to its shelf; right from the first page, its cover closes with the
+            // finger, the same.
             val atFirstPage = (turns?.page ?: 0) == 0
-            if (swipeCloses(drag / density, velocity / density, atFirstPage)) state.putBack()
+            when {
+                delta.y > 0f && abs(delta.y) > abs(delta.x) -> {
+                    val velocity =
+                        followDrag(down, claim.change) { at ->
+                            state.dragPush((at.y - down.position.y) / density)
+                        }
+                    state.releasePush(velocity.y / density)
+                }
+                atFirstPage && delta.x > 0f && abs(delta.x) >= abs(delta.y) -> {
+                    val across = page.width() * density
+                    val velocity =
+                        followDrag(down, claim.change) { at ->
+                            state.dragCover((at.x - down.position.x) / across)
+                        }
+                    state.releaseCover(velocity.x / across)
+                }
+            }
         }
     }
 }
 
-/**
- * Whether a swipe across the open book of [drag] dp, let go at [velocity] dp a second, puts it
- * back: down, far enough or flicked; or right, the same, when there is no page before this one to
- * turn.
- */
-internal fun swipeCloses(drag: Offset, velocity: Offset, atFirstPage: Boolean): Boolean {
-    val down = drag.y > 0f && abs(drag.y) > abs(drag.x)
-    val right = atFirstPage && drag.x > 0f && abs(drag.x) >= abs(drag.y)
-    return (down && (drag.y >= CLOSE_SWIPE_DP || velocity.y >= CLOSE_FLING_DP)) ||
-        (right && (drag.x >= CLOSE_SWIPE_DP || velocity.x >= CLOSE_FLING_DP))
-}
-
-// Follows a swipe to its end: how far it went from [down], and how fast it was let go.
-private suspend fun AwaitPointerEventScope.trackSwipe(
+// Follows a drag to its end, handing each position to [onMove]; returns how fast it was let go.
+private suspend fun AwaitPointerEventScope.followDrag(
     down: PointerInputChange,
     claimed: PointerInputChange,
-): Pair<Offset, Offset> {
+    onMove: (Offset) -> Unit,
+): Offset {
     val tracker = VelocityTracker().apply { addPosition(down.uptimeMillis, down.position) }
     tracker.addPointerInputChange(claimed)
-    var last = claimed.position
+    onMove(claimed.position)
     while (true) {
         val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
         if (!change.pressed) break
         change.consume()
         tracker.addPointerInputChange(change)
-        last = change.position
+        onMove(change.position)
     }
     val v = tracker.calculateVelocity()
-    return (last - down.position) to Offset(v.x, v.y)
+    return Offset(v.x, v.y)
 }
 
 private sealed interface PageClaim {
