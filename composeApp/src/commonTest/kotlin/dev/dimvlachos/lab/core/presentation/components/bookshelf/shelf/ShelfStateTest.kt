@@ -409,4 +409,32 @@ class ShelfStateTest {
         ringJob.cancel()
         plankJob.cancel()
     }
+
+    @Test
+    fun withReducedMotionATippedBookSettlesWithoutBouncing() = runTest {
+        val (state, job) = shelf()
+        state.reducedMotion = true
+        drawnTilts.clear()
+
+        state.nudge(3)
+        settle()
+
+        assertEquals(ShelfMode.Shelf, state.mode)
+        assertTrue(drawnTilts.none { it < -1e-3f }, "swung past upright: ${drawnTilts.min()}")
+        job.cancel()
+    }
+
+    @Test
+    fun withReducedMotionABookIsOutAndOpenSooner() = runTest {
+        val (state, job) = shelf()
+        state.reducedMotion = true
+        state.pagesReady(3)
+
+        state.openDirect(3)
+        advanceTimeBy(1_100)
+        runCurrent()
+
+        assertEquals(ShelfMode.Open, state.mode)
+        job.cancel()
+    }
 }

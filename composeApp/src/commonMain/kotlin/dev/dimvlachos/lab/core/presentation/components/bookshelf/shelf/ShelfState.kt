@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -43,6 +44,7 @@ private const val ARCH_MS = 650
 private const val ARCH_CLOSE_MS = 220
 private const val OPEN_FROM_TRAVEL = 0.9f
 private const val PAGES_WAIT_MS = 3000L
+private const val REDUCED_MOTION_TIME = 0.4f
 
 internal enum class ShelfMode {
     Shelf,
@@ -122,6 +124,12 @@ internal class ShelfState(
      */
     var heldElsewhere: () -> Boolean = { false }
 
+    /** With reduced motion a tipped book settles without bouncing and every move is short. */
+    var reducedMotion = false
+
+    private fun ms(durationMs: Int): Int =
+        if (reducedMotion) (durationMs * REDUCED_MOTION_TIME).toInt() else durationMs
+
     fun beginTip(bookId: Int) {
         if (heldElsewhere()) return
         val start = if (mode == ShelfMode.Settle && activeBookId == bookId) tilt else 0f
@@ -182,7 +190,8 @@ internal class ShelfState(
         if (TiltGesture.shouldPutBack(push, velocityY)) return putBack()
         val start = push
         run {
-            animate(0f, 1f, animationSpec = tween(PUSH_RELAX_MS, easing = LinearEasing)) { p, _ ->
+            animate(0f, 1f, animationSpec = tween(ms(PUSH_RELAX_MS), easing = LinearEasing)) { p, _
+                ->
                 push = start * (1f - easeOutCubic(p))
                 arch = archFor(push)
             }
@@ -216,7 +225,8 @@ internal class ShelfState(
         if (TiltGesture.shouldCloseCover(open, velocity)) return putBack()
         val start = open
         run {
-            animate(0f, 1f, animationSpec = tween(PUSH_RELAX_MS, easing = LinearEasing)) { p, _ ->
+            animate(0f, 1f, animationSpec = tween(ms(PUSH_RELAX_MS), easing = LinearEasing)) { p, _
+                ->
                 open = start + (1f - start) * easeOutCubic(p)
             }
             coverOnly = false
@@ -257,7 +267,8 @@ internal class ShelfState(
             animate(
                 0f,
                 1f,
-                animationSpec = tween((CLOSE_MS * openStart).toInt() + 1, easing = LinearEasing),
+                animationSpec =
+                    tween(ms((CLOSE_MS * openStart).toInt()) + 1, easing = LinearEasing),
             ) { p, _ ->
                 val e = easeInOutCubic(p)
                 open = openStart * (1f - e)
@@ -269,7 +280,7 @@ internal class ShelfState(
             animate(
                 travelStart,
                 0f,
-                animationSpec = tween((RETURN_MS * travelStart).toInt(), easing = LinearEasing),
+                animationSpec = tween(ms((RETURN_MS * travelStart).toInt()), easing = LinearEasing),
             ) { v, _ ->
                 travel = v
             }
@@ -330,7 +341,7 @@ internal class ShelfState(
                     travelStart,
                     1f,
                     animationSpec =
-                        tween((TRAVEL_MS * (1f - travelStart)).toInt(), easing = LinearEasing),
+                        tween(ms((TRAVEL_MS * (1f - travelStart)).toInt()), easing = LinearEasing),
                 ) { v, _ ->
                     travel = v
                 }
@@ -343,7 +354,7 @@ internal class ShelfState(
             animate(
                 open,
                 1f,
-                animationSpec = tween((OPEN_MS * (1f - open)).toInt(), easing = LinearEasing),
+                animationSpec = tween(ms((OPEN_MS * (1f - open)).toInt()), easing = LinearEasing),
             ) { v, _ ->
                 open = v
             }
@@ -357,7 +368,7 @@ internal class ShelfState(
 
     private suspend fun relaxArch() {
         val from = arch
-        animate(0f, 1f, animationSpec = tween(ARCH_MS, easing = LinearEasing)) { p, _ ->
+        animate(0f, 1f, animationSpec = tween(ms(ARCH_MS), easing = LinearEasing)) { p, _ ->
             arch = from + (1f - from) * easeOutCubic(p)
         }
         arch = 1f
@@ -375,7 +386,7 @@ internal class ShelfState(
         animate(
             0f,
             1f,
-            animationSpec = tween((durationMs * span).toInt(), easing = LinearEasing),
+            animationSpec = tween(ms((durationMs * span).toInt()), easing = LinearEasing),
         ) { p, _ ->
             set(from + (to - from) * if (linear) p else easeInOutCubic(p))
         }
@@ -394,7 +405,9 @@ internal class ShelfState(
             initialVelocity = velocity,
             animationSpec =
                 spring(
-                    dampingRatio = SETTLE_DAMPING,
+                    // Reduced motion: back upright without swinging past it.
+                    dampingRatio =
+                        if (reducedMotion) Spring.DampingRatioNoBouncy else SETTLE_DAMPING,
                     stiffness = SETTLE_STIFFNESS,
                     visibilityThreshold = SETTLE_THRESHOLD,
                 ),

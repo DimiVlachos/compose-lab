@@ -395,6 +395,7 @@ internal fun PhysicalShelfHost(
     }
 
     SideEffect {
+        state.reducedMotion = reducedMotion
         onBookSetting(bookSetting)
         state.pagesReadyFor = pages?.takeIf { !it.pages.pending }?.bookId
         turns?.canTurn = { leaf -> turnKeys(leaf).all { leaves[it]?.exact == true } }
