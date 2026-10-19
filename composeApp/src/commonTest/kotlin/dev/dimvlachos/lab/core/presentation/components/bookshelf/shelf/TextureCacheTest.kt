@@ -18,4 +18,17 @@ class TextureCacheTest {
     fun aCacheWithRoomEvictsNothing() {
         assertEquals(emptyList(), evictions(listOf(3, 7), keep = setOf(3)))
     }
+
+    @Test
+    fun aFaceStillWantedKeepsBakingAndOnlyNewFacesStart() {
+        val plan =
+            bakePlan(
+                wanted = listOf("a", "b", "c", "c"),
+                baked = setOf("a"),
+                baking = setOf("b", "x"),
+            )
+
+        assertEquals(listOf("c"), plan.start, "b is on its way, a is done")
+        assertEquals(listOf("x"), plan.cancel, "x is no longer wanted")
+    }
 }

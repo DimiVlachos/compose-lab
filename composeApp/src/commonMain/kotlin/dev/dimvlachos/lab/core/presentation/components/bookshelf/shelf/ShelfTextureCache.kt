@@ -2,12 +2,14 @@ package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.book.BookPageSetting
@@ -17,6 +19,7 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.ShelfL
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.layoutShelf
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.gfx.Bitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -202,6 +205,22 @@ private data class FaceKey(val content: PageContent, val right: Boolean)
 private class BakedFaces(val request: TextureRequest?, val metrics: PageMetrics?) {
     val bitmaps = mutableStateMapOf<FaceKey, Bitmap>()
     val lastShown = HashMap<LeafKey, LeafFace>()
+    // The faces being baked, each on its way until it is no longer wanted.
+    val baking = HashMap<FaceKey, Job>()
+}
+
+internal class BakePlan<T>(val start: List<T>, val cancel: List<T>)
+
+/**
+ * What to bake now that [wanted] are wanted: each face neither [baked] nor [baking] yet, once; and
+ * what being baked to stop, as no longer wanted. A face still wanted keeps baking.
+ */
+internal fun <T> bakePlan(wanted: List<T>, baked: Set<T>, baking: Set<T>): BakePlan<T> {
+    val keep = wanted.toSet()
+    return BakePlan(
+        start = wanted.distinct().filter { it !in baked && it !in baking },
+        cancel = baking.filter { it !in keep },
+    )
 }
 
 @Composable
@@ -219,32 +238,30 @@ internal fun rememberLeafFaces(
     val request = textureRequest(assets, content, bookId, density)
     val metrics = request?.toUnits(metricsDp)
     val baked = remember(request, metrics, bookSetting) { BakedFaces(request, metrics) }
+    // Bakes outlive a change of the wanted faces: only those no longer wanted are stopped.
+    val bakes = rememberCoroutineScope()
+    DisposableEffect(baked) { onDispose { baked.baking.values.forEach { it.cancel() } } }
     val contents =
         if (bookId == null) emptyList()
         else wanted.mapNotNull { key -> leafFor(bookId, bookSetting, key)?.let { key to it } }
     LaunchedEffect(baked, contents) {
         val bakeRequest = baked.request ?: return@LaunchedEffect
         val bakeMetrics = baked.metrics ?: return@LaunchedEffect
-        val keep = contents.mapTo(HashSet()) { (key, page) -> FaceKey(page, key.right) }
+        val wantedFaces = contents.map { (key, page) -> FaceKey(page, key.right) }
+        val keep = wantedFaces.toHashSet()
         baked.bitmaps.keys.filter { it !in keep }.forEach(baked.bitmaps::remove)
-        contents
-            .map { (key, page) -> FaceKey(page, key.right) }
-            .distinct()
-            .filter { it !in baked.bitmaps }
-            .forEach { face ->
-                launch {
-                    baked.bitmaps[face] =
-                        withContext(ShelfTextBakers) {
-                            bakeRequest.face(
-                                face.content,
-                                face.right,
-                                bakeMetrics,
-                                bookSetting,
-                                kit,
-                            )
-                        }
-                }
+        val plan = bakePlan(wantedFaces, baked.bitmaps.keys.toSet(), baked.baking.keys.toSet())
+        plan.cancel.forEach { baked.baking.remove(it)?.cancel() }
+        plan.start.forEach { face ->
+            baked.baking[face] = bakes.launch {
+                val bitmap =
+                    withContext(ShelfTextBakers) {
+                        bakeRequest.face(face.content, face.right, bakeMetrics, bookSetting, kit)
+                    }
+                baked.bitmaps[face] = bitmap
+                baked.baking.remove(face)
             }
+        }
     }
     val faces =
         contents
