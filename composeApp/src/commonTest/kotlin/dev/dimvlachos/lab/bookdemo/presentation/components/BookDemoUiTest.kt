@@ -12,32 +12,37 @@ import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalTestApi::class)
 class BookDemoUiTest {
     @Test
-    fun theScriptTurnsThroughTheBookAndBackWithTheDragsLandingAsPlanned() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val demo = BookDemos.all.single()
-        val state = DemoState()
-        val spreads = mutableListOf<Int>()
-        var finished = false
-        setContent {
-            LabTheme {
-                Box(Modifier.size(800.dp, 450.dp)) {
-                    BookDemo(state) { if (spreads.lastOrNull() != it) spreads += it }
-                }
-                LaunchedEffect(Unit) {
-                    demo.script.play(state)
-                    finished = true
+    // It plays the whole script frame by frame: on a CI runner with few cores, longer than the
+    // test runner's own minute.
+    fun theScriptTurnsThroughTheBookAndBackWithTheDragsLandingAsPlanned() =
+        runComposeUiTest(testTimeout = 3.minutes) {
+            mainClock.autoAdvance = false
+            val demo = BookDemos.all.single()
+            val state = DemoState()
+            val spreads = mutableListOf<Int>()
+            var finished = false
+            setContent {
+                LabTheme {
+                    Box(Modifier.size(800.dp, 450.dp)) {
+                        BookDemo(state) { if (spreads.lastOrNull() != it) spreads += it }
+                    }
+                    LaunchedEffect(Unit) {
+                        demo.script.play(state)
+                        finished = true
+                    }
                 }
             }
+            mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds + 2_000)
+            // The slow peel falls back and the reversed pull too: neither is a turn. The flick is,
+            // the
+            // slide down the edge and the pull back from the left are; the riffles turn a page per
+            // tap, four on and five back, and the page caught in the air goes back where it was.
+            assertEquals(listOf(0, 1, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0), spreads)
+            assertEquals(true, finished)
         }
-        mainClock.advanceTimeBy(demo.script.nominalDuration.inWholeMilliseconds + 2_000)
-        // The slow peel falls back and the reversed pull too: neither is a turn. The flick is, the
-        // slide down the edge and the pull back from the left are; the riffles turn a page per
-        // tap, four on and five back, and the page caught in the air goes back where it was.
-        assertEquals(listOf(0, 1, 2, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0), spreads)
-        assertEquals(true, finished)
-    }
 }
