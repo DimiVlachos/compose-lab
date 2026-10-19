@@ -1,26 +1,30 @@
 package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 
-import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.v2.runComposeUiTest
-import androidx.compose.ui.text.font.FontFamily
 import kotlin.test.Test
-import kotlin.test.assertNotSame
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlinx.coroutines.withContext
+import platform.Foundation.NSThread
 
 class ShelfFontsIosTest {
-    // Skia's font cache is not guarded for threads, and the shelf sets its text on a baker thread
-    // while the app sets its own on the main one, so the shelf's text has a resolver of its own.
+    // Compose keeps one cache of text styles for the whole app, unguarded for threads, and every
+    // text laid out touches it, so the shelf sets its text on the thread that lays out the app's.
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun theShelfSetsItsTextWithAResolverTheAppDoesNotShare() = runComposeUiTest {
-        lateinit var app: FontFamily.Resolver
-        lateinit var shelf: FontFamily.Resolver
+    fun theShelfSetsItsTextOnTheThreadThatLaysOutTheApp() = runComposeUiTest {
+        var app: NSThread? = null
+        var shelf: NSThread? = null
         setContent {
-            app = LocalFontFamilyResolver.current
-            shelf = rememberShelfFontResolver()
+            app = NSThread.currentThread
+            LaunchedEffect(Unit) {
+                shelf = withContext(ShelfTextBakers) { NSThread.currentThread }
+            }
         }
-        waitForIdle()
+        waitUntil { shelf != null }
 
-        assertNotSame(app, shelf)
+        assertEquals(assertNotNull(app), shelf)
     }
 }

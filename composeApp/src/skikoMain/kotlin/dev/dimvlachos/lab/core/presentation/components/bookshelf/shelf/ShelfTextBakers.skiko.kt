@@ -1,18 +1,16 @@
 package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.createFontFamilyResolver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
-// Skia's font cache is not guarded for threads, so the shelf's text is set one bake at a time, all
-// of it on this one thread, with a resolver (and so a font cache) the main thread never touches.
-internal actual fun shelfTextBakers(): CoroutineDispatcher =
-    Dispatchers.Default.limitedParallelism(1)
+// Compose on Skia keeps one cache of text styles for the whole app, not guarded for threads, and
+// every text laid out, through any resolver, touches it. So the shelf's text is set where the
+// bake was asked for, on the thread that lays out all the app's other text.
+internal actual fun shelfTextBakers(): CoroutineDispatcher = Dispatchers.Unconfined
 
 @Composable
-internal actual fun rememberShelfFontResolver(): FontFamily.Resolver = remember {
-    createFontFamilyResolver()
-}
+internal actual fun rememberShelfFontResolver(): FontFamily.Resolver =
+    LocalFontFamilyResolver.current

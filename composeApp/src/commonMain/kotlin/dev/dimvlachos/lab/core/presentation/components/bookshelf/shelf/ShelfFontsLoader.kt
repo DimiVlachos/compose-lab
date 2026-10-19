@@ -21,24 +21,19 @@ import kotlinx.coroutines.CoroutineDispatcher
 import org.jetbrains.compose.resources.Font
 
 /**
- * Where everything that sets text for the shelf is baked, off the main thread: several at once
- * where the platform's font machinery can be entered from several threads, one at a time where it
- * cannot.
+ * Where everything that sets text for the shelf is baked: several at once off the main thread where
+ * text can be laid out from several threads, else on the thread that lays out the app.
  */
 internal val ShelfTextBakers: CoroutineDispatcher = shelfTextBakers()
 
 internal expect fun shelfTextBakers(): CoroutineDispatcher
 
-/**
- * The resolver the shelf's text is set with: the app's own where text can be set from several
- * threads at once, else one of the shelf's own, so the bakers never share a font cache with the
- * main thread.
- */
+/** The resolver the shelf's text is set with. */
 @Composable internal expect fun rememberShelfFontResolver(): FontFamily.Resolver
 
 /**
- * The shelf's four faces, Instrument Serif and Sans. Textures are baked on background threads, so
- * their text is measured by a measurer that keeps no cache to share between them.
+ * The shelf's four faces, Instrument Serif and Sans. Textures may be baked on several threads at
+ * once, so their text is measured by a measurer that keeps no cache to share between them.
  */
 @Composable
 internal fun rememberShelfFonts(): ShelfFonts {

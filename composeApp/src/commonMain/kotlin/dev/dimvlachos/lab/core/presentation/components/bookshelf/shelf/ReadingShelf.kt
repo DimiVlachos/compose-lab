@@ -47,7 +47,7 @@ internal fun ReadingShelf(
     val activeId = state.activeBookId
     val chapter = remember(activeId) { activeId?.let(chapterFor) }
     val ready = setting
-    // Set into pages by the bakers, the only thread the shelf's text is set on.
+    // Set into pages by the shelf's text bakers, where all its text is set.
     // Another book's or layout's pages are dropped at once, not kept until these are set.
     val pages =
         produceState<BookChapterPages?>(null, ready, activeId, chapter, spread) {
