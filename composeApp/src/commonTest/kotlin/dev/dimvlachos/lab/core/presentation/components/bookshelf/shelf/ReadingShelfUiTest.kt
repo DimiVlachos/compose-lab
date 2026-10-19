@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -65,8 +66,10 @@ class ReadingShelfUiTest {
         )
 
     // Two planks below a band of list, scrolling, as the demo lays them out.
+    // The shelf plays its sounds from its own effects, on iOS not the thread the test reads from:
+    // a snapshot list can be read whole while another thread adds to it.
     private class Heard : SoundPlayer {
-        val played = mutableListOf<Sound>()
+        val played = mutableStateListOf<Sound>()
 
         override fun play(sound: Sound, volume: Float, rate: Float) {
             played += sound
