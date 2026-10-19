@@ -39,6 +39,10 @@ LANDSCAPE_ANIMATION_S = 0.8
 ANDROID_CAPTURE_LEAD_S = 0.08
 # How loud a clip with sound peaks.
 PEAK_DB = -1.0
+# How far behind its picture scrcpy records the sound the app plays: the phone's audio output plus
+# the playback capture (measured on a Galaxy S23 Ultra as 192-226 ms, from typewriter strikes and a
+# bookshelf page crossing its spine). The audio is cut this much later, so each sound lands on its frame.
+ANDROID_AUDIO_LAG_S = 0.20
 
 
 def run(cmd):
@@ -273,8 +277,9 @@ def encode(raw, start, done, dest, landscape, tall, sound=False):
     )
     audio = ["-an"]
     if sound:
-        # The audio is cut on the same clock as the video, padded with silence for a still tail.
-        cut = f"atrim=start={start:.3f},asetpts=PTS-STARTPTS,apad"
+        # The audio is cut on the same clock as the video, less the lag it was recorded with, and
+        # padded with silence for a still tail.
+        cut = f"atrim=start={start + ANDROID_AUDIO_LAG_S:.3f},asetpts=PTS-STARTPTS,apad"
         gain = PEAK_DB - peak_db_of_cut(raw, cut, done - start)
         audio = ["-map", "0:a:0", "-af", f"{cut},volume={gain:.1f}dB", "-c:a", "aac", "-b:a", "128k"]
     crf = 18
