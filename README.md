@@ -566,6 +566,8 @@ CardFile(
 
 ## Bookshelf (`core/presentation/components/bookshelf/`)
 
+![](docs/media/bookshelf.reading.gif)
+
 A reading list kept on shelves in the light of a window. The books being read stand on a ring that runs off both sides of the screen: drag it and it spins, past the books you can see, and settles with a book square in front. Below, two oak planks hold the books to read next and the books already read. Pull a book down by the top of its spine and it tips forward, slides out, turns its cover to you and opens; one being read opens at its ribbon, a new one at its title page. Its pages turn under the finger. Push it down and it goes down and tips back under the finger; from its first page, drag right and its cover closes with the finger. Let go far or fast enough, or press back, and it goes back to its place; a short drag lets it settle open again.
 
 - **Books in perspective.** Each book is a box of six faces, posed in 3D and projected through one camera: spine, covers, head and fore edge, and the pages, each face its own bitmap mapped onto its quad exactly, lit by where it faces. Books further round the ring turn along its curve and dim.
