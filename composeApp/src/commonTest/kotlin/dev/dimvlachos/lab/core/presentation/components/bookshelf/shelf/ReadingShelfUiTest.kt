@@ -246,14 +246,15 @@ class ReadingShelfUiTest {
         var spread by mutableStateOf(false)
         val heard = Heard()
         openAt(page = 2, spread = { spread }, sounds = heard)
-        waitForIdle()
-        heard.played.clear()
+        runOnIdle { heard.played.clear() }
 
         spread = true
         waitForIdle()
         mainClock.advanceTimeBy(2_000)
 
-        assertTrue(Sound.PageFlip !in heard.played, "heard ${heard.played}")
+        // Read on the UI thread, where the sounds are played.
+        val played = runOnIdle { heard.played.toList() }
+        assertTrue(Sound.PageFlip !in played, "heard $played")
     }
 
     private val hasCloseAction =
