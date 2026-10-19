@@ -54,6 +54,19 @@ class GfxTest {
         assertEquals(0xFF, px[50 * 100 + 50] ushr 24, "the wall between the holes")
     }
 
+    // As Skia emboldens: a twenty-fourth of the size for small text, a thirty-second from 36 up.
+    @Test
+    fun fakeBoldThickensTextAsSkiaDoes() {
+        assertEquals(6f / 24f, fakeBoldStroke(6f), 1e-5f)
+        assertEquals(9f / 24f, fakeBoldStroke(9f), 1e-5f)
+        assertEquals(
+            22.5f * (1f / 24f + (1f / 32f - 1f / 24f) * 0.5f),
+            fakeBoldStroke(22.5f),
+            1e-5f,
+        )
+        assertEquals(48f / 32f, fakeBoldStroke(48f), 1e-5f)
+    }
+
     @Test
     fun polyToPolyTakesEachSourceCornerToItsTarget() {
         val src = floatArrayOf(0f, 0f, 100f, 0f, 100f, 200f, 0f, 200f)

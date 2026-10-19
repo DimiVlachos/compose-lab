@@ -700,7 +700,7 @@ internal class Canvas(internal val compose: ComposeCanvas) {
             // Fake bold strokes each glyph's outline a little, as Skia does.
             val stroke =
                 androidx.compose.ui.graphics.drawscope.Stroke(
-                    paint.textSize * TEXT_OVERSAMPLE / 34f
+                    fakeBoldStroke(paint.textSize) * TEXT_OVERSAMPLE
                 )
             if (shader != null)
                 line.multiParagraph.paint(
@@ -812,4 +812,13 @@ internal fun ellipsize(text: String, paint: Paint, avail: Float): String {
         else high = mid - 1
     }
     return if (low == 0) "" else text.substring(0, low).trimEnd() + "…"
+}
+
+/**
+ * How wide fake bold strokes a glyph's outline at [textSize], as Skia emboldens: a twenty-fourth of
+ * the size up to 9, a thirty-second from 36, and in between in proportion.
+ */
+internal fun fakeBoldStroke(textSize: Float): Float {
+    val t = ((textSize - 9f) / 27f).coerceIn(0f, 1f)
+    return textSize * (1f / 24f + (1f / 32f - 1f / 24f) * t)
 }
