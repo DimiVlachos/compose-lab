@@ -130,6 +130,17 @@ class ShelfStateTest {
     }
 
     @Test
+    fun aBookWhosePagesNeverComeStillOpensAfterAWhile() = runTest {
+        val (state, job) = shelf()
+
+        state.openDirect(3)
+        settle(6_000)
+
+        assertEquals(ShelfMode.Open, state.mode, "opened at its title page, not left out")
+        job.cancel()
+    }
+
+    @Test
     fun aLowGrabOnlyNudgesTheBookInPlace() = runTest {
         val (state, job) = shelf()
 

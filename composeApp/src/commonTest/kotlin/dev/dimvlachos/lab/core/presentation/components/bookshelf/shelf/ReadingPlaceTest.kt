@@ -58,6 +58,33 @@ class ReadingPlaceTest {
     }
 
     @Test
+    fun turningASpreadBackToSinglePagesKeepsThePlaceToo() {
+        // Twelve paragraphs: three to a wide page, two to a narrow one.
+        fun pagesOf(perPage: Int) =
+            (0 until 12 step perPage).map {
+                BookPage(0, it, it + perPage - 1, 0, 2 * perPage, it == 0)
+            }
+        val wide = pagesOf(3)
+        val narrow = pagesOf(2)
+        val place = ReadingPlace()
+        place.pageFor(1, spread = true, wide, shownLeaf = 0, bookmarkPage = 0, pageIn(wide))
+
+        // The second spread shows wide pages 2 and 3, from paragraph 6; turned upright, the
+        // narrow page that paragraph begins is the fourth.
+        assertEquals(
+            3,
+            place.pageFor(
+                1,
+                spread = false,
+                narrow,
+                shownLeaf = 1,
+                bookmarkPage = 0,
+                pageIn(narrow),
+            ),
+        )
+    }
+
+    @Test
     fun turningTheScreenKeepsThePlaceInTheText() {
         val place = ReadingPlace()
         place.pageFor(1, spread = false, narrow, shownLeaf = 0, bookmarkPage = 0, pageIn(narrow))
