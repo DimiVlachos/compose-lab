@@ -896,12 +896,23 @@ private fun SpineAccessibility(content: ShelfContent, assets: ShelfAssets, state
     }
 }
 
+/**
+ * The book whose return to the shelf is announced: the one that opened, until another is tipped, so
+ * a tip that only falls back announces nothing.
+ */
+internal fun announcedTitle(current: String?, mode: ShelfMode, activeTitle: String?): String? =
+    when {
+        mode == ShelfMode.Open && activeTitle != null -> activeTitle
+        mode == ShelfMode.Tip -> null
+        else -> current
+    }
+
 @Composable
 private fun ShelfAnnouncer(content: ShelfContent, state: ShelfState) {
     var openedTitle by remember { mutableStateOf<String?>(null) }
     val activeTitle = state.activeBookId?.let { content.entries[it]?.visual?.title }
     LaunchedEffect(state.mode, activeTitle) {
-        if (state.mode == ShelfMode.Open && activeTitle != null) openedTitle = activeTitle
+        openedTitle = announcedTitle(openedTitle, state.mode, activeTitle)
     }
     val title = openedTitle
     val announcement =
