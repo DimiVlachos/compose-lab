@@ -681,7 +681,7 @@ Point Gradle at the Android SDK with `ANDROID_HOME` or `sdk.dir` in `local.prope
 
 - Android: `./gradlew :androidApp:installDebug`
 - iOS: boot a simulator, then run `scripts/install-ios.sh`
-- Tests: `./gradlew :composeApp:iosSimulatorArm64Test`
+- Tests: `./gradlew :composeApp:jvmTest` runs the shared tests on the JVM in a couple of minutes; `./gradlew :composeApp:iosSimulatorArm64Test` runs them in the iOS simulator, as CI does on `main`
 - Architecture (Konsist): `./gradlew :androidApp:testDebugUnitTest`
 - Lint: `./gradlew :androidApp:lintDebug`
 - Formatting: `./gradlew spotlessApply`

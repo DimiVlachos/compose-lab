@@ -16,10 +16,12 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Static analysis, tests and debug build
-    runs-on: macos-latest
-    timeout-minutes: 45
+  # The shared tests run on the JVM, drawing with the same Skia as iOS, far faster than as an iOS
+  # simulator binary; the Android app and the Moodboard's are built and linted here too.
+  jvm:
+    name: JVM tests, Android build and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Repository
@@ -39,8 +41,8 @@ jobs:
       - name: Check Formatting (Spotless)
         run: ./gradlew spotlessCheck --stacktrace
 
-      - name: Tests (iOS simulator)
-        run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
+      - name: Shared tests (JVM)
+        run: ./gradlew :composeApp:jvmTest --stacktrace
 
       - name: Tests (Konsist architecture)
         run: ./gradlew :androidApp:testDebugUnitTest --stacktrace
@@ -50,6 +52,57 @@ jobs:
 
       - name: Android lint
         run: ./gradlew :androidApp:lintDebug --stacktrace
+
+      - name: Moodboard architecture (Konsist)
+        run: ./gradlew :moodboard:androidApp:testDebugUnitTest --stacktrace
+
+      - name: Moodboard debug APK
+        run: ./gradlew :moodboard:androidApp:assembleDebug --stacktrace
+
+      - name: Moodboard Android lint
+        run: ./gradlew :moodboard:androidApp:lintDebug --stacktrace
+
+      - name: Upload Reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jvm-reports
+          path: |
+            composeApp/build/reports/tests/**
+            composeApp/build/test-results/**
+            androidApp/build/reports/tests/**
+            androidApp/build/test-results/**
+            moodboard/*/build/reports/tests/**
+            moodboard/*/build/test-results/**
+            androidApp/build/reports/lint-results-*.html
+            moodboard/androidApp/build/reports/lint-results-*.html
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Alongside: the iOS apps build, and the tests only iOS can run, run.
+  ios:
+    name: iOS build and iOS-only tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Builds the shared tests for iOS too, so one that only fails to compile there fails here,
+      # and runs the tests that check what only iOS does: frozen textures, the glass shader,
+      # the bookshelf's own font resolver, the camera.
+      - name: iOS-only tests (iOS simulator)
+        run: ./gradlew :composeApp:iosSimulatorArm64Test --tests '*IosTest' --stacktrace
 
       - name: Build iOS app (simulator)
         run: |
@@ -68,28 +121,63 @@ jobs:
       - name: Moodboard iOS framework
         run: ./gradlew :moodboard:shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
 
-      - name: Moodboard architecture (Konsist)
-        run: ./gradlew :moodboard:androidApp:testDebugUnitTest --stacktrace
+      - name: Upload Reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-reports
+          path: |
+            composeApp/build/reports/tests/**
+            composeApp/build/test-results/**
+            moodboard/*/build/reports/tests/**
+            moodboard/*/build/test-results/**
+          retention-days: 7
+          if-no-files-found: ignore
 
-      - name: Moodboard debug APK
-        run: ./gradlew :moodboard:androidApp:assembleDebug --stacktrace
+  # The whole shared suite in the iOS simulator, as the app runs it: on main and by hand, not on
+  # every pull request, where the JVM run covers the same tests in a fraction of the time.
+  ios-suite:
+    name: Shared tests (iOS simulator)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    timeout-minutes: 60
 
-      - name: Moodboard Android lint
-        run: ./gradlew :moodboard:androidApp:lintDebug --stacktrace
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Shared tests (iOS simulator)
+        run: ./gradlew :composeApp:iosSimulatorArm64Test --stacktrace
 
       - name: Upload Reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports
+          name: ios-suite-reports
           path: |
             composeApp/build/reports/tests/**
             composeApp/build/test-results/**
-            androidApp/build/reports/tests/**
-            androidApp/build/test-results/**
-            moodboard/*/build/reports/tests/**
-            moodboard/*/build/test-results/**
-            androidApp/build/reports/lint-results-*.html
-            moodboard/androidApp/build/reports/lint-results-*.html
           retention-days: 7
           if-no-files-found: ignore
+
+  # The check main's ruleset requires: it passes only when both jobs above pass.
+  checks:
+    name: Static analysis, tests and debug build
+    if: always()
+    needs: [jvm, ios]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Both jobs passed
+        run: |
+          test "${{ needs.jvm.result }}" = success
+          test "${{ needs.ios.result }}" = success
