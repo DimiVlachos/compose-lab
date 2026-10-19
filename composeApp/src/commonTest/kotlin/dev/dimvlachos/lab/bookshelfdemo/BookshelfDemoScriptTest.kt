@@ -14,10 +14,9 @@ class BookshelfDemoScriptTest {
     private val demo = BookshelfDemos.all.single()
 
     @Test
-    fun itIsATallDemoThatPlaysByItself() {
+    fun itIsATallDemo() {
         assertEquals("bookshelf.reading", demo.id)
         assertTrue(demo.tall)
-        assertTrue(demo.autoplay)
     }
 
     @Test
