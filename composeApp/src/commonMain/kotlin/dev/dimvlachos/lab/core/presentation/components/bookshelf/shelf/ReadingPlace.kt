@@ -46,13 +46,55 @@ internal class ReadingPlace {
 // The first page a leaf shows: a spread's leaf n shows pages 2n and 2n + 1.
 internal fun pageOfLeaf(leaf: Int, spread: Boolean): Int = if (spread) leaf * 2 else leaf
 
-/** Whether a page turned: the page changed while the book stayed open, not as it opened. */
-internal class PageFlipCue {
-    private var openAt: Int? = null
+// How near flat a leaf lies when it looks down, though its spring has yet to settle.
+private const val LeafDown = 0.02f
 
-    fun next(open: Boolean, page: Int): Boolean {
-        val before = openAt
-        openAt = if (open) page else null
-        return before != null && open && page != before
+// Leaves riffled over together whoosh as one, not once a leaf.
+private const val TurnGapMillis = 120L
+
+/** The sounds a leaf makes: air as it flips over the spine, a pat as it lies down. */
+internal enum class LeafSound {
+    Turn,
+    Land,
+}
+
+/**
+ * The sounds of the leaves in flight, from where each one is: a leaf whooshes as it crosses the
+ * spine, half way over, and pats down the frame it looks flat. A leaf let fall back before it
+ * crosses makes none, and nothing sounds while the book is not open.
+ */
+internal class LeafSoundCue {
+    private class Leaf(var over: Boolean, var crossed: Boolean = false)
+
+    private val leaves = HashMap<Int, Leaf>()
+    private var lastTurn: Long? = null
+
+    /** The sounds of the leaves in [flights], as (leaf, turn from 0 to 1), seen [atMillis]. */
+    fun next(open: Boolean, flights: List<Pair<Int, Float>>, atMillis: Long): List<LeafSound> {
+        if (!open) {
+            leaves.clear()
+            return emptyList()
+        }
+        val sounds = mutableListOf<LeafSound>()
+        val gone = leaves.keys - flights.mapTo(HashSet()) { it.first }
+        gone.forEach { if (leaves.remove(it)?.crossed == true) sounds += LeafSound.Land }
+        for ((id, t) in flights) {
+            val over = t >= 0.5f
+            val leaf = leaves.getOrPut(id) { Leaf(over) }
+            if (over != leaf.over) {
+                leaf.over = over
+                leaf.crossed = true
+                if (lastTurn.let { it == null || atMillis - it >= TurnGapMillis }) {
+                    lastTurn = atMillis
+                    sounds += LeafSound.Turn
+                }
+            }
+            val down = if (over) t >= 1f - LeafDown else t <= LeafDown
+            if (leaf.crossed && down) {
+                leaf.crossed = false
+                sounds += LeafSound.Land
+            }
+        }
+        return sounds
     }
 }

@@ -24,8 +24,9 @@ internal enum class Sound(val file: String) {
     CardTick("card_tick"),
     BookSlide("book_slide"),
     BookOpen("book_open"),
-    PageFlip("page_flip"),
-    RingTick("ring_tick");
+    RingTick("ring_tick"),
+    PageTurn("page_turn"),
+    PageLand("page_land");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

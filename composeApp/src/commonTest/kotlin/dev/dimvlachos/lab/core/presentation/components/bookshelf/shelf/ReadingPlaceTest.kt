@@ -3,8 +3,6 @@ package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry.BookPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class ReadingPlaceTest {
     // A chapter of 6 paragraphs in pages of two paragraphs each in one layout, three in another.
@@ -111,15 +109,80 @@ class ReadingPlaceTest {
     }
 
     @Test
-    fun aPageTurnSoundsOnlyForATurnInAnOpenBook() {
-        val cue = PageFlipCue()
+    fun aLeafWhooshesAsItCrossesTheSpineAndPatsAsItLiesDown() {
+        val cue = LeafSoundCue()
 
-        assertFalse(cue.next(open = false, page = 0))
-        assertFalse(cue.next(open = true, page = 4), "the jump to the bookmark as it opens")
-        assertTrue(cue.next(open = true, page = 5))
-        assertFalse(cue.next(open = true, page = 5))
-        assertFalse(cue.next(open = false, page = 5))
-        assertFalse(cue.next(open = true, page = 4), "reopened at its bookmark")
-        assertTrue(cue.next(open = true, page = 3))
+        assertEquals(emptyList(), cue.next(open = true, listOf(4 to 0f), atMillis = 0))
+        assertEquals(emptyList(), cue.next(open = true, listOf(4 to 0.4f), atMillis = 16))
+        assertEquals(
+            listOf(LeafSound.Turn),
+            cue.next(open = true, listOf(4 to 0.6f), atMillis = 33),
+        )
+        assertEquals(emptyList(), cue.next(open = true, listOf(4 to 0.9f), atMillis = 50))
+        assertEquals(
+            listOf(LeafSound.Land),
+            cue.next(open = true, listOf(4 to 0.99f), atMillis = 66),
+            "flat to the eye, though its spring is still settling",
+        )
+        assertEquals(emptyList(), cue.next(open = true, listOf(4 to 1f), atMillis = 83))
+        assertEquals(emptyList(), cue.next(open = true, emptyList(), atMillis = 100))
+    }
+
+    @Test
+    fun aLeafLetFallBackBeforeItCrossesMakesNoSound() {
+        val cue = LeafSoundCue()
+
+        listOf(0f, 0.3f, 0.45f, 0.2f, 0f).forEachIndexed { frame, t ->
+            assertEquals(emptyList(), cue.next(open = true, listOf(2 to t), atMillis = frame * 16L))
+        }
+        assertEquals(emptyList(), cue.next(open = true, emptyList(), atMillis = 100))
+    }
+
+    @Test
+    fun aLeafTurnedBackLandsWhereItStarted() {
+        val cue = LeafSoundCue()
+
+        cue.next(open = true, listOf(3 to 1f), atMillis = 0)
+        assertEquals(
+            listOf(LeafSound.Turn),
+            cue.next(open = true, listOf(3 to 0.4f), atMillis = 16),
+        )
+        assertEquals(listOf(LeafSound.Land), cue.next(open = true, listOf(3 to 0f), atMillis = 33))
+    }
+
+    @Test
+    fun aLeafThatLeavesFlightAfterCrossingStillLands() {
+        val cue = LeafSoundCue()
+
+        cue.next(open = true, listOf(1 to 0.2f), atMillis = 0)
+        assertEquals(
+            listOf(LeafSound.Turn),
+            cue.next(open = true, listOf(1 to 0.8f), atMillis = 16),
+        )
+        assertEquals(listOf(LeafSound.Land), cue.next(open = true, emptyList(), atMillis = 33))
+    }
+
+    @Test
+    fun aRiffleWhooshesAtMostOnceInAShortWhileButPatsEveryLeaf() {
+        val cue = LeafSoundCue()
+
+        cue.next(open = true, listOf(0 to 0f, 1 to 0f), atMillis = 0)
+        assertEquals(
+            listOf(LeafSound.Turn),
+            cue.next(open = true, listOf(0 to 0.7f, 1 to 0.6f), atMillis = 16),
+        )
+        assertEquals(
+            listOf(LeafSound.Land, LeafSound.Land),
+            cue.next(open = true, listOf(0 to 1f, 1 to 1f), atMillis = 33),
+        )
+    }
+
+    @Test
+    fun leavesMakeNoSoundUnlessTheBookIsOpen() {
+        val cue = LeafSoundCue()
+
+        cue.next(open = false, listOf(0 to 0f), atMillis = 0)
+        assertEquals(emptyList(), cue.next(open = false, listOf(0 to 0.8f), atMillis = 16))
+        assertEquals(emptyList(), cue.next(open = true, listOf(0 to 1f), atMillis = 33))
     }
 }

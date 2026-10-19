@@ -277,12 +277,20 @@ def book_open(rng, rate):
     return fade(normalise(mix(thump, body, paper), 0.6), rate, 0.001, 0.03)
 
 
-def page_flip(rng, rate):
-    """A page turned over: a bright paper flick that falls away fast."""
-    n = seconds(0.14, rate)
-    flick = mul(highpass(noise(n, rng), 1800, rate), env_exp(n, rate, 0.035, attack=0.006))
-    air = scale(mul(bandpass(noise(n, rng), 1100, 1.0, rate), env_exp(n, rate, 0.05, attack=0.01)), 0.4)
-    return fade(normalise(mix(flick, air), 0.5), rate, 0.002, 0.03)
+def page_turn(rng, rate):
+    """A leaf flipped over its spine: a soft rush of air off the paper that swells and falls away."""
+    n = seconds(0.22, rate)
+    air = mul(bandpass(noise(n, rng), 1400, 0.7, rate), env_exp(n, rate, 0.07, attack=0.04))
+    edge = scale(mul(highpass(noise(n, rng), 3500, rate), env_exp(n, rate, 0.04, attack=0.03)), 0.25)
+    return fade(normalise(mix(air, edge), 0.45), rate, 0.004, 0.05)
+
+
+def page_land(rng, rate):
+    """A leaf lying down on the pages under it: a short, soft pat of paper."""
+    n = seconds(0.05, rate)
+    pat = mul(lowpass(noise(n, rng), 900, rate), env_exp(n, rate, 0.008, attack=0.001))
+    crisp = scale(mul(bandpass(noise(n, rng), 2500, 1.0, rate), env_exp(n, rate, 0.005, attack=0.001)), 0.3)
+    return fade(normalise(mix(pat, crisp), 0.4), rate, 0.0005, 0.01)
 
 
 def ring_tick(rng, rate):
@@ -317,8 +325,13 @@ def main():
     shelf = random.Random(1018)
     write("book_slide", book_slide(shelf, soft), soft)
     write("book_open", book_open(shelf, fast), fast)
-    write("page_flip", page_flip(shelf, fast), fast)
+    # The draws of the page flip the leaf sounds replaced, so the ring tick after them stays the same.
+    noise(seconds(0.14, fast), shelf)
+    noise(seconds(0.14, fast), shelf)
     write("ring_tick", ring_tick(shelf, fast), fast)
+    leaf = random.Random(1019)
+    write("page_turn", page_turn(leaf, fast), fast)
+    write("page_land", page_land(leaf, fast), fast)
 
 
 if __name__ == "__main__":
