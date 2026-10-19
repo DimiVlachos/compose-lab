@@ -87,11 +87,6 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
             CompositionLocalProvider(LocalSoundCapturable provides record) {
                 key(runId) { demo.content(state) }
             }
-            if (playing && !record) {
-                TourPlayingPill(
-                    Modifier.align(Alignment.TopCenter).padding(top = LabTheme.spacing.small)
-                )
-            }
             if (label != null) {
                 Text(
                     label,
@@ -146,7 +141,10 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
                         )
                     },
                 ) {
-                    LabTopBarTitle(stringResource(demo.title))
+                    Column {
+                        LabTopBarTitle(stringResource(demo.title))
+                        TourPlayingNote(visible = playing)
+                    }
                 }
                 // The bar has the top: the demo keeps its controls clear of the sides and the
                 // foot itself, through demoInsets.
