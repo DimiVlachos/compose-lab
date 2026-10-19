@@ -58,7 +58,21 @@ compose.resources { packageOfResClass = "dev.dimvlachos.lab.resources" }
 
 // The shared tests' classes run spread over several JVMs at once, half the machine's cores.
 tasks.named<Test>("jvmTest") {
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
+    // CI splits the classes over several machines: -PtestShards=3 -PtestShard=0 runs a third of
+    // them, chosen by a hash of each class's path. The salt was picked so the three weigh alike.
+    val shards = providers.gradleProperty("testShards").orNull?.toInt()
+    val shard = providers.gradleProperty("testShard").orNull?.toInt()
+    if (shards != null && shard != null) {
+        val salt = 112
+        exclude { element ->
+            val path = element.path
+            !element.isDirectory &&
+                path.endsWith(".class") &&
+                !path.contains('$') &&
+                Math.floorMod("$salt$path".hashCode(), shards) != shard
+        }
+    }
     // These pin timing the JVM test host doesn't give: images load on a real thread outside the
     // test clock, a swipe arrives as fewer moves, and a recomposition count shifts under the
     // load of the parallel forks. They run in the iOS simulator suite on main.

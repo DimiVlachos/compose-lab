@@ -16,12 +16,50 @@ permissions:
   contents: read
 
 jobs:
-  # The shared tests run on the JVM, drawing with the same Skia as iOS, far faster than as an iOS
-  # simulator binary; the Android app and the Moodboard's are built and linted here too.
-  jvm:
-    name: JVM tests, Android build and lint
+  # The shared tests on the JVM, drawing with the same Skia as iOS, split over three machines.
+  jvm-tests:
+    name: Shared tests (JVM, ${{ matrix.shard }} of 3)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          # The Gradle daemon's JDK, vendor and version as in gradle/gradle-daemon-jvm.properties.
+          # Android code still compiles to Java 17 bytecode.
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Shared tests (JVM)
+        run: ./gradlew :composeApp:jvmTest -PtestShards=3 -PtestShard=${{ matrix.shard }} --stacktrace
+
+      - name: Upload Reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jvm-reports-${{ matrix.shard }}
+          path: |
+            composeApp/build/reports/tests/**
+            composeApp/build/test-results/**
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Formatting, the architecture tests, and the Android apps built and linted.
+  android:
+    name: Formatting, Konsist, Android build and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
@@ -40,9 +78,6 @@ jobs:
 
       - name: Check Formatting (Spotless)
         run: ./gradlew spotlessCheck --stacktrace
-
-      - name: Shared tests (JVM)
-        run: ./gradlew :composeApp:jvmTest --stacktrace
 
       - name: Tests (Konsist architecture)
         run: ./gradlew :androidApp:testDebugUnitTest --stacktrace
@@ -66,10 +101,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: jvm-reports
+          name: android-reports
           path: |
-            composeApp/build/reports/tests/**
-            composeApp/build/test-results/**
             androidApp/build/reports/tests/**
             androidApp/build/test-results/**
             moodboard/*/build/reports/tests/**
@@ -79,11 +112,11 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Alongside: the iOS apps build, and the tests only iOS can run, run.
+  # The iOS apps build, and Moodboard's tests run in the iOS simulator.
   ios:
-    name: iOS build and iOS-only tests
+    name: iOS build
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
@@ -93,16 +126,12 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: jetbrains
+          # The Gradle daemon's JDK, vendor and version as in gradle/gradle-daemon-jvm.properties.
+          # Android code still compiles to Java 17 bytecode.
           java-version: '25'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-
-      # Builds the shared tests for iOS too, so one that only fails to compile there fails here,
-      # and runs the tests that check what only iOS does: frozen textures, the glass shader,
-      # the bookshelf's own font resolver, the camera.
-      - name: iOS-only tests (iOS simulator)
-        run: ./gradlew :composeApp:iosSimulatorArm64Test --tests '*IosTest' --stacktrace
 
       - name: Build iOS app (simulator)
         run: |
@@ -127,15 +156,14 @@ jobs:
         with:
           name: ios-reports
           path: |
-            composeApp/build/reports/tests/**
-            composeApp/build/test-results/**
             moodboard/*/build/reports/tests/**
             moodboard/*/build/test-results/**
           retention-days: 7
           if-no-files-found: ignore
 
-  # The whole shared suite in the iOS simulator, as the app runs it: on main and by hand, not on
-  # every pull request, where the JVM run covers the same tests in a fraction of the time.
+  # The whole shared suite in the iOS simulator, as the app runs it, with the tests only iOS can
+  # run (frozen textures, the glass shader, the bookshelf's font resolver, the camera): on main
+  # and by hand, not on every pull request, where the JVM covers the shared tests far faster.
   ios-suite:
     name: Shared tests (iOS simulator)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -150,6 +178,8 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: jetbrains
+          # The Gradle daemon's JDK, vendor and version as in gradle/gradle-daemon-jvm.properties.
+          # Android code still compiles to Java 17 bytecode.
           java-version: '25'
 
       - name: Setup Gradle
@@ -169,15 +199,16 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The check main's ruleset requires: it passes only when both jobs above pass.
+  # The check main's ruleset requires: it passes only when every job above it passes.
   checks:
     name: Static analysis, tests and debug build
     if: always()
-    needs: [jvm, ios]
+    needs: [jvm-tests, android, ios]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Both jobs passed
+      - name: Every job passed
         run: |
-          test "${{ needs.jvm.result }}" = success
+          test "${{ needs.jvm-tests.result }}" = success
+          test "${{ needs.android.result }}" = success
           test "${{ needs.ios.result }}" = success
