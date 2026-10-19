@@ -65,7 +65,7 @@ class CatalogFilterTest {
     @Test
     fun aTagsNameFindsItsDemos() = runTest {
         assertEquals(
-            listOf("book.turn", "tour.popup", "cardfile.contacts"),
+            listOf("book.turn", "tour.popup", "cardfile.contacts", "bookshelf.reading"),
             ids(CatalogQuery(text = "3d")),
         )
     }

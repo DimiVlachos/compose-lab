@@ -6,6 +6,7 @@ import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_book_turn
+import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
@@ -49,6 +50,7 @@ class CatalogTest {
                 "smoke.delete",
                 "snowglobe.weather",
                 "cardfile.contacts",
+                "bookshelf.reading",
             ),
             Catalog.demos.map { it.id },
         )
@@ -68,6 +70,7 @@ class CatalogTest {
                 Res.string.demo_smoke,
                 Res.string.demo_snowglobe,
                 Res.string.demo_cardfile,
+                Res.string.demo_bookshelf,
             ),
             Catalog.demos.map { it.title },
         )
@@ -137,6 +140,7 @@ class CatalogTest {
                 "smoke.delete",
                 "snowglobe.weather",
                 "cardfile.contacts",
+                "bookshelf.reading",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
