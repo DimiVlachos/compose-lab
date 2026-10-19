@@ -9,7 +9,8 @@ import dev.dimvlachos.lab.core.platform.SoundPlayer
 internal val LocalShelfSounds = staticCompositionLocalOf<SoundPlayer> { SilentSoundPlayer }
 
 /** Every sound the shelf can make, to load up front. */
-internal val ShelfSoundSet = setOf(Sound.BookSlide, Sound.BookOpen, Sound.PageFlip, Sound.RingTick)
+internal val ShelfSoundSet =
+    setOf(Sound.BookSlide, Sound.BookOpen, Sound.RingTick, Sound.PageTurn, Sound.PageLand)
 
 /**
  * The sound of the shelf going [from] one mode [to] another: a book sliding out or back, its cover

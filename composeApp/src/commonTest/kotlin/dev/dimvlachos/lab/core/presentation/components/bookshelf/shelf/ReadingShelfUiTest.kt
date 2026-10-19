@@ -245,6 +245,19 @@ class ReadingShelfUiTest {
     }
 
     @Test
+    fun aTurnedPageWhooshesOverAndPatsDown() = runComposeUiTest {
+        val heard = Heard()
+        val held = openAt(page = 2, sounds = heard)
+        runOnIdle { heard.played.clear() }
+
+        swipeAcrossTheBook(Offset(0.3f, 0.5f), Offset(0.95f, 0.5f))
+        waitUntil(timeoutMillis = 10_000) { held.turns.page == 1 && !held.turns.isTurning }
+
+        val played = runOnIdle { heard.played.toList() }
+        assertEquals(listOf(Sound.PageTurn, Sound.PageLand), played, "heard $played")
+    }
+
+    @Test
     fun turningTheScreenOfAnOpenBookTurnsNoPageAloud() = runComposeUiTest {
         var spread by mutableStateOf(false)
         val heard = Heard()
@@ -257,7 +270,7 @@ class ReadingShelfUiTest {
 
         // Read on the UI thread, where the sounds are played.
         val played = runOnIdle { heard.played.toList() }
-        assertTrue(Sound.PageFlip !in played, "heard $played")
+        assertTrue(played.none { it == Sound.PageTurn || it == Sound.PageLand }, "heard $played")
     }
 
     private val hasCloseAction =

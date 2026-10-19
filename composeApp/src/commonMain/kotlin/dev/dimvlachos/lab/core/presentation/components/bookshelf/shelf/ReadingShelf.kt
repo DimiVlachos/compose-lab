@@ -19,6 +19,7 @@ import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.PageTu
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.rememberPageTurnState
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.bookshelf_open_book_page
+import kotlin.time.TimeSource
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 
@@ -100,13 +101,19 @@ internal fun ReadingShelf(
             }
     }
     LaunchedEffect(source, startLeaf) { reader.show(source, startLeaf) { 0 } }
-    // After the reader is shown its pages, so the page it is moved to for a new layout, as when
-    // the screen turns, is where the cue starts from: only a page turned in the open book flips.
-    LaunchedEffect(turns, activeId, spread, source, startLeaf) {
-        val cue = PageFlipCue()
-        snapshotFlow { (state.mode == ShelfMode.Open) to turns.page }
-            .collect { (open, page) ->
-                if (cue.next(open, page)) sounds.play(Sound.PageFlip, volume = 0.7f)
+    // Heard from where the leaves are, not from the page they land on: a turn's spring settles
+    // long after its leaf looks flat. A new layout moves to its page without turning a leaf.
+    LaunchedEffect(turns) {
+        val cue = LeafSoundCue()
+        val start = TimeSource.Monotonic.markNow()
+        snapshotFlow { (state.mode == ShelfMode.Open) to turns.flights.map { it.leaf to it.t } }
+            .collect { (open, flights) ->
+                cue.next(open, flights, start.elapsedNow().inWholeMilliseconds).forEach {
+                    when (it) {
+                        LeafSound.Turn -> sounds.play(Sound.PageTurn, volume = 0.6f)
+                        LeafSound.Land -> sounds.play(Sound.PageLand, volume = 0.5f)
+                    }
+                }
             }
     }
 
