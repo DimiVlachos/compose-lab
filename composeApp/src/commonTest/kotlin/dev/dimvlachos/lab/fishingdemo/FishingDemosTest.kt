@@ -6,7 +6,6 @@ import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.core.presentation.components.fishing.FishingDimens
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,9 +15,8 @@ class FishingDemosTest {
     private val demo = FishingDemos.all.single()
 
     @Test
-    fun onThePhoneTheFeedWaitsToBePulled() {
+    fun itIsTheFishingFeed() {
         assertEquals("feed.fishing", demo.id)
-        assertFalse(demo.autoplay)
     }
 
     @Test

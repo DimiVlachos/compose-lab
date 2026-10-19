@@ -8,7 +8,6 @@ import dev.dimvlachos.lab.core.presentation.components.smoke.frontUnder
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,9 +17,8 @@ class SmokeDemosTest {
     private val demo = SmokeDemos.all.single()
 
     @Test
-    fun onThePhoneTheListWaitsToBeSwiped() {
+    fun itIsATallList() {
         assertEquals("smoke.delete", demo.id)
-        assertFalse(demo.autoplay)
         assertTrue(demo.tall)
     }
 

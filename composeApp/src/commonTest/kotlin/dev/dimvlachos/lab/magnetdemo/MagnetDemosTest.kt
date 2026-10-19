@@ -8,17 +8,12 @@ import dev.dimvlachos.lab.core.presentation.components.magnet.MagnetDimens
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
 class MagnetDemosTest {
-    @Test
-    fun onThePhoneTheTableWaitsForTheHand() {
-        assertFalse(MagnetDemos.all.single().autoplay)
-    }
 
     @Test
     fun theClipSearchesApartThenTogetherOpensAPhotoAndPutsEverythingBack() = runTest {

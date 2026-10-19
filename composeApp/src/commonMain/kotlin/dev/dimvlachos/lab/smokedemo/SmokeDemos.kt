@@ -49,7 +49,6 @@ internal object SmokeDemos {
                 icon = Res.drawable.ic_demo_smoke,
                 tags = setOf(DemoTag.Gesture, DemoTag.Canvas, DemoTag.Motion),
                 tall = true,
-                autoplay = false,
             ) {
                 SmokeDemo(it)
             }

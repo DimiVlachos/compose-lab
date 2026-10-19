@@ -81,7 +81,6 @@ internal object FogDemos {
             description = Res.string.demo_fog_bathroom_description,
             icon = Res.drawable.ic_demo_fog_bathroom,
             tags = setOf(DemoTag.Gesture, DemoTag.Canvas),
-            autoplay = false,
         ) {
             BathroomMirror(it)
         }
@@ -94,7 +93,6 @@ internal object FogDemos {
             description = Res.string.demo_fog_reflection_description,
             icon = Res.drawable.ic_demo_fog_camera,
             tags = setOf(DemoTag.Gesture, DemoTag.Canvas, DemoTag.Camera),
-            autoplay = false,
         ) {
             ReflectionMirror(it)
         }

@@ -59,7 +59,6 @@ internal object TypewriterDemos {
                 icon = Res.drawable.ic_demo_typewriter,
                 tags = setOf(DemoTag.Text, DemoTag.Gesture, DemoTag.Physics, DemoTag.Canvas),
                 tall = true,
-                autoplay = false,
             ) {
                 TypewriterDemo(it)
             }

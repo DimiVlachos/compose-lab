@@ -136,7 +136,7 @@ The photo morph also ships on its own as `ImageMorph` (`core/presentation/compon
 
 ![](docs/media/fog.mirror.bathroom.gif)
 
-> **Try it with your own face.** The clip above is the Bathroom version, but the repo also has a camera version, **Your reflection**. Run the app on an Android phone, open *Fogged mirror → Your reflection*, and wipe the steam to find yourself standing in the bathroom, cut out of your own room on the phone. Leave it, and the steam comes back. Tap **Replay** to watch the clip play over your live face.
+> **Try it with your own face.** The clip above is the Bathroom version, but the repo also has a camera version, **Your reflection**. Run the app on an Android phone, open *Fogged mirror → Your reflection*, and wipe the steam to find yourself standing in the bathroom, cut out of your own room on the phone. Leave it, and the steam comes back. Tap **Watch** to see the clip play over your live face.
 
 A steamed-up bathroom mirror, hanging on a tiled wall above the basin, that you wipe clear with a finger. Two versions share one component:
 
@@ -150,7 +150,7 @@ What's on the glass:
 - **Mist.** Once you stop wiping, the steamy room slowly fogs the glass evenly back over. (`FogState` can also fill fog back in from the bottom up, like a breath; the demo doesn't use it.)
 - **Running drops.** Now and then a drop gathers, in a range of small sizes, and runs down. The bigger it is, the faster it goes. As it runs it stretches from a sphere into a teardrop, and it cuts a clear trail through the fog behind it. Once it stops, it settles softly into the condensation.
 - **Drops meeting a wipe.** A drop that runs into a wiped patch slips just inside, then spreads out slowly and thins away into the wet glass.
-- **The clip.** Drops run first, then a hand scrubs a porthole clear, smearing away the drop resting in its path. A soft fingertip marks each touch, like a phone's "show taps". One more drop runs into the porthole and spreads away, then the room mists it all back over, so the clip loops. Replay in **Your reflection** plays the same showcase over your live face, ending with the same mist.
+- **The clip.** Drops run first, then a hand scrubs a porthole clear, smearing away the drop resting in its path. A soft fingertip marks each touch, like a phone's "show taps". One more drop runs into the porthole and spreads away, then the room mists it all back over, so the clip loops. Watch in **Your reflection** plays the same showcase over your live face, ending with the same mist.
 
 ```kotlin
 val fog = remember { FogState() }                   // starts fully fogged
@@ -605,7 +605,8 @@ Run it:
 
 The lab app around the demos:
 
-- **One bar on every screen.** A shadowed top bar runs up under the status bar on home, in a folder and over each demo, with a back arrow, the title, and Replay/Stop on a demo.
+- **One bar on every screen.** A shadowed top bar runs up under the status bar on home, in a folder and over each demo, with a back arrow, the title, and Watch/Stop on a demo.
+- **Demos open still.** Every demo opens ready to be touched; its scripted tour, the one its clip is recorded from, plays only when **Watch** is tapped, once, with a note over the demo while it runs. Any touch on the demo, or Stop, ends the tour and leaves the demo as it is, to carry on by hand.
 - **Search from the bar.** The search button turns the title into a field. It finds demos by title, description, id or tag, including the versions inside a folder, and back closes it.
 - **Tags.** A row of chips under home's bar filters the catalog by what each demo is about: Gesture, Physics, Motion, Canvas, 3D, Camera, Text, Navigation.
 - **A grid of cards.** Each card has an icon, the title and a one-line description. The grid adds columns as the screen widens.

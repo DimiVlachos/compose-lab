@@ -14,10 +14,9 @@ class PopUpDemosTest {
     private val demo = PopUpDemos.all.single()
 
     @Test
-    fun theTourIsATallClipThatPlaysByItself() {
+    fun theTourIsATallClip() {
         assertEquals("tour.popup", demo.id)
         assertTrue(demo.tall)
-        assertTrue(demo.autoplay)
     }
 
     @Test

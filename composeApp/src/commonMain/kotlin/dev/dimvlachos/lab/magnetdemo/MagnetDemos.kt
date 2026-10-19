@@ -64,7 +64,6 @@ internal object MagnetDemos {
                 description = Res.string.demo_magnet_filter_description,
                 icon = Res.drawable.ic_demo_magnet,
                 tags = setOf(DemoTag.Gesture, DemoTag.Physics),
-                autoplay = false,
             ) {
                 MagnetDemo(it)
             }

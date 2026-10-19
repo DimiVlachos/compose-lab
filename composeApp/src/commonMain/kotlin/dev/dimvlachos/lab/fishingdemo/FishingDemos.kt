@@ -45,7 +45,6 @@ internal object FishingDemos {
                 icon = Res.drawable.ic_demo_fishing,
                 tags = setOf(DemoTag.Gesture, DemoTag.Physics, DemoTag.Canvas),
                 tall = true,
-                autoplay = false,
             ) {
                 FishingDemo(it)
             }

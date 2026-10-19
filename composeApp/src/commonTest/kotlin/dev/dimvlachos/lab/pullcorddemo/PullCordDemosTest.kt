@@ -14,10 +14,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
 class PullCordDemosTest {
-    @Test
-    fun onThePhoneTheLampWaitsToBePulled() {
-        assertFalse(PullCordDemos.all.single().autoplay)
-    }
 
     @Test
     fun theClipSwitchesTheLampOnSwingsItAndSwitchesItOff() = runTest {
