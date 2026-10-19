@@ -87,6 +87,10 @@ private fun bakeShelfAssets(
     return ShelfAssets(layout, bakeShelfLight(layout, lighting), spines, size)
 }
 
+/** The cached books to let go of: all but those to [keep] and one more, kept as a spare. */
+internal fun evictions(cached: List<Int>, keep: Set<Int>): List<Int> =
+    cached.filter { it !in keep }.dropLast(1)
+
 @Composable
 internal fun rememberShadowLift(
     assets: ShelfAssets?,
@@ -103,10 +107,13 @@ internal fun rememberShadowLift(
     }
     LaunchedEffect(assets, bookId) {
         if (bookId in cache) return@LaunchedEffect
-        cache[bookId] =
+        val lift =
             withContext(Dispatchers.Default) {
                 bakeShadowLift(assets.layout, lighting, assets.maps, bookId)
             }
+        // Two screen-sized maps a book: only the book in hand and the one before are kept.
+        evictions(cache.keys.toList(), keep = setOf(bookId)).forEach(cache::remove)
+        cache[bookId] = lift
     }
     return cache[bookId]
 }
@@ -132,8 +139,8 @@ internal fun rememberBookShell(
     LaunchedEffect(request, cover) {
         if (cache[id].isBakedWith(cover)) return@LaunchedEffect
         val shell = withContext(ShelfTextBakers) { request.shell(cover, kit) }
-        val keep = setOf(id, content.readingBookId)
-        cache.keys.filter { it !in keep }.dropLast(1).forEach(cache::remove)
+        evictions(cache.keys.toList(), keep = setOfNotNull(id, content.readingBookId))
+            .forEach(cache::remove)
         cache[id] = shell
     }
     return cached
