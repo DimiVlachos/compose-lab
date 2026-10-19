@@ -112,7 +112,18 @@ internal class ShelfState(
     val takeOutArmed: Boolean
         get() = mode == ShelfMode.Tip && TiltGesture.shouldTakeOut(tilt, 0f)
 
+    /** Whether a book is in hand here: tipped, out, open or going back, not just settling. */
+    val holdsABook: Boolean
+        get() = activeBookId != null && mode != ShelfMode.Settle
+
+    /**
+     * Whether another shelf on the screen holds a book: while it does, no book here can be tipped
+     * or taken out, so only one is ever in hand and Back always closes the one that shows.
+     */
+    var heldElsewhere: () -> Boolean = { false }
+
     fun beginTip(bookId: Int) {
+        if (heldElsewhere()) return
         val start = if (mode == ShelfMode.Settle && activeBookId == bookId) tilt else 0f
         cancelMotion()
         activeBookId = bookId
@@ -148,6 +159,7 @@ internal class ShelfState(
 
     fun openDirect(bookId: Int) {
         if (mode != ShelfMode.Shelf && mode != ShelfMode.Settle) return
+        if (heldElsewhere()) return
         beginTip(bookId)
         tilt = OPEN_DIRECT_TILT
         takeOut()

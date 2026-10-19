@@ -388,4 +388,25 @@ class ShelfStateTest {
         assertEquals(ShelfMode.Open, state.mode)
         job.cancel()
     }
+
+    @Test
+    fun aShelfLetsNoBookOutWhileAnotherShelfHoldsOne() = runTest {
+        val (ring, ringJob) = shelf()
+        val (planks, plankJob) = shelf()
+        ring.heldElsewhere = { planks.holdsABook }
+        planks.heldElsewhere = { ring.holdsABook }
+
+        planks.beginTip(21)
+        ring.openDirect(3)
+        ring.beginTip(4)
+
+        assertEquals(ShelfMode.Shelf, ring.mode, "one book in hand at a time")
+        assertNull(ring.activeBookId)
+        planks.releaseTip(velocityY = 0f)
+        advanceTimeBy(50)
+        ring.beginTip(4)
+        assertEquals(ShelfMode.Tip, ring.mode, "a book settling back holds nothing")
+        ringJob.cancel()
+        plankJob.cancel()
+    }
 }
