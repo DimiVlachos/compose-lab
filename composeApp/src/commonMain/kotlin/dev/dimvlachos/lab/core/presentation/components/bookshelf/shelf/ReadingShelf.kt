@@ -49,12 +49,15 @@ internal fun ReadingShelf(
     // Set into pages by the bakers, the only thread the shelf's text is set on.
     // Another book's or layout's pages are dropped at once, not kept until these are set.
     val pages =
-        produceState<BookChapterPages?>(null, ready, activeId, chapter) {
+        produceState<BookChapterPages?>(null, ready, activeId, chapter, spread) {
                 value = null
                 if (ready != null && activeId != null && chapter != null) {
+                    // Each layout's pages are pages of their own: the reader moves to its place
+                    // in them at once, rather than turning page by page as if reading on.
+                    val key = 31 * (31 * activeId + spread.hashCode()) + ready.hashCode()
                     value =
                         withContext(ShelfTextBakers) {
-                            paginator.paginate(ready, activeId, chapter.words)
+                            paginator.paginate(ready, key, chapter.words)
                         }
                 }
             }
@@ -96,15 +99,16 @@ internal fun ReadingShelf(
                 mode = next
             }
     }
-    LaunchedEffect(turns, activeId, spread) {
-        // A page turned in an open book; the jump to its bookmark as it opens is not one.
+    LaunchedEffect(source, startLeaf) { reader.show(source, startLeaf) { 0 } }
+    // After the reader is shown its pages, so the page it is moved to for a new layout, as when
+    // the screen turns, is where the cue starts from: only a page turned in the open book flips.
+    LaunchedEffect(turns, activeId, spread, source, startLeaf) {
         val cue = PageFlipCue()
         snapshotFlow { (state.mode == ShelfMode.Open) to turns.page }
             .collect { (open, page) ->
                 if (cue.next(open, page)) sounds.play(Sound.PageFlip, volume = 0.7f)
             }
     }
-    LaunchedEffect(source, startLeaf) { reader.show(source, startLeaf) { 0 } }
 
     PhysicalShelfHost(
         content = content,

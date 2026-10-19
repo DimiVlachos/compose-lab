@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -25,6 +28,9 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.platform.SilentSoundPlayer
+import dev.dimvlachos.lab.core.platform.Sound
+import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.PageTurnState
 import dev.dimvlachos.lab.core.presentation.components.bookshelf.pageturn.rememberPageTurnState
 import kotlin.test.Test
@@ -59,7 +65,21 @@ class ReadingShelfUiTest {
         )
 
     // Two planks below a band of list, scrolling, as the demo lays them out.
-    private fun ComposeUiTest.planks(withChapter: Boolean = false): Held {
+    private class Heard : SoundPlayer {
+        val played = mutableListOf<Sound>()
+
+        override fun play(sound: Sound, volume: Float, rate: Float) {
+            played += sound
+        }
+
+        override fun loop(sound: Sound, volume: Float) = SilentSoundPlayer.loop(sound, volume)
+    }
+
+    private fun ComposeUiTest.planks(
+        withChapter: Boolean = false,
+        spread: () -> Boolean = { false },
+        sounds: SoundPlayer = SilentSoundPlayer,
+    ): Held {
         lateinit var held: Held
         setContent {
             val shelf = rememberShelfState()
@@ -68,12 +88,16 @@ class ReadingShelfUiTest {
             held = Held(shelf, scroll, turns)
             val content = rememberShelfContent(books, readingBookId = null)
             // As a preview draws it: no endless frame loop for the leaves, so the test can idle.
-            CompositionLocalProvider(LocalInspectionMode provides true) {
+            CompositionLocalProvider(
+                LocalInspectionMode provides true,
+                LocalShelfSounds provides sounds,
+            ) {
                 ReadingShelf(
                     content,
                     shelf,
                     chapterFor = { id -> chapter.takeIf { withChapter && id == 13 } },
                     Modifier.size(412.dp, 700.dp),
+                    spread = spread(),
                     turns = turns,
                 ) { hero ->
                     Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
@@ -159,8 +183,12 @@ class ReadingShelfUiTest {
     }
 
     // Takes Bayou Lanterns out and waits until it lies open at [page].
-    private fun ComposeUiTest.openAt(page: Int): Held {
-        val held = planks(withChapter = true)
+    private fun ComposeUiTest.openAt(
+        page: Int,
+        spread: () -> Boolean = { false },
+        sounds: SoundPlayer = SilentSoundPlayer,
+    ): Held {
+        val held = planks(withChapter = true, spread, sounds)
         runOnIdle { held.shelf.openDirect(13) }
         waitUntil(timeoutMillis = 20_000) {
             held.shelf.mode == ShelfMode.Open &&
@@ -211,6 +239,21 @@ class ReadingShelfUiTest {
 
         waitUntil(timeoutMillis = 10_000) { held.turns.page == 1 && !held.turns.isTurning }
         assertEquals(ShelfMode.Open, held.shelf.mode)
+    }
+
+    @Test
+    fun turningTheScreenOfAnOpenBookTurnsNoPageAloud() = runComposeUiTest {
+        var spread by mutableStateOf(false)
+        val heard = Heard()
+        openAt(page = 2, spread = { spread }, sounds = heard)
+        waitForIdle()
+        heard.played.clear()
+
+        spread = true
+        waitForIdle()
+        mainClock.advanceTimeBy(2_000)
+
+        assertTrue(Sound.PageFlip !in heard.played, "heard ${heard.played}")
     }
 
     private val hasCloseAction =
