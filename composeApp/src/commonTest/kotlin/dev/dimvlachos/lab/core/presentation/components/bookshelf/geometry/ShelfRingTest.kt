@@ -3,6 +3,8 @@ package dev.dimvlachos.lab.core.presentation.components.bookshelf.geometry
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ShelfRingTest {
@@ -97,6 +99,18 @@ class ShelfRingTest {
             assertEquals(expected.x, row.point.x, 1e-3f, message = "book $index")
             assertEquals(expected.z, row.point.z, 1e-3f, message = "book $index")
         }
+    }
+
+    // Asked every frame of a tip while the ring is still, the rest is worked out once.
+    @Test
+    fun aBooksRestIsWorkedOutOnceWhileTheRingIsStill() {
+        val scroll = ring.books[20].centre + 7f
+        val id = ring.books[22].id
+
+        val first = ring.rest(id, scroll)
+
+        assertSame(first, ring.rest(id, scroll))
+        assertNotSame(first, ring.rest(id, scroll + 1f))
     }
 
     @Test

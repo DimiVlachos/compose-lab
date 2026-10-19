@@ -112,7 +112,23 @@ internal class ShelfRing(val width: Float, val height: Float, specs: List<ShelfB
         return ShelfLayout(width, height, scale, planks, camera = camera, rest = rest)
     }
 
+    private var lastRest: Pair<Pair<Int, Float>, BookRest?>? = null
+
+    /**
+     * Where book [bookId] stands on the ring spun to [scroll], to take it off from there. Asked
+     * every frame of a tip, it is worked out again only once the ring has turned.
+     */
     fun rest(bookId: Int, scroll: Float): BookRest? {
+        val key = bookId to scroll
+        lastRest
+            ?.takeIf { it.first == key }
+            ?.let {
+                return it.second
+            }
+        return restAt(bookId, scroll).also { lastRest = key to it }
+    }
+
+    private fun restAt(bookId: Int, scroll: Float): BookRest? {
         val placed = visible(scroll)
         val book = placed.firstOrNull { books[it.index].id == bookId } ?: return null
         val a = book.angle
