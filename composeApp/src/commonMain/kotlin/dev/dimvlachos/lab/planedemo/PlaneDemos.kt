@@ -39,7 +39,6 @@ internal object PlaneDemos {
                 description = Res.string.demo_paper_plane_description,
                 icon = Res.drawable.ic_demo_plane,
                 tags = setOf(DemoTag.Motion, DemoTag.Text, DemoTag.Canvas),
-                autoplay = false,
             ) {
                 PlaneDemo(it)
             }

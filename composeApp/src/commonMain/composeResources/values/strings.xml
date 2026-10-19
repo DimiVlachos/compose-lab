@@ -45,7 +45,8 @@
     <string name="action_back">Back</string>
     <string name="action_close">Close</string>
     <string name="action_stop">Stop</string>
-    <string name="action_replay">Replay</string>
+    <string name="action_watch">Watch</string>
+    <string name="demo_tour_playing">Playing the tour · touch to take over</string>
     <string name="action_new_post">New post</string>
     <string name="action_edit_profile">Edit profile</string>
     <string name="photo_mykonos_title">Mykonos</string>

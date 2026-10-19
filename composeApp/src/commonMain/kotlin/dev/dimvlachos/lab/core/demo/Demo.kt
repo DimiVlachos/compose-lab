@@ -25,8 +25,6 @@ internal class Demo(
     val landscape: Boolean = false,
     // A demo that needs more height than 4:5 gives it, like a feed: its clip is 9:16.
     val tall: Boolean = false,
-    /** Whether the script starts by itself on the phone; a recording always plays it. */
-    val autoplay: Boolean = true,
     val content: @Composable (DemoState) -> Unit,
 ) {
     init {

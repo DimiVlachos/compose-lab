@@ -8,17 +8,12 @@ import dev.dimvlachos.lab.resources.chat_script_1
 import dev.dimvlachos.lab.resources.chat_script_2
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 
 class PlaneDemosTest {
-    @Test
-    fun onThePhoneTheChatWaitsToBeTypedIn() {
-        assertFalse(PlaneDemos.all.single().autoplay)
-    }
 
     @Test
     fun theClipSendsBothLinesAndTakesThemBackBeforeItEnds() = runTest {

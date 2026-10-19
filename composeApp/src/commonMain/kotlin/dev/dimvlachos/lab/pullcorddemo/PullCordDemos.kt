@@ -42,7 +42,6 @@ internal object PullCordDemos {
                 description = Res.string.demo_pull_cord_description,
                 icon = Res.drawable.ic_demo_lamp,
                 tags = setOf(DemoTag.Gesture, DemoTag.Physics),
-                autoplay = false,
             ) {
                 PullCordDemo(it)
             }

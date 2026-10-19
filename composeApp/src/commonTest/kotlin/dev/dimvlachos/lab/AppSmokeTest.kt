@@ -53,7 +53,7 @@ class AppSmokeTest {
         onNodeWithText("Fogged mirror").assertExists()
         onNodeWithText("Profile gallery").performClick()
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithContentDescription("Stop").assertExists()
+        onNodeWithText("Watch").assertExists()
         onNodeWithContentDescription("Back").performClick()
         onNodeWithText("compose-lab").assertExists()
     }
@@ -99,12 +99,12 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(100)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithContentDescription("Stop").assertExists()
+        onNodeWithText("Watch").assertExists()
         // Called off, it slides back over home, and home is gone again.
         runOnUiThread { input.backCancelled() }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertDoesNotExist()
-        onNodeWithContentDescription("Stop").assertExists()
+        onNodeWithText("Watch").assertExists()
         // Swiped all the way and let go, it is home.
         runOnUiThread {
             input.backStarted(NavigationEvent(NavigationEvent.EDGE_LEFT, progress = 0f))
@@ -113,7 +113,7 @@ class AppSmokeTest {
         }
         mainClock.advanceTimeBy(1_000)
         onNodeWithText("compose-lab").assertExists()
-        onNodeWithContentDescription("Stop").assertDoesNotExist()
+        onNodeWithText("Watch").assertDoesNotExist()
     }
 
     @Test

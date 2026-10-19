@@ -14,10 +14,9 @@ class SnowGlobeDemosTest {
     private val demo = SnowGlobeDemos.all.single()
 
     @Test
-    fun itIsATallDemoThatPlaysByItself() {
+    fun itIsATallDemo() {
         assertEquals("snowglobe.weather", demo.id)
         assertTrue(demo.tall)
-        assertTrue(demo.autoplay)
     }
 
     @Test

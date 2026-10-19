@@ -14,10 +14,9 @@ class CardFileDemosTest {
     private val demo = CardFileDemos.all.single()
 
     @Test
-    fun itIsATallDemoThatPlaysByItself() {
+    fun itIsATallDemo() {
         assertEquals("cardfile.contacts", demo.id)
         assertTrue(demo.tall)
-        assertTrue(demo.autoplay)
     }
 
     @Test

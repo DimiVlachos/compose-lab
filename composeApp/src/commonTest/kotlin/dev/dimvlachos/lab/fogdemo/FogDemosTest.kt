@@ -14,7 +14,6 @@ import dev.dimvlachos.lab.fogdemo.presentation.components.wallGlassOn
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
@@ -25,11 +24,6 @@ class FogDemosTest {
     @Test
     fun theDemoOpensFullyFogged() {
         assertTrue(newFogDemoState().marks.isEmpty())
-    }
-
-    @Test
-    fun onThePhoneTheDemoWaitsToBePlayedWith() {
-        assertFalse(FogDemos.bathroom.autoplay)
     }
 
     @Test
@@ -55,7 +49,6 @@ class FogDemosTest {
         assertEquals("fog.mirror.bathroom", bathroom.id)
         assertEquals("fog.mirror.camera", camera.id)
         assertSame(bathroom.script, camera.script)
-        assertFalse(camera.autoplay)
     }
 
     @Test

@@ -11,7 +11,6 @@ import dev.dimvlachos.lab.resources.typewriterchat_script_1b
 import dev.dimvlachos.lab.resources.typewriterchat_script_2
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,9 +20,8 @@ class TypewriterDemosTest {
     private val demo = TypewriterDemos.all.single()
 
     @Test
-    fun onThePhoneTheTypewriterWaitsToBeTypedOn() {
+    fun itIsTheTypewriterComposer() {
         assertEquals("typewriter.composer", demo.id)
-        assertFalse(demo.autoplay)
     }
 
     @Test

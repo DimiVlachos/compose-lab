@@ -40,14 +40,10 @@ import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
-import dev.dimvlachos.lab.resources.action_replay
-import dev.dimvlachos.lab.resources.action_stop
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_navbar_description
 import dev.dimvlachos.lab.resources.ic_arrow_back
 import dev.dimvlachos.lab.resources.ic_demo_navbar
-import dev.dimvlachos.lab.resources.ic_play_arrow
-import dev.dimvlachos.lab.resources.ic_stop
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -57,7 +53,9 @@ private val RecordPreRoll = 1_500.milliseconds
 @Composable
 internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)?) {
     var runId by remember { mutableIntStateOf(0) }
-    var playing by remember { mutableStateOf(record || demo.autoplay) }
+    // On the phone a demo opens still, the user's to touch; its tour plays when asked for, once.
+    // A recording plays it by itself.
+    var playing by remember { mutableStateOf(record) }
     val state = remember(runId) { DemoState(recording = record, replay = runId > 0) }
     if (demo.landscape) LockLandscape()
     LaunchedEffect(runId, playing) {
@@ -72,14 +70,20 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
             demo.script.play(state)
             RecordingLog.done(demo.id)
         } else {
-            // scripts end in their start state, so this loops cleanly
-            while (true) demo.script.play(state)
+            // A script ends where it began, so one pass leaves the demo whole for the user.
+            demo.script.play(state)
+            playing = false
+            state.endReplay()
         }
     }
 
     // The stage: the demo and, on a multi-platform capture, its platform label.
+    val stop = {
+        playing = false
+        state.endReplay()
+    }
     val stage: @Composable (Modifier) -> Unit = { modifier ->
-        Box(modifier.clipToBounds()) {
+        Box(modifier.clipToBounds().takeOverOnTouch(playing && !record, stop)) {
             CompositionLocalProvider(LocalSoundCapturable provides record) {
                 key(runId) { demo.content(state) }
             }
@@ -123,27 +127,24 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
                             }
                         },
                     actions = {
-                        LabIconButton(
-                            if (playing) Res.drawable.ic_stop else Res.drawable.ic_play_arrow,
-                            contentDescription =
-                                stringResource(
-                                    if (playing) Res.string.action_stop
-                                    else Res.string.action_replay
-                                ),
+                        WatchTourChip(
+                            playing = playing,
                             onClick = {
                                 if (playing) {
-                                    playing = false
-                                    state.endReplay()
+                                    stop()
                                 } else {
                                     runId++
                                     playing = true
                                 }
                             },
-                            tint = LabTheme.colors.accent,
+                            modifier = Modifier.padding(end = LabTheme.spacing.small),
                         )
                     },
                 ) {
-                    LabTopBarTitle(stringResource(demo.title))
+                    Column {
+                        LabTopBarTitle(stringResource(demo.title))
+                        TourPlayingNote(visible = playing)
+                    }
                 }
                 // The bar has the top: the demo keeps its controls clear of the sides and the
                 // foot itself, through demoInsets.
