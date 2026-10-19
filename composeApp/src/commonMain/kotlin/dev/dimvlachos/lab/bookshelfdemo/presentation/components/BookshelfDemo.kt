@@ -66,8 +66,8 @@ internal fun BookshelfDemo(state: DemoState) {
     val ringShelf = rememberShelfState()
     val plankShelf = rememberShelfState()
     // One book in hand at a time, across both shelves.
-    ringShelf.heldElsewhere = { plankShelf.holdsABook }
-    plankShelf.heldElsewhere = { ringShelf.holdsABook }
+    ringShelf.others = { listOf(plankShelf) }
+    plankShelf.others = { listOf(ringShelf) }
     val ring =
         steadyShelfContent(
             rememberShelfContent(

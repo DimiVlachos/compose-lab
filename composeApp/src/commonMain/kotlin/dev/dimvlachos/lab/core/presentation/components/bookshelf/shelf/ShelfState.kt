@@ -118,11 +118,19 @@ internal class ShelfState(
     val holdsABook: Boolean
         get() = activeBookId != null && mode != ShelfMode.Settle
 
+    /** The other shelves on the same screen. */
+    var others: () -> List<ShelfState> = { emptyList() }
+
     /**
      * Whether another shelf on the screen holds a book: while it does, no book here can be tipped
      * or taken out, so only one is ever in hand and Back always closes the one that shows.
      */
-    var heldElsewhere: () -> Boolean = { false }
+    val heldElsewhere: Boolean
+        get() = others().any { it.holdsABook }
+
+    /** Whether another shelf's book is out over this one, hiding it. */
+    val coveredElsewhere: Boolean
+        get() = others().any { it.isBookOut || it.mode == ShelfMode.Back }
 
     /** With reduced motion a tipped book settles without bouncing and every move is short. */
     var reducedMotion = false
@@ -131,7 +139,7 @@ internal class ShelfState(
         if (reducedMotion) (durationMs * REDUCED_MOTION_TIME).toInt() else durationMs
 
     fun beginTip(bookId: Int) {
-        if (heldElsewhere()) return
+        if (heldElsewhere) return
         val start = if (mode == ShelfMode.Settle && activeBookId == bookId) tilt else 0f
         cancelMotion()
         activeBookId = bookId
@@ -167,7 +175,7 @@ internal class ShelfState(
 
     fun openDirect(bookId: Int) {
         if (mode != ShelfMode.Shelf && mode != ShelfMode.Settle) return
-        if (heldElsewhere()) return
+        if (heldElsewhere) return
         beginTip(bookId)
         tilt = OPEN_DIRECT_TILT
         takeOut()

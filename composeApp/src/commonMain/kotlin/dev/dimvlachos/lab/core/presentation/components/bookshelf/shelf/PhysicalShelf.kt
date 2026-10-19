@@ -407,7 +407,11 @@ internal fun PhysicalShelfHost(
                 while (true) {
                     withFrameMillis { now ->
                         frame++
-                        val shelfShown = !state.isBookOut && state.mode != ShelfMode.Back
+                        // Hidden under a book of its own or another shelf's, the shelf rests.
+                        val shelfShown =
+                            !state.isBookOut &&
+                                state.mode != ShelfMode.Back &&
+                                !state.coveredElsewhere
                         val ticks =
                             shelfFrameTicks(clock.moving(), shelfShown, frame, reducedMotion)
                         if (ticks.physics) clock.physics.longValue = now

@@ -393,8 +393,8 @@ class ShelfStateTest {
     fun aShelfLetsNoBookOutWhileAnotherShelfHoldsOne() = runTest {
         val (ring, ringJob) = shelf()
         val (planks, plankJob) = shelf()
-        ring.heldElsewhere = { planks.holdsABook }
-        planks.heldElsewhere = { ring.holdsABook }
+        ring.others = { listOf(planks) }
+        planks.others = { listOf(ring) }
 
         planks.beginTip(21)
         ring.openDirect(3)
@@ -436,5 +436,27 @@ class ShelfStateTest {
 
         assertEquals(ShelfMode.Open, state.mode)
         job.cancel()
+    }
+
+    @Test
+    fun aShelfIsCoveredOnlyWhileAnotherShelfsBookIsOut() = runTest {
+        val (ring, ringJob) = shelf()
+        // Only looked at, never moved: a shelf with no frames of its own.
+        val planks = ShelfState(backgroundScope, {}, {})
+        planks.others = { listOf(ring) }
+        ring.pagesReady(3)
+
+        ring.beginTip(3)
+        assertFalse(planks.coveredElsewhere, "a tip still shows the planks")
+        ring.releaseTip(velocityY = 0f)
+        settle()
+        ring.openDirect(3)
+        settle()
+        assertEquals(ShelfMode.Open, ring.mode)
+        assertTrue(planks.coveredElsewhere, "an open book covers them")
+        ring.putBack()
+        settle()
+        assertFalse(planks.coveredElsewhere)
+        ringJob.cancel()
     }
 }
