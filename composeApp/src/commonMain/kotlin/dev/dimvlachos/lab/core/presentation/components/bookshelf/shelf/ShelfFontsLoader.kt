@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.bookshelf.shelf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -21,24 +22,16 @@ import kotlinx.coroutines.CoroutineDispatcher
 import org.jetbrains.compose.resources.Font
 
 /**
- * Where everything that sets text for the shelf is baked, off the main thread: several at once
- * where the platform's font machinery can be entered from several threads, one at a time where it
- * cannot.
+ * Where everything that sets text for the shelf is baked: several at once off the main thread where
+ * text can be laid out from several threads, else on the thread that lays out the app.
  */
 internal val ShelfTextBakers: CoroutineDispatcher = shelfTextBakers()
 
 internal expect fun shelfTextBakers(): CoroutineDispatcher
 
 /**
- * The resolver the shelf's text is set with: the app's own where text can be set from several
- * threads at once, else one of the shelf's own, so the bakers never share a font cache with the
- * main thread.
- */
-@Composable internal expect fun rememberShelfFontResolver(): FontFamily.Resolver
-
-/**
- * The shelf's four faces, Instrument Serif and Sans. Textures are baked on background threads, so
- * their text is measured by a measurer that keeps no cache to share between them.
+ * The shelf's four faces, Instrument Serif and Sans. Textures may be baked on several threads at
+ * once, so their text is measured by a measurer that keeps no cache to share between them.
  */
 @Composable
 internal fun rememberShelfFonts(): ShelfFonts {
@@ -46,7 +39,7 @@ internal fun rememberShelfFonts(): ShelfFonts {
     val serifItalic = FontFamily(Font(Res.font.instrument_serif_italic, style = FontStyle.Italic))
     val sans = FontFamily(Font(Res.font.instrument_sans_medium, weight = FontWeight.Medium))
     val sansBold = FontFamily(Font(Res.font.instrument_sans_bold, weight = FontWeight.Bold))
-    val resolver = rememberShelfFontResolver()
+    val resolver = LocalFontFamilyResolver.current
     val measurer =
         remember(resolver) {
             TextMeasurer(resolver, Density(1f), LayoutDirection.Ltr, cacheSize = 0)

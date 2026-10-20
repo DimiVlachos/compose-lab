@@ -632,8 +632,8 @@ internal class RingTextures {
                 val spineAt = missing.firstOrNull()
                 val shellAt = shellWindow.firstOrNull { stale(ring.books[it].id, coverFor) }
                 when {
-                    // Every missing spine at once, as many in parallel as the platform's text
-                    // bakers allow; each is stored back here, on the ring's own thread.
+                    // Every missing spine at once, in parallel where the platform's text bakers
+                    // allow it; each is stored back here, on the ring's own thread.
                     spineAt != null ->
                         kotlinx.coroutines.coroutineScope {
                             missing.forEach { i ->
