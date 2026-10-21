@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -54,7 +55,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -213,7 +217,7 @@ internal fun PadlockDemo(
                 .alpha(alpha)
                 .clip(RoundedCornerShape(14.dp))
                 .background(colors.ink)
-                .clickable(enabled = enabled) {}
+                .clickable(enabled = enabled, role = Role.Button) {}
                 .testTag("continue"),
             contentAlignment = Alignment.Center,
         ) {
@@ -383,11 +387,20 @@ private fun Form(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        val label = stringResource(Res.string.padlock_password)
         FieldCard(colors.card, edge, ring) {
-            Label(stringResource(Res.string.padlock_password), colors)
+            Label(label, colors)
             BasicSecureTextField(
                 state = field,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 24.dp).testTag("password"),
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 24.dp)
+                        .semantics {
+                            contentDescription = label
+                            // A new password, for the platform's autofill to offer a strong one.
+                            contentType = ContentType.NewPassword
+                        }
+                        .testTag("password"),
                 textObfuscationMode =
                     if (peek) TextObfuscationMode.Visible else TextObfuscationMode.RevealLastTyped,
                 textStyle =
