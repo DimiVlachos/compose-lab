@@ -442,4 +442,37 @@ class Canvas2DTest {
         assertTrue(px[18, 18].blue > .6f, "the shadow, down and right: ${px[18, 18]}")
         near(Color.Transparent, px[6, 18])
     }
+
+    @Test
+    fun anOddDashListIsDoubledAsTheBrowserDoes() {
+        // [4] dashes as [4, 4]; Skia would refuse an odd list outright.
+        val c = Canvas2D.create(40, 4)
+        c.setLineDash(floatArrayOf(4f))
+        c.lineWidth = 2f
+        c.strokeStyle = "#ff0000"
+        c.beginPath()
+        c.moveTo(0f, 2f)
+        c.lineTo(40f, 2f)
+        c.stroke()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 2])
+        near(Color.Transparent, px[6, 2])
+        near(Color.Red, px[9, 2])
+    }
+
+    @Test
+    fun arcToAfterAnArcGoesOnFromTheArcsEnd() {
+        // A quarter circle from (0, 0) to (20, 20), then down the side and round towards (0, 40):
+        // one shape, so the fill reaches the lower right. Begun anew at (20, 40), it wouldn't.
+        val c = Canvas2D.create(24, 44)
+        c.beginPath()
+        c.arc(0f, 20f, 20f, (-PI / 2).toFloat(), 0f)
+        c.arcTo(20f, 40f, 0f, 40f, 1f)
+        c.closePath()
+        c.fillStyle = "#0000ff"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Blue, px[16, 30])
+        near(Color.Transparent, px[4, 36])
+    }
 }

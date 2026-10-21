@@ -333,9 +333,19 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         state.matrix = m
     }
 
-    /** Dashes for [stroke], as the browser's `setLineDash`: on and off lengths in user units. */
+    /**
+     * Dashes for [stroke], as the browser's `setLineDash`: on and off lengths in user units. An odd
+     * list is doubled, as the browser does, and one with a negative or non-finite length is
+     * ignored.
+     */
     fun setLineDash(segments: FloatArray) {
-        state.lineDash = segments.takeIf { it.isNotEmpty() }?.copyOf()
+        if (segments.any { it < 0f || !it.isFinite() }) return
+        state.lineDash =
+            when {
+                segments.isEmpty() || segments.all { it == 0f } -> null
+                segments.size % 2 == 1 -> segments + segments
+                else -> segments.copyOf()
+            }
     }
 
     // ---- Paths ----
@@ -415,6 +425,9 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         path.lineTo(x + w, y + h)
         path.lineTo(x, y + h)
         path.close()
+        // The browser's rect leaves the path at its corner, a new shape begun there.
+        current = Offset(x, y)
+        shapeStart = Offset(x, y)
     }
 
     fun roundRect(x: Float, y: Float, w: Float, h: Float, r: Float) =
@@ -441,6 +454,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 CornerRadius(bl),
             ),
         )
+        current = Offset(x, y)
+        shapeStart = Offset(x, y)
     }
 
     fun arc(x: Float, y: Float, r: Float, a0: Float, a1: Float, ccw: Boolean = false) =
@@ -461,6 +476,16 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         if (ccw && sweep > 0f) sweep = (sweep % TAU) - TAU
         if (abs(sweep) > TAU) sweep = if (sweep > 0) TAU else -TAU
         val full = abs(sweep) >= TAU - 1e-4f
+        // Where the arc starts and ends, for an arcTo after it.
+        val cosR = kotlin.math.cos(rotation)
+        val sinR = kotlin.math.sin(rotation)
+        fun pointAt(a: Float): Offset {
+            val px = rx * kotlin.math.cos(a)
+            val py = ry * kotlin.math.sin(a)
+            return Offset(x + px * cosR - py * sinR, y + px * sinR + py * cosR)
+        }
+        if (current == null) shapeStart = pointAt(a0)
+        current = pointAt(a0 + sweep)
         if (rotation == 0f) {
             // The arc continues the current shape, joined by a line from where the path was, as
             // the browser's does; a separate contour would close on its own and leave gaps.
