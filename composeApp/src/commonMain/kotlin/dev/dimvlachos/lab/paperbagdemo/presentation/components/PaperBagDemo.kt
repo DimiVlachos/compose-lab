@@ -751,12 +751,10 @@ private fun Sheet(
                 alpha = (bag.open * 1.6f).coerceIn(0f, 1f)
             }
             .background(colors.background)
-            // While it is open it takes every touch; closing, it lets them through, as the
-            // prototype's did.
-            .then(
-                if (bag.isOpen) Modifier.pointerInput(Unit) { awaitPointerEventScopeConsumeAll() }
-                else Modifier,
-            )
+            // While it is open it is hit before the aisle under it, so the aisle gets no touch;
+            // closing, it lets them through, as the prototype's did. It only watches: consuming
+            // every move here cancelled each tap on its own buttons the moment a finger moved.
+            .then(if (bag.isOpen) Modifier.pointerInput(Unit) { watchTouches() } else Modifier)
             .semantics { this.paneTitle = paneTitle },
     ) {
         Row(
@@ -939,12 +937,11 @@ private fun PressableBox(
     )
 }
 
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope
-    .awaitPointerEventScopeConsumeAll() {
+// Receives every touch without consuming any, so what is behind gets none and what is inside still
+// sees its own taps whole.
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.watchTouches() {
     awaitPointerEventScope {
-        while (true) {
-            awaitPointerEvent().changes.forEach { it.consume() }
-        }
+        while (true) awaitPointerEvent()
     }
 }
 

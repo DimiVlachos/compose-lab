@@ -3,15 +3,18 @@ package dev.dimvlachos.lab.paperbagdemo.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -99,6 +102,30 @@ class PaperBagDemoUiTest {
         onNodeWithTag("done").performClick()
         waitForIdle()
         assertTrue(!bag.isOpen && bag.open == 0f)
+    }
+
+    @Test
+    fun aFingerThatMovesALittleStillTapsInTheOpenBag() = runComposeUiTest {
+        show()
+        add("bread")
+        add("celery")
+        waitForIdle()
+        onNodeWithTag("bag").performClick()
+        waitForIdle()
+        // A real finger always moves a pixel or two between down and up; a click() never does.
+        fun SemanticsNodeInteraction.fingerTap() = performTouchInput {
+            down(center)
+            moveBy(Offset(3f, 2f))
+            moveBy(Offset(1f, 1f))
+            up()
+        }
+        val celery = cart.entries.single { it.product.id == "celery" }
+        onNodeWithTag("rm-${celery.key}").fingerTap()
+        waitForIdle()
+        assertEquals(listOf("bread"), cart.entries.map { it.product.id })
+        onNodeWithTag("done").fingerTap()
+        waitForIdle()
+        assertTrue(!bag.isOpen, "Done closes the bag")
     }
 
     @Test
