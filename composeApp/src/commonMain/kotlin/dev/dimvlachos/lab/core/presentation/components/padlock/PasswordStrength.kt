@@ -47,7 +47,8 @@ internal fun checkPassword(password: String): PasswordCheck {
     val capital = upper && lower
     val common = password.lowercase() in CommonPasswords
     val kinds = (if (capital) 1 else 0) + (if (number) 1 else 0) + (if (symbol) 1 else 0)
-    val n = password.length
+    // Characters as a person counts them: an emoji is one, not the two halves it is stored as.
+    val n = password.length - password.count { it.isLowSurrogate() }
     val level =
         when {
             n == 0 -> StrengthLevel.Empty

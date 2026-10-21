@@ -55,4 +55,11 @@ class PasswordStrengthTest {
         assertEquals(listOf(Need.Number, Need.Capital), needs(checkPassword("abcdefghijklm")))
         assertEquals(emptyList(), needs(checkPassword("maple42-River!")))
     }
+
+    @Test
+    fun anEmojiCountsAsOneCharacter() {
+        val check = checkPassword("maple42\uD83D\uDD12")
+        assertEquals(8, check.length)
+        assertEquals(4, check.missingCharacters)
+    }
 }
