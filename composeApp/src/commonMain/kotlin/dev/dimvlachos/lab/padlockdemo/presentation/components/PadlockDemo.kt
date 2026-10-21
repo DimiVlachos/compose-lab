@@ -192,7 +192,7 @@ internal fun PadlockDemo(
                 Modifier.padding(top = 5.dp),
                 color = colors.muted,
                 fontSize = 13.5.sp,
-                lineHeight = 21.sp,
+                lineHeight = BodyLine,
             )
         }
         Padlock(
@@ -260,6 +260,7 @@ private fun AppBar(colors: PadlockScreenColors) {
             Modifier.weight(1f),
             color = colors.ink,
             fontSize = 15.5.sp,
+            lineHeight = BodyLine,
             fontWeight = FontWeight(650),
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -272,6 +273,7 @@ private fun AppBar(colors: PadlockScreenColors) {
                 .padding(horizontal = 10.dp, vertical = 5.dp),
             color = colors.ink,
             fontSize = 12.sp,
+            lineHeight = BodyLine,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
@@ -300,6 +302,7 @@ private fun Meter(check: PasswordCheck, colors: PadlockScreenColors) {
             Modifier.testTag("level").semantics { liveRegion = LiveRegionMode.Polite },
             color = if (check.level == StrengthLevel.Strong) colors.ok else colors.ink,
             fontSize = 15.sp,
+            lineHeight = BodyLine,
             fontWeight = FontWeight.Bold,
             letterSpacing = .01.em,
         )
@@ -308,6 +311,7 @@ private fun Meter(check: PasswordCheck, colors: PadlockScreenColors) {
             Modifier.testTag("tip"),
             color = colors.muted,
             fontSize = 12.5.sp,
+            lineHeight = BodyLine,
             textAlign = TextAlign.Center,
         )
     }
@@ -374,6 +378,7 @@ private fun Form(
                 stringResource(Res.string.padlock_email_value),
                 color = colors.ink,
                 fontSize = 15.5.sp,
+                lineHeight = BodyLine,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -389,6 +394,7 @@ private fun Form(
                     TextStyle(
                         color = colors.ink,
                         fontSize = 16.sp,
+                        lineHeight = BodyLine,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = if (peek) .02.em else .14.em,
                     ),
@@ -432,6 +438,7 @@ private fun Label(text: String, colors: PadlockScreenColors) {
         text,
         color = colors.muted,
         fontSize = 11.5.sp,
+        lineHeight = BodyLine,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = .02.em,
     )
@@ -460,6 +467,15 @@ private fun Rule(text: String, met: Boolean, colors: PadlockScreenColors) {
                 )
             }
         }
-        Text(text, color = ink, fontSize = 12.sp, modifier = Modifier.widthIn(max = 220.dp))
+        Text(
+            text,
+            color = ink,
+            fontSize = 12.sp,
+            lineHeight = BodyLine,
+            modifier = Modifier.widthIn(max = 220.dp),
+        )
     }
 }
+
+/** The prototype's body line height, which every line on the screen inherits. */
+private val BodyLine = 1.55.em
