@@ -596,6 +596,8 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 
 ## Mailbox badge (`core/presentation/components/mailbox/`)
 
+![](docs/media/mailbox.badge.gif)
+
 An inbox button in a top bar that is a little tin rural mailbox on its post, seen from the front left. When mail comes, the door cracks open, an envelope slips in and the door claps shut, and the red flag swings up on its spring with the unread count painted on it. More mail while it is up jiggles the flag and bumps the number. Tap the mailbox, or pull down on it past halfway, and the door drops open on the letters inside as the inbox slides in. Read everything and the flag comes down by itself.
 
 - **One canvas.** The galvanized body, its two pressed ribs and the sun's glint along its top, the arched door on its bottom hinge, the dark inside, airmail envelopes and the flag are all drawn in one `Canvas` through the shared `canvas2d` port of the prototype's drawing. The dark theme draws the tin and the post at dusk.
