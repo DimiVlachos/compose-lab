@@ -69,24 +69,78 @@ private val INNER =
         floatArrayOf(cos(b) * RI, sin(b) * RI, b)
     }
 
+// The outline's corners on a unit star, a tip then the inner corner after it, each as x, y and how
+// much it is rounded, laid out once: a frame draws some sixty outlines.
+private val OUTLINE =
+    FloatArray(30).also { o ->
+        for (k in 0 until 5) {
+            o[6 * k] = TIPS[k][0]
+            o[6 * k + 1] = TIPS[k][1]
+            o[6 * k + 2] = .16f
+            o[6 * k + 3] = INNER[k][0]
+            o[6 * k + 4] = INNER[k][1]
+            o[6 * k + 5] = .1f
+        }
+    }
+
 /** The star's outline, its points and inner corners rounded, of radius [r] about the origin. */
 internal fun Canvas2D.starPath(r: Float) {
     beginPath()
-    val pts = ArrayList<FloatArray>(10)
-    for (k in 0 until 5) {
-        pts += floatArrayOf(TIPS[k][0] * r, TIPS[k][1] * r, .16f)
-        pts += floatArrayOf(INNER[k][0] * r, INNER[k][1] * r, .1f)
-    }
-    val n = pts.size
-    val m0x = (pts[n - 1][0] + pts[0][0]) / 2
-    val m0y = (pts[n - 1][1] + pts[0][1]) / 2
-    moveTo(m0x, m0y)
+    val n = OUTLINE.size / 3
+    moveTo((OUTLINE[3 * n - 3] + OUTLINE[0]) / 2 * r, (OUTLINE[3 * n - 2] + OUTLINE[1]) / 2 * r)
     for (k in 0 until n) {
-        val p = pts[k]
-        val q = pts[(k + 1) % n]
-        arcTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2, p[2] * r)
+        val p = 3 * k
+        val q = 3 * ((k + 1) % n)
+        arcTo(
+            OUTLINE[p] * r,
+            OUTLINE[p + 1] * r,
+            (OUTLINE[p] + OUTLINE[q]) / 2 * r,
+            (OUTLINE[p + 1] + OUTLINE[q + 1]) / 2 * r,
+            OUTLINE[p + 2] * r,
+        )
     }
     closePath()
+}
+
+// The same rounded outline as a polygon, each corner's arc in a few straight steps, as arcTo draws
+// it: the shadow's shape, which has to keep inside the star's rounded points.
+private val ROUNDED: List<FloatArray> = buildList {
+    val n = OUTLINE.size / 3
+    val steps = 6
+    for (k in 0 until n) {
+        val p = 3 * k
+        val q = 3 * ((k + 1) % n)
+        val o = 3 * ((k + n - 1) % n)
+        val px = OUTLINE[p]
+        val py = OUTLINE[p + 1]
+        val rad = OUTLINE[p + 2]
+        // Towards the middles of the edges either side.
+        var ax = (OUTLINE[o] - px) / 2
+        var ay = (OUTLINE[o + 1] - py) / 2
+        var bx = (OUTLINE[q] - px) / 2
+        var by = (OUTLINE[q + 1] - py) / 2
+        val la = kotlin.math.hypot(ax, ay)
+        val lb = kotlin.math.hypot(bx, by)
+        ax /= la
+        ay /= la
+        bx /= lb
+        by /= lb
+        val theta = kotlin.math.acos((ax * bx + ay * by).coerceIn(-1f, 1f))
+        val d = rad / kotlin.math.tan(theta / 2)
+        val hx = (ax + bx) / kotlin.math.hypot(ax + bx, ay + by)
+        val hy = (ay + by) / kotlin.math.hypot(ax + bx, ay + by)
+        val kc = rad / sin(theta / 2)
+        val cx = px + hx * kc
+        val cy = py + hy * kc
+        val start = kotlin.math.atan2(py + ay * d - cy, px + ax * d - cx)
+        var sweep = kotlin.math.atan2(py + by * d - cy, px + bx * d - cx) - start
+        while (sweep > PI) sweep -= (2 * PI).toFloat()
+        while (sweep < -PI) sweep += (2 * PI).toFloat()
+        for (j in 0..steps) {
+            val t = start + sweep * j / steps
+            add(floatArrayOf(cx + rad * cos(t), cy + rad * sin(t)))
+        }
+    }
 }
 
 private val RAMP_AT = floatArrayOf(0f, .3f, .55f, .78f, 1f)
@@ -332,31 +386,29 @@ internal fun Canvas2D.drawSticker(
  * along the fold, so the outline is built as plain polygons, cut at the fold by hand.
  */
 internal fun Canvas2D.fillSilhouette(r: Float, a: Float, edge: Float) {
-    val star =
-        List(10) { k -> if (k % 2 == 0) TIPS[k / 2] else INNER[k / 2] }
-            .map { floatArrayOf(it[0] * r, it[1] * r) }
     if (a < .005f) {
-        fillPolygon(star)
+        fillPolygon(ROUNDED, r)
         return
     }
     val ex = cos(edge)
     val ey = sin(edge)
-    val lf = r * (1 - 2 * a)
-    val flat = clipToFold(star, ex, ey, lf, keepBelow = true)
+    // The fold, on the unit star.
+    val lf = 1 - 2 * a
+    val flat = clipToFold(ROUNDED, ex, ey, lf, keepBelow = true)
     val flap =
-        clipToFold(star, ex, ey, lf, keepBelow = false).map { p ->
+        clipToFold(ROUNDED, ex, ey, lf, keepBelow = false).map { p ->
             val d = 2 * (p[0] * ex + p[1] * ey - lf)
             floatArrayOf(p[0] - d * ex, p[1] - d * ey)
         }
-    fillPolygon(flat)
-    fillPolygon(flap)
+    fillPolygon(flat, r)
+    fillPolygon(flap, r)
 }
 
-private fun Canvas2D.fillPolygon(points: List<FloatArray>) {
+private fun Canvas2D.fillPolygon(points: List<FloatArray>, r: Float) {
     if (points.size < 3) return
     beginPath()
-    moveTo(points[0][0], points[0][1])
-    for (k in 1 until points.size) lineTo(points[k][0], points[k][1])
+    moveTo(points[0][0] * r, points[0][1] * r)
+    for (k in 1 until points.size) lineTo(points[k][0] * r, points[k][1] * r)
     closePath()
     fill()
 }
