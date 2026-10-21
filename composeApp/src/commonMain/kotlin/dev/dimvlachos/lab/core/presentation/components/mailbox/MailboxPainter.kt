@@ -35,12 +35,15 @@ private const val U0Y = 0.2195f
 private const val PX = R + 0.7f * DX
 private const val PY = 63f + 0.7f * DY
 
-// The flag's arm, where its plate starts along it, and the plate's width. The plate and its number
-// are bigger than the prototype's, so the count reads at 68 dp: about 13 dp type, 9 dp figures.
+// The flag's arm, where its plate starts along it, and the plate's width. As on a real rural
+// mailbox, the plate is a small one at the end of a bare arm, so lowered it covers only the front
+// of the side; its number is still bigger than the prototype's, so the count reads at 68 dp: about
+// 11.5 dp type, 8 dp figures. Two figures ("9+") are set smaller to fit across the plate.
 private const val FlagLength = 28f
-private const val PlateFrom = 6f
-private const val PlateWidth = 23f
-private const val NumberSize = 21f
+private const val PlateFrom = 12f
+private const val PlateWidth = 18f
+private const val NumberSize = 19f
+private const val WideNumberSize = 13f
 
 // The letters lean out this much further than the prototype's, so they read at icon size.
 private const val PeekReach = 1.35f
@@ -421,10 +424,11 @@ internal class MailboxPainter(private val g: Canvas2D, private val dark: Boolean
             g.save()
             g.globalAlpha = alpha
             transform(vx, vy, -ux, -uy, cx, cy)
-            g.font = "800 ${NumberSize.toInt()}px system-ui"
+            val wide = state.shown > 9
+            g.font = if (wide) WideNumberFont else NumberFont
             g.textAlign = "center"
             g.textBaseline = "middle"
-            val text = if (state.shown > 9) "9+" else state.shown.toString()
+            val text = if (wide) "9+" else Figures[state.shown]
             g.fillStyle = "rgba(80,8,4,.45)"
             g.fillText(text, 0.5f, 1.3f)
             g.fillStyle = "#fff7ee"
@@ -454,5 +458,8 @@ internal class MailboxPainter(private val g: Canvas2D, private val dark: Boolean
                 Triple(1.1f, "rgba(0,0,0,.2)", 1f),
             )
         val Lean = floatArrayOf(-0.2f, 0.1f, -0.06f)
+        val NumberFont = "800 ${NumberSize.toInt()}px system-ui"
+        val WideNumberFont = "800 ${WideNumberSize.toInt()}px system-ui"
+        val Figures = Array(10) { it.toString() }
     }
 }
