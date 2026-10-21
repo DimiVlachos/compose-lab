@@ -39,7 +39,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -900,9 +899,27 @@ private fun PressableBox(
 ) {
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
+    val inputMode = LocalInputModeManager.current
+    var focused by remember { mutableStateOf(false) }
     Box(
-        modifier
-            .keyboardFocusRing(shape, ring)
+        // The ring goes round the outside, so it comes before the caller's clip.
+        Modifier.onFocusChanged { focused = it.isFocused }
+            .drawWithContent {
+                drawContent()
+                if (focused && inputMode.inputMode == InputMode.Keyboard) {
+                    val o = 2.dp.toPx() + 1.dp.toPx()
+                    val outline =
+                        shape.createOutline(
+                            size.copy(width = size.width + 2 * o, height = size.height + 2 * o),
+                            layoutDirection,
+                            this,
+                        )
+                    translate(-o, -o) {
+                        drawOutline(outline, ring, style = Stroke(2.dp.toPx()))
+                    }
+                }
+            }
+            .then(modifier)
             .graphicsLayer {
                 val k = if (pressed) .93f else 1f
                 scaleX = k
@@ -917,27 +934,6 @@ private fun PressableBox(
         contentAlignment = Alignment.Center,
         content = content,
     )
-}
-
-private fun Modifier.keyboardFocusRing(shape: Shape, color: Color): Modifier = composed {
-    val inputMode = LocalInputModeManager.current
-    var focused by remember { mutableStateOf(false) }
-    this.onFocusChanged { focused = it.isFocused }
-        .drawWithContent {
-            drawContent()
-            if (focused && inputMode.inputMode == InputMode.Keyboard) {
-                val o = 2.dp.toPx() + 1.dp.toPx()
-                val outline =
-                    shape.createOutline(
-                        size.copy(width = size.width + 2 * o, height = size.height + 2 * o),
-                        layoutDirection,
-                        this,
-                    )
-                translate(-o, -o) {
-                    drawOutline(outline, color, style = Stroke(2.dp.toPx()))
-                }
-            }
-        }
 }
 
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope
