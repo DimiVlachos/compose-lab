@@ -369,7 +369,8 @@ internal fun PaperBagDemo(
             return
         }
         for (key in keys) {
-            remove(cart.entries.first { it.key == key })
+            // Something may have been taken out by hand while the others were lifting.
+            cart.entries.firstOrNull { it.key == key }?.let(::remove) ?: continue
             delay(140)
         }
     }
