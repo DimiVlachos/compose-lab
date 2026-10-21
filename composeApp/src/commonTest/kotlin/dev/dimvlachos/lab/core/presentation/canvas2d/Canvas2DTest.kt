@@ -412,4 +412,101 @@ class Canvas2DTest {
         near(Color.Blue, px[2, 20], .08f)
         assertTrue(px[2, 37].red > .6f && px[2, 37].blue > .6f, "white at the foot: ${px[2, 37]}")
     }
+
+    @Test
+    fun arcToRoundsACornerAsTheBrowserDoes() {
+        // A square with its top-right corner rounded by 8: the corner pixel is left out, its
+        // neighbour along the edge and the square's middle are filled.
+        val c = Canvas2D.create(20, 20)
+        c.beginPath()
+        c.moveTo(0f, 0f)
+        c.arcTo(20f, 0f, 20f, 20f, 8f)
+        c.lineTo(20f, 20f)
+        c.lineTo(0f, 20f)
+        c.closePath()
+        c.fillStyle = "#0000ff"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Transparent, px[19, 0])
+        near(Color.Blue, px[5, 1])
+        near(Color.Blue, px[18, 15])
+        near(Color.Blue, px[10, 10])
+    }
+
+    @Test
+    fun transformAppliesAfterTheTransformAlreadySet() {
+        val c = Canvas2D.create(20, 20)
+        c.translate(10f, 0f)
+        c.transform(2f, 0f, 0f, 2f, 0f, 4f) // scale by two, then down 4, in the translated frame
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 2f, 2f) // lands at (10, 4) to (14, 8)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[12, 6])
+        near(Color.Transparent, px[2, 6])
+        near(Color.Transparent, px[12, 1])
+    }
+
+    @Test
+    fun aDashedStrokeLeavesGaps() {
+        val c = Canvas2D.create(40, 4)
+        c.setLineDash(floatArrayOf(4f, 4f))
+        c.lineWidth = 2f
+        c.strokeStyle = "#ff0000"
+        c.beginPath()
+        c.moveTo(0f, 2f)
+        c.lineTo(40f, 2f)
+        c.stroke()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 2])
+        near(Color.Transparent, px[6, 2])
+        near(Color.Red, px[9, 2])
+    }
+
+    @Test
+    fun aShadowFallsByBothOffsets() {
+        val c = Canvas2D.create(30, 30)
+        c.shadowColor = "rgba(0,0,255,1)"
+        c.shadowBlur = 1f
+        c.shadowOffsetX = 12f
+        c.shadowOffsetY = 12f
+        c.fillStyle = "#ff0000"
+        c.fillRect(2f, 2f, 8f, 8f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[6, 6])
+        assertTrue(px[18, 18].blue > .6f, "the shadow, down and right: ${px[18, 18]}")
+        near(Color.Transparent, px[6, 18])
+    }
+
+    @Test
+    fun anOddDashListIsDoubledAsTheBrowserDoes() {
+        // [4] dashes as [4, 4]; Skia would refuse an odd list outright.
+        val c = Canvas2D.create(40, 4)
+        c.setLineDash(floatArrayOf(4f))
+        c.lineWidth = 2f
+        c.strokeStyle = "#ff0000"
+        c.beginPath()
+        c.moveTo(0f, 2f)
+        c.lineTo(40f, 2f)
+        c.stroke()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 2])
+        near(Color.Transparent, px[6, 2])
+        near(Color.Red, px[9, 2])
+    }
+
+    @Test
+    fun arcToAfterAnArcGoesOnFromTheArcsEnd() {
+        // A quarter circle from (0, 0) to (20, 20), then down the side and round towards (0, 40):
+        // one shape, so the fill reaches the lower right. Begun anew at (20, 40), it wouldn't.
+        val c = Canvas2D.create(24, 44)
+        c.beginPath()
+        c.arc(0f, 20f, 20f, (-PI / 2).toFloat(), 0f)
+        c.arcTo(20f, 40f, 0f, 40f, 1f)
+        c.closePath()
+        c.fillStyle = "#0000ff"
+        c.fill()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Blue, px[16, 30])
+        near(Color.Transparent, px[4, 36])
+    }
 }

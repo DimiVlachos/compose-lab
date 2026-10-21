@@ -13,14 +13,17 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_magnet_filter
+import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
 import dev.dimvlachos.lab.resources.demo_paper_plane
+import dev.dimvlachos.lab.resources.demo_paperbag
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
+import dev.dimvlachos.lab.resources.demo_stickers
 import dev.dimvlachos.lab.resources.demo_typewriter
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,6 +55,9 @@ class CatalogTest {
                 "snowglobe.weather",
                 "cardfile.contacts",
                 "bookshelf.reading",
+                "paperbag.cart",
+                "stickers.rating",
+                "mailbox.badge",
                 "padlock.password",
             ),
             Catalog.demos.map { it.id },
@@ -73,6 +79,9 @@ class CatalogTest {
                 Res.string.demo_snowglobe,
                 Res.string.demo_cardfile,
                 Res.string.demo_bookshelf,
+                Res.string.demo_paperbag,
+                Res.string.demo_stickers,
+                Res.string.demo_mailbox,
                 Res.string.demo_padlock,
             ),
             Catalog.demos.map { it.title },
@@ -144,6 +153,9 @@ class CatalogTest {
                 "snowglobe.weather",
                 "cardfile.contacts",
                 "bookshelf.reading",
+                "paperbag.cart",
+                "stickers.rating",
+                "mailbox.badge",
                 "padlock.password",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
