@@ -303,6 +303,83 @@ def ring_tick(rng, rate):
     return fade(normalise(click, 0.45), rate, 0.0002, 0.005)
 
 
+# ---------- Paper bag ----------
+
+def crinkles(rng, n, rate, per_second, bands, envelope):
+    """Kraft paper crinkling: a scatter of tiny creases, each a few milliseconds of noise rung
+    through one of the paper's resonances, louder or softer at random, and closer together
+    where [envelope] is high."""
+    track = [0.0] * n
+    grain_cache = {}
+    t = 0.0
+    while True:
+        gap = rng.expovariate(per_second)
+        t += gap
+        i = seconds(t, rate)
+        if i >= n:
+            break
+        if rng.random() > envelope(i / n):
+            continue
+        centre = rng.choice(bands) * rng.uniform(0.8, 1.25)
+        length = seconds(rng.uniform(0.002, 0.009), rate)
+        key = (round(centre, -2), length)
+        if key not in grain_cache:
+            g = mul(bandpass(noise(length + 64, rng), centre, 2.2, rate)[64:], env_exp(length, rate, length / rate / 3, 0.0003))
+            grain_cache[key] = normalise(g, 1.0)
+        grain = grain_cache[key]
+        place(track, scale(grain, rng.uniform(0.15, 1.0) ** 1.6), i)
+    return track
+
+
+def bag_drop(rng, rate):
+    """Something dropped into a kraft grocery bag: the stiff mouth crinkles as it passes, the
+    sides rustle against it, and it lands on the folded floor with a soft papery thump that the
+    bag's body booms back."""
+    n = seconds(0.34, rate)
+    crinkle = crinkles(rng, n, rate, 900, [1800, 3200, 5400, 7600], lambda u: math.exp(-u * 5) * (0.35 + 0.65 * (u > 0.03)))
+    rustle_env = [math.sin(math.pi * min(1.0, i / seconds(0.2, rate))) ** 2 if i < seconds(0.2, rate) else 0.0 for i in range(n)]
+    rustle = mul(bandpass(noise(n, rng), 850, 0.8, rate), rustle_env)
+    land = seconds(0.055, rate)
+    m = seconds(0.16, rate)
+    glide = [math.sin(2 * math.pi * (105 - 30 * i / m) * i / rate) * math.exp(-i / (0.035 * rate)) for i in range(m)]
+    floor = mul(lowpass(noise(m, rng), 380, rate), env_exp(m, rate, 0.018))
+    boom = damped_sine(m, rate, 190, 0.05)
+    track = mix(scale(crinkle, 0.55), scale(rustle, 0.5))
+    place(track, scale(mix(scale(glide, 0.9), scale(floor, 1.3), scale(boom, 0.25)), 0.9), land)
+    # The crinkle the landing shakes from the walls.
+    shake = crinkles(rng, m, rate, 500, [2600, 4400], lambda u: math.exp(-u * 7))
+    place(track, scale(shake, 0.35), land + seconds(0.01, rate))
+    return fade(normalise(track, 0.82), rate, 0.002, 0.04)
+
+
+def bag_lift(rng, rate):
+    """Something lifted out of the bag: it slides up against the paper, a dry rising scrape with
+    the mouth crinkling as it clears."""
+    n = seconds(0.3, rate)
+    sweep = [0.0] * n
+    src = noise(n, rng)
+    # A band that rises as the thing slides up and out.
+    step = seconds(0.01, rate)
+    for start in range(0, n, step):
+        u = start / n
+        chunk = bandpass(src[max(0, start - 64):start + step], 1100 + 2600 * u, 1.1, rate)[-min(step, n - start):]
+        for k, x in enumerate(chunk):
+            sweep[start + k] = x
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.4 for i in range(n)]
+    crinkle = crinkles(rng, n, rate, 700, [2400, 4200, 6400], lambda u: 0.2 + 0.8 * max(0.0, (u - 0.45) / 0.55))
+    track = mix(scale(mul(sweep, shape), 0.6), scale(crinkle, 0.5))
+    return fade(normalise(track, 0.62), rate, 0.01, 0.05)
+
+
+def bag_tip(rng, rate):
+    """The bag tipped toward you to look inside: a slow sweep of stiff paper bending, a broad
+    rustle that swells and settles, with creases popping along it."""
+    n = seconds(0.46, rate)
+    swell = [math.sin(math.pi * min(1.0, i / n)) ** 1.8 for i in range(n)]
+    body = mul(mix(scale(bandpass(noise(n, rng), 700, 0.6, rate), 0.8), scale(bandpass(noise(n, rng), 2600, 0.9, rate), 0.5)), swell)
+    crinkle = crinkles(rng, n, rate, 600, [1600, 3000, 5200], lambda u: math.sin(math.pi * u) ** 1.2)
+    track = mix(scale(body, 0.6), scale(crinkle, 0.45))
+    return fade(normalise(track, 0.55), rate, 0.02, 0.06)
 # ---------- Star stickers ----------
 
 def stick_slip(rng, rate, n, start, end, count, lo, hi, gain_from, gain_to):
@@ -388,6 +465,10 @@ def main():
     leaf = random.Random(1019)
     write("page_turn", page_turn(leaf, fast), fast)
     write("page_land", page_land(leaf, fast), fast)
+    bag = random.Random(1021)
+    write("bag_drop", bag_drop(bag, fast), fast)
+    write("bag_lift", bag_lift(bag, fast), fast)
+    write("bag_tip", bag_tip(bag, fast), fast)
     sticker = random.Random(1021)
     write("sticker_peel", sticker_peel(sticker, fast), fast)
     write("sticker_press", sticker_press(sticker, fast), fast)

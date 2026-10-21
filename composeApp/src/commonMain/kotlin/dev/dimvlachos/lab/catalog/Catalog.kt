@@ -9,6 +9,7 @@ import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.magnetdemo.MagnetDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
+import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
@@ -43,6 +44,7 @@ internal object Catalog {
                     SnowGlobeDemos.all +
                     CardFileDemos.all +
                     BookshelfDemos.all +
+                    PaperBagDemos.all +
                     StickerDemos.all)
                 .map {
                     CatalogEntry.Single(it)

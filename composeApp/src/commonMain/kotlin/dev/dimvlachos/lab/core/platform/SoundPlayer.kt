@@ -27,6 +27,9 @@ internal enum class Sound(val file: String) {
     RingTick("ring_tick"),
     PageTurn("page_turn"),
     PageLand("page_land"),
+    BagDrop("bag_drop"),
+    BagLift("bag_lift"),
+    BagTip("bag_tip"),
     StickerPeel("sticker_peel"),
     StickerPress("sticker_press"),
     StickerSettle("sticker_settle");

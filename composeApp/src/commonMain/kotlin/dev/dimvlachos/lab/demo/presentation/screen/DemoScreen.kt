@@ -28,8 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.tooling.preview.Preview
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.core.demo.DemoOverlay
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.DemoTag
+import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
 import dev.dimvlachos.lab.core.platform.LocalSoundCapturable
@@ -82,9 +84,14 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
         playing = false
         state.endReplay()
     }
+    // Over the whole screen, the bar included, for what a demo throws past the stage's clip.
+    val overlay = remember { DemoOverlay() }
     val stage: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier.clipToBounds().takeOverOnTouch(playing && !record, stop)) {
-            CompositionLocalProvider(LocalSoundCapturable provides record) {
+            CompositionLocalProvider(
+                LocalSoundCapturable provides record,
+                LocalDemoOverlay provides overlay,
+            ) {
                 key(runId) { demo.content(state) }
             }
             if (label != null) {
@@ -155,6 +162,7 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
                 )
             }
         }
+        overlay.Layer()
     }
 }
 
