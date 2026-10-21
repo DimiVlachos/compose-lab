@@ -29,7 +29,10 @@ internal enum class Sound(val file: String) {
     PageLand("page_land"),
     BagDrop("bag_drop"),
     BagLift("bag_lift"),
-    BagTip("bag_tip");
+    BagTip("bag_tip"),
+    StickerPeel("sticker_peel"),
+    StickerPress("sticker_press"),
+    StickerSettle("sticker_settle");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

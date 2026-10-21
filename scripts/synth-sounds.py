@@ -380,6 +380,60 @@ def bag_tip(rng, rate):
     crinkle = crinkles(rng, n, rate, 600, [1600, 3000, 5200], lambda u: math.sin(math.pi * u) ** 1.2)
     track = mix(scale(body, 0.6), scale(crinkle, 0.45))
     return fade(normalise(track, 0.55), rate, 0.02, 0.06)
+# ---------- Star stickers ----------
+
+def stick_slip(rng, rate, n, start, end, count, lo, hi, gain_from, gain_to):
+    """A run of tiny releases, as adhesive lets go in stick-slip jumps: each a short band of
+    noise ringing at its own pitch, closer together and higher as the peel speeds up."""
+    track = [0.0] * n
+    s0, s1 = seconds(start, rate), seconds(end, rate)
+    for k in range(count):
+        u = k / max(1, count - 1)
+        # Jumps bunch up towards the end of the run: the peel front accelerates.
+        at = s0 + int((s1 - s0) * (u ** 0.7)) + rng.randint(-seconds(0.002, rate), seconds(0.002, rate))
+        m = seconds(rng.uniform(0.0015, 0.004), rate)
+        f = rng.uniform(lo, hi) * (1 + 0.6 * u)
+        click = mul(bandpass(noise(m, rng), f, 3.0, rate), env_exp(m, rate, m / rate / 3, 0.0002))
+        g = (gain_from + (gain_to - gain_from) * u) * rng.uniform(0.35, 1.0)
+        place(track, scale(click, g), at)
+    return track
+
+
+def sticker_peel(rng, rate):
+    """A foil star peeled off its liner: the tack crackling as it lets go in quick stick-slip
+    jumps that rise and speed up, a thin tearing hiss under them, and the freed paper flicking."""
+    n = seconds(0.3, rate)
+    crackle = stick_slip(rng, rate, n, 0.004, 0.2, 46, 1800, 4200, 0.5, 1.0)
+    hiss_src = noise(n, rng)
+    hiss, chunk = [], seconds(0.01, rate)
+    for s in range(0, n, chunk):
+        hiss.extend(bandpass(hiss_src[s:s + chunk], 2600 + 3400 * (s / n), 1.1, rate))
+    shape = [math.sin(math.pi * min(1.0, i / seconds(0.22, rate))) ** 1.5 if i < seconds(0.22, rate) else 0.0 for i in range(n)]
+    hiss = scale(mul(hiss, shape), 0.22)
+    flick = [0.0] * n
+    m = seconds(0.06, rate)
+    place(flick, scale(mul(bandpass(noise(m, rng), 700, 1.4, rate), env_exp(m, rate, 0.016, 0.003)), 0.5), seconds(0.2, rate))
+    return fade(normalise(mix(crackle, hiss, flick), 0.6), rate, 0.001, 0.04)
+
+
+def sticker_press(rng, rate):
+    """A star pressed down with a thumb: a soft felt thud through the paper, the adhesive
+    squeezing flat, and the faint crinkle of the foil settling into its embossing."""
+    n = seconds(0.16, rate)
+    thud = mul(lowpass(noise(n, rng), 320, rate), env_exp(n, rate, 0.022, 0.003))
+    body = scale(damped_sine(n, rate, 96, 0.035), 0.5)
+    squish = scale(mul(bandpass(noise(n, rng), 1300, 2.0, rate), env_exp(n, rate, 0.01, 0.004)), 0.35)
+    crinkle = stick_slip(rng, rate, n, 0.006, 0.05, 9, 5200, 8200, 0.18, 0.08)
+    return fade(normalise(mix(thud, body, squish, crinkle), 0.7), rate, 0.0008, 0.03)
+
+
+def sticker_settle(rng, rate):
+    """A star laid back on the sheet: a dry pat of paper on paper and a whisper of tack."""
+    n = seconds(0.07, rate)
+    pat = mul(lowpass(noise(n, rng), 1100, rate), env_exp(n, rate, 0.009, 0.001))
+    crisp = scale(mul(bandpass(noise(n, rng), 2900, 1.2, rate), env_exp(n, rate, 0.006, 0.001)), 0.4)
+    tack = stick_slip(rng, rate, n, 0.004, 0.03, 5, 2500, 4000, 0.12, 0.06)
+    return fade(normalise(mix(pat, crisp, tack), 0.4), rate, 0.0005, 0.015)
 
 
 def main():
@@ -415,6 +469,10 @@ def main():
     write("bag_drop", bag_drop(bag, fast), fast)
     write("bag_lift", bag_lift(bag, fast), fast)
     write("bag_tip", bag_tip(bag, fast), fast)
+    sticker = random.Random(1021)
+    write("sticker_peel", sticker_peel(sticker, fast), fast)
+    write("sticker_press", sticker_press(sticker, fast), fast)
+    write("sticker_settle", sticker_settle(sticker, fast), fast)
 
 
 if __name__ == "__main__":

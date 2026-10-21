@@ -21,6 +21,7 @@ import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
+import dev.dimvlachos.lab.resources.demo_stickers
 import dev.dimvlachos.lab.resources.demo_typewriter
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,6 +54,7 @@ class CatalogTest {
                 "cardfile.contacts",
                 "bookshelf.reading",
                 "paperbag.cart",
+                "stickers.rating",
             ),
             Catalog.demos.map { it.id },
         )
@@ -74,6 +76,7 @@ class CatalogTest {
                 Res.string.demo_cardfile,
                 Res.string.demo_bookshelf,
                 Res.string.demo_paperbag,
+                Res.string.demo_stickers,
             ),
             Catalog.demos.map { it.title },
         )
@@ -145,6 +148,7 @@ class CatalogTest {
                 "cardfile.contacts",
                 "bookshelf.reading",
                 "paperbag.cart",
+                "stickers.rating",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
