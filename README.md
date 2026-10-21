@@ -611,7 +611,7 @@ The frame loop runs only while a star is moving or the light is catching up with
 The demo, `stickers.rating`, rates an order from Lupita's Taco Truck in East Austin, with a note and Submit, which thanks you for the score. Its script drags across the sheet to five, back to three, taps the first slot and then the fifth, and drags the row clear again.
 
 ```kotlin
-val stickers = remember { StarStickerState() }
+val stickers = rememberStarStickerState()
 StarStickerRating(
     stickers,
     label = { landed -> words[landed] },
@@ -755,7 +755,7 @@ The card file takes any number of cards, dividers included, and composes about n
 
 The bookshelf's ring takes as many books as you like and draws those within reach of the front; a plank takes at most nine. A book being read opens at a chapter set from its words, one chapter at a time, and a book not begun at its title page. The open page is a picture of its text, not text you can select. Which book is out and the page it is open at are not saved, and the layout is not mirrored for right-to-left.
 
-The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. Its score is the caller's to keep; it is not saved.
+The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 
 ## Contributing
 

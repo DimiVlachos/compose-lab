@@ -1,8 +1,11 @@
 package dev.dimvlachos.lab.core.presentation.components.stickers
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.dimvlachos.lab.core.presentation.canvas2d.mulberry
 import kotlin.math.max
@@ -36,9 +39,10 @@ internal sealed interface StickerEvent {
  *
  * [target] is how many the finger asks for; [landed], how many are over their slots (three quarters
  * of the way), is what the label reads, so it never names a score the stars haven't reached.
+ * [initial] stars start pressed into their slots, as a saved score comes back.
  */
 @Stable
-internal class StarStickerState(seed: Int = 7) {
+internal class StarStickerState(seed: Int = 7, initial: Int = 0) {
     private val rnd = mulberry(seed)
     private val pos = FloatArray(StickerCount)
 
@@ -68,6 +72,9 @@ internal class StarStickerState(seed: Int = 7) {
             sheetJit[i] = ((rnd() - .5) * 12 * D2R).toFloat()
             slotRot[i] = ((rnd() - .5) * 10 * D2R).toFloat()
         }
+        target = initial.coerceIn(0, StickerCount)
+        for (i in 0 until target) pos[i] = 1f
+        landed = target
     }
 
     fun pos(star: Int): Float = pos[star]
@@ -125,7 +132,16 @@ internal class StarStickerState(seed: Int = 7) {
         return events ?: emptyList()
     }
 
-    private companion object {
-        const val BounceMs = 1000f
+    internal companion object {
+        private const val BounceMs = 1000f
+
+        /** Keeps the score, which comes back with its stars already pressed in. */
+        val Saver: Saver<StarStickerState, Int> =
+            Saver(save = { it.target }, restore = { StarStickerState(initial = it) })
     }
 }
+
+/** A [StarStickerState] whose score survives the screen being made again. */
+@Composable
+internal fun rememberStarStickerState(): StarStickerState =
+    rememberSaveable(saver = StarStickerState.Saver) { StarStickerState() }

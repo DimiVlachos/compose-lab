@@ -71,6 +71,7 @@ import dev.dimvlachos.lab.core.presentation.components.stickers.StickerFinger
 import dev.dimvlachos.lab.core.presentation.components.stickers.StickerHand
 import dev.dimvlachos.lab.core.presentation.components.stickers.StickerInks
 import dev.dimvlachos.lab.core.presentation.components.stickers.StickerSounds
+import dev.dimvlachos.lab.core.presentation.components.stickers.rememberStarStickerState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.StarStickerArt
 import dev.dimvlachos.lab.core.presentation.ui.StarStickerScreenColors
@@ -119,7 +120,7 @@ private const val ThanksMs = 2_600L
 @Composable
 internal fun StickerDemo(
     state: DemoState,
-    stickers: StarStickerState = remember { StarStickerState() },
+    stickers: StarStickerState = rememberStarStickerState(),
     reducedMotion: Boolean = rememberReducedMotion(),
 ) {
     val colors =
