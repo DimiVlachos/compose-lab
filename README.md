@@ -37,6 +37,8 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Snow globe](#snow-globe-corepresentationcomponentssnowglobe) | `snowglobe` | `snowglobe.weather` | A weather screen whose snow globe refreshes the forecast when shaken: glitter swirls through real refracting glass, over Oia's caldera |
 | [Card file](#card-file-corepresentationcomponentscardfile) | `cardfile` | `cardfile.contacts` | Contacts on a chrome rotary card file: spin the cards with momentum, tap a letter tab, pull a card out to call or message |
 | [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf) | `bookshelf` | `bookshelf.reading` | A reading list on real shelves: books on a ring that spins and on oak planks; tip one out by its spine and it opens at your bookmark, its pages turning like paper |
+| [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag) | `paperbag` | `paperbag.cart` | A cart icon that is a kraft grocery bag: things hop in on an arc, poke out of the top and fill it out, the count is rewritten in grease pencil, and the bag tips open over what is in it |
+| [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -59,6 +61,8 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Snow globe](#snow-globe-corepresentationcomponentssnowglobe)
 - [Card file](#card-file-corepresentationcomponentscardfile)
 - [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf)
+- [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag)
+- [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -594,6 +598,64 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 }
 ```
 
+## Paper bag cart (`core/presentation/components/paperbag/`)
+
+![](docs/media/paperbag.cart.gif)
+
+A grocery store's cart icon as a small brown kraft paper bag. Tap Add on a product and it hops out of its row on an arc and drops in. The bag squashes and rocks with the weight, its front bows out as it fills, and its count is rubbed off and written again in grease pencil. Long things poke out of the top: a baguette, celery and a bunch of sunflowers. The short ones still show over the rim: apples, a carton of milk, a tray of eggs. Tap the bag and it grows out of the corner and tips toward you, raising its back rim so you can see inside, over a list of what is in it. Tap − on a line and that thing lifts back out of the bag. Check out and everything sinks into the bag, its top folds over the front as a clerk folds it, and the order is placed; then the bag goes back to the corner empty. Done, Back or Escape sets the bag back in the corner.
+
+- **Painted in one canvas.** The bag, what is in it and everything flying to it are painted in one canvas over the screen, through the lab's `canvas2d` adapter. Nothing is clipped, so what pokes out of the bag shows whole in the bar. Its side gusset and pleat, the toothed rims and a front of tiled paper fibres shaded by how full it is follow the HTML prototype call by call.
+- **Grease pencil.** The count is written in Caveat four times over, slightly off, with flecks knocked out where the wax skipped over the paper. Each number is baked once.
+- **Weight.** A landing squashes the bag on a stiff spring and rocks it on another. The front bulges by how many things are in it, and opening the bag lifts its contents into view.
+- **Things keep their place.** Each thing has its own place across the bag's mouth for as long as it is in, so lifting one out moves nothing else. A row counts what is in the bag or on its way there, beside its unit line, never cut off with it.
+- **Feel and sound.** Something landing ticks, and kraft paper sounds go with it, synthesized in layers of tiny creases: a crinkle, a rustle and a thump as a thing drops in, a rising scrape as it lifts out, and a slow bend as the bag tips.
+- **Keyboard and screen readers.** The bag is a button that says how many things are in it. Adding and removing are read out, and the open bag is a pane titled Your bag, with the list behind it hidden. Focus rings show only for the keyboard, and focus moves to Done and back to the bag only for the keyboard too.
+- **Reduced motion.** Things drop straight in, and the bag opens and closes without the springs or the tip.
+
+The bag's clock runs only while something moves, and its motion is read in drawing only.
+
+The demo, `paperbag.cart`, is Fernwood Market's Saturday aisle of six invented products, with a baguette from the Linden Street Bakery and milk from Bramble Hill Dairy. Its script adds the baguette, the celery, the apples and the sunflowers, opens the bag and lifts the apples back out, closes it, then opens it again and checks out, so the clip loops.
+
+```kotlin
+val bag = remember { PaperBagState() }
+Canvas(Modifier.fillMaxSize()) {
+    bag.frame // redraw as the bag moves
+    val g = Canvas2D(drawContext.canvas, size.width.toInt(), size.height.toInt())
+    g.setTransform(density, 0f, 0f, density, 0f, 0f)
+    drawBag(g, x, y, 34f, bag.pose(items), ink, dark, density)
+}
+```
+
+## Star stickers (`core/presentation/components/stickers/`)
+
+![](docs/media/stickers.rating.gif)
+
+A star rating that feels like a teacher's sheet of gold foil stars. Under a row of five dashed slots lies a liner sheet of embossed stickers. Drag across the sheet or the row and each star you pass peels off its backing with a curl, flies up in an arc and is pressed into its slot, with a glint across the foil and a little bounce. Drag back and the last stars peel up out of the row and settle on the sheet again. A tap jumps to that score, and the stars flick on in order.
+
+- **Painted in one canvas.** The sheet with its lifted corner, gloss and print, the die-cuts, the slots and every star are painted through the lab's `canvas2d` adapter, ported call for call from the prototype. Each star is ten facets shaded from one light, on a gold ramp, with its embossed ridges, a brushed sheen that follows the light and a glint when it's pressed. The light leans with each star's speed and the finger's place, so the foil catches it as stars move.
+- **One number per star.** A star's place from the sheet to its slot drives its peel, flight and press, so a drag can turn back mid-air without a jump. A star moves only once its neighbour is far enough along, which lays a long drag down one star after another and makes a tap's stars flick on in order.
+- **A peel you can see.** The peeled flap is the sticker's paper back laid over the fold, shaded as paper bending, with its shadow on the foil. A peeling star lifts up off the sheet, clear of the finger dragging across it.
+- **The label keeps up.** The word under the row names the stars that have landed, so it never reads "Loved it!" with one star down.
+- **Sounds and touch.** Each peel crackles as its tack lets go, each press lands with a soft thud and a foil crinkle, a star laid back on the sheet pats down, and each press ticks.
+- **Keyboard and screen readers.** The rating is one slider, read out as "4 stars, Really good". The arrow keys step it, Home and End go to the ends and the digits 0–5 set it.
+- **Reduced motion.** The stars fade in place instead of peeling and flying.
+
+The frame loop runs only while a star is moving or the light is catching up with the finger.
+
+The demo, `stickers.rating`, rates an order from Lupita's Taco Truck in East Austin, with a note and Submit, which thanks you for the score. Its script drags across the sheet to five, back to three, taps the first slot and then the fifth, and drags the row clear again.
+
+```kotlin
+val stickers = rememberStarStickerState()
+StarStickerRating(
+    stickers,
+    label = { landed -> words[landed] },
+    valueText = { score -> "$score stars" },
+    description = "How was everything?",
+    labelColor = muted,
+    labelSetColor = accent,
+)
+```
+
 ## Mailbox badge (`core/presentation/components/mailbox/`)
 
 ![](docs/media/mailbox.badge.gif)
@@ -750,6 +812,8 @@ The card file takes any number of cards, dividers included, and composes about n
 
 The bookshelf's ring takes as many books as you like and draws those within reach of the front; a plank takes at most nine. A book being read opens at a chapter set from its words, one chapter at a time, and a book not begun at its title page. The open page is a picture of its text, not text you can select. Which book is out and the page it is open at are not saved, and the layout is not mirrored for right-to-left.
 
+The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
@@ -791,6 +855,8 @@ The typewriter composer's face is [Special Elite](https://fonts.google.com/speci
 The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/CourierPrime), Copyright 2015 The Courier Prime Project Authors, [Caveat](https://github.com/googlefonts/caveat), Copyright 2014 The Caveat Project Authors, and [Archivo](https://github.com/Omnibus-Type/Archivo), Copyright 2020 The Archivo Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Caveat and Archivo are static instances, at weights 600 and 800, of the variable fonts).
 
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
+
+The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 
