@@ -1,15 +1,25 @@
 package dev.dimvlachos.lab.paperbagdemo.presentation.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -102,6 +112,44 @@ class PaperBagDemoUiTest {
         onNodeWithTag("done").performClick()
         waitForIdle()
         assertTrue(!bag.isOpen && bag.open == 0f)
+    }
+
+    @Test
+    fun theBagStandsInItsButtonAfterTheScreenSlidesIn() = runComposeUiTest {
+        // As the app's push transition does: the screen starts a whole width off the edge and
+        // slides in on its own layer, which moves what was drawn without drawing it again.
+        var shift by mutableStateOf(360.dp)
+        setContent {
+            LabTheme {
+                Box(Modifier.size(360.dp, 744.dp).clipToBounds().testTag("frame")) {
+                    Box(Modifier.graphicsLayer { translationX = shift.toPx() }.fillMaxSize()) {
+                        PaperBagDemo(DemoState(), cart, bag, reducedMotion = false)
+                    }
+                }
+            }
+        }
+        waitForIdle()
+        // Part way in, the screen's left side shows while the bag's button is still off the edge.
+        shift = 200.dp
+        waitForIdle()
+        shift = 0.dp
+        waitForIdle()
+        val button = onNodeWithTag("bag").getBoundsInRoot()
+        val pixels = onNodeWithTag("frame").captureToImage().toPixelMap()
+        fun kraftAround(cx: Float, cy: Float): Boolean {
+            for (dx in -8..8) for (dy in -8..8) {
+                val c = pixels[(cx + dx).toInt(), (cy + dy).toInt()]
+                if (c.red - c.blue > .2f && c.red > .4f) return true
+            }
+            return false
+        }
+        with(density) {
+            val cx = button.left.toPx() + (button.right - button.left).toPx() / 2
+            // The bag's body is a little below the button's centre.
+            val cy = button.top.toPx() + (button.bottom - button.top).toPx() / 2 + 2.dp.toPx()
+            assertTrue(kraftAround(cx, cy), "the bag is drawn in its button")
+            assertTrue(!kraftAround(30.dp.toPx(), 30.dp.toPx()), "nothing is left in the corner")
+        }
     }
 
     @Test

@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -62,7 +63,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -165,6 +165,19 @@ private sealed interface Said {
 /** A product on its way from its row to the bag: where it set off, and when on the bag's clock. */
 private class Flight(val entry: BagEntry, val t0: Double, val from: Offset)
 
+/** Where the bag stands, its bottom centre ([x], [y]) in dp, and its height [s]. */
+private class BagSpot(val x: Float, val y: Float, val s: Float)
+
+/**
+ * Where the bag's button and the open sheet's well are, in px from the screen's top left, or null
+ * until measured. State, so the canvas redraws as they move, as when the screen slides in.
+ */
+@Stable
+private class BagAnchors {
+    var bag by mutableStateOf<Rect?>(null)
+    var well by mutableStateOf<Rect?>(null)
+}
+
 /** The scripted fingertip: where it is, in px, how far shown, and whether it is pressed. */
 @Stable
 private class Finger {
@@ -205,11 +218,26 @@ internal fun PaperBagDemo(
     val ink = remember(measurer, hand) { BagInk(measurer, hand) }
 
     // Where the controls are on the screen, in px from its top left, for flights and the script.
+    // Unclipped: while the screen slides in from off the edge, clipped bounds collapse to an empty
+    // rect at the corner, and the bag was drawn there and left until something next moved.
     val bounds = remember { HashMap<String, Rect>() }
+    // The bag's button and the open sheet's well are drawn from, so drawing follows them.
+    val anchors = remember { BagAnchors() }
     var root by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val placed = remember { HashMap<String, LayoutCoordinates>() }
+    fun measure(id: String) {
+        val r = root?.takeIf { it.isAttached } ?: return
+        val c = placed[id]?.takeIf { it.isAttached } ?: return
+        val rect = r.localBoundingBoxOf(c, clipBounds = false)
+        bounds[id] = rect
+        when (id) {
+            "bag" -> anchors.bag = rect
+            "well" -> anchors.well = rect
+        }
+    }
     fun Modifier.place(id: String) = onGloballyPositioned { c ->
-        val origin = root?.takeIf { it.isAttached }?.boundsInRoot()?.topLeft ?: Offset.Zero
-        bounds[id] = c.boundsInRoot().translate(-origin)
+        placed[id] = c
+        measure(id)
     }
 
     val flights = remember { mutableStateListOf<Flight>() }
@@ -414,7 +442,11 @@ internal fun PaperBagDemo(
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .background(colors.background)
-            .onGloballyPositioned { root = it }
+            .onGloballyPositioned { c ->
+                root = c
+                // Children may be placed before the screen they are measured from.
+                placed.keys.toList().forEach(::measure)
+            }
             .onPreviewKeyEvent {
                 if (it.key == Key.Escape && it.type == KeyEventType.KeyUp && bag.isOpen) {
                     closeBag()
@@ -473,43 +505,44 @@ internal fun PaperBagDemo(
             }
         }
 
-        // The bag, wherever it is between the corner and the sheet, and what is flying to it.
-        Canvas(Modifier.fillMaxSize()) {
+        // Where the bag is and how big, in dp: in the corner, in the sheet, or on its way. Null
+        // until the button it stands in has been measured, and nothing is drawn till then.
+        fun spot(): BagSpot? {
+            val icon = anchors.bag ?: return null
+            var x = icon.center.x / density
+            var y = icon.center.y / density + IconDrop
+            var s = IconSize
+            val well = anchors.well
+            if (bag.open > 0f && well != null) {
+                val e = ease(bag.open)
+                val ws = (well.height / density * .54f).coerceIn(84f, 140f)
+                val wx = well.center.x / density - ws * .06f
+                val wy = well.bottom / density - 12f
+                x += (wx - x) * e
+                y += (wy - y) * e
+                s += (ws - s) * e
+            }
+            return BagSpot(x, y, s)
+        }
+
+        // What is flying to the bag, aimed at it where it is now, so a thing still flying when
+        // the bag is opened follows it into the sheet: the prototype's went on to the empty corner.
+        fun DrawScope.drawFlights() {
             bag.frame
+            val at = spot() ?: return
+            if (flights.isEmpty()) return
             val g = Canvas2D(drawContext.canvas, size.width.toInt(), size.height.toInt())
             g.setTransform(density, 0f, 0f, density, 0f, 0f)
-            val icon = bounds["bag"]
-            // Where the bag is and how big: in the corner, in the sheet, or on its way.
-            var bagX = (icon?.center?.x ?: 0f) / density
-            var bagY = (icon?.center?.y ?: 0f) / density + IconDrop
-            var bagS = IconSize
-            val items = cart.entries.map { BagItem(it.product.art, it.slot, bag.rise(it.key)) }
-            val pose = bag.pose(items)
-            if (icon != null) {
-                val e = ease(bag.open)
-                val well = bounds["well"]
-                if (bag.open > 0f && well != null) {
-                    val ws = (well.height / density * .54f).coerceIn(84f, 140f)
-                    val wx = well.center.x / density - ws * .06f
-                    val wy = well.bottom / density - 12f
-                    bagX += (wx - bagX) * e
-                    bagY += (wy - bagY) * e
-                    bagS += (ws - bagS) * e
-                }
-                drawBag(g, bagX, bagY, bagS, pose, ink, dark, density)
-            }
-            val h = size.height / density
+            val h = (root?.size?.height ?: 0) / density
             for (f in flights) {
                 val p = ((bag.now - f.t0) / FlightMs).toFloat().coerceIn(0f, 1f)
                 val e = p * p * (3 - 2 * p)
                 val x0 = f.from.x / density
                 val y0 = f.from.y / density
-                // Aimed at the bag where it is now, so a thing still flying when the bag is
-                // opened follows it into the sheet: the prototype's went on to the empty corner.
-                val x = x0 + (bagX - x0) * e
+                val x = x0 + (at.x - x0) * e
                 val y =
-                    y0 + (bagY - bagS * .7f - y0) * e - sin(p * PI.toFloat()) * min(160f, h * .22f)
-                val s = 40f + (bagS * .9f - 40f) * e
+                    y0 + (at.y - at.s * .7f - y0) * e - sin(p * PI.toFloat()) * min(160f, h * .22f)
+                val s = 40f + (at.s * .9f - 40f) * e
                 g.save()
                 g.translate(x, y)
                 g.rotate((1 - p) * .9f * (if (f.entry.product.id == "bread") 1f else .4f) - .2f)
@@ -517,6 +550,19 @@ internal fun PaperBagDemo(
                 drawItem(g, f.entry.product.art, s, ink)
                 g.restore()
             }
+        }
+
+        // The bag, wherever it is between the corner and the sheet, and what is flying to it.
+        Canvas(Modifier.fillMaxSize()) {
+            bag.frame
+            val g = Canvas2D(drawContext.canvas, size.width.toInt(), size.height.toInt())
+            g.setTransform(density, 0f, 0f, density, 0f, 0f)
+            val at = spot()
+            if (at != null) {
+                val items = cart.entries.map { BagItem(it.product.art, it.slot, bag.rise(it.key)) }
+                drawBag(g, at.x, at.y, at.s, bag.pose(items), ink, dark, density)
+            }
+            drawFlights()
             if (finger.shown > 0f) {
                 val k = if (finger.down) .82f else 1f
                 scale(k, k, pivot = finger.at) { drawTouch(touch, finger.at, finger.shown) }
