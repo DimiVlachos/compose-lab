@@ -138,6 +138,9 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
     val finger = remember { ScriptFinger() }
 
     fun deliver() {
+        // Cleared first, so a neighbor who writes again, or again after the clip loops, is
+        // announced again.
+        announcement = ""
         box.deliver {
             val letter = mail.arrive()
             fresh = letter.id
@@ -149,7 +152,10 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
         box.open {
             inbox = true
             scope.launch {
-                page.animateTo(1f, if (reducedMotion) snap() else tween(OpenMs, easing = EaseOut))
+                page.animateTo(
+                    1f,
+                    if (box.reducedMotion) snap() else tween(OpenMs, easing = EaseOut),
+                )
             }
         }
     }
@@ -160,7 +166,7 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
         mail.collapseAll()
         box.close()
         scope.launch {
-            page.animateTo(0f, if (reducedMotion) snap() else tween(CloseMs, easing = EaseOut))
+            page.animateTo(0f, if (box.reducedMotion) snap() else tween(CloseMs, easing = EaseOut))
         }
     }
 
@@ -191,6 +197,7 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
             mail.reset()
             box.reset()
             fresh = null
+            announcement = ""
             finger.hide()
         }
         onDispose {
@@ -199,9 +206,13 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
         }
     }
 
+    // A script the user takes over leaves no fingertip behind.
+    LaunchedEffect(state.replay) { if (!state.replay) finger.hide() }
+
+    // Back, and Escape, close the inbox from the moment its door starts to drop.
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = inbox,
+        isBackEnabled = box.isOpen,
         onBackCompleted = { closeInbox() },
     )
 
@@ -220,7 +231,7 @@ internal fun MailboxDemo(state: DemoState, reducedMotion: Boolean = rememberRedu
             .windowInsetsPadding(demoInsets(state))
             .onGloballyPositioned { targets.root = it }
             .onPreviewKeyEvent {
-                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape && inbox) {
+                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape && box.isOpen) {
                     closeInbox()
                     true
                 } else false
@@ -606,6 +617,7 @@ private class ScriptFinger {
      */
     suspend fun tap(target: Offset?, leave: Offset? = null, action: () -> Unit) {
         val mine = ++gesture
+        var done = false
         try {
             target ?: return
             if (!placed) {
@@ -621,8 +633,11 @@ private class ScriptFinger {
                 alpha.animateTo(0f, tween(ScriptedTouch.UpMs))
                 placed = false
             }
+            done = true
         } finally {
-            if (mine == gesture && leave != null) {
+            // Gone once it leaves, or once its tap is cut short.
+            if (mine == gesture && (leave != null || !done)) {
+                placed = false
                 withContext(NonCancellable) { alpha.snapTo(0f) }
             }
         }
