@@ -197,4 +197,39 @@ class MailboxStateTest {
         assertEquals(held, box.doorAngle, 0.01f)
         assertFalse(cues.any { it.first == MailboxCue.Creak })
     }
+
+    @Test
+    fun closingTucksTheLettersInBeforeTheDoorRisesOverThem() {
+        val box = mailbox()
+        box.open {}
+        box.run(1500)
+        assertEquals(1f, box.letterReach, 0.01f)
+        box.close()
+        // Every step of the close: once the door has risen past where it hangs below the
+        // opening, no letter may still lean out, or it shows outside the shut door.
+        repeat(400) {
+            box.advance(1f / 240f)
+            if (box.doorAngle < MailboxState.LettersOutFrom) {
+                assertEquals(
+                    0f,
+                    box.letterReach,
+                    0.001f,
+                    "door ${box.doorAngle}, reach ${box.letterReach}",
+                )
+            }
+        }
+        assertEquals(0f, box.doorAngle, 0.01f)
+    }
+
+    @Test
+    fun aCrackedDoorForADeliveryLetsNoLetterOut() {
+        val box = mailbox()
+        box.setUnread(2)
+        box.run(1500)
+        box.deliver {}
+        repeat(300) {
+            box.advance(1f / 240f)
+            assertEquals(0f, box.letterReach, 0.001f)
+        }
+    }
 }

@@ -54,6 +54,15 @@ internal class MailboxState(reducedMotion: Boolean = false) {
     var peek = 0f
         private set
 
+    /**
+     * How far the letters actually lean out, 0 to 1: [peek], held in by the door. They can lean out
+     * only while the door hangs below the opening, so as it swings up to shut they are pushed back
+     * in ahead of it and none is left outside a closing door.
+     */
+    val letterReach: Float
+        get() =
+            min(peek, ((doorAngle - LettersOutFrom) / (OpenDoor - LettersOutFrom)).coerceIn(0f, 1f))
+
     /** How much of the number on the flag shows, 0 to 1. */
     var numberAlpha = 0f
         private set
@@ -358,6 +367,9 @@ internal class MailboxState(reducedMotion: Boolean = false) {
         const val CrackedDoor = 0.75f
         const val DoorStop = 1.95f
         const val OpenEnough = 0.95f
+
+        /** Past this the door hangs below the opening, and the letters can lean out over it. */
+        const val LettersOutFrom = 1.2f
         const val DragOpenDp = 38f
         const val FlightMs = 560.0
         const val LowerDelayMs = 700.0

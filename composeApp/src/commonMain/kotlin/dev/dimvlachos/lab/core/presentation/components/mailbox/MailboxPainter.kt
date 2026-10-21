@@ -87,11 +87,11 @@ internal class MailboxPainter(private val g: Canvas2D, private val dark: Boolean
         drawPost(PostEnd)
         drawBody()
         // Once the door hangs open the envelopes slide out over it, so they draw after it.
-        val overDoor = state.doorAngle > 1.2f
+        val overDoor = state.doorAngle > MailboxState.LettersOutFrom
         if (state.doorAngle > 0.02f) {
             drawInside()
             if (overDoor) drawDoor(state.doorAngle)
-            drawEnvelopes(letters, state.peek)
+            drawEnvelopes(letters, state.letterReach)
             drawBody() // hides the parts of the envelopes that run back into the box
         }
         for (t0 in state.flights) {
@@ -275,7 +275,9 @@ internal class MailboxPainter(private val g: Canvas2D, private val dark: Boolean
         g.save()
         g.beginPath()
         archPath()
-        if (peek > 0.05f) {
+        // Out past the arch only while the door hangs below it; otherwise the door covers the
+        // opening as it swings up, and anything drawn outside would be left hanging in the air.
+        if (peek > 0f) {
             g.rect(-60f, -60f, L + 60f, 200f)
             g.rect(-60f, BOT, R + 60f, 100f)
         }
