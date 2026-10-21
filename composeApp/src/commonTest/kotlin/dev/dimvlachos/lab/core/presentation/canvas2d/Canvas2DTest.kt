@@ -113,7 +113,7 @@ class Canvas2DTest {
     }
 
     @Test
-    fun aShadowFallsByBothOffsets() {
+    fun aShadowIsOffsetAcrossAndDown() {
         val c = Canvas2D.create(40, 40)
         c.shadowColor = "rgba(0,0,0,1)"
         c.shadowBlur = 0.5f
