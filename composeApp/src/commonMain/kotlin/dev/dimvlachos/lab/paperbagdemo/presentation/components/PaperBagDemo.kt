@@ -120,7 +120,6 @@ import dev.dimvlachos.lab.resources.paperbag_added
 import dev.dimvlachos.lab.resources.paperbag_bag_empty
 import dev.dimvlachos.lab.resources.paperbag_bag_items
 import dev.dimvlachos.lab.resources.paperbag_check_out
-import dev.dimvlachos.lab.resources.paperbag_check_out_note
 import dev.dimvlachos.lab.resources.paperbag_check_out_total
 import dev.dimvlachos.lab.resources.paperbag_chip_bakery
 import dev.dimvlachos.lab.resources.paperbag_chip_dairy
@@ -133,6 +132,9 @@ import dev.dimvlachos.lab.resources.paperbag_hello
 import dev.dimvlachos.lab.resources.paperbag_hello_line
 import dev.dimvlachos.lab.resources.paperbag_in_bag
 import dev.dimvlachos.lab.resources.paperbag_nothing
+import dev.dimvlachos.lab.resources.paperbag_order_line
+import dev.dimvlachos.lab.resources.paperbag_order_placed
+import dev.dimvlachos.lab.resources.paperbag_order_said
 import dev.dimvlachos.lab.resources.paperbag_price_unit
 import dev.dimvlachos.lab.resources.paperbag_remove
 import dev.dimvlachos.lab.resources.paperbag_removed
@@ -283,7 +285,7 @@ internal fun PaperBagDemo(
     }
 
     fun remove(entry: BagEntry) {
-        if (!cart.lifting(entry.key)) return
+        if (bag.checkingOut || !cart.lifting(entry.key)) return
         if (bag.reducedMotion) {
             finishLift(entry.key)
             return
@@ -306,11 +308,48 @@ internal fun PaperBagDemo(
         }
     }
 
+    // Checkout: the order is placed while the bag is folded shut, then it goes back empty.
+    var orderPlaced by remember { mutableStateOf(false) }
+    var checkoutJob by remember { mutableStateOf<Job?>(null) }
+
+    fun finishCheckOut() {
+        checkoutJob = null
+        orderPlaced = false
+        cart.clear()
+        bag.emptied()
+    }
+
     fun closeBag() {
         if (!bag.isOpen) return
+        // Closed mid-checkout, the order still goes: the bag is set back empty.
+        checkoutJob?.let {
+            it.cancel()
+            finishCheckOut()
+        }
         bag.openTo(false)
         sounds.play(Sound.BagTip, volume = .8f)
         if (inputMode.inputMode == InputMode.Keyboard) runCatching { bagFocus.requestFocus() }
+    }
+
+    // Check out: what is in the bag sinks, its top folds over, the order is placed, and after a
+    // moment the bag is emptied and set back in the corner.
+    fun checkOut() {
+        if (!bag.isOpen || cart.count == 0 || bag.checkingOut || cart.lifting.isNotEmpty()) return
+        bag.checkOut()
+        sounds.play(Sound.BagTip, volume = .9f)
+        checkoutJob = scope.launch {
+            snapshotFlow {
+                bag.frame
+                bag.folded
+            }
+                .first { it }
+            orderPlaced = true
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            say { Said.CheckOut(it) }
+            delay(OrderShownMs)
+            finishCheckOut()
+            closeBag()
+        }
     }
 
     // The bag's clock: springs, flights landing, lifts finishing. It rests while nothing moves,
@@ -418,6 +457,7 @@ internal fun PaperBagDemo(
                     if (entry != null) fingerTap("rm-${entry.key}") { remove(entry) }
                 }
                 control == PaperBagDemos.Done -> fingerTap("done") { closeBag() }
+                control == PaperBagDemos.CheckOut -> fingerTap("check-out") { checkOut() }
             }
         }
         state.setFeedResetHandler { emptyBag() }
@@ -500,7 +540,8 @@ internal fun PaperBagDemo(
                         doneFocus = doneFocus,
                         onDone = ::closeBag,
                         onRemove = ::remove,
-                        onCheckOut = { say { Said.CheckOut(it) } },
+                        orderPlaced = orderPlaced,
+                        onCheckOut = ::checkOut,
                     )
                 }
             }
@@ -596,7 +637,7 @@ internal fun PaperBagDemo(
                         s.count,
                     )
                 is Said.Full -> stringResource(Res.string.paperbag_full)
-                is Said.CheckOut -> stringResource(Res.string.paperbag_check_out_note)
+                is Said.CheckOut -> stringResource(Res.string.paperbag_order_said)
                 null -> null
             }
         Box(
@@ -795,6 +836,7 @@ private fun Sheet(
     doneFocus: FocusRequester,
     onDone: () -> Unit,
     onRemove: (BagEntry) -> Unit,
+    orderPlaced: Boolean,
     onCheckOut: () -> Unit,
 ) {
     val title =
@@ -849,7 +891,9 @@ private fun Sheet(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp),
         ) {
-            if (cart.entries.isEmpty()) {
+            if (orderPlaced) {
+                OrderPlaced(colors)
+            } else if (cart.entries.isEmpty()) {
                 BasicText(
                     stringResource(Res.string.paperbag_nothing),
                     style =
@@ -861,53 +905,54 @@ private fun Sheet(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 18.dp),
                 )
             }
-            for (entry in cart.entries) {
-                val name = stringResource(entry.product.name)
-                val removeLabel = stringResource(Res.string.paperbag_remove, name)
-                Row(
-                    Modifier.fillMaxWidth()
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                colors.line,
-                                Offset(0f, size.height - 1.dp.toPx()),
-                                size.copy(height = 1.dp.toPx()),
-                            )
-                        }
-                        .padding(horizontal = 6.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    BasicText(
-                        name,
-                        style = TextStyle(colors.ink, 14.5.sp, FontWeight.SemiBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    BasicText(
-                        money(entry.product.priceCents),
-                        style = TextStyle(colors.muted, 13.sp),
-                    )
-                    PressableBox(
-                        onClick = { onRemove(entry) },
-                        shape = CircleShape,
-                        ring = colors.accent,
-                        modifier =
-                            Modifier.size(36.dp)
-                                .border(1.5.dp, colors.line, CircleShape)
-                                .then(place("rm-${entry.key}"))
-                                .testTag("rm-${entry.key}")
-                                .semantics { contentDescription = removeLabel },
+            if (!orderPlaced)
+                for (entry in cart.entries) {
+                    val name = stringResource(entry.product.name)
+                    val removeLabel = stringResource(Res.string.paperbag_remove, name)
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    colors.line,
+                                    Offset(0f, size.height - 1.dp.toPx()),
+                                    size.copy(height = 1.dp.toPx()),
+                                )
+                            }
+                            .padding(horizontal = 6.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         BasicText(
-                            "−",
-                            style = TextStyle(colors.ink, 18.sp),
-                            modifier = Modifier.align(Alignment.Center),
+                            name,
+                            style = TextStyle(colors.ink, 14.5.sp, FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
                         )
+                        BasicText(
+                            money(entry.product.priceCents),
+                            style = TextStyle(colors.muted, 13.sp),
+                        )
+                        PressableBox(
+                            onClick = { onRemove(entry) },
+                            shape = CircleShape,
+                            ring = colors.accent,
+                            modifier =
+                                Modifier.size(36.dp)
+                                    .border(1.5.dp, colors.line, CircleShape)
+                                    .then(place("rm-${entry.key}"))
+                                    .testTag("rm-${entry.key}")
+                                    .semantics { contentDescription = removeLabel },
+                        ) {
+                            BasicText(
+                                "−",
+                                style = TextStyle(colors.ink, 18.sp),
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+                        }
                     }
                 }
-            }
         }
         Box(
             Modifier.fillMaxWidth()
@@ -917,7 +962,7 @@ private fun Sheet(
                 }
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 18.dp),
         ) {
-            val enabled = cart.count > 0
+            val enabled = cart.count > 0 && !bag.checkingOut
             val label =
                 if (enabled)
                     stringResource(Res.string.paperbag_check_out_total, money(cart.totalCents))
@@ -928,6 +973,8 @@ private fun Sheet(
                 ring = colors.accent,
                 modifier =
                     Modifier.fillMaxWidth()
+                        .then(place("check-out"))
+                        .testTag("check-out")
                         .graphicsLayer { alpha = if (enabled) 1f else .45f }
                         .clip(RoundedCornerShape(14.dp))
                         .background(colors.accent)
@@ -940,6 +987,25 @@ private fun Sheet(
                 )
             }
         }
+    }
+}
+
+/** What the open bag says once the order is placed, where its list was. */
+@Composable
+private fun OrderPlaced(colors: PaperBagColors) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        BasicText(
+            stringResource(Res.string.paperbag_order_placed),
+            style = TextStyle(colors.accent, 18.sp, FontWeight.Bold),
+        )
+        BasicText(
+            stringResource(Res.string.paperbag_order_line),
+            style = TextStyle(colors.muted, 14.sp),
+        )
     }
 }
 
@@ -1001,6 +1067,9 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.watchTou
         while (true) awaitPointerEvent()
     }
 }
+
+// How long the order placed shows in the folded bag before it goes back empty, in milliseconds.
+private const val OrderShownMs = 1400L
 
 // How long a product takes to hop into the bag, in milliseconds.
 private const val FlightMs = 560.0

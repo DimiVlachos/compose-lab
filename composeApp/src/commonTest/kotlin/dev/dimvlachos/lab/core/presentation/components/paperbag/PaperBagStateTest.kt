@@ -23,6 +23,51 @@ class PaperBagStateTest {
     }
 
     @Test
+    fun checkingOutSinksWhatIsInThenFoldsTheTopOverAndStops() {
+        val bag = PaperBagState(Random(1))
+        bag.landed(2)
+        bag.openTo(true)
+        run(bag, 2f)
+        bag.checkOut()
+        assertTrue(bag.checkingOut)
+        run(bag, .2f)
+        val early = bag.pose(emptyList())
+        assertTrue(early.sink > .3f, "sinking")
+        assertEquals(0f, early.fold, "not folding yet")
+        run(bag, 1f)
+        val done = bag.pose(emptyList())
+        assertEquals(1f, done.sink)
+        assertEquals(1f, done.fold)
+        assertTrue(bag.folded)
+        assertFalse(bag.moving)
+    }
+
+    @Test
+    fun anEmptiedBagUnfoldsAndWritesItsCountOff() {
+        val bag = PaperBagState(Random(1))
+        bag.landed(3)
+        bag.checkOut()
+        run(bag, 1.5f)
+        bag.emptied()
+        val pose = bag.pose(emptyList())
+        assertFalse(bag.checkingOut)
+        assertEquals(0f, pose.sink)
+        assertEquals(0f, pose.fold)
+        assertEquals(0, pose.count)
+        assertEquals(3, pose.prevCount)
+    }
+
+    @Test
+    fun reducedMotionFoldsAtOnce() {
+        val bag = PaperBagState(Random(1))
+        bag.reducedMotion = true
+        bag.landed(1)
+        bag.checkOut()
+        assertTrue(bag.folded)
+        assertEquals(1f, bag.pose(emptyList()).fold)
+    }
+
+    @Test
     fun theNumberIsWrittenInOverAboutAQuarterSecond() {
         val bag = PaperBagState(Random(1))
         bag.landed(1)

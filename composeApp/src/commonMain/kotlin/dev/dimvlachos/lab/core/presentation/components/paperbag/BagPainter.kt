@@ -25,7 +25,8 @@ internal class BagItem(val art: BagArt, val slot: Int, val rise: Float = 0f)
 /**
  * How the bag stands this frame: how much it [bulge]s (0 to 1) and is [tip]ped toward you (0 to 1,
  * eased), its landing squash [sq] and its [wob]ble, what is in it, and the grease-pencil [count]
- * being written over [prevCount], [numP] of the way.
+ * being written over [prevCount], [numP] of the way. At checkout what is in it has [sink]ed out of
+ * sight (0 to 1) and its top has [fold]ed over (0 to 1).
  */
 internal class BagPose(
     val bulge: Float = 0f,
@@ -36,6 +37,8 @@ internal class BagPose(
     val count: Int = items.size,
     val prevCount: Int = 0,
     val numP: Float = 1f,
+    val sink: Float = 0f,
+    val fold: Float = 0f,
 )
 
 /**
@@ -406,7 +409,9 @@ internal fun drawBag(
     val h = s * (1 - .1f * tip)
     val side = w * .17f
     val bow = s * (.012f + .05f * bulge)
-    val depth = s * (.06f + .34f * tip) // how far up the back rim sits: more when tipped toward you
+    // How far up the back rim sits: more when tipped toward you, and none once checkout pinches the
+    // top shut to fold it over.
+    val depth = s * (.06f + .34f * tip) * (1 - (pose.fold * 2f).coerceAtMost(1f))
     val l = -w / 2
     val r = w / 2
     val t = -h
@@ -474,7 +479,8 @@ internal fun drawBag(
         // Short things stand high enough for their tops to show over the rim.
         val peek = -h - ShortPeek * s + hgt * s
         g.save()
-        g.translate(sx * w + side * .35f, min(stand, peek) - rise * s * .9f)
+        // At checkout everything sinks down behind the front panel.
+        g.translate(sx * w + side * .35f, min(stand, peek) - rise * s * .9f + pose.sink * s * 1.4f)
         g.rotate(lean * (.6f + tip * .3f))
         // It fades once it has cleared the rim, not while it is still in the bag, as it did at
         // .6 to 1 in the prototype.
@@ -600,7 +606,73 @@ internal fun drawBag(
     // Front rim teeth
     g.fillStyle = if (dark) "#c09160" else "#e2b986"
     serration(g, l, r, t, s * .03f, 1f)
+    drawFoldedTop(g, pose.fold, l, r, t, side, s, dark)
     g.restore()
+}
+
+/**
+ * At checkout, the bag's top folded over its front as a clerk folds it: a band of kraft from the
+ * rim down, over the front and the gusset, its teeth hanging and its shadow on the paper below. It
+ * comes down over the second half of [fold].
+ */
+private fun drawFoldedTop(
+    g: Canvas2D,
+    fold: Float,
+    l: Float,
+    r: Float,
+    t: Float,
+    side: Float,
+    s: Float,
+    dark: Boolean,
+) {
+    val f = ((fold - .5f) * 2f).coerceIn(0f, 1f)
+    if (f <= 0f) return
+    val top = t - s * .02f
+    val fh = s * .17f * f
+    val tooth = s * .03f
+    // The shadow the fold casts on the front.
+    val shade = g.createLinearGradient(0f, top + fh, 0f, top + fh + s * .07f)
+    shade.addColorStop(0f, "rgba(60,32,10,.32)")
+    shade.addColorStop(1f, "rgba(60,32,10,0)")
+    g.fillStyle = shade
+    g.fillRect(l, top + fh, r - l + side, s * .07f)
+    // Over the gusset, darker.
+    g.fillStyle = if (dark) "#6c4a29" else "#9b6d3f"
+    g.beginPath()
+    g.moveTo(r, top)
+    g.lineTo(r + side, top + side * .2f)
+    g.lineTo(r + side, top + side * .2f + fh)
+    g.lineTo(r, top + fh)
+    g.closePath()
+    g.fill()
+    // Over the front: the paper's outside, lit from above.
+    val band = g.createLinearGradient(0f, top, 0f, top + fh)
+    if (dark) {
+        band.addColorStop(0f, "#c49866")
+        band.addColorStop(1f, "#9d7143")
+    } else {
+        band.addColorStop(0f, "#e8c492")
+        band.addColorStop(1f, "#cd9d63")
+    }
+    g.fillStyle = band
+    g.fillRect(l - s * .01f, top, r - l + s * .02f, fh)
+    g.save()
+    g.beginPath()
+    g.rect(l - s * .01f, top, r - l + s * .02f, fh)
+    g.clip()
+    g.globalAlpha = .7f
+    g.fillStyle = fibrePattern
+    g.fillRect(l - s * .01f, top, r - l + s * .02f, fh)
+    g.restore()
+    // The crease along the top, and the teeth of the rim, now hanging at the band's foot.
+    g.strokeStyle = "rgba(255,236,205,.45)"
+    g.lineWidth = max(.6f, s * .01f)
+    g.beginPath()
+    g.moveTo(l - s * .01f, top + s * .006f)
+    g.lineTo(r + s * .01f, top + s * .006f)
+    g.stroke()
+    g.fillStyle = if (dark) "#a77a4a" else "#d3a571"
+    serration(g, l - s * .01f, r + s * .01f, top + fh - tooth * .6f, tooth, 1f)
 }
 
 // The next size up on a ladder six steps to the octave.

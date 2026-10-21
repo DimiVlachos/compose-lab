@@ -20,7 +20,7 @@ class PaperBagDemoScriptTest {
     }
 
     @Test
-    fun theClipFillsTheBagTakesTheApplesBackOutAndEndsEmpty() = runTest {
+    fun theClipFillsTheBagTakesTheApplesBackOutAndChecksOutEmpty() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
 
@@ -34,8 +34,7 @@ class PaperBagDemoScriptTest {
                 "tapControl(remove-apples)",
                 "tapControl(done)",
                 "tapControl(bag)",
-                "resetFeed()",
-                "tapControl(done)",
+                "tapControl(check-out)",
             ),
             controller.calls.map { it.second },
         )

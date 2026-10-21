@@ -596,7 +596,7 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 
 ## Paper bag cart (`core/presentation/components/paperbag/`)
 
-A grocery store's cart icon as a small brown kraft paper bag. Tap Add on a product and it hops out of its row on an arc and drops in. The bag squashes and rocks with the weight, its front bows out as it fills, and its count is rubbed off and written again in grease pencil. Long things poke out of the top: a baguette, celery and a bunch of sunflowers. The short ones still show over the rim: apples, a carton of milk, a tray of eggs. Tap the bag and it grows out of the corner and tips toward you, raising its back rim so you can see inside, over a list of what is in it. Tap − on a line and that thing lifts back out of the bag. Done, Back or Escape sets the bag back in the corner.
+A grocery store's cart icon as a small brown kraft paper bag. Tap Add on a product and it hops out of its row on an arc and drops in. The bag squashes and rocks with the weight, its front bows out as it fills, and its count is rubbed off and written again in grease pencil. Long things poke out of the top: a baguette, celery and a bunch of sunflowers. The short ones still show over the rim: apples, a carton of milk, a tray of eggs. Tap the bag and it grows out of the corner and tips toward you, raising its back rim so you can see inside, over a list of what is in it. Tap − on a line and that thing lifts back out of the bag. Check out and everything sinks into the bag, its top folds over the front as a clerk folds it, and the order is placed; then the bag goes back to the corner empty. Done, Back or Escape sets the bag back in the corner.
 
 - **Painted in one canvas.** The bag, what is in it and everything flying to it are painted in one canvas over the screen, through the lab's `canvas2d` adapter. Nothing is clipped, so what pokes out of the bag shows whole in the bar. Its side gusset and pleat, the toothed rims and a front of tiled paper fibres shaded by how full it is follow the HTML prototype call by call.
 - **Grease pencil.** The count is written in Caveat four times over, slightly off, with flecks knocked out where the wax skipped over the paper. Each number is baked once.
@@ -608,7 +608,7 @@ A grocery store's cart icon as a small brown kraft paper bag. Tap Add on a produ
 
 The bag's clock runs only while something moves, and its motion is read in drawing only.
 
-The demo, `paperbag.cart`, is Fernwood Market's Saturday aisle of six invented products, with a baguette from the Linden Street Bakery and milk from Bramble Hill Dairy. Its script adds the baguette, the celery, the apples and the sunflowers, opens the bag and lifts the apples back out, closes it, then opens it again and empties it so the clip loops.
+The demo, `paperbag.cart`, is Fernwood Market's Saturday aisle of six invented products, with a baguette from the Linden Street Bakery and milk from Bramble Hill Dairy. Its script adds the baguette, the celery, the apples and the sunflowers, opens the bag and lifts the apples back out, closes it, then opens it again and checks out, so the clip loops.
 
 ```kotlin
 val bag = remember { PaperBagState() }

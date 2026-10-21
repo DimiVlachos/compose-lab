@@ -222,6 +222,47 @@ class PaperBagDemoUiTest {
     }
 
     @Test
+    fun checkingOutFoldsTheBagPlacesTheOrderAndSetsItBackEmpty() = runComposeUiTest {
+        show()
+        add("bread")
+        add("flowers")
+        waitForIdle()
+        onNodeWithTag("bag").performClick()
+        waitForIdle()
+        mainClock.autoAdvance = false
+        onNodeWithTag("check-out").performTouchInput {
+            down(center)
+            moveBy(Offset(2f, 1f))
+            up()
+        }
+        mainClock.advanceTimeBy(900)
+        assertTrue(bag.folded, "folded shut")
+        onNodeWithText("Order placed").assertExists()
+        assertEquals("Order placed. Arriving today, 4 to 5 PM.", live())
+        assertEquals(2, cart.count, "still in the bag while the order shows")
+        mainClock.advanceTimeBy(1600)
+        mainClock.autoAdvance = true
+        waitForIdle()
+        assertEquals(0, cart.count)
+        assertTrue(!bag.isOpen && !bag.checkingOut)
+        bagSays("Bag, empty")
+    }
+
+    @Test
+    fun closingMidCheckoutStillSetsTheBagBackEmpty() = runComposeUiTest {
+        show()
+        add("eggs")
+        waitForIdle()
+        onNodeWithTag("bag").performClick()
+        waitForIdle()
+        onNodeWithTag("check-out").performClick()
+        onNodeWithTag("done").performClick()
+        waitForIdle()
+        assertEquals(0, cart.count)
+        assertTrue(!bag.isOpen && !bag.checkingOut)
+    }
+
+    @Test
     fun nothingIsAddedWhileTheBagIsOpen() = runComposeUiTest {
         show(reducedMotion = true)
         add("bread")

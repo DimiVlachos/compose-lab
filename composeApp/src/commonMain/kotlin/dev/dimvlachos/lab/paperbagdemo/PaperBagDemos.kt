@@ -12,20 +12,21 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object PaperBagDemos {
-    // The controls the script taps: a product's Add, the bag, a product's − in the open bag, and
-    // Done.
+    // The controls the script taps: a product's Add, the bag, a product's − in the open bag, Done
+    // and Check out.
     const val AddPrefix = "add-"
     const val Bag = "bag"
     const val RemovePrefix = "remove-"
     const val Done = "done"
+    const val CheckOut = "check-out"
 
     // The fingertip's trip to a control and its press, as the prototype's demo times them.
     private val Tap = 750.milliseconds
 
     // The prototype's demo: the baguette, the celery, the apples and the sunflowers hop into the
     // bag; it is opened, the apples are lifted back out, and it is set back in the corner. Then it
-    // is opened again, what is left rises out of it one by one, and it goes back empty, so the
-    // clip loops.
+    // is opened again and checked out: it folds shut, the order is placed and it goes back empty,
+    // so the clip loops.
     private val shopping = demoScript {
         at(0.5.seconds, lasts = Tap) { tapControl(AddPrefix + "bread") }
         at(1.75.seconds, lasts = Tap) { tapControl(AddPrefix + "celery") }
@@ -35,8 +36,7 @@ internal object PaperBagDemos {
         at(7.95.seconds, lasts = Tap) { tapControl(RemovePrefix + "apples") }
         at(10.05.seconds, lasts = Tap) { tapControl(Done) }
         at(11.6.seconds, lasts = Tap) { tapControl(Bag) }
-        at(13.2.seconds, lasts = 1200.milliseconds) { resetFeed() }
-        at(14.9.seconds, lasts = Tap) { tapControl(Done) }
+        at(13.2.seconds, lasts = 3600.milliseconds) { tapControl(CheckOut) }
     }
 
     val all =

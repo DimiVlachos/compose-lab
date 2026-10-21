@@ -364,7 +364,9 @@
     <string name="paperbag_done">Done</string>
     <string name="paperbag_check_out">Check out</string>
     <string name="paperbag_check_out_total">Check out · %1$s</string>
-    <string name="paperbag_check_out_note">Checkout isn’t part of this demo</string>
+    <string name="paperbag_order_placed">Order placed</string>
+    <string name="paperbag_order_line">Thanks! Arriving today, 4–5 PM</string>
+    <string name="paperbag_order_said">Order placed. Arriving today, 4 to 5 PM.</string>
     <string name="paperbag_nothing">Nothing in the bag yet.</string>
     <string name="paperbag_remove">Remove %1$s</string>
     <string name="paperbag_added">%1$s added. %2$d in bag.</string>

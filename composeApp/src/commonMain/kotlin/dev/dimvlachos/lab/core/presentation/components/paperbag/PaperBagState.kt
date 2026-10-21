@@ -51,6 +51,19 @@ internal class PaperBagState(private val random: Random = Random.Default) {
     private var count = 0
     private val lifts = HashMap<Int, Double>()
 
+    /** When checkout began on the bag's clock, or null while it isn't checking out. */
+    private var checkoutAt: Double? = null
+    private var sink = 0f
+    private var fold = 0f
+
+    /** Whether the bag is checking out: what is in it sinks and its top folds over. */
+    var checkingOut by mutableStateOf(false)
+        private set
+
+    /** Whether the top has folded all the way over. */
+    val folded: Boolean
+        get() = fold >= 1f
+
     /** Something dropped in: the bag squashes and tips, and [count] is written over the old. */
     fun landed(count: Int) {
         wakes++
@@ -87,6 +100,31 @@ internal class PaperBagState(private val random: Random = Random.Default) {
         if (reducedMotion) this.open = if (open) 1f else 0f
     }
 
+    /** Checkout: what is in the bag sinks out of sight, then the top folds over, as a clerk's. */
+    fun checkOut() {
+        if (checkingOut) return
+        wakes++
+        checkingOut = true
+        checkoutAt = now
+        if (reducedMotion) {
+            sink = 1f
+            fold = 1f
+            frame++
+        }
+    }
+
+    /** The order went: the bag is empty, its top unfolded, and its count is written off. */
+    fun emptied() {
+        wakes++
+        checkingOut = false
+        checkoutAt = null
+        sink = 0f
+        fold = 0f
+        lifts.clear()
+        rewrite(0)
+        frame++
+    }
+
     /** Puts the bag back as it starts: empty, closed and still. */
     fun reset() {
         wakes++
@@ -101,6 +139,10 @@ internal class PaperBagState(private val random: Random = Random.Default) {
         lifts.clear()
         isOpen = false
         open = 0f
+        checkingOut = false
+        checkoutAt = null
+        sink = 0f
+        fold = 0f
         frame++
     }
 
@@ -141,6 +183,12 @@ internal class PaperBagState(private val random: Random = Random.Default) {
         val k = if (isOpen) 7f else 8f
         open += (target - open) * minOf(1f, dt * k)
         if (kotlin.math.abs(target - open) < .002f) open = target
+        val at = checkoutAt
+        if (at != null && !reducedMotion) {
+            val t = (now - at).toFloat()
+            sink = ease((t / SinkMs).coerceIn(0f, 1f))
+            fold = ease(((t - FoldFromMs) / FoldMs).coerceIn(0f, 1f))
+        }
         if (reducedMotion) {
             sq = 0f
             sqV = 0f
@@ -162,6 +210,8 @@ internal class PaperBagState(private val random: Random = Random.Default) {
             count = count,
             prevCount = prevCount,
             numP = numP,
+            sink = sink,
+            fold = fold,
         )
 
     /** Whether anything is still moving, so the clock can rest. */
@@ -175,12 +225,19 @@ internal class PaperBagState(private val random: Random = Random.Default) {
                 kotlin.math.abs(bulge - want) > 1e-3f ||
                 numP < 1f ||
                 open != (if (isOpen) 1f else 0f) ||
-                lifts.isNotEmpty()
+                lifts.isNotEmpty() ||
+                (checkoutAt != null && fold < 1f)
         }
 
     internal companion object {
         /** How long a lift out of the bag takes, in milliseconds. */
         const val LiftMs = 620.0
+
+        // Checkout: what is in the bag sinks over this long, and the top folds over this long,
+        // starting this far in, in milliseconds.
+        private const val SinkMs = 350f
+        private const val FoldFromMs = 250f
+        private const val FoldMs = 450f
 
         private const val Step = 1f / 240f
     }
