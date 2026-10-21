@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.StrokeCap
@@ -156,6 +157,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         var shadowBlur: Float,
         var shadowOffsetY: Float,
         var imageShade: Color,
+        var shadowOffsetX: Float = 0f,
+        var lineDash: FloatArray? = null,
     ) {
         fun copy() =
             State(
@@ -171,6 +174,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 shadowBlur,
                 shadowOffsetY,
                 imageShade,
+                shadowOffsetX,
+                lineDash,
             )
     }
 
@@ -251,6 +256,12 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             state.shadowBlur = value
         }
 
+    var shadowOffsetX: Float
+        get() = state.shadowOffsetX
+        set(value) {
+            state.shadowOffsetX = value
+        }
+
     var shadowOffsetY: Float
         get() = state.shadowOffsetY
         set(value) {
@@ -307,23 +318,96 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
 
     fun rotate(radians: Float) = state.matrix.rotateZ(radians * 180f / PI.toFloat())
 
+    /** Multiplies the transform by the matrix [a]…[f], as the browser's `transform` does. */
+    fun transform(a: Float, b: Float, c: Float, d: Float, e: Float, f: Float) {
+        val m =
+            Matrix().apply {
+                values[Matrix.ScaleX] = a
+                values[Matrix.SkewY] = b
+                values[Matrix.SkewX] = c
+                values[Matrix.ScaleY] = d
+                values[Matrix.TranslateX] = e
+                values[Matrix.TranslateY] = f
+            }
+        m.timesAssign(state.matrix)
+        state.matrix = m
+    }
+
+    /** Dashes for [stroke], as the browser's `setLineDash`: on and off lengths in user units. */
+    fun setLineDash(segments: FloatArray) {
+        state.lineDash = segments.takeIf { it.isNotEmpty() }?.copyOf()
+    }
+
     // ---- Paths ----
 
     fun beginPath() {
         // Reused: every path is drawn as soon as it is built, and a frame builds hundreds.
         path.reset()
+        current = null
     }
 
-    fun moveTo(x: Float, y: Float) = path.moveTo(x, y)
+    // Where the path is, and where its shape began, which arcTo needs and Path doesn't tell.
+    private var current: Offset? = null
+    private var shapeStart = Offset.Zero
 
-    fun lineTo(x: Float, y: Float) = path.lineTo(x, y)
+    fun moveTo(x: Float, y: Float) {
+        path.moveTo(x, y)
+        current = Offset(x, y)
+        shapeStart = Offset(x, y)
+    }
 
-    fun quadraticCurveTo(cx: Float, cy: Float, x: Float, y: Float) = path.quadraticTo(cx, cy, x, y)
+    fun lineTo(x: Float, y: Float) {
+        path.lineTo(x, y)
+        current = Offset(x, y)
+    }
 
-    fun bezierCurveTo(c1x: Float, c1y: Float, c2x: Float, c2y: Float, x: Float, y: Float) =
+    fun quadraticCurveTo(cx: Float, cy: Float, x: Float, y: Float) {
+        path.quadraticTo(cx, cy, x, y)
+        current = Offset(x, y)
+    }
+
+    fun bezierCurveTo(c1x: Float, c1y: Float, c2x: Float, c2y: Float, x: Float, y: Float) {
         path.cubicTo(c1x, c1y, c2x, c2y, x, y)
+        current = Offset(x, y)
+    }
 
-    fun closePath() = path.close()
+    fun closePath() {
+        path.close()
+        current = shapeStart
+    }
+
+    /**
+     * The browser's `arcTo`: a line from where the path is towards ([x1], [y1]), rounded into the
+     * line on to ([x2], [y2]) by an arc of radius [r] that touches both.
+     */
+    fun arcTo(x1: Float, y1: Float, x2: Float, y2: Float, r: Float) {
+        val p0 = current ?: return moveTo(x1, y1)
+        val u = Offset(p0.x - x1, p0.y - y1)
+        val v = Offset(x2 - x1, y2 - y1)
+        val lu = u.getDistance()
+        val lv = v.getDistance()
+        val cross = u.x * v.y - u.y * v.x
+        if (r <= 0f || lu < 1e-6f || lv < 1e-6f || abs(cross) < 1e-6f * lu * lv) {
+            return lineTo(x1, y1)
+        }
+        val a = u / lu
+        val b = v / lv
+        val theta = kotlin.math.acos((a.x * b.x + a.y * b.y).coerceIn(-1f, 1f))
+        val d = r / kotlin.math.tan(theta / 2f)
+        val t1 = Offset(x1 + a.x * d, y1 + a.y * d)
+        val t2 = Offset(x1 + b.x * d, y1 + b.y * d)
+        val bis = (a + b).let { it / it.getDistance() }
+        val k = r / kotlin.math.sin(theta / 2f)
+        val c = Offset(x1 + bis.x * k, y1 + bis.y * k)
+        val start = kotlin.math.atan2(t1.y - c.y, t1.x - c.x)
+        var sweep = kotlin.math.atan2(t2.y - c.y, t2.x - c.x) - start
+        while (sweep > PI) sweep -= TAU
+        while (sweep < -PI) sweep += TAU
+        path.lineTo(t1.x, t1.y)
+        val deg = 180f / PI.toFloat()
+        path.arcTo(Rect(c.x - r, c.y - r, c.x + r, c.y + r), start * deg, sweep * deg, false)
+        current = t2
+    }
 
     fun rect(x: Float, y: Float, w: Float, h: Float) {
         path.moveTo(x, y)
@@ -442,6 +526,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 else -> StrokeCap.Butt
             }
         paint.strokeJoin = StrokeJoin.Miter
+        paint.pathEffect = state.lineDash?.takeIf { !fill }?.let { PathEffect.dashPathEffect(it) }
         paint.blendMode =
             when (state.composite) {
                 "lighter" -> BlendMode.Plus
@@ -495,7 +580,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         val shadow = styled(state.shadowColor, fill)
         shadow.setBlur(state.shadowBlur / 2f * scaleOf())
         canvas.save()
-        canvas.translate(0f, state.shadowOffsetY)
+        canvas.translate(state.shadowOffsetX, state.shadowOffsetY)
         canvas.concat(state.matrix)
         canvas.drawPath(p, shadow)
         canvas.restore()
