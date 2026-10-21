@@ -205,7 +205,10 @@ internal fun StarStickerRating(
 
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val layout = remember(maxWidth) { StickerLayout(maxWidth.value) }
-        val gesture = remember(state, light) { StickerGesture(state, light) { layout } }
+        // The gesture outlives a change of width, as when the phone turns, so it reads the layout
+        // through a state rather than keeping the first one.
+        val currentLayout by rememberUpdatedState(layout)
+        val gesture = remember(state, light) { StickerGesture(state, light) { currentLayout } }
         val density = LocalDensity.current.density
         SideEffect { hand?.bind(layout, gesture, finger) }
         Box(
