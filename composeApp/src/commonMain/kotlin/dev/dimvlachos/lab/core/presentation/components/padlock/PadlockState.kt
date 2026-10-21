@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.padlock
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlin.math.PI
 import kotlin.math.abs
@@ -45,10 +46,14 @@ internal class PadlockState(private val random: Random = Random.Default) {
     var frame by mutableIntStateOf(0)
         private set
 
+    /** Bumped whenever something sets the springs moving, so a resting frame loop wakes. */
+    var wake by mutableIntStateOf(0)
+        private set
+
     var level = StrengthLevel.Empty
         private set
 
-    var peek = false
+    var peek by mutableStateOf(false)
         private set
 
     var time = 0f
@@ -87,6 +92,7 @@ internal class PadlockState(private val random: Random = Random.Default) {
      * every change kicks the loose shackle, as each keystroke does in the prototype.
      */
     fun onText(next: StrengthLevel) {
+        wake++
         val prev = level
         level = next
         val strong = next == StrengthLevel.Strong
@@ -115,7 +121,8 @@ internal class PadlockState(private val random: Random = Random.Default) {
     }
 
     /** Shows the password ([on]) or hides it: the keyhole cover swings aside or back. */
-    fun setPeek(on: Boolean) {
+    fun showPassword(on: Boolean) {
+        wake++
         peek = on
         emit(PadlockEvent.Swing)
         if (reducedMotion) cover = if (on) 1f else 0f
@@ -141,6 +148,7 @@ internal class PadlockState(private val random: Random = Random.Default) {
         locked = false
         glintAt = -1f
         started = false
+        wake++
         frame++
     }
 
@@ -161,6 +169,25 @@ internal class PadlockState(private val random: Random = Random.Default) {
         rattle = 0f
         frame++
     }
+
+    /**
+     * Whether every spring has come to rest where its level aims it and the glint is over: nothing
+     * would move on the next frame, so the frame loop can stop until [wake] changes.
+     */
+    val settled: Boolean
+        get() {
+            val lv = level.ordinal
+            val speed =
+                maxOf(abs(liftV), abs(swingV), abs(steelV), abs(rattleV), abs(bounceV), abs(coverV))
+            val there =
+                abs(steel - Steel[lv]) < RestGap &&
+                    abs(cover - (if (peek) 1f else 0f)) < RestGap &&
+                    abs(rattle) < RestGap &&
+                    abs(bounce) < RestGap &&
+                    (locked || (abs(lift - Lift[lv]) < RestGap && abs(swing - Swing[lv]) < RestGap))
+            val glinting = glintAt >= 0f && time - glintAt < GlintMs
+            return !falling && speed < RestSpeed && there && !glinting
+        }
 
     /**
      * Advances [seconds] in small fixed substeps, which keep the stiff springs and the drop stable.
@@ -229,6 +256,8 @@ internal class PadlockState(private val random: Random = Random.Default) {
             lift = 0f
             liftV = 0f
             swing = 0f
+            // The prototype left the swing's speed as it was; held at rest, it has none.
+            swingV = 0f
         } else {
             spring(lift, liftV, Lift[lv], 150f, .62f, dt).let { (x, v) ->
                 lift = x
@@ -262,6 +291,11 @@ internal class PadlockState(private val random: Random = Random.Default) {
         private const val Substep = 1f / 240f
         private const val Gravity = 2900f
         private const val PopSpeed = 340f
+        private const val RestSpeed = .02f
+        private const val RestGap = .005f
+
+        /** How long the glint and the star after it last, in ms. */
+        private const val GlintMs = 760f
     }
 }
 

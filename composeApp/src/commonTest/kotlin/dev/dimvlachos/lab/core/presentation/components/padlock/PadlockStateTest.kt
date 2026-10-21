@@ -80,10 +80,10 @@ class PadlockStateTest {
     @Test
     fun peekSwingsTheCoverOpenAndBack() {
         val s = lock()
-        s.setPeek(true)
+        s.showPassword(true)
         s.run(.7f)
         assertTrue(s.cover > .8f)
-        s.setPeek(false)
+        s.showPassword(false)
         s.run(.7f)
         assertTrue(s.cover < .2f)
         assertEquals(2, events.count { it == PadlockEvent.Swing })
@@ -106,7 +106,7 @@ class PadlockStateTest {
     fun resetPutsItBackOpenAndEmpty() {
         val s = lock()
         s.onText(StrengthLevel.Strong)
-        s.setPeek(true)
+        s.showPassword(true)
         s.run(1.2f)
         s.reset()
         assertEquals(StrengthLevel.Empty, s.level)
@@ -114,5 +114,22 @@ class PadlockStateTest {
         assertFalse(s.peek)
         assertEquals(PadlockState.Lift[0], s.lift)
         assertEquals(0f, s.cover)
+    }
+
+    @Test
+    fun itSettlesAtRestSoTheFrameLoopCanSleep() {
+        val s = lock()
+        assertTrue(s.settled)
+        val wake = s.wake
+        s.onText(StrengthLevel.Strong)
+        assertTrue(s.wake > wake)
+        assertFalse(s.settled)
+        s.run(3f)
+        assertTrue(s.settled, "lift ${s.lift} steel ${s.steel} bounce ${s.bounce}")
+        s.onText(StrengthLevel.Weak)
+        s.run(.2f)
+        assertFalse(s.settled)
+        s.run(6f)
+        assertTrue(s.settled, "rattle ${s.rattle} lift ${s.lift} swing ${s.swing}")
     }
 }

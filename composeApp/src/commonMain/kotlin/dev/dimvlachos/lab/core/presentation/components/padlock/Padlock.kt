@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -32,6 +33,7 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import kotlin.random.Random
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.first
 
 /** The clips the padlock plays. */
 internal val PadlockSounds =
@@ -82,6 +84,12 @@ internal fun Padlock(
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = 0L
             while (true) {
+                // At rest the loop sleeps, until typing or a tap sets the springs moving again.
+                if (state.settled) {
+                    val seen = state.wake
+                    snapshotFlow { state.wake }.first { it != seen }
+                    last = 0L
+                }
                 withFrameNanos { now ->
                     // The first frame moves nothing; a stall can't blow the springs up.
                     val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
