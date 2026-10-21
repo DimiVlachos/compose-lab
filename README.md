@@ -596,6 +596,8 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 
 ## Paper bag cart (`core/presentation/components/paperbag/`)
 
+![](docs/media/paperbag.cart.gif)
+
 A grocery store's cart icon as a small brown kraft paper bag. Tap Add on a product and it hops out of its row on an arc and drops in. The bag squashes and rocks with the weight, its front bows out as it fills, and its count is rubbed off and written again in grease pencil. Long things poke out of the top: a baguette, celery and a bunch of sunflowers. The short ones still show over the rim: apples, a carton of milk, a tray of eggs. Tap the bag and it grows out of the corner and tips toward you, raising its back rim so you can see inside, over a list of what is in it. Tap − on a line and that thing lifts back out of the bag. Check out and everything sinks into the bag, its top folds over the front as a clerk folds it, and the order is placed; then the bag goes back to the corner empty. Done, Back or Escape sets the bag back in the corner.
 
 - **Painted in one canvas.** The bag, what is in it and everything flying to it are painted in one canvas over the screen, through the lab's `canvas2d` adapter. Nothing is clipped, so what pokes out of the bag shows whole in the bar. Its side gusset and pleat, the toothed rims and a front of tiled paper fibres shaded by how full it is follow the HTML prototype call by call.
