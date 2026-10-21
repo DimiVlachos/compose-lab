@@ -9,8 +9,10 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Pattern2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -560,10 +562,15 @@ internal fun drawBag(
     if (n > 0 || pose.prevCount > 0) {
         val show = if (n > 0) n.toString() else pose.prevCount.toString()
         val px = s * (if (s < 50) .62f else .44f)
-        val bake = max(10f, px * pixels)
+        val want = max(10f, px * pixels)
+        // While the bag tips it grows, and a number baked at each size it passes through would be
+        // baked anew every frame and kept: between rest it is baked on a ladder of sizes and drawn
+        // a little smaller.
+        val bake = if (pose.tip == 0f || pose.tip == 1f) want else bakingSize(want)
         val img = pencilNumber(ink, show, bake)
-        val dw = img.width / pixels
-        val dh = img.height / pixels
+        val k = want / bake / pixels
+        val dw = img.width * k
+        val dh = img.height * k
         val cx = -w * .02f
         val cy = t + h * (if (s < 50) .56f else .5f)
         g.save()
@@ -578,7 +585,7 @@ internal fun drawBag(
         ) {
             val old = pencilNumber(ink, pose.prevCount.toString(), bake)
             g.globalAlpha = inkAlpha * (1 - p * 2.5f).coerceIn(0f, 1f)
-            g.drawImage(old, -old.width / pixels / 2, -dh / 2, old.width / pixels, dh)
+            g.drawImage(old, -old.width * k / 2, -dh / 2, old.width * k, dh)
         }
         if (n > 0) {
             g.beginPath()
@@ -595,6 +602,9 @@ internal fun drawBag(
     serration(g, l, r, t, s * .03f, 1f)
     g.restore()
 }
+
+// The next size up on a ladder six steps to the octave.
+private fun bakingSize(px: Float): Float = 2f.pow(ceil(log2(px) * 6f) / 6f)
 
 private fun serration(g: Canvas2D, x0: Float, x1: Float, y: Float, tooth: Float, dir: Float) {
     val n = max(4, ((x1 - x0) / (tooth * 1.6f)).roundToInt())
