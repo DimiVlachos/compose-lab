@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.mailbox
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlin.math.PI
 import kotlin.math.abs
@@ -64,8 +65,11 @@ internal class MailboxState(reducedMotion: Boolean = false) {
     var unread = 0
         private set
 
-    /** The inbox is open: the door hangs down and the letters lean out. */
-    var isOpen = false
+    /**
+     * The inbox is open, or opening: the door hangs down and the letters lean out. It is state, so
+     * Back can close an inbox whose door is still dropping.
+     */
+    var isOpen by mutableStateOf(false)
         private set
 
     /** A finger has the door. */
@@ -94,6 +98,11 @@ internal class MailboxState(reducedMotion: Boolean = false) {
     private val flightStarts = mutableListOf<Double>()
     private val queue = mutableListOf<Pair<Double, () -> Unit>>()
     private var carry = 0f
+
+    // Bumped by every open and close, so what one of them left queued is dropped once the other
+    // has come: a quick tap and tap again must not shut the door on an open inbox, or slide in an
+    // inbox already closed.
+    private var turn = 0
 
     /** Nothing is moving and nothing is waiting to happen: a frame loop can sleep. */
     val isSettled: Boolean
@@ -166,7 +175,8 @@ internal class MailboxState(reducedMotion: Boolean = false) {
             touched()
             return
         }
-        if (!isOpen) {
+        // The door is cracked for the envelope unless the inbox has it open or a finger has it.
+        if (!isOpen && !dragging) {
             doorTarget = CrackedDoor
             doorStiff = false
             cue(MailboxCue.Creak, 1f)
@@ -187,12 +197,13 @@ internal class MailboxState(reducedMotion: Boolean = false) {
     fun open(onOpened: () -> Unit) {
         if (isOpen) return
         isOpen = true
+        val mine = ++turn
         doorTarget = OpenDoor
         doorStiff = false
         if (!reducedMotion) doorV += 5f
         cue(MailboxCue.Creak, 1f)
-        at(if (reducedMotion) 0.0 else 130.0) { peekTarget = 1f }
-        at(if (reducedMotion) 0.0 else 280.0) { onOpened() }
+        at(if (reducedMotion) 0.0 else 130.0) { if (turn == mine) peekTarget = 1f }
+        at(if (reducedMotion) 0.0 else 280.0) { if (turn == mine) onOpened() }
         touched()
     }
 
@@ -200,8 +211,9 @@ internal class MailboxState(reducedMotion: Boolean = false) {
     fun close() {
         if (!isOpen) return
         isOpen = false
-        at(if (reducedMotion) 0.0 else 140.0) { peekTarget = 0f }
-        at(if (reducedMotion) 0.0 else 260.0) { doorTarget = 0f }
+        val mine = ++turn
+        at(if (reducedMotion) 0.0 else 140.0) { if (turn == mine) peekTarget = 0f }
+        at(if (reducedMotion) 0.0 else 260.0) { if (turn == mine) doorTarget = 0f }
         touched()
     }
 
@@ -239,6 +251,7 @@ internal class MailboxState(reducedMotion: Boolean = false) {
 
     /** Everything back as it began: shut, flag down, nothing unread, nothing pending. */
     fun reset() {
+        turn++
         queue.clear()
         flightStarts.clear()
         flagAngle = 0f

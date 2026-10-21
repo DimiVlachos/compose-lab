@@ -155,4 +155,46 @@ class MailboxStateTest {
         assertFalse(box.isOpen)
         assertTrue(box.isSettled)
     }
+
+    @Test
+    fun closingBeforeTheDoorIsDownDropsTheOpenThatWasUnderWay() {
+        val box = mailbox()
+        var opened = 0
+        box.open { opened++ }
+        box.run(96)
+        box.close()
+        box.run(1500)
+        assertEquals(0, opened, "the inbox must not slide in after it was closed")
+        assertEquals(0f, box.doorAngle, 0.01f)
+        assertEquals(0f, box.peek, 0.01f)
+    }
+
+    @Test
+    fun openingAgainRightAfterClosingKeepsTheDoorOpen() {
+        val box = mailbox()
+        box.open {}
+        box.run(1000)
+        box.close()
+        box.run(96)
+        var opened = 0
+        box.open { opened++ }
+        box.run(1500)
+        assertEquals(1, opened)
+        assertTrue(box.isOpen)
+        assertEquals(MailboxState.OpenDoor, box.doorAngle, 0.01f)
+        assertEquals(1f, box.peek, 0.01f)
+    }
+
+    @Test
+    fun mailArrivingWhileAFingerHasTheDoorLeavesItToTheFinger() {
+        val box = mailbox()
+        box.dragDoor(10f)
+        box.run(300)
+        val held = box.doorAngle
+        cues.clear()
+        box.deliver {}
+        box.run(300)
+        assertEquals(held, box.doorAngle, 0.01f)
+        assertFalse(cues.any { it.first == MailboxCue.Creak })
+    }
 }
