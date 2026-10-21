@@ -698,7 +698,7 @@ private fun ProductRow(
                 )
                 if (quantity > 0) {
                     BasicText(
-                        " · " + stringResource(Res.string.paperbag_in_bag, quantity),
+                        stringResource(Res.string.paperbag_in_bag, quantity),
                         style = TextStyle(colors.accent, 12.5.sp, FontWeight.SemiBold),
                         maxLines = 1,
                         softWrap = false,

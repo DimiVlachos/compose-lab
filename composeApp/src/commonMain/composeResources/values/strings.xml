@@ -348,7 +348,7 @@
     <string name="paperbag_eggs">Farm eggs</string>
     <string name="paperbag_eggs_unit">1 dozen, brown</string>
     <string name="paperbag_price_unit">%1$s · %2$s</string>
-    <string name="paperbag_in_bag">%1$d in bag</string>
+    <string name="paperbag_in_bag">\u0020· %1$d in bag</string>
     <string name="paperbag_add">Add</string>
     <string name="paperbag_add_label">Add %1$s, %2$s</string>
     <string name="paperbag_bag_empty">Bag, empty</string>
