@@ -18,6 +18,7 @@ import dev.dimvlachos.lab.resources.demo_fog_description
 import dev.dimvlachos.lab.resources.ic_demo_fog
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
+import dev.dimvlachos.lab.stickersdemo.StickerDemos
 import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
 
 internal object Catalog {
@@ -41,7 +42,8 @@ internal object Catalog {
                     SmokeDemos.all +
                     SnowGlobeDemos.all +
                     CardFileDemos.all +
-                    BookshelfDemos.all)
+                    BookshelfDemos.all +
+                    StickerDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }

@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -42,6 +43,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
@@ -61,6 +63,7 @@ import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.jetbrains_mono_semibold
 import kotlin.math.hypot
+import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.Font
 
 /** The sounds the rating plays, for the caller to load. */
@@ -156,6 +159,14 @@ internal fun StarStickerRating(
             var last = 0L
             var acc = 0f
             while (true) {
+                // At rest the loop sleeps until a star is asked to move or the finger tips the
+                // light. The prototype's light drifted forever; here the foil holds still between
+                // gestures, so an idle screen draws nothing.
+                if (!state.moving && light.settled) {
+                    val asleep = state.target to light.pointerTiltGoal
+                    snapshotFlow { state.target to light.pointerTiltGoal }.first { it != asleep }
+                    last = 0L
+                }
                 withFrameNanos { now ->
                     // The first frame moves nothing; a stall moves at most .15 s, as the prototype.
                     val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
@@ -201,16 +212,6 @@ internal fun StarStickerRating(
             Modifier.fillMaxWidth()
                 .height(layout.height.dp)
                 .testTag("stickers")
-                .clearAndSetSemantics {
-                    contentDescription = description
-                    stateDescription = valueText(target)
-                    progressBarRangeInfo =
-                        ProgressBarRangeInfo(target.toFloat(), 0f..StickerCount.toFloat(), 4)
-                    setProgress { v ->
-                        state.ask(kotlin.math.round(v).toInt())
-                        true
-                    }
-                }
                 .onKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                     val n =
@@ -239,6 +240,16 @@ internal fun StarStickerRating(
                     true
                 }
                 .focusable()
+                .semantics(mergeDescendants = true) {
+                    contentDescription = description
+                    stateDescription = valueText(target)
+                    progressBarRangeInfo =
+                        ProgressBarRangeInfo(target.toFloat(), 0f..StickerCount.toFloat(), 4)
+                    setProgress { v ->
+                        state.ask(kotlin.math.round(v).toInt())
+                        true
+                    }
+                }
                 .pointerInput(gesture, density) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -277,7 +288,9 @@ internal fun StarStickerRating(
             }
             Text(
                 label(landed),
-                Modifier.fillMaxWidth()
+                // The slider's own description already says the score.
+                Modifier.clearAndSetSemantics {}
+                    .fillMaxWidth()
                     .offset(y = layout.labelTop.dp)
                     .height(StickerLayout.LabelHeight.dp)
                     .wrapContentHeight(),

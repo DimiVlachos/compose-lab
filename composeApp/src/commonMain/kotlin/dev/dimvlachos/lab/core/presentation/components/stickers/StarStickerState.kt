@@ -34,8 +34,8 @@ internal sealed interface StickerEvent {
  * only once its neighbour is far enough along: up, the one before it past .38; down, the one after
  * it under .62. That one rule lays a long drag down one star after another.
  *
- * [target] is how many the finger asks for; [landed], how many are down (past halfway), is what the
- * label reads, so it never names a score the stars haven't reached.
+ * [target] is how many the finger asks for; [landed], how many are over their slots (three quarters
+ * of the way), is what the label reads, so it never names a score the stars haven't reached.
  */
 @Stable
 internal class StarStickerState(seed: Int = 7) {
@@ -119,7 +119,7 @@ internal class StarStickerState(seed: Int = 7) {
             }
             if (prev > 0f && p == 0f) emit(StickerEvent.Settle(i))
         }
-        val down2 = pos.count { it > .5f }
+        val down2 = pos.count { it >= .75f }
         if (down2 != landed) landed = down2
         frame++
         return events ?: emptyList()

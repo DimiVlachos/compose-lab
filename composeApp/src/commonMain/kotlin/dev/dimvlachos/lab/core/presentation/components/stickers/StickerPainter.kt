@@ -1,8 +1,13 @@
 package dev.dimvlachos.lab.core.presentation.components.stickers
 
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -322,26 +327,62 @@ internal fun Canvas2D.drawSticker(
 }
 
 /**
- * The star's outline as it lies peeled: what is stuck down and the flap laid over, for its shadow.
+ * The star's outline as it lies peeled, what is stuck down and the flap laid over, filled for its
+ * shadow. The prototype shadowed the finished star's pixels; a clip here would cut the blur off
+ * along the fold, so the outline is built as plain polygons, cut at the fold by hand.
  */
 internal fun Canvas2D.fillSilhouette(r: Float, a: Float, edge: Float) {
+    val star =
+        List(10) { k -> if (k % 2 == 0) TIPS[k / 2] else INNER[k / 2] }
+            .map { floatArrayOf(it[0] * r, it[1] * r) }
     if (a < .005f) {
-        starPath(r)
-        fill()
+        fillPolygon(star)
         return
     }
     val ex = cos(edge)
     val ey = sin(edge)
     val lf = r * (1 - 2 * a)
-    save()
-    halfPlane(ex, ey, lf, r)
-    clip()
-    starPath(r)
+    val flat = clipToFold(star, ex, ey, lf, keepBelow = true)
+    val flap =
+        clipToFold(star, ex, ey, lf, keepBelow = false).map { p ->
+            val d = 2 * (p[0] * ex + p[1] * ey - lf)
+            floatArrayOf(p[0] - d * ex, p[1] - d * ey)
+        }
+    fillPolygon(flat)
+    fillPolygon(flap)
+}
+
+private fun Canvas2D.fillPolygon(points: List<FloatArray>) {
+    if (points.size < 3) return
+    beginPath()
+    moveTo(points[0][0], points[0][1])
+    for (k in 1 until points.size) lineTo(points[k][0], points[k][1])
+    closePath()
     fill()
-    reflectOver(ex, ey, lf)
-    starPath(r)
-    fill()
-    restore()
+}
+
+// The part of the polygon on one side of the fold, dot(p, e) = along (Sutherland-Hodgman).
+private fun clipToFold(
+    points: List<FloatArray>,
+    ex: Float,
+    ey: Float,
+    along: Float,
+    keepBelow: Boolean,
+): List<FloatArray> {
+    fun side(p: FloatArray) = (p[0] * ex + p[1] * ey - along).let { if (keepBelow) -it else it }
+    val out = ArrayList<FloatArray>()
+    for (k in points.indices) {
+        val p = points[k]
+        val q = points[(k + 1) % points.size]
+        val sp = side(p)
+        val sq = side(q)
+        if (sp >= 0) out += p
+        if ((sp >= 0) != (sq >= 0)) {
+            val t = sp / (sp - sq)
+            out += floatArrayOf(p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t)
+        }
+    }
+    return out
 }
 
 // ---------- Sheet and slots ----------
@@ -458,11 +499,16 @@ internal fun Canvas2D.drawSlots(layout: StickerLayout, inks: StickerInks) {
  * What the light does between frames: each star's last x and how fast it was moving, and how far
  * the finger has tipped the light, so the foil glints as stars move.
  */
+@Stable
 internal class StickerLight {
     val lastX = FloatArray(StickerCount) { Float.NaN }
     val tilt = FloatArray(StickerCount)
     var pointerTilt = 0f
-    var pointerTiltGoal = 0f
+    var pointerTiltGoal by mutableFloatStateOf(0f)
+
+    /** Whether the light has caught up with the finger. */
+    val settled: Boolean
+        get() = abs(pointerTilt - pointerTiltGoal) < .001f
 
     /** Follows the finger's tilt, by [dt] seconds. */
     fun step(dt: Float) {
