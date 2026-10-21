@@ -646,7 +646,7 @@ class ProfileGalleryUiTest {
         val dialog = onNodeWithTag(FabDialogTag).getUnclippedBoundsInRoot()
         assertTrue(dialog.top >= 0.dp && dialog.bottom <= 290.dp, "dialog $dialog spills out")
         onNode(hasScrollAction() and hasAnyDescendant(hasText("Cancel"))).performSemanticsAction(
-            SemanticsActions.ScrollBy
+            SemanticsActions.ScrollBy,
         ) {
             it(0f, 10_000f)
         }

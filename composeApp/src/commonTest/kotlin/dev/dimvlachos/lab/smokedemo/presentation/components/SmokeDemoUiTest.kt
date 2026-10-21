@@ -108,7 +108,7 @@ class SmokeDemoUiTest {
                 node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any {
                     it.startsWith("$name, ")
                 }
-            }
+            },
         )
 
     private fun ComposeUiTest.swipe(name: String, share: Float) {

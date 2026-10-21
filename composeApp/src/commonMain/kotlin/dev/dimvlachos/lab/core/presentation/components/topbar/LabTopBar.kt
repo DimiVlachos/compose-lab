@@ -70,8 +70,8 @@ internal fun LabTopBar(
             )
             .background(colors.topBar)
             .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-            )
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            ),
     ) {
         Row(
             Modifier.fillMaxWidth()

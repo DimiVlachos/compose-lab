@@ -267,7 +267,7 @@ class PopUpDemoUiTest {
                 val d = androidx.compose.ui.platform.LocalDensity.current
                 androidx.compose.runtime.CompositionLocalProvider(
                     androidx.compose.ui.platform.LocalDensity provides
-                        androidx.compose.ui.unit.Density(d.density, 2f)
+                        androidx.compose.ui.unit.Density(d.density, 2f),
                 ) {
                     Box(Modifier.size(360.dp, 760.dp)) { PopUpDemo(state) }
                 }
@@ -332,7 +332,7 @@ class PopUpDemoUiTest {
                 val d = androidx.compose.ui.platform.LocalDensity.current
                 androidx.compose.runtime.CompositionLocalProvider(
                     androidx.compose.ui.platform.LocalDensity provides
-                        androidx.compose.ui.unit.Density(d.density, 2f)
+                        androidx.compose.ui.unit.Density(d.density, 2f),
                 ) {
                     Box(Modifier.size(800.dp, 300.dp)) { PopUpDemo(state) }
                 }
@@ -343,7 +343,7 @@ class PopUpDemoUiTest {
         mainClock.advanceTimeBy(3_000)
         // The words and the buttons are taller than the screen: the column scrolls down to them.
         onNode(hasScrollAction() and hasAnyDescendant(hasTestTag(NextTag))).performSemanticsAction(
-            SemanticsActions.ScrollBy
+            SemanticsActions.ScrollBy,
         ) {
             it(0f, 10_000f)
         }

@@ -243,7 +243,7 @@ internal class LeafPainter {
                 drawPath(wedgePath, light, blendMode = BlendMode.Multiply)
                 val shade =
                     (PageTurnDimens.SheetShadePerDepth * depth).coerceAtMost(
-                        PageTurnDimens.SheetShadeMax
+                        PageTurnDimens.SheetShadeMax,
                     )
                 drawPath(wedgePath, LeafShade.copy(alpha = shade))
                 drawPath(
@@ -316,14 +316,18 @@ internal class LeafPainter {
         if (srcWidth <= 0) return
         val right = stripWidth + seam
         frame.matrix(index, geometry, matrix)
-        withTransform({
-            transform(matrix)
-            translate(left = index * stripWidth)
-        }) {
-            withTransform({
-                if (!facing) scale(-1f, 1f, pivot = Offset(span / 2f, 0f))
-                scale(span / srcWidth, height / image.height, pivot = Offset.Zero)
-            }) {
+        withTransform(
+            {
+                transform(matrix)
+                translate(left = index * stripWidth)
+            },
+        ) {
+            withTransform(
+                {
+                    if (!facing) scale(-1f, 1f, pivot = Offset(span / 2f, 0f))
+                    scale(span / srcWidth, height / image.height, pivot = Offset.Zero)
+                },
+            ) {
                 drawImage(
                     image,
                     srcOffset = IntOffset(srcLeft, 0),
@@ -391,10 +395,12 @@ internal class LeafPainter {
         pageMatrix[3, 0] =
             if (facing) frame.textureShift else bitmap.width / sx + frame.textureShift
         frame.matrix(index, geometry, matrix)
-        withTransform({
-            transform(matrix)
-            transform(pageMatrix)
-        }) {
+        withTransform(
+            {
+                transform(matrix)
+                transform(pageMatrix)
+            },
+        ) {
             drawPath(imagePath, brush(bitmap), colorFilter = tint)
             val band = faces.band?.takeIf { facing && faces.bandAlpha > 0f }
             if (band != null) {

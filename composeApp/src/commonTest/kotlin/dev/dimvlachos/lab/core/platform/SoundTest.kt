@@ -56,7 +56,7 @@ class SoundTest {
         assertFalse(isStaleSoundCopy(Sound.Strike1, current, current))
         assertFalse(isStaleSoundCopy(Sound.Strike1, "strike_1123.part", current))
         assertFalse(
-            isStaleSoundCopy(Sound.Strike1, soundCacheName(Sound.Strike2, byteArrayOf(1)), current)
+            isStaleSoundCopy(Sound.Strike1, soundCacheName(Sound.Strike2, byteArrayOf(1)), current),
         )
     }
 

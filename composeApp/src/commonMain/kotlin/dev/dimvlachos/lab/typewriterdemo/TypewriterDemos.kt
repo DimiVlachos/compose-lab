@@ -61,6 +61,6 @@ internal object TypewriterDemos {
                 tall = true,
             ) {
                 TypewriterDemo(it)
-            }
+            },
         )
 }

@@ -165,7 +165,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSearch
         Modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
-            .padding(bottom = 8.dp)
+            .padding(bottom = 8.dp),
     ) {
         SearchBar(
             inputField = {

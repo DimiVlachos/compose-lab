@@ -147,7 +147,7 @@ public fun PullCordLamp(
                         state.release()
                     }
                 }
-            }
+            },
     ) {
         // The look going under the live one, which is always on top, so it alone is hit by a
         // touch. When the going look should show over it, inside its circle as it shrinks back
@@ -172,7 +172,7 @@ public fun PullCordLamp(
                             } else {
                                 drawContent()
                             }
-                        }
+                        },
                 ) {
                     // In a layer of its own, so a frame of the cord or the light redraws the
                     // screen's recorded picture rather than drawing it all again.
@@ -188,7 +188,7 @@ public fun PullCordLamp(
                                     blendMode = BlendMode.Plus
                                     alpha = state.glow
                                 }
-                                .drawBehind { with(painter) { drawLight(state, colors) } }
+                                .drawBehind { with(painter) { drawLight(state, colors) } },
                         )
                     }
                 }
@@ -198,7 +198,7 @@ public fun PullCordLamp(
         Spacer(
             Modifier.fillMaxSize().graphicsLayer().drawBehind {
                 with(painter) { drawLamp(state, colors) }
-            }
+            },
         )
         // The bead, for a screen reader and for tests: a switch where the bead hangs at rest. It
         // stays there as the cord swings, so it isn't placed again every frame, and a screen
@@ -219,7 +219,7 @@ public fun PullCordLamp(
                         state.toggle()
                         true
                     }
-                }
+                },
         )
     }
 }

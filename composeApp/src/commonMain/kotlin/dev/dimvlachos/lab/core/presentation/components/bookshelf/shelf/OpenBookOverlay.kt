@@ -138,7 +138,7 @@ private fun pageBody(paragraphs: List<String>): AnnotatedString = buildAnnotated
                 textAlign = TextAlign.Justify,
                 textIndent = indent,
                 lineHeightStyle = UntrimmedLines,
-            )
+            ),
         ) {
             append(paragraph)
         }

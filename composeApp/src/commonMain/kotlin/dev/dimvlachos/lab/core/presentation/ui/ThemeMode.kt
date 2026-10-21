@@ -9,7 +9,7 @@ import dev.dimvlachos.lab.core.platform.ThemeModeStore
 /** Which palette the app wears: the system's choice, or always light, or always dark. */
 internal enum class ThemeMode(
     /** The name it is saved under, which stays the same if the entries are renamed. */
-    internal val key: String
+    internal val key: String,
 ) {
     System("system"),
     Light("light"),

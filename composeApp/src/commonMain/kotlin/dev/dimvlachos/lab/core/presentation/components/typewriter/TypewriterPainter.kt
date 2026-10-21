@@ -197,7 +197,7 @@ internal class TypewriterPainter {
         translate(left, top) {
             knobPath.reset()
             knobPath.addRoundRect(
-                RoundRect(Rect(0f, 0f, width, height), CornerRadius(width * 0.3f))
+                RoundRect(Rect(0f, 0f, width, height), CornerRadius(width * 0.3f)),
             )
             clipPath(knobPath) {
                 drawRect(b.knob, size = Size(width, height))

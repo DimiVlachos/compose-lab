@@ -21,7 +21,7 @@ class SmokeStateTest {
                 SmokeRowState("a", present = true).apply {
                     start = SmokeAction("Delete", SmokeMaterial.Smoke) { deleted++ }
                     end = SmokeAction("Archive", SmokeMaterial.Mist) { archived++ }
-                }
+                },
             )
             onThreshold = { ticks++ }
         }
@@ -213,7 +213,7 @@ class SmokeStateTest {
             smoke.register(
                 SmokeRowState(key, present = true).apply {
                     start = SmokeAction("Delete", SmokeMaterial.Smoke) {}
-                }
+                },
             )
         }
         assertEquals(SmokeDimens.PerRow, smoke.budget())

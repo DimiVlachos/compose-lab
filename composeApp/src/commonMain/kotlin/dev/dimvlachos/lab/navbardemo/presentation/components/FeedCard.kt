@@ -36,6 +36,6 @@ private fun SkeletonLine(widthFraction: Float, height: Dp, alpha: Float) {
     Box(
         Modifier.fillMaxWidth(widthFraction)
             .height(height)
-            .background(LabTheme.colors.textMuted.copy(alpha = alpha), LabTheme.shapes.full)
+            .background(LabTheme.colors.textMuted.copy(alpha = alpha), LabTheme.shapes.full),
     )
 }

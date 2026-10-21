@@ -364,7 +364,7 @@ internal class MagnetPainter {
                     val grow = soft * pass
                     val share =
                         colors.cardShadow.copy(
-                            alpha = colors.cardShadow.alpha * MagnetShadowShares[pass]
+                            alpha = colors.cardShadow.alpha * MagnetShadowShares[pass],
                         )
                     val stroke = shadowStroke(pass, thickness + grow)
                     drawPath(leftHalf, share, style = stroke)
@@ -724,7 +724,7 @@ internal class OpenPainter {
                 topLeft.x + w - border,
                 topLeft.y + h - border,
                 CornerRadius(inner),
-            )
+            ),
         )
         clipPath(clip) {
             // Cropped to the shape it has on its way, so it never stretches.

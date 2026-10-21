@@ -648,7 +648,7 @@ internal class CardFileScene(private val cards: List<PaperCard>) {
         if (rail) {
             list =
                 (list + WheelSlot(pulled, pulled - p, phiOf(pulled - p))).sortedWith(
-                    compareBy<WheelSlot> { it.depth }.thenByDescending { abs(it.d) }
+                    compareBy<WheelSlot> { it.depth }.thenByDescending { abs(it.d) },
                 )
         }
         val out = ArrayList<Drawn>(list.size)

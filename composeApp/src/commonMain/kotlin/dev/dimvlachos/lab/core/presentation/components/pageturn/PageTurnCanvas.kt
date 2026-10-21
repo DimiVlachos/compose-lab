@@ -223,8 +223,8 @@ internal class BookPainter(private val ink: BookInk) {
             ink.shade.copy(
                 alpha =
                     (PageTurnDimens.SheetShadePerDepth * depth).coerceAtMost(
-                        PageTurnDimens.SheetShadeMax
-                    )
+                        PageTurnDimens.SheetShadeMax,
+                    ),
             ),
         )
         drawPath(
@@ -273,10 +273,12 @@ internal class BookPainter(private val ink: BookInk) {
         val left = if (facing) 0f else -seam
         val right = stripWidth + if (facing) seam else 0f
         frame.matrix(index, geometry, matrix)
-        withTransform({
-            transform(matrix)
-            translate(left = index * stripWidth)
-        }) {
+        withTransform(
+            {
+                transform(matrix)
+                translate(left = index * stripWidth)
+            },
+        ) {
             if (outer) {
                 edgeClip.rewind()
                 edgeClip.addRoundRect(
@@ -289,14 +291,16 @@ internal class BookPainter(private val ink: BookInk) {
                         topRightCornerRadius = corner,
                         bottomRightCornerRadius = corner,
                         bottomLeftCornerRadius = CornerRadius.Zero,
-                    )
+                    ),
                 )
             }
             val draw: DrawScope.() -> Unit = {
-                withTransform({
-                    if (!facing) scale(-1f, 1f, pivot = Offset(stripWidth / 2f, 0f))
-                    scale(stripWidth / slice, size.height / image.height, pivot = Offset.Zero)
-                }) {
+                withTransform(
+                    {
+                        if (!facing) scale(-1f, 1f, pivot = Offset(stripWidth / 2f, 0f))
+                        scale(stripWidth / slice, size.height / image.height, pivot = Offset.Zero)
+                    },
+                ) {
                     drawImage(
                         image,
                         srcOffset = IntOffset(srcLeft, 0),
@@ -376,7 +380,7 @@ internal class BookPainter(private val ink: BookInk) {
                         topRightCornerRadius = geometry.corner,
                         bottomRightCornerRadius = geometry.corner,
                         bottomLeftCornerRadius = CornerRadius.Zero,
-                    )
+                    ),
                 )
                 edgeWedgePath.op(wedgePath, pagePath, PathOperation.Intersect)
                 edgeWedgePath
@@ -404,10 +408,12 @@ internal class BookPainter(private val ink: BookInk) {
         pageMatrix[1, 1] = height / image.height
         pageMatrix[3, 0] = if (facing) -width else width
         frame.matrix(index, geometry, matrix)
-        withTransform({
-            transform(matrix)
-            transform(pageMatrix)
-        }) {
+        withTransform(
+            {
+                transform(matrix)
+                transform(pageMatrix)
+            },
+        ) {
             drawPath(imagePath, imageBrush(image))
         }
         withTransform({ transform(matrix) }) {

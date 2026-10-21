@@ -94,7 +94,7 @@ internal class PersonCutter {
         Segmentation.getClient(
             SelfieSegmenterOptions.Builder()
                 .setDetectorMode(SelfieSegmenterOptions.STREAM_MODE)
-                .build()
+                .build(),
         )
 
     private fun shrunk(frame: Bitmap, width: Int, height: Int, gain: Float): Bitmap {

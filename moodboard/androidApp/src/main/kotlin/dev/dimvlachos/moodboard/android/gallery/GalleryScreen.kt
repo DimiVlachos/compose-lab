@@ -94,7 +94,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
                                     val cleared =
                                         state.filter.copy(favoritesOnly = false, tags = emptySet())
                                     viewModel.onAction(GalleryAction.SetFilter(cleared))
-                                }
+                                },
                             ) {
                                 Text(stringResource(R.string.action_clear_filter))
                             }
@@ -111,7 +111,7 @@ fun GalleryScreen(onOpenPhoto: (String) -> Unit, bottomBar: @Composable () -> Un
                 onSetMembership = { boardId, member ->
                     viewModel.onAction(
                         if (member) GalleryAction.AddToBoard(photo.id, boardId)
-                        else GalleryAction.RemoveFromBoard(photo.id, boardId)
+                        else GalleryAction.RemoveFromBoard(photo.id, boardId),
                     )
                 },
                 onNewBoard = { newBoardForId = photo.id },

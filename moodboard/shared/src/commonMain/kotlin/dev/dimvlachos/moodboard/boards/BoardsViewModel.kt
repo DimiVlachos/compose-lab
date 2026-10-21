@@ -54,6 +54,6 @@ private fun boardsState(photos: List<Photo>, boards: List<Board>): BoardsState {
                 count = board.photoIds.size,
                 coverPath = board.photoIds.firstNotNullOfOrNull { paths[it] },
             )
-        }
+        },
     )
 }

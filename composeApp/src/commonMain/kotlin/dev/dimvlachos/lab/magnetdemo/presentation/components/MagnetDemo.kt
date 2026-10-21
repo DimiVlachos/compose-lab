@@ -108,9 +108,9 @@ internal fun MagnetDemo(state: DemoState, table: MagnetState = rememberIslandMag
             .background(colors.stripRail)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-                )
-            )
+                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                ),
+            ),
     ) {
         if (isWideStage(maxWidth, maxHeight)) {
             // On a phone on its side every bit of height goes to the table: the hint lies over its

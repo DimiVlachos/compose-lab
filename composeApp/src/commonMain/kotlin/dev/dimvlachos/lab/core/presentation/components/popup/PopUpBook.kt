@@ -133,7 +133,7 @@ public fun PopUpBook(
                     )
                 }
             }
-            .clearAndSetSemantics { description?.let { contentDescription = it } }
+            .clearAndSetSemantics { description?.let { contentDescription = it } },
     )
 }
 

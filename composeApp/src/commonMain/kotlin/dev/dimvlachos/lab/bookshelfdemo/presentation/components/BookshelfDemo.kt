@@ -159,7 +159,7 @@ internal fun BookshelfDemo(state: DemoState) {
                     Column(
                         Modifier.fillMaxSize()
                             .graphicsLayer { alpha = shown.value }
-                            .verticalScroll(scroll)
+                            .verticalScroll(scroll),
                     ) {
                         SectionLabel(stringResource(Res.string.bookshelf_reading_now))
                         ringHero(Modifier.fillMaxWidth().height(viewport * RingHero))

@@ -66,8 +66,8 @@ fun FilterSheetContent(
                     onClick = {
                         onFilterChange(
                             filter.copy(
-                                tags = if (selected) filter.tags - tag else filter.tags + tag
-                            )
+                                tags = if (selected) filter.tags - tag else filter.tags + tag,
+                            ),
                         )
                     },
                     label = { Text(tag) },

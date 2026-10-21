@@ -75,7 +75,7 @@ internal fun ChatBubble(
                                 shape.createOutline(Size(width, size.height), layoutDirection, this)
                             drawOutline(outline, color, alpha = ease(p / BubbleFadeShare))
                         }
-                    }
+                    },
                 )
                 .padding(BubblePadding)
                 .then(
@@ -83,7 +83,7 @@ internal fun ChatBubble(
                     else
                         Modifier.onGloballyPositioned { at ->
                             layout[0]?.let { laidOut(it, at.positionInRoot()) }
-                        }
+                        },
                 )
                 .then(
                     if (delivered == null) {
@@ -91,7 +91,7 @@ internal fun ChatBubble(
                     } else {
                         // Neither seen nor read out yet: it is read out as it lands.
                         Modifier.drawWithContent {}.clearAndSetSemantics { testTag = InFlightTag }
-                    }
+                    },
                 ),
     )
 }

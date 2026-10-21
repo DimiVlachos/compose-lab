@@ -47,6 +47,6 @@ internal object FishingDemos {
                 tall = true,
             ) {
                 FishingDemo(it)
-            }
+            },
         )
 }

@@ -90,10 +90,10 @@ private fun EditorTile(photo: Photo, selected: Boolean, onToggle: () -> Unit) {
             .aspectRatio(1f)
             .clip(TileShape)
             .background(
-                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
             )
             .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
-            .testTag("photo-${photo.id}")
+            .testTag("photo-${photo.id}"),
     ) {
         PhotoImage(
             photo.path,

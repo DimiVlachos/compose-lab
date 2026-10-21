@@ -181,7 +181,7 @@ internal class FishingRig(width: Float) {
                 sin(
                     tau * (x / FishingDimens.ChopLength.value) +
                         FishingDimens.ChopSpeed * clock +
-                        1.3f
+                        1.3f,
                 )
     }
 

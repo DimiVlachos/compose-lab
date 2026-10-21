@@ -168,7 +168,7 @@ private fun KeyCap(
             KeyAction.Page ->
                 stringResource(
                     if (figures) Res.string.typewriter_key_face_letters
-                    else Res.string.typewriter_key_face_figures
+                    else Res.string.typewriter_key_face_figures,
                 )
             else -> keyFace(key)
         }
@@ -362,7 +362,7 @@ private fun KeyCap(
                         )
                     }
                 }
-            }
+            },
     )
 }
 
@@ -389,7 +389,7 @@ private fun keyName(key: TypeKey, figures: Boolean, shifted: Boolean): String =
         KeyAction.Page ->
             stringResource(
                 if (figures) Res.string.typewriter_key_letters
-                else Res.string.typewriter_key_figures
+                else Res.string.typewriter_key_figures,
             )
     }
 

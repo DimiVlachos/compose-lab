@@ -217,7 +217,7 @@ internal fun FoldPlan.drawOrder(spaces: List<FacetSpace>, eye: Vec3): List<Int> 
             .thenBy { i ->
                 val layer = facets[i].layers[last]
                 if (rising.getValue(parts[i])) layer else -layer
-            }
+            },
     )
 }
 

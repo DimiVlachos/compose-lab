@@ -82,7 +82,7 @@ internal fun Canvas.texture(
 ) {
     val shader = BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     shader.setLocalMatrix(
-        Matrix().apply { setScale(worldSize / tile.width, worldSize / tile.width) }
+        Matrix().apply { setScale(worldSize / tile.width, worldSize / tile.width) },
     )
     val paint =
         Paint().apply {

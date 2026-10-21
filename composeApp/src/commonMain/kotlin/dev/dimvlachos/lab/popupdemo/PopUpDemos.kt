@@ -45,6 +45,6 @@ internal object PopUpDemos {
                 tall = true,
             ) {
                 PopUpDemo(it)
-            }
+            },
         )
 }

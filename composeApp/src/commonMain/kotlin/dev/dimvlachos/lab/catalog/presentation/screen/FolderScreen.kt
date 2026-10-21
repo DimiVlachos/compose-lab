@@ -36,7 +36,7 @@ internal fun FolderScreen(
                     contentDescription = stringResource(Res.string.action_back),
                     onClick = onBack,
                 )
-            }
+            },
         ) {
             LabTopBarTitle(stringResource(group.title))
         }

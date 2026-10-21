@@ -91,7 +91,7 @@ internal fun MorphDetail(
                     .background(LabTheme.colors.background)
                     // Swallows taps: a host that keeps its grid composed under the detail (the
                     // profile gallery) would otherwise open the card behind the photo.
-                    .clickable(interactionSource = null, indication = null, onClick = {})
+                    .clickable(interactionSource = null, indication = null, onClick = {}),
             )
             MorphNode(
                 sharedTransitionScope = sharedTransitionScope,
@@ -189,7 +189,7 @@ private fun DetailChrome(
                 // Clipped first, so the ripple stays inside the circle.
                 .clip(CircleShape)
                 .background(LabTheme.colors.bar.copy(alpha = CloseChipAlpha))
-                .clickable(role = Role.Button, onClick = onClose)
+                .clickable(role = Role.Button, onClick = onClose),
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_close),
@@ -225,8 +225,8 @@ private fun DetailCaption(
         modifier
             .background(
                 Brush.verticalGradient(
-                    listOf(Color.Transparent, Color.Black.copy(alpha = ScrimAlpha))
-                )
+                    listOf(Color.Transparent, Color.Black.copy(alpha = ScrimAlpha)),
+                ),
             )
             // Inside the gradient, so the scrim still reaches the edges while the text clears the
             // navigation bar and any cutout at the side.
@@ -237,7 +237,7 @@ private fun DetailCaption(
                 top = LabTheme.spacing.mediumLarge,
                 end = LabTheme.spacing.mediumLarge,
                 bottom = LabTheme.spacing.medium,
-            )
+            ),
     ) {
         Text(
             title,

@@ -40,7 +40,7 @@ internal fun OpenBookActions(
                     onPrevious?.let { action(previous, it) },
                     action(close, onClose),
                 )
-        }
+        },
     )
 }
 

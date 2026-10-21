@@ -417,7 +417,7 @@ class PullCordLampUiTest {
             Box(
                 Modifier.fillMaxSize().background(if (lit) Color.Black else Color.White).clickable {
                     taps += lit
-                }
+                },
             )
         }
         runOnUiThread { lamp.state.toggle() }

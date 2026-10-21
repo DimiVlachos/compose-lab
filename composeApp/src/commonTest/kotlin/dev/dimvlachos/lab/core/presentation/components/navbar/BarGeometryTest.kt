@@ -303,7 +303,7 @@ class BarGeometryTest {
                     bubbleHalfHeight = geometry.halfHeight,
                     gap = Gap,
                     filletRadius = FilletRadius,
-                )
+                ),
             )
         }
     }

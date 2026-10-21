@@ -106,7 +106,7 @@ internal fun FabSource(
                         Modifier.animateEnterExit(
                             enter =
                                 fadeIn(
-                                    tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing)
+                                    tween(MorphDimens.CloseMs, easing = MorphDimens.MorphEasing),
                                 ),
                             exit = fadeOut(tween(IconFadeMs, easing = LinearEasing)),
                         )

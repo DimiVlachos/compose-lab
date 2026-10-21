@@ -303,8 +303,8 @@ internal fun RingShelfHero(
                             .focusable()
                     } else {
                         Modifier.clearAndSetSemantics {}
-                    }
-                )
+                    },
+                ),
         ) {
             val target = ring ?: return@Canvas
             val ready = maps ?: return@Canvas

@@ -200,7 +200,7 @@ internal fun CardFile(
                         CustomAccessibilityAction(previousLabel) {
                             scope.launch { state.step(-1) }
                             true
-                        }
+                        },
                     )
                 }
                 if (front < cards.lastIndex) {
@@ -208,7 +208,7 @@ internal fun CardFile(
                         CustomAccessibilityAction(nextLabel) {
                             scope.launch { state.step(1) }
                             true
-                        }
+                        },
                     )
                 }
                 if (cards.getOrNull(front) is FileCard.Entry) {
@@ -216,7 +216,7 @@ internal fun CardFile(
                         CustomAccessibilityAction(pullOutLabel) {
                             pullOrOpen()
                             true
-                        }
+                        },
                     )
                 }
             }
@@ -231,7 +231,8 @@ internal fun CardFile(
             hit >= 0 ->
                 scope.launch {
                     state.spinTo(
-                        if (cards.getOrNull(hit) is FileCard.Divider) firstContactFrom(hit) else hit
+                        if (cards.getOrNull(hit) is FileCard.Divider) firstContactFrom(hit)
+                        else hit,
                     )
                 }
             else -> scope.launch { state.release(0f) }
@@ -361,7 +362,7 @@ internal fun CardFile(
                         g.setTransform(d, 0f, 0f, d, 0f, 0f)
                         scene.paint(g, position, out, q, state.reducedMotion)
                     }
-                }
+                },
         )
 
         // The pulled-out card is painted with the rest; this is where focus and its description
@@ -400,7 +401,7 @@ internal fun CardFile(
                                 true
                             } else false
                         }
-                        .focusable()
+                        .focusable(),
                 )
             }
         }

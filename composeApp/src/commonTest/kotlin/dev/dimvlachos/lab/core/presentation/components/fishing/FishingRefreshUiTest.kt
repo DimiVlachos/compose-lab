@@ -99,10 +99,11 @@ class FishingRefreshUiTest {
                             Box(
                                 Modifier.fillMaxWidth()
                                     .then(
-                                        if (rising) Modifier.risingFromWater(state, i) else Modifier
+                                        if (rising) Modifier.risingFromWater(state, i)
+                                        else Modifier,
                                     )
                                     .height(80.dp)
-                                    .testTag("row$i")
+                                    .testTag("row$i"),
                             )
                         }
                     }
@@ -200,7 +201,7 @@ class FishingRefreshUiTest {
                     SemanticsMatcher.expectValue(
                         SemanticsProperties.LiveRegion,
                         LiveRegionMode.Polite,
-                    )
+                    ),
                 )
             runOnIdle { host.status = FishingStatus.Idle }
             mainClock.advanceTimeBy(SettleMs)
@@ -313,7 +314,7 @@ class FishingRefreshUiTest {
         val host = Host()
         setContent {
             CompositionLocalProvider(
-                LocalFishingCompositionProbe provides { host.compositions++ }
+                LocalFishingCompositionProbe provides { host.compositions++ },
             ) {
                 val state = rememberFishingRefreshState()
                 host.state = state
@@ -370,7 +371,7 @@ class FishingRefreshUiTest {
                                     .fillMaxWidth()
                                     .risingFromWater(state, i)
                                     .height(80.dp)
-                                    .background(if (i == 0) Color.Green else Color.White)
+                                    .background(if (i == 0) Color.Green else Color.White),
                             )
                         }
                     }

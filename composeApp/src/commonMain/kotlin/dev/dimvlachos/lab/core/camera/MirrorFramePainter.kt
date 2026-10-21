@@ -105,12 +105,14 @@ internal class MirrorFramePainter : Painter() {
             }
             return
         }
-        withTransform({
-            translate(size.width / 2, size.height / 2)
-            // The mirror's flip, left to right as the frame will be seen, after it is turned.
-            scale(-1f, 1f, pivot = Offset.Zero)
-            rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
-        }) {
+        withTransform(
+            {
+                translate(size.width / 2, size.height / 2)
+                // The mirror's flip, left to right as the frame will be seen, after it is turned.
+                scale(-1f, 1f, pivot = Offset.Zero)
+                rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
+            },
+        ) {
             if (brighten != null && filter != null) {
                 // Brightened first, then the caller's filter (the fog's milky one) over the result.
                 drawIntoCanvas { canvas ->
@@ -145,11 +147,13 @@ internal class MirrorFramePainter : Painter() {
 
 // The frame turned upright and mirrored, filling the box.
 private fun DrawScope.drawTurned(frame: CameraFrame, sensorSize: IntSize, filter: ColorFilter?) {
-    withTransform({
-        translate(size.width / 2, size.height / 2)
-        scale(-1f, 1f, pivot = Offset.Zero)
-        rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
-    }) {
+    withTransform(
+        {
+            translate(size.width / 2, size.height / 2)
+            scale(-1f, 1f, pivot = Offset.Zero)
+            rotate(frame.rotationDegrees.toFloat(), pivot = Offset.Zero)
+        },
+    ) {
         drawFrame(frame, sensorSize, filter)
     }
 }

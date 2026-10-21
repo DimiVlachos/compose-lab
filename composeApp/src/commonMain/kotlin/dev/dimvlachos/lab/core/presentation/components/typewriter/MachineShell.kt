@@ -304,7 +304,7 @@ internal class MachineShell {
         val corner = TypewriterDimens.WellCorner.toPx()
         wellPath.reset()
         wellPath.addRoundRect(
-            RoundRect(Rect(left, keysTop, right, keysBottom), CornerRadius(corner))
+            RoundRect(Rect(left, keysTop, right, keysBottom), CornerRadius(corner)),
         )
         drawPath(
             wellPath,

@@ -73,7 +73,7 @@ internal fun rememberPermissionStatus(permission: String): PermissionStatus {
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.fromParts("package", context.packageName, null),
-                )
+                ),
             )
         }
     }

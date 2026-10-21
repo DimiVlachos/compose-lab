@@ -44,6 +44,6 @@ internal object PullCordDemos {
                 tags = setOf(DemoTag.Gesture, DemoTag.Physics),
             ) {
                 PullCordDemo(it)
-            }
+            },
         )
 }

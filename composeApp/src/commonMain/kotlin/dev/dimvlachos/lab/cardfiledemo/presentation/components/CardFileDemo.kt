@@ -277,7 +277,7 @@ private fun Sheet(
             .clip(shape)
             .background(colors.sheet)
             .border(1.dp, colors.line, shape)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         AnimatedContent(
             targetState = shown,
@@ -431,7 +431,7 @@ private val Phone: ImageVector =
         .addPath(
             addPathNodes(
                 "M6.6 3.5l2.6.4 1.2 4-1.9 1.6a12 12 0 005.9 5.9l1.6-1.9 4 1.2.4 2.6c-.1 1.4-1.3 " +
-                    "2.4-2.7 2.3C10.3 19 5 13.7 4.3 6.2 4.2 4.8 5.2 3.6 6.6 3.5z"
+                    "2.4-2.7 2.3C10.3 19 5 13.7 4.3 6.2 4.2 4.8 5.2 3.6 6.6 3.5z",
             ),
             fill = SolidColor(Color.White),
         )

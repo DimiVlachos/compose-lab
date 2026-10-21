@@ -27,7 +27,7 @@ class FogMaskUiTest {
                     Modifier.size(100.dp)
                         .background(Color.White)
                         .drawBehind { drawFogMask(level) }
-                        .testTag("mask")
+                        .testTag("mask"),
                 )
             }
             val pixels = onNodeWithTag("mask").captureToImage().toPixelMap()

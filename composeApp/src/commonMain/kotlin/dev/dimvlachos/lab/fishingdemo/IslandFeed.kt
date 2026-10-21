@@ -231,7 +231,7 @@ internal class IslandFeed(private val scope: CoroutineScope, landed: Int = 0) {
                     is FeedTurn.Empty -> FishingStatus.Landed(FishingOutcome.NothingNew)
                     is FeedTurn.Fail ->
                         FishingStatus.Landed(
-                            FishingOutcome.Failed(IllegalStateException(UnreachableMessage))
+                            FishingOutcome.Failed(IllegalStateException(UnreachableMessage)),
                         )
                 }
         }

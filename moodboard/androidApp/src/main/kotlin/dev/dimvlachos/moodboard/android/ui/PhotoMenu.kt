@@ -114,8 +114,8 @@ private fun ShareAndFavoriteItems(
         text = {
             Text(
                 stringResource(
-                    if (photo.isFavorite) R.string.action_unfavorite else R.string.action_favorite
-                )
+                    if (photo.isFavorite) R.string.action_unfavorite else R.string.action_favorite,
+                ),
             )
         },
         leadingIcon = {

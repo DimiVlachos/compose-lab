@@ -359,10 +359,12 @@ internal class PopUpPainter {
         val v = PopUpMath.ontoPage(origin - up * dv, pageAngle) - o
         camera.plane(o, u, v, h)
         Homography.toMatrix(h, matrix)
-        scope.withTransform({
-            clipPath(clip)
-            transform(matrix)
-        }) {
+        scope.withTransform(
+            {
+                clipPath(clip)
+                transform(matrix)
+            },
+        ) {
             drawImage(shadow, alpha = PopUpDimens.ShadowAlpha * fade)
         }
     }

@@ -74,7 +74,7 @@ public fun PaperSlip(
                 val u = unit.toPx()
                 drawPaper(shadow, colors, this.size, u, lift = 0f)
                 drawGlyphs(atlas, glyphs, 0f, 0f, u)
-            }
+            },
     )
 }
 
@@ -256,6 +256,6 @@ public fun SlipFlightStage(
             .onGloballyPositioned { origin[0] = it.positionInRoot() }
             .drawBehind {
                 with(flights) { drawFlights(atlas, shadow, colors, unit.toPx(), origin[0]) }
-            }
+            },
     )
 }

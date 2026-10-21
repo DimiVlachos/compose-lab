@@ -143,7 +143,7 @@ class BeadUiTest {
                             resting = true,
                             softness = 1f,
                             spread = spread,
-                        )
+                        ),
                     )
                 },
             )

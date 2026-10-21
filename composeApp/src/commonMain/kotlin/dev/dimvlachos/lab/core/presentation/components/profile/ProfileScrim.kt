@@ -37,7 +37,7 @@ internal fun ProfileScrim(
                     compositingStrategy = CompositingStrategy.ModulateAlpha
                 }
                 .background(LabTheme.colors.background)
-                .clickable(interactionSource = null, indication = null, onClick = onClose)
+                .clickable(interactionSource = null, indication = null, onClick = onClose),
         )
     }
 }

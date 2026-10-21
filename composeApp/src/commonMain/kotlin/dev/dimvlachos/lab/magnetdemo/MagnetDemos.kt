@@ -66,6 +66,6 @@ internal object MagnetDemos {
                 tags = setOf(DemoTag.Gesture, DemoTag.Physics),
             ) {
                 MagnetDemo(it)
-            }
+            },
         )
 }

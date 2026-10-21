@@ -158,12 +158,14 @@ internal class FishingPainter {
             val at = top + (placed - top) * hauled
             drawLine(colors.fishingLine, from, at, LineWidth.toPx(), alpha = clear)
             card.layer.alpha = clear
-            withTransform({
-                translate(at.x, at.y)
-                rotate(sway * (i + 1), pivot = Offset.Zero)
-                scale(scale, scale, pivot = Offset.Zero)
-                translate(-width / 2f, 0f)
-            }) {
+            withTransform(
+                {
+                    translate(at.x, at.y)
+                    rotate(sway * (i + 1), pivot = Offset.Zero)
+                    scale(scale, scale, pivot = Offset.Zero)
+                    translate(-width / 2f, 0f)
+                },
+            ) {
                 drawLayer(card.layer)
             }
             from = at + Offset(0f, height * scale)

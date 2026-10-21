@@ -127,7 +127,7 @@ public fun AnimatedNavBar(
     Box(
         modifier.fillMaxWidth().height(AnimatedNavBarHeight).graphicsLayer {
             translationY = -collapse() * NavBarDimens.FloatLift.toPx()
-        }
+        },
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
@@ -148,10 +148,10 @@ public fun AnimatedNavBar(
                                         collapse(),
                                         indicator.calmCenterSlot,
                                     )
-                            }
+                            },
                     )
                     .drawBehind { drawBar(itemCount, indicator, layers, colors, collapse) }
-                    .selectableGroup()
+                    .selectableGroup(),
             ) {
                 items.forEachIndexed { index, item ->
                     NavBarItem(
@@ -356,7 +356,7 @@ private fun BoxScope.Bubble(
                         color = colors.accent,
                         cornerRadius = CornerRadius(size.height / 2f),
                     )
-                }
+                },
             )
             Icon(
                 painter = painterResource(item.selectedIcon),

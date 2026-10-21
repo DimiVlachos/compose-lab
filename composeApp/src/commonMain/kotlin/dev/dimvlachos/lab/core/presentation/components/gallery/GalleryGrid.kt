@@ -90,7 +90,7 @@ internal fun GalleryGrid(
                 Box(
                     with(sharedTransitionScope) {
                         Modifier.animateBounds(lookaheadScope = this, boundsTransform = glide)
-                    }
+                    },
                 ) {
                     AnimatedVisibility(
                         visibleState = filter[i],

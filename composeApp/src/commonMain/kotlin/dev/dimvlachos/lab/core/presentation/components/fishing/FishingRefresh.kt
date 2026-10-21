@@ -127,14 +127,14 @@ public fun FishingRefresh(
                 enabled = !busy,
                 threshold = FishingDimens.Band,
                 onRefresh = onRefresh,
-            )
+            ),
     ) {
         // The list moves down under the band by the air above the water, in a layer, so it moves
         // without being laid out again; the water lies over its top.
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 translationY = FishingDimens.WaterLevel.toPx() * state.open
-            }
+            },
         ) {
             content()
         }
@@ -143,7 +143,7 @@ public fun FishingRefresh(
         Spacer(
             Modifier.fillMaxSize().graphicsLayer().drawBehind {
                 with(painter) { draw(state, colors) }
-            }
+            },
         )
         // The screen reader's way in, as the pull is: a button only it sees, at the top, where the
         // pull starts. It takes no touches, so the list under it gets them all.
@@ -156,7 +156,7 @@ public fun FishingRefresh(
                     if (canRefresh) currentOnRefresh()
                     canRefresh
                 }
-            }
+            },
         )
         Announcer(state)
     }
@@ -188,6 +188,6 @@ private fun Announcer(state: FishingRefreshState) {
         Modifier.size(1.dp).semantics {
             liveRegion = LiveRegionMode.Polite
             if (text.isNotEmpty()) contentDescription = text
-        }
+        },
     )
 }

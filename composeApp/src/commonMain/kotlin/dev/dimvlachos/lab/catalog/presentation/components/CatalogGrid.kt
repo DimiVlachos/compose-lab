@@ -57,7 +57,7 @@ internal fun CatalogGrid(
                         spacing.mediumLarge,
                         spacing.mediumLarge,
                         spacing.mediumLarge,
-                    )
+                    ),
                 )
                 .asPaddingValues(),
         verticalArrangement = Arrangement.spacedBy(spacing.smallMedium),

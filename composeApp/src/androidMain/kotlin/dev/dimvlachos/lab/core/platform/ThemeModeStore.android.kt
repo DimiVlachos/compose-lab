@@ -12,7 +12,7 @@ internal actual fun rememberThemeModeStore(): ThemeModeStore {
     val context = LocalContext.current.applicationContext
     return remember(context) {
         PreferencesThemeModeStore(
-            context.getSharedPreferences(PreferencesName, Context.MODE_PRIVATE)
+            context.getSharedPreferences(PreferencesName, Context.MODE_PRIVATE),
         )
     }
 }

@@ -53,7 +53,7 @@ class PullCordDemoUiTest {
         setContent {
             LabTheme(darkTheme = false) {
                 CompositionLocalProvider(
-                    LocalPullCordCompositionProbe provides { compositions++ }
+                    LocalPullCordCompositionProbe provides { compositions++ },
                 ) {
                     Box(Modifier.size(400.dp, 800.dp)) {
                         val lampState = rememberPullCordState()

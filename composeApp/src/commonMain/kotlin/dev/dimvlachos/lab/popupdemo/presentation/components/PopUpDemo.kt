@@ -186,7 +186,7 @@ internal fun PopUpDemo(state: DemoState) {
                 onClick = {
                     finished = true
                     jumpTo(Spreads, tapWith = null)
-                }
+                },
             ) {
                 Text(stringResource(Res.string.popup_skip), color = Paper.ink)
             }
@@ -285,7 +285,7 @@ internal fun PopUpDemo(state: DemoState) {
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .then(with(sky) { Modifier.drawSky() })
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         if (isWideStage(maxWidth, maxHeight)) {
             // Landscape: the book on the left, the words on the right, with tighter margins and
@@ -318,7 +318,7 @@ internal fun PopUpDemo(state: DemoState) {
         } else {
             Column(
                 Modifier.fillMaxSize()
-                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
+                    .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium),
             ) {
                 header()
                 bookArea(Modifier.weight(1f).fillMaxWidth())
@@ -380,7 +380,7 @@ private fun Dots(selected: Int, on: Color, off: Color) {
             val width by animateDpAsState(if (i == selected) 18.dp else 6.dp)
             Box(
                 Modifier.size(width = width, height = 6.dp)
-                    .background(if (i == selected) on else off, CircleShape)
+                    .background(if (i == selected) on else off, CircleShape),
             )
         }
     }

@@ -195,9 +195,9 @@ public fun ProfileGallery(
                     // on its side.
                     .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                     .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
                     )
-                    .padding(bottom = LabTheme.spacing.medium)
+                    .padding(bottom = LabTheme.spacing.medium),
             ) {
                 Spacer(Modifier.height(HeaderExpandedHeight + GridTopGap))
                 GalleryGrid(
@@ -227,7 +227,7 @@ public fun ProfileGallery(
                     }
                     .pointerInput(Unit) {
                         awaitEachGesture { awaitFirstDown(requireUnconsumed = false).consume() }
-                    }
+                    },
             )
             // Over the grid, which scrolls under it. Search opens over both, as its own page.
             CollapsingHeader(
@@ -355,7 +355,7 @@ private fun SearchPage(
                 .then(pageFade)
                 .background(LabTheme.colors.background)
                 .clickable(interactionSource = null, indication = null, onClick = {})
-                .testTag(SearchPageTag)
+                .testTag(SearchPageTag),
         )
         // Below the bar's row, so results scrolling up are cut off under it instead of passing
         // behind the back arrow, and taps on the row never reach them.
@@ -366,7 +366,7 @@ private fun SearchPage(
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                .padding(bottom = LabTheme.spacing.medium)
+                .padding(bottom = LabTheme.spacing.medium),
         ) {
             SearchContent(
                 photos = photos,
@@ -460,7 +460,7 @@ private fun RecentSearches(entries: List<String>, onPick: (String) -> Unit) {
     Column(
         Modifier.fillMaxWidth()
             .padding(horizontal = LabTheme.spacing.mediumLarge)
-            .testTag(RecentSearchesTag)
+            .testTag(RecentSearchesTag),
     ) {
         Text(
             stringResource(Res.string.search_recent),
@@ -518,8 +518,8 @@ private fun BoxScope.EditPhoto(
             // from the corner.
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-                )
+                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                ),
             )
             .padding(end = FabEdgeInset, bottom = FabEdgeInset)
             .then(chrome)

@@ -103,7 +103,7 @@ class GlitterFieldTest {
         val g = field()
         g.run(seconds = 0.5f, turb = 1f)
         for (i in 0 until g.count) assertTrue(
-            g.brightness(i, 0.5f, tilt = .1f, shift = .2f) in .28f..1f
+            g.brightness(i, 0.5f, tilt = .1f, shift = .2f) in .28f..1f,
         )
     }
 

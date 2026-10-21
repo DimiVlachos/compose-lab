@@ -222,7 +222,7 @@ class MagnetTableUiTest {
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.ContentDescription,
                     listOf("Alpha filter, 1 photo"),
-                )
+                ),
             )
         val before =
             onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
@@ -363,7 +363,7 @@ class MagnetTableUiTest {
             setContent {
                 LabTheme {
                     CompositionLocalProvider(
-                        LocalDensity provides Density(density.density, fontScale)
+                        LocalDensity provides Density(density.density, fontScale),
                     ) {
                         val table = rememberMagnetState(TestPhotos, TestTags)
                         state = table
@@ -421,7 +421,7 @@ class MagnetTableUiTest {
         setContent {
             LabTheme {
                 CompositionLocalProvider(
-                    LocalDensity provides Density(density.density, fontScale)
+                    LocalDensity provides Density(density.density, fontScale),
                 ) {
                     val table = rememberMagnetState(TestPhotos, TestTags)
                     state = table

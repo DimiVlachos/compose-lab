@@ -374,7 +374,7 @@ internal fun gripTilt(grip: Grip): Float {
     val corner =
         smoothstep(
             ((fromMiddle - PageTurnDimens.TiltDeadZone) / (0.5f - PageTurnDimens.TiltDeadZone))
-                .coerceIn(0f, 1f)
+                .coerceIn(0f, 1f),
         )
     val side = if (grip.v < 0.5f) 1f else -1f
     return side * PageTurnDimens.TiltMax * corner * smoothstep(grip.u.coerceIn(0f, 1f))
@@ -567,7 +567,7 @@ internal fun stackRise(t: Float): Float =
 
 internal fun stackLand(t: Float): Float =
     smoothstep(
-        ((t - (1f - PageTurnDimens.SettleSpan)) / PageTurnDimens.SettleSpan).coerceIn(0f, 1f)
+        ((t - (1f - PageTurnDimens.SettleSpan)) / PageTurnDimens.SettleSpan).coerceIn(0f, 1f),
     )
 
 private fun edgeLight(frame: TurnFrame, boundary: Int): Float =

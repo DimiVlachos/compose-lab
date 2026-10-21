@@ -60,14 +60,14 @@ internal class TourSky {
                 0f to mix { it.top },
                 0.45f to mix { it.middle },
                 1f to mix { it.bottom },
-            )
+            ),
         )
         drawRect(
             Brush.radialGradient(
                 listOf(mix { it.glow }.copy(alpha = 0.55f), Color.Transparent),
                 center = Offset(size.width * GlowX, size.height * GlowY),
                 radius = size.maxDimension * GlowReach,
-            )
+            ),
         )
     }
 

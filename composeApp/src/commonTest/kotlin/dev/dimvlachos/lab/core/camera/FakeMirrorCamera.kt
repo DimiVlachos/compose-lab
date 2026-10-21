@@ -39,7 +39,7 @@ internal class FakeMirrorCamera(
                 .drawRect(0f, 0f, 4f, 4f, Paint().apply { color = this@FakeMirrorCamera.color })
             val mask = if (nobodyThere) ImageBitmap(4, 4) else null
             painter.show(
-                CameraFrame(image, width = 4, height = 4, rotationDegrees = 0, mask = mask)
+                CameraFrame(image, width = 4, height = 4, rotationDegrees = 0, mask = mask),
             )
             awaitCancellation()
         } finally {

@@ -144,7 +144,7 @@ private fun ZoomablePhoto(path: String, modifier: Modifier) {
                         onDoubleTap = {
                             scale = if (scale > 1f) 1f else DoubleTapZoom
                             offset = Offset.Zero
-                        }
+                        },
                     )
                 }
                 .transformable(transform, canPan = { scale > 1f })

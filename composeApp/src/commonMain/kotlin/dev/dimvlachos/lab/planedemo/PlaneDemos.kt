@@ -41,6 +41,6 @@ internal object PlaneDemos {
                 tags = setOf(DemoTag.Motion, DemoTag.Text, DemoTag.Canvas),
             ) {
                 PlaneDemo(it)
-            }
+            },
         )
 }

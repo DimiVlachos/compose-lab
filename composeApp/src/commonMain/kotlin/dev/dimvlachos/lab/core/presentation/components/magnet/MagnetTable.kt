@@ -100,7 +100,7 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
         val stick: (Float) -> Unit = { strength ->
             haptics.performHapticFeedback(
                 if (strength >= MagnetDimens.StrongMatch) HapticFeedbackType.VirtualKey
-                else HapticFeedbackType.SegmentFrequentTick
+                else HapticFeedbackType.SegmentFrequentTick,
             )
         }
         val slot: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.GestureEnd) }
@@ -265,20 +265,20 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                 size.height = it.height
                 state.layOut(it.width, it.height, density.density, strip)
             }
-            .pointerInput(state, slop) { tableGestures(state, slop) }
+            .pointerInput(state, slop) { tableGestures(state, slop) },
     ) {
         // The steel and the strip, drawn again only when the table changes size.
         Spacer(
             Modifier.fillMaxSize().drawWithCache {
                 val steel = Brush.verticalGradient(listOf(colors.tableSteel, colors.tableSteelDeep))
                 onDrawBehind { with(painter) { drawTable(state, colors, steel) } }
-            }
+            },
         )
         // The filings, in a layer of their own, drawn again only when a magnet moves.
         Spacer(
             Modifier.fillMaxSize().graphicsLayer().drawBehind {
                 with(filings) { drawFilings(state, colors.filing) }
-            }
+            },
         )
         // The cards and the magnets, every frame they move.
         Spacer(
@@ -298,7 +298,7 @@ public fun MagnetTable(state: MagnetState, modifier: Modifier = Modifier) {
                 with(openPainter) {
                     drawOpen(state, photos, lastOpen.title, lastOpen.caption, colors)
                 }
-            }
+            },
         )
         // With a photo open it alone is there for a screen reader, as it alone is to be seen.
         if (openPhoto != null) {
@@ -337,7 +337,7 @@ private fun Announcer(state: MagnetState, counts: List<String?>) {
         Modifier.size(1.dp).semantics {
             liveRegion = LiveRegionMode.Polite
             if (text.isNotEmpty()) contentDescription = text
-        }
+        },
     )
 }
 
@@ -380,7 +380,7 @@ private fun PhotoNode(
                         state.opened == photo.id
                     }
                 }
-            }
+            },
     )
 }
 
@@ -400,7 +400,7 @@ private fun OpenNode(state: MagnetState, photo: MagnetPhoto) {
                 state.close()
                 true
             }
-        }
+        },
     )
 }
 
@@ -446,9 +446,9 @@ private fun MagnetNode(state: MagnetState, tag: MagnetTag, count: String?) {
                             }
                         } else {
                             CustomAccessibilityAction(apply) { state.apply(tag.id) }
-                        }
+                        },
                     )
-            }
+            },
     )
 }
 

@@ -355,7 +355,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 CornerRadius(tr),
                 CornerRadius(br),
                 CornerRadius(bl),
-            )
+            ),
         )
     }
 
@@ -478,7 +478,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         val v = state.matrix.values
         val s =
             kotlin.math.sqrt(
-                v[Matrix.ScaleX] * v[Matrix.ScaleX] + v[Matrix.SkewY] * v[Matrix.SkewY]
+                v[Matrix.ScaleX] * v[Matrix.ScaleX] + v[Matrix.SkewY] * v[Matrix.SkewY],
             )
         return if (s > 0f) 1f / s else 1f
     }
@@ -678,8 +678,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                             0f,
                             1f,
                             0f,
-                        )
-                    )
+                        ),
+                    ),
                 )
         }
         if (sx % 1f != 0f || sy % 1f != 0f || sw % 1f != 0f || sh % 1f != 0f) {

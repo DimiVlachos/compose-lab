@@ -113,7 +113,7 @@ internal fun ActionButton(
                         }
                 } else {
                     Modifier
-                }
+                },
             ),
         contentAlignment = Alignment.Center,
     ) {

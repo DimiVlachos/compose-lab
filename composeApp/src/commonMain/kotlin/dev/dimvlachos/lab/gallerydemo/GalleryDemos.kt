@@ -41,6 +41,6 @@ internal object GalleryDemos {
                 tags = setOf(DemoTag.Motion, DemoTag.Navigation),
             ) {
                 GalleryDemo(it)
-            }
+            },
         )
 }

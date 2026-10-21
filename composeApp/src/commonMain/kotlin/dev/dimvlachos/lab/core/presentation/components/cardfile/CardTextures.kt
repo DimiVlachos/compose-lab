@@ -126,7 +126,7 @@ private fun paperBase(g: Canvas2D, card: PaperCard, s: Float, back: Boolean, gra
             when (card) {
                 is PaperCard.Contact -> card.seed
                 is PaperCard.Divider -> (card.ordinal + 3) * 97
-            }
+            },
         )
     outline(g, card, s)
     val base: Any =

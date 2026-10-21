@@ -112,7 +112,7 @@ public fun SmokeOverlay(
                 if (it.type == KeyEventType.KeyUp && isDelete(it.key)) state.deleteHeld = false
                 false
             }
-            .onFocusChanged { if (!it.hasFocus) state.deleteHeld = false }
+            .onFocusChanged { if (!it.hasFocus) state.deleteHeld = false },
     ) {
         content()
         SmokeLayerOf(state, SmokeLayer.Haze, smokeColors, blur = SmokeDimens.HazeBlur)
@@ -145,6 +145,6 @@ private fun BoxScope.SmokeLayerOf(
                 state.frame
                 if (!state.smoky) return@drawBehind
                 with(state.painter) { draw(state.drawn, layer, colors) }
-            }
+            },
     )
 }

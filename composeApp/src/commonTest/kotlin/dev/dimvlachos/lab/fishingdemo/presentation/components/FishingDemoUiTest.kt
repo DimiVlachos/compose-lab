@@ -56,7 +56,7 @@ class FishingDemoUiTest {
             setContent {
                 LabTheme {
                     CompositionLocalProvider(
-                        LocalFishingCompositionProbe provides { compositions++ }
+                        LocalFishingCompositionProbe provides { compositions++ },
                     ) {
                         Box(Modifier.size(400.dp, 800.dp)) {
                             val f = rememberFishingRefreshState()
