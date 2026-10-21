@@ -476,25 +476,24 @@ internal fun PaperBagDemo(
             val g = Canvas2D(drawContext.canvas, size.width.toInt(), size.height.toInt())
             g.setTransform(density, 0f, 0f, density, 0f, 0f)
             val icon = bounds["bag"]
-            val iconX = (icon?.center?.x ?: 0f) / density
-            val iconY = (icon?.center?.y ?: 0f) / density + IconDrop
+            // Where the bag is and how big: in the corner, in the sheet, or on its way.
+            var bagX = (icon?.center?.x ?: 0f) / density
+            var bagY = (icon?.center?.y ?: 0f) / density + IconDrop
+            var bagS = IconSize
             val items = cart.entries.map { BagItem(it.product.art, it.slot, bag.rise(it.key)) }
             val pose = bag.pose(items)
             if (icon != null) {
                 val e = ease(bag.open)
-                var x = iconX
-                var y = iconY
-                var s = IconSize
                 val well = bounds["well"]
                 if (bag.open > 0f && well != null) {
                     val ws = (well.height / density * .54f).coerceIn(84f, 140f)
                     val wx = well.center.x / density - ws * .06f
                     val wy = well.bottom / density - 12f
-                    x += (wx - x) * e
-                    y += (wy - y) * e
-                    s += (ws - s) * e
+                    bagX += (wx - bagX) * e
+                    bagY += (wy - bagY) * e
+                    bagS += (ws - bagS) * e
                 }
-                drawBag(g, x, y, s, pose, ink, dark, density)
+                drawBag(g, bagX, bagY, bagS, pose, ink, dark, density)
             }
             val h = size.height / density
             for (f in flights) {
@@ -502,11 +501,12 @@ internal fun PaperBagDemo(
                 val e = p * p * (3 - 2 * p)
                 val x0 = f.from.x / density
                 val y0 = f.from.y / density
-                val x = x0 + (iconX - x0) * e
+                // Aimed at the bag where it is now, so a thing still flying when the bag is
+                // opened follows it into the sheet: the prototype's went on to the empty corner.
+                val x = x0 + (bagX - x0) * e
                 val y =
-                    y0 + (iconY - IconSize * .7f - y0) * e -
-                        sin(p * PI.toFloat()) * min(160f, h * .22f)
-                val s = 40f + (IconSize * .9f - 40f) * e
+                    y0 + (bagY - bagS * .7f - y0) * e - sin(p * PI.toFloat()) * min(160f, h * .22f)
+                val s = 40f + (bagS * .9f - 40f) * e
                 g.save()
                 g.translate(x, y)
                 g.rotate((1 - p) * .9f * (if (f.entry.product.id == "bread") 1f else .4f) - .2f)
