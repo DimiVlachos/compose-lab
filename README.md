@@ -596,6 +596,8 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 
 ## Star stickers (`core/presentation/components/stickers/`)
 
+![](docs/media/stickers.rating.gif)
+
 A star rating that feels like a teacher's sheet of gold foil stars. Under a row of five dashed slots lies a liner sheet of embossed stickers. Drag across the sheet or the row and each star you pass peels off its backing with a curl, flies up in an arc and is pressed into its slot, with a glint across the foil and a little bounce. Drag back and the last stars peel up out of the row and settle on the sheet again. A tap jumps to that score, and the stars flick on in order.
 
 - **Painted in one canvas.** The sheet with its lifted corner, gloss and print, the die-cuts, the slots and every star are painted through the lab's `canvas2d` adapter, ported call for call from the prototype. Each star is ten facets shaded from one light, on a gold ramp, with its embossed ridges, a brushed sheen that follows the light and a glint when it's pressed. The light leans with each star's speed and the finger's place, so the foil catches it as stars move.
