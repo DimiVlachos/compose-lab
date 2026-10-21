@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.paperbag
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,6 +24,10 @@ internal class PaperBagState(private val random: Random = Random.Default) {
 
     /** Bumped every tick in which anything moved: drawing reads it to redraw. */
     var frame by mutableLongStateOf(0L)
+        private set
+
+    /** Bumped by everything that sets the bag moving, so a clock at rest knows to start again. */
+    var wakes by mutableIntStateOf(0)
         private set
 
     /** Whether motion is cut short: springs rest, the bag opens and closes at once. */
@@ -48,6 +53,7 @@ internal class PaperBagState(private val random: Random = Random.Default) {
 
     /** Something dropped in: the bag squashes and tips, and [count] is written over the old. */
     fun landed(count: Int) {
+        wakes++
         rewrite(count)
         if (reducedMotion) return
         sqV += 7.5f
@@ -56,11 +62,13 @@ internal class PaperBagState(private val random: Random = Random.Default) {
 
     /** The entry [key] starts rising out; it is gone after [LiftMs]. */
     fun lift(key: Int) {
+        wakes++
         lifts[key] = now
     }
 
     /** What rose out has gone: the bag settles a little and [count] is written over the old. */
     fun lifted(key: Int, count: Int) {
+        wakes++
         lifts.remove(key)
         rewrite(count)
         if (!reducedMotion) sqV -= 2f
@@ -68,17 +76,20 @@ internal class PaperBagState(private val random: Random = Random.Default) {
 
     /** Nothing more fits: the bag shakes its head. */
     fun refuse() {
+        wakes++
         if (!reducedMotion) wobV += 3f
     }
 
     /** Tips the bag open, or sets it back in the corner. */
     fun openTo(open: Boolean) {
+        wakes++
         isOpen = open
         if (reducedMotion) this.open = if (open) 1f else 0f
     }
 
     /** Puts the bag back as it starts: empty, closed and still. */
     fun reset() {
+        wakes++
         sq = 0f
         sqV = 0f
         wob = 0f
