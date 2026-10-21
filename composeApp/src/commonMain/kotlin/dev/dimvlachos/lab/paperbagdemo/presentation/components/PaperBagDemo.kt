@@ -189,6 +189,8 @@ internal fun PaperBagDemo(
     bag: PaperBagState = remember { PaperBagState() },
     reducedMotion: Boolean = rememberReducedMotion(),
 ) {
+    // Read back from the bag below, not from this composition: the script's handlers and the
+    // clock are set up once and would keep the setting as it was then.
     bag.reducedMotion = reducedMotion
     val colors = if (LabTheme.isDark) PaperBagColors.Dark else PaperBagColors.Light
     val dark = LabTheme.isDark
@@ -237,7 +239,7 @@ internal fun PaperBagDemo(
             say { Said.Full(it) }
             return
         }
-        if (reducedMotion) {
+        if (bag.reducedMotion) {
             land(entry.key)
             return
         }
@@ -253,7 +255,7 @@ internal fun PaperBagDemo(
 
     fun remove(entry: BagEntry) {
         if (!cart.lifting(entry.key)) return
-        if (reducedMotion) {
+        if (bag.reducedMotion) {
             finishLift(entry.key)
             return
         }
@@ -362,7 +364,7 @@ internal fun PaperBagDemo(
         flights.clear()
         cart.incoming.clear()
         val keys = cart.entries.map { it.key }
-        if (reducedMotion) {
+        if (bag.reducedMotion) {
             keys.forEach(::finishLift)
             return
         }
