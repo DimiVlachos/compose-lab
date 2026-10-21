@@ -79,7 +79,7 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                         onCheckedChange = {
                             haptics.performHapticFeedback(
                                 if (it) HapticFeedbackType.ToggleOn
-                                else HapticFeedbackType.ToggleOff
+                                else HapticFeedbackType.ToggleOff,
                             )
                             viewModel.onAction(PhotoDetailAction.ToggleFavorite)
                         },
@@ -109,7 +109,7 @@ fun PhotoDetailScreen(photoId: String, tab: String, onBack: () -> Unit) {
                                 },
                                 onSetMembership = { boardId, member ->
                                     viewModel.onAction(
-                                        PhotoDetailAction.SetMembership(boardId, member)
+                                        PhotoDetailAction.SetMembership(boardId, member),
                                     )
                                 },
                                 onNewBoard = { newBoard = true },

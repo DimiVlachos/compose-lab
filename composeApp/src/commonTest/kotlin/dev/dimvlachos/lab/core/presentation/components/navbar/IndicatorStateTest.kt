@@ -263,7 +263,7 @@ class IndicatorStateTest {
     fun calmCenterNeverOvershootsWhenRetargetedToANearerTabInTheSameDirection() {
         val rightward =
             replay(
-                Replay(itemCount = 5, from = 0, retargets = listOf(Retarget(0, 4), Retarget(3, 1)))
+                Replay(itemCount = 5, from = 0, retargets = listOf(Retarget(0, 4), Retarget(3, 1))),
             )
         assertTrue(
             rightward.maxOf { it.calm } <= 1.5f + 0.001f,
@@ -273,7 +273,7 @@ class IndicatorStateTest {
 
         val leftward =
             replay(
-                Replay(itemCount = 5, from = 4, retargets = listOf(Retarget(0, 0), Retarget(3, 3)))
+                Replay(itemCount = 5, from = 4, retargets = listOf(Retarget(0, 0), Retarget(3, 3))),
             )
         assertTrue(
             leftward.minOf { it.calm } >= 3.5f - 0.001f,

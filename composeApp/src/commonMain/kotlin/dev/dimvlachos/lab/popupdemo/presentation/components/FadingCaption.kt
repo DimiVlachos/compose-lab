@@ -31,7 +31,7 @@ internal fun FadingCaption(
         modifier = modifier,
         transitionSpec = {
             (fadeIn(tween(FadeMs)) togetherWith fadeOut(tween(FadeMs))).using(
-                SizeTransform(clip = false)
+                SizeTransform(clip = false),
             )
         },
         contentAlignment = Alignment.TopStart,
@@ -41,7 +41,7 @@ internal fun FadingCaption(
         val leaving = transition.targetState != EnterExitState.Visible
         Box(
             if (leaving) Modifier.clearAndSetSemantics {}
-            else Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            else Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         ) {
             content(shown)
         }

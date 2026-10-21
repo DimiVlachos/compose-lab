@@ -55,7 +55,7 @@ public fun planeTakeoff(iconBounds: Rect): Takeoff =
 public class PaperPlaneState
 internal constructor(
     // Where the folds are worked out: off the main thread, so a throw never stalls a frame.
-    private val planning: CoroutineContext = Dispatchers.Default
+    private val planning: CoroutineContext = Dispatchers.Default,
 ) {
     internal val flights = mutableStateListOf<Flight>()
 

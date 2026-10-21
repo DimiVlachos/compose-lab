@@ -219,7 +219,7 @@ private fun Settings(
                     Modifier.fillMaxWidth()
                         .clip(LabTheme.shapes.extraLarge)
                         .background(palette.surface)
-                        .padding(horizontal = spacing.medium)
+                        .padding(horizontal = spacing.medium),
                 ) {
                     SettingRow(Res.string.pullcord_dark_theme, darkTheme, onDarkTheme, palette)
                     Divider(palette)
@@ -321,7 +321,7 @@ private fun PaletteSwitch(on: Boolean, palette: ScreenPalette) {
         Box(
             Modifier.size(KnobSize)
                 .clip(CircleShape)
-                .background(if (on) palette.onAccent else palette.surface)
+                .background(if (on) palette.onAccent else palette.surface),
         )
     }
 }

@@ -37,6 +37,6 @@ internal object NavBarDemos {
                 tags = setOf(DemoTag.Motion, DemoTag.Navigation),
             ) {
                 NavBarDemo(it)
-            }
+            },
         )
 }

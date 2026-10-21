@@ -404,7 +404,7 @@ private fun Bubble(
                 .widthIn(max = bubbleWidth)
                 .background(colors.surface, BubbleShape)
                 .border(1.dp, colors.chipBorder, BubbleShape)
-                .animateContentSize(BubbleGrow)
+                .animateContentSize(BubbleGrow),
         ) {
             Crossfade(text, animationSpec = tween(BubbleFadeMs)) { words ->
                 if (words == null) {
@@ -515,7 +515,7 @@ private fun TypingDots() {
                         colors.textMuted.copy(alpha = 1f - DotFade * lift),
                         center = center - Offset(0f, DotRise.toPx() * lift),
                     )
-                }
+                },
             )
         }
     }

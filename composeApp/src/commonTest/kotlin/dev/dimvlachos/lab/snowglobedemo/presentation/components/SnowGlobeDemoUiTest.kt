@@ -113,7 +113,7 @@ class SnowGlobeDemoUiTest {
                     SemanticsMatcher.expectValue(
                         SemanticsProperties.ContentDescription,
                         listOf("Updated. Tomorrow · Thu 15: Light shower, 22 degrees."),
-                    )
+                    ),
                 )
         }
 
@@ -196,7 +196,7 @@ class SnowGlobeDemoUiTest {
             onNodeWithTag("temperature").assertTextEquals("23°")
             onNodeWithTag("snowglobe")
                 .assert(
-                    SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Meltemi")
+                    SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Meltemi"),
                 )
             mainClock.advanceTimeBy(4_000)
             assertFalse(board.refreshPending, "changing day never refreshes")

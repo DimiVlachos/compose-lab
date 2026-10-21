@@ -49,7 +49,7 @@ internal object PullToSend {
     fun ticks(from: Float, to: Float): Int {
         val step = TypewriterDimens.RatchetStep
         return kotlin.math.abs(
-            kotlin.math.floor(to / step).toInt() - kotlin.math.floor(from / step).toInt()
+            kotlin.math.floor(to / step).toInt() - kotlin.math.floor(from / step).toInt(),
         )
     }
 }

@@ -81,7 +81,7 @@ class CardFileUiTest {
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.ContentDescription,
                     listOf("Person a0"),
-                )
+                ),
             )
         onNodeWithTag("cardfile").requestFocus()
         onNodeWithTag("cardfile").performKeyInput { pressKey(Key.DirectionDown) }
@@ -352,7 +352,7 @@ class CardFileUiTest {
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.ContentDescription,
                     listOf("Person a0"),
-                )
+                ),
             )
     }
 
@@ -398,7 +398,7 @@ class CardFileUiTest {
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.ContentDescription,
                     listOf("Person e9"),
-                )
+                ),
             )
     }
 

@@ -108,7 +108,7 @@ class ImageMorphUiTest {
                     LocalMorphCompositionProbe provides
                         { end ->
                             if (end == MorphEnd.Card) cards++ else details++
-                        }
+                        },
                 ) {
                     ImageMorph(photos, expandedIndex = expanded, onExpand = {}, onCollapse = {})
                 }

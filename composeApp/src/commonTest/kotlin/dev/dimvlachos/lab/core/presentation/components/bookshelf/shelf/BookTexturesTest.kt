@@ -36,7 +36,7 @@ class BookTexturesTest {
                         sansBold = Typeface(FontFamily.SansSerif, measurer, FontWeight.Bold),
                     ),
                     ShelfNoise.create(),
-                )
+                ),
             )
         }
     }

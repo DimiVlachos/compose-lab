@@ -39,6 +39,6 @@ internal fun milkyColorMatrix(
             0f,
             1f,
             0f,
-        )
+        ),
     )
 }

@@ -56,7 +56,7 @@ public fun PaperPlane(
                     val placed = flight.placement().shiftedBy(-origin)
                     with(flight.painter) { drawDart(flight.plan, placed, paper, inside, edge) }
                 }
-            }
+            },
     )
 }
 
@@ -84,11 +84,13 @@ private fun DrawScope.drawDrops(flight: Flight, origin: Offset, air: ColorFilter
         val scale = lerp(PaperPlaneDimens.LetterEndScale, 1f, grown)
         val turn = drop.spin * (1f - grown)
         val alpha = ease(p / 0.15f)
-        withTransform({
-            rotate(turn, now)
-            scale(scale, scale, now)
-            translate(now.x - home.x, now.y - home.y)
-        }) {
+        withTransform(
+            {
+                rotate(turn, now)
+                scale(scale, scale, now)
+                translate(now.x - home.x, now.y - home.y)
+            },
+        ) {
             translate(at.x, at.y) {
                 with(flight.letters) {
                     val ink = if (air == null) 1f else inkShown(p)
@@ -126,7 +128,7 @@ public fun PaperPlaneIcon(color: Color, modifier: Modifier = Modifier) {
         modifier.drawBehind {
             val placement = iconPlacement(Rect(Offset.Zero, size))
             with(painter) { drawDart(dartPlan, placement, color, inside) }
-        }
+        },
     )
 }
 

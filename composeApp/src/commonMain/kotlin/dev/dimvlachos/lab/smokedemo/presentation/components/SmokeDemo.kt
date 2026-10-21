@@ -148,7 +148,7 @@ internal fun SmokeDemo(
     inbox: ChatInbox = rememberChatInbox(),
     smoke: SmokeState =
         rememberSmokeState(
-            rememberSoundPlayer(setOf(Sound.BurnLoop, Sound.MistWhoosh, Sound.Inhale))
+            rememberSoundPlayer(setOf(Sound.BurnLoop, Sound.MistWhoosh, Sound.Inhale)),
         ),
 ) {
     // Not saved, as the chats and their smoke aren't: a screen made again starts in the inbox.
@@ -249,7 +249,7 @@ internal fun SmokeDemo(
             .drawWithContent {
                 drawContent()
                 with(finger) { drawFinger(touch) }
-            }
+            },
     ) {
         val wide = isWideStage(maxWidth, maxHeight)
         SmokeOverlay(smoke, Modifier.fillMaxSize()) {
@@ -258,7 +258,7 @@ internal fun SmokeDemo(
                     .padding(
                         start = insets.calculateStartPadding(direction),
                         end = insets.calculateEndPadding(direction),
-                    )
+                    ),
             ) {
                 Header(
                     archive = archive,
@@ -288,7 +288,7 @@ internal fun SmokeDemo(
                                     archive -> Res.string.smoke_hint_archive
                                     rtl -> Res.string.smoke_hint_rtl
                                     else -> Res.string.smoke_hint
-                                }
+                                },
                             ),
                             style = LabTheme.typography.label,
                             color = colors.textMuted,
@@ -347,7 +347,7 @@ private fun Header(
                 Modifier.clip(LabTheme.shapes.small)
                     .clickable(role = Role.Button, onClick = onBack)
                     .semantics { contentDescription = back }
-                    .padding(BackPadding)
+                    .padding(BackPadding),
             ) {
                 Chevron(colors.accent, pointsRight = false, Modifier.size(BackGlyph))
             }
@@ -436,8 +436,8 @@ private fun ChatList(
                 SectionHeading(
                     stringResource(
                         if (day == ChatDay.Today) Res.string.smoke_today
-                        else Res.string.smoke_earlier
-                    )
+                        else Res.string.smoke_earlier,
+                    ),
                 )
             }
             ChatGroup(chats, inbox, smoke, place)
@@ -547,7 +547,7 @@ private fun UndoneAnnouncer(undone: Boolean) {
         Modifier.size(1.dp).semantics {
             liveRegion = LiveRegionMode.Polite
             if (text.isNotEmpty()) contentDescription = text
-        }
+        },
     )
 }
 

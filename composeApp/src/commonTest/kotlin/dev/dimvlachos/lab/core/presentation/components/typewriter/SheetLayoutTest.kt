@@ -119,7 +119,7 @@ class SheetLayoutTest {
             assertEquals(tilt, slipTilt(id))
             assertTrue(
                 kotlin.math.abs(tilt) in
-                    TypewriterDimens.SlipLeastTilt..TypewriterDimens.SlipMostTilt
+                    TypewriterDimens.SlipLeastTilt..TypewriterDimens.SlipMostTilt,
             )
         }
     }

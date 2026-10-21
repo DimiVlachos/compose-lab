@@ -218,10 +218,10 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
                 .windowInsetsPadding(
                     WindowInsets.ime
                         .union(WindowInsets.navigationBars)
-                        .only(WindowInsetsSides.Bottom)
+                        .only(WindowInsetsSides.Bottom),
                 )
                 // On its side, a phone's bars and cutout are at the ends of the field.
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
         ) {
             // Newest at the foot, where the conversation is anchored: a new message pushes the
             // others up.
@@ -243,7 +243,8 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
                         Modifier.fillMaxWidth()
                             .animateItem()
                             .then(
-                                if (inTheAir) Modifier.planeLanding(plane, message.id) else Modifier
+                                if (inTheAir) Modifier.planeLanding(plane, message.id)
+                                else Modifier,
                             )
                             .padding(top = spacing.small)
                             // A sent message is read out as it arrives.
@@ -252,7 +253,7 @@ internal fun PlaneDemo(state: DemoState, planning: CoroutineContext = Dispatcher
                                     Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                                 } else {
                                     Modifier
-                                }
+                                },
                             ),
                         contentAlignment =
                             if (message.mine) Alignment.CenterEnd else Alignment.CenterStart,
@@ -376,7 +377,7 @@ private fun MessageField(
                     )
             }
             .clip(FieldShape)
-            .background(colors.surface)
+            .background(colors.surface),
     ) {
         BasicTextField(
             state = field,
@@ -411,7 +412,7 @@ private fun MessageField(
                         val at = it.positionInRoot()
                         chat.draftAt = { at - Offset(0f, scroll.value.toFloat()) }
                         chat.draftShown = it.boundsInRoot()
-                    }
+                    },
                 ) {
                     // Not while the letters of the last message are still going in.
                     if (field.text.isEmpty() && chat.pouring == 0) {

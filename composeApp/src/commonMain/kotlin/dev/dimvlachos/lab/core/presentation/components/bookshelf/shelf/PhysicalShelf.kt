@@ -471,7 +471,7 @@ internal fun PhysicalShelfHost(
                     renderEffect =
                         if (radius > 0.5f) BlurEffect(radius, radius, TileMode.Clamp) else null
                 }
-                .then(if (activeId != null) Modifier.clearAndSetSemantics {} else Modifier)
+                .then(if (activeId != null) Modifier.clearAndSetSemantics {} else Modifier),
         ) {
             body(hero)
         }
@@ -482,7 +482,7 @@ internal fun PhysicalShelfHost(
                 .onGloballyPositioned {
                     anchors.stage = it
                     stageX = it.positionInWindow().x
-                }
+                },
         ) {
             val backdropOnStage = activeId != null && chromeShown.value
             val chromeOnStage = backdropOnStage && stageAssets != null
@@ -555,7 +555,7 @@ private fun ShelfHero(
         modifier.clipToBounds().pointerInput(assets, state) {
             val ready = assets ?: return@pointerInput
             awaitEachGesture { handleShelfGesture(ready.layout, state, density) }
-        }
+        },
     ) {
         val ready = assets ?: return@Box
         Canvas(Modifier.fillMaxSize()) {
@@ -642,8 +642,8 @@ private fun ShelfStage(
                     }
                 } else {
                     Modifier
-                }
-            )
+                },
+            ),
     ) {
         Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - state.motion.value.vanish }) {
             val m = state.motion.value
@@ -895,7 +895,7 @@ private fun SpineAccessibility(content: ShelfContent, assets: ShelfAssets, state
                         }
                         activate
                     }
-                    .focusable()
+                    .focusable(),
             )
         }
     }
@@ -932,7 +932,7 @@ private fun ShelfAnnouncer(content: ShelfContent, state: ShelfState) {
         Modifier.size(1.dp).semantics {
             liveRegion = LiveRegionMode.Polite
             if (announcement != null) contentDescription = announcement
-        }
+        },
     )
 }
 

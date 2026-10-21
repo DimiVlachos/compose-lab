@@ -87,7 +87,7 @@ internal fun NavBarItem(
                 alpha = if (hideIcon) 0f else 1f
                 scaleX = bounce.value
                 scaleY = 2f - bounce.value
-            }
+            },
         ) {
             Icon(
                 painter = painterResource(item.icon),

@@ -231,7 +231,7 @@ internal fun SnowGlobeDemo(
                         travelled = 0f
                     }
                 }
-            }
+            },
     ) {
         SnowGlobe(
             scene = day.scene,
@@ -318,7 +318,7 @@ internal fun SnowGlobeDemo(
             Column(
                 Modifier.padding(start = 22.dp, end = 22.dp, top = 6.dp).onGloballyPositioned {
                     headerBottom = it.positionInRoot().y - rootTop + it.size.height
-                }
+                },
             ) {
                 BasicText(
                     stringResource(day.label).uppercase(),
@@ -417,7 +417,7 @@ internal fun SnowGlobeDemo(
             Modifier.size(1.dp).testTag("live").semantics {
                 liveRegion = LiveRegionMode.Polite
                 if (announcement != null && !board.failed) contentDescription = announcement
-            }
+            },
         )
     }
 }
@@ -473,7 +473,7 @@ private fun DayStrip(
             .fillMaxWidth()
             .background(colors.card, strip)
             .border(1.dp, colors.cardLine, strip)
-            .padding(7.dp)
+            .padding(7.dp),
     ) {
         // Where the row placed each day, left edge and width: the highlight runs between them.
         val placed = remember { mutableStateMapOf<Int, DaySpan>() }
@@ -490,7 +490,7 @@ private fun DayStrip(
                     layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(x, 0) }
                 }
                 .testTag("day-indicator")
-                .background(colors.selected, pill)
+                .background(colors.selected, pill),
         )
         DayRow(days, selected, colors, onSelect, rtl, gap, pill) { i, x, w ->
             placed[i] = DaySpan(x, w)

@@ -49,7 +49,7 @@ public fun PageTurnBook(
                     crease = colors.bookCrease,
                     pageEdge = colors.pageEdge,
                     pageEdgeLine = colors.pageEdgeLine,
-                )
+                ),
             )
         }
     Spacer(
@@ -57,7 +57,7 @@ public fun PageTurnBook(
             .aspectRatio(BookAspect)
             .onSizeChanged { state.layout = bookLayout(it.toSize(), density) }
             .pageTurnGestures(state)
-            .drawWithCache { onDrawBehind { with(painter) { drawBook(spreads, state) } } }
+            .drawWithCache { onDrawBehind { with(painter) { drawBook(spreads, state) } } },
     )
 }
 

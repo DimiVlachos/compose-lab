@@ -174,7 +174,7 @@ internal fun FishingDemo(
             } else {
                 Column(
                     Modifier.fillMaxWidth()
-                        .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium)
+                        .padding(horizontal = spacing.mediumLarge, vertical = spacing.medium),
                 ) {
                     Text(
                         title,

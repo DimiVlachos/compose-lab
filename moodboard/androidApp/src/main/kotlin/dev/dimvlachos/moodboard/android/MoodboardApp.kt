@@ -106,7 +106,7 @@ fun MoodboardApp() {
 
         val viewports = remember { MorphViewports() }
         SharedTransitionLayout(
-            Modifier.onGloballyPositioned { viewports.layoutTopInWindow = it.positionInWindow().y }
+            Modifier.onGloballyPositioned { viewports.layoutTopInWindow = it.positionInWindow().y },
         ) {
             // Taps and tab switches queue behind a morph in flight instead of cutting it off.
             // System back is gated too. Popping a photo whose open morph is still running made

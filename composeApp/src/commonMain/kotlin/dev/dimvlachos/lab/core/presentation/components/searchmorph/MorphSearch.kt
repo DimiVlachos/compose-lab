@@ -109,7 +109,7 @@ internal fun MorphSearchButton(
                     Modifier.semantics { this.contentDescription = contentDescription }
                 } else {
                     Modifier
-                }
+                },
             )
             .clickable(role = Role.Button, onClick = onOpen),
         color = LabTheme.colors.bar,

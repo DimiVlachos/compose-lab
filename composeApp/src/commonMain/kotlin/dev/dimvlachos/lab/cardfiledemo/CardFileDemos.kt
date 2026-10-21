@@ -46,6 +46,6 @@ internal object CardFileDemos {
                 tall = true,
             ) {
                 CardFileDemo(it)
-            }
+            },
         )
 }

@@ -306,7 +306,7 @@ class PageTurnStateTest {
         for (i in 1..30) {
             act {
                 state.dragTo(
-                    Offset(across + (lower - across) * i / 30f, top + (bottom - top) * i / 30f)
+                    Offset(across + (lower - across) * i / 30f, top + (bottom - top) * i / 30f),
                 )
             }
             // The leaf neither jumps nor twists away while the finger goes down the edge.

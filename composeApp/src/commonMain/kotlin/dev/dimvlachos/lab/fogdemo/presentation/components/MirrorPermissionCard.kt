@@ -95,7 +95,7 @@ internal fun MirrorPermissionCard(
             // On the light palette a soft shadow lifts the white card off the white tiles.
             .then(
                 if (LabTheme.isDark) Modifier
-                else Modifier.shadow(CardLightElevation, LabTheme.shapes.extraLarge)
+                else Modifier.shadow(CardLightElevation, LabTheme.shapes.extraLarge),
             )
             .background(LabTheme.colors.surface, LabTheme.shapes.extraLarge)
     if (compact) {
@@ -162,8 +162,8 @@ private fun CardButtons(
             Text(
                 stringResource(
                     if (canAsk) Res.string.mirror_card_allow
-                    else Res.string.mirror_card_open_settings
-                )
+                    else Res.string.mirror_card_open_settings,
+                ),
             )
         }
     }

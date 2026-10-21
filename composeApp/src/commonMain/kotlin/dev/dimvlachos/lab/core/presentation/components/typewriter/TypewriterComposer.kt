@@ -238,7 +238,7 @@ internal fun TypewriterComposer(
                     sheet.lines,
                     Rect(o.x + b.left * u, o.y + b.top * u, o.x + b.right * u, o.y + b.bottom * u),
                     sheet.rise * u,
-                )
+                ),
             )
         }
     }
@@ -250,7 +250,7 @@ internal fun TypewriterComposer(
     BoxWithConstraints(
         modifier.fillMaxWidth().focusRequester(focus).focusable().onPreviewKeyEvent { event ->
             currentEnabled && event.type == KeyEventType.KeyDown && state.hardwareKey(event)
-        }
+        },
     ) {
         val foot = with(density) { insets.getBottom(this).toDp() }
         val hint = hintHeight(measurer, maxWidth)
@@ -302,7 +302,7 @@ internal fun TypewriterComposer(
                         coordinates.size.height - foot - below - TypewriterDimens.MachineHeight * u
                     placed.machine = coordinates.positionInRoot() + Offset(left, top)
                     placed.unit = u
-                }
+                },
         ) {
             // The parts that never move, drawn once in a layer of their own: the shell, the keys'
             // well, the basket's opening and the bell.
@@ -334,7 +334,7 @@ internal fun TypewriterComposer(
                                 )
                             }
                         }
-                    }
+                    },
             )
             // The moving parts; a tap on them gives the machine focus, for a hardware keyboard,
             // and a drag up on the sheet pulls it out. A screen reader finds it with a Send action.
@@ -429,7 +429,7 @@ internal fun TypewriterComposer(
                             customActions =
                                 listOf(CustomAccessibilityAction(sendLabel) { state.send() })
                         }
-                    }
+                    },
             )
             // The band the lever swings in, kept from the system's edge swipes: at the end of a
             // long line the lever is at the screen's left edge, where a push would otherwise go
@@ -445,9 +445,9 @@ internal fun TypewriterComposer(
                     }
                     .height(
                         with(density) { (TypewriterDimens.LeverLength * u).toDp() } +
-                            TypewriterDimens.LeverReach * 2
+                            TypewriterDimens.LeverReach * 2,
                     )
-                    .keepSystemGesturesOff()
+                    .keepSystemGesturesOff(),
             )
             // The lever, for a screen reader: where it stands with the carriage home, so its focus
             // doesn't chase the carriage, with a New line action.
@@ -469,7 +469,7 @@ internal fun TypewriterComposer(
                             customActions =
                                 listOf(CustomAccessibilityAction(newLineLabel) { state.newLine() })
                         }
-                    }
+                    },
             )
             Said(state, Modifier.align(Alignment.TopCenter))
             // Left out on a stage too short for it, where it would hide the line being typed.
@@ -573,7 +573,7 @@ private fun Said(state: TypewriterState, modifier: Modifier = Modifier) {
             if (said.isNotEmpty()) contentDescription = said
             liveRegion = LiveRegionMode.Polite
             traversalIndex = Float.MAX_VALUE
-        }
+        },
     )
 }
 

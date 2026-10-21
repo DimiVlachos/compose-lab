@@ -114,18 +114,20 @@ public fun LetterStage(stream: LetterStream, modifier: Modifier = Modifier) {
                         val at = from * (u * u) + bend * (2f * u * e) + into * (e * e)
                         val scale = lerp(1f, PaperPlaneDimens.LetterEndScale, e)
                         val fade = 1f - ease((p - 0.65f) / 0.35f)
-                        withTransform({
-                            rotate(letter.spin * e, at)
-                            scale(scale, scale, at)
-                            translate(at.x - from.x, at.y - from.y)
-                        }) {
+                        withTransform(
+                            {
+                                rotate(letter.spin * e, at)
+                                scale(scale, scale, at)
+                                translate(at.x - from.x, at.y - from.y)
+                            },
+                        ) {
                             translate(origin.x, origin.y) {
                                 with(pour.atlas) { drawLetter(letter.box, fade) }
                             }
                         }
                     }
                 }
-            }
+            },
     )
 }
 

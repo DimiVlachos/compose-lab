@@ -53,6 +53,6 @@ internal object BookshelfDemos {
                 tall = true,
             ) {
                 BookshelfDemo(it)
-            }
+            },
         )
 }

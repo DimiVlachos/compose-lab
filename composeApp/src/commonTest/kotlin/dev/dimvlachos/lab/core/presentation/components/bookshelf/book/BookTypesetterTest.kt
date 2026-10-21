@@ -36,7 +36,7 @@ class BookTypesetterTest {
                     serif = FontFamily.Serif,
                     measurer = measurer,
                     density = density,
-                )
+                ),
             )
         }
     }

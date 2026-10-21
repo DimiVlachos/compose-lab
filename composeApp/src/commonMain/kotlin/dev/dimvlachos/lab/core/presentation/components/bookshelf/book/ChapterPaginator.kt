@@ -30,7 +30,7 @@ internal class BookChapterPages(
                         setting.annotated(
                             text,
                             BookPage(0, paragraph, paragraph, 0, 0, opensChapter = false),
-                        )
+                        ),
                     )
                     .also { measured = paragraph to it }
         return pages.indexAtLine(

@@ -145,7 +145,7 @@ public fun SmokeRow(
             .then(
                 if (present) {
                     Modifier.semantics(mergeDescendants = true) { customActions = actions }
-                } else Modifier.clearAndSetSemantics {}
+                } else Modifier.clearAndSetSemantics {},
             )
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { event ->
@@ -175,7 +175,7 @@ public fun SmokeRow(
                         style = Stroke(width),
                     )
                 }
-            }
+            },
     ) {
         content()
     }

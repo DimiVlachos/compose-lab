@@ -156,7 +156,7 @@ internal fun planFolds(
             listOf(
                 Crease(nose, Offset(-r, -r), Offset(r, -r), towardEye = false),
                 Crease(nose, Offset(-r, r), Offset(r, r), towardEye = false),
-            )
+            ),
         )
     // Halfway between the slanting edge and the centre line: 22.5° off the line, from the nose.
     val c = cos(PI.toFloat() / 8f)
@@ -166,7 +166,7 @@ internal fun planFolds(
             listOf(
                 Crease(nose, Offset(-c, -sn), Offset(sn, -c), towardEye = false),
                 Crease(nose, Offset(-c, sn), Offset(sn, c), towardEye = false),
-            )
+            ),
         )
     folds +=
         Fold(
@@ -185,7 +185,7 @@ internal fun planFolds(
             listOf(
                 Crease(nose, along, up, towardEye = false, angle = open, stack = Stack.Turned),
                 Crease(nose, along, up, towardEye = true, angle = open, stack = Stack.Kept),
-            )
+            ),
         )
     val middle = (tail + w) / 2f
     val balance = Offset(middle, h + (keelTop - h) * (w - middle) / (w - tail))
@@ -225,7 +225,7 @@ private fun cut(
                 emptyList(),
                 emptyList(),
                 emptyList(),
-            )
+            ),
         )
     val tops = mutableListOf<Int>()
     val bottoms = mutableListOf<Int>()

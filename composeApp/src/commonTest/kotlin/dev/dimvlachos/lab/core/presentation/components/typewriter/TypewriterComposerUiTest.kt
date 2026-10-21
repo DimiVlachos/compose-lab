@@ -158,7 +158,7 @@ class TypewriterComposerUiTest {
                     androidx.compose.ui.geometry.Offset(0f, machineTop(density))
             down(knob)
             for (i in 1..10) moveTo(
-                knob.copy(x = knob.x + i * TypewriterDimens.LeverThrow / 10f * u)
+                knob.copy(x = knob.x + i * TypewriterDimens.LeverThrow / 10f * u),
             )
             up()
         }

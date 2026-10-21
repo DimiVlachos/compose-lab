@@ -164,7 +164,7 @@ public fun FoggedMirror(
                     if (holding > 0) onHold?.invoke(false)
                 }
             }
-        }
+        },
     ) {
         Image(photo, null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
         Box(
@@ -210,7 +210,7 @@ public fun FoggedMirror(
                         }
                         i++
                     }
-                }
+                },
         ) {
             Image(
                 photo,
@@ -322,9 +322,15 @@ private fun DrawScope.drawBead(bead: Bead) {
     // Spreading into the wet film of a wiped patch, it widens, flattens a little, and thins as
     // the same water covers more glass, until nothing of it is left to see.
     val alpha = bead.alpha * (1f - SpreadThinning * bead.spread)
-    withTransform({
-        scale(1f + BeadSpreadWide * bead.spread, 1f + BeadSpreadTall * bead.spread, pivot = centre)
-    }) {
+    withTransform(
+        {
+            scale(
+                1f + BeadSpreadWide * bead.spread,
+                1f + BeadSpreadTall * bead.spread,
+                pivot = centre,
+            )
+        },
+    ) {
         val bulb = radius * (1f - BeadNarrowing * bead.stretch)
         val drop = teardrop(centre, bulb, tail = radius * BeadTail * bead.stretch)
         // Settled into the condensation, it stands out less, and a soft halo feathers its edge.
@@ -334,7 +340,7 @@ private fun DrawScope.drawBead(bead: Bead) {
                 Brush.radialGradient(
                     0f to
                         Color.Black.copy(
-                            alpha = FogDimens.BeadShade * alpha * bead.softness * 0.6f
+                            alpha = FogDimens.BeadShade * alpha * bead.softness * 0.6f,
                         ),
                     1f to Color.Transparent,
                     center = centre,

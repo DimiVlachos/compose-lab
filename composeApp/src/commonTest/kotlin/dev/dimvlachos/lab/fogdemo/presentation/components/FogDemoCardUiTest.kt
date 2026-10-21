@@ -102,7 +102,7 @@ class FogDemoCardUiTest {
                     LabTheme {
                         val d = LocalDensity.current
                         CompositionLocalProvider(
-                            LocalDensity provides Density(d.density, fontScale)
+                            LocalDensity provides Density(d.density, fontScale),
                         ) {
                             Box(Modifier.size(780.dp, 254.dp)) {
                                 FogDemo(DemoState(), FogState(), camera)

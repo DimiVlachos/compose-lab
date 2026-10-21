@@ -48,10 +48,10 @@ private class SoundPoolPlayer(private val context: Context, capturable: Boolean)
                 AudioAttributes.Builder()
                     .setUsage(
                         if (capturable) AudioAttributes.USAGE_GAME
-                        else AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
+                        else AudioAttributes.USAGE_ASSISTANCE_SONIFICATION,
                     )
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
+                    .build(),
             )
             .build()
     private val audio = context.getSystemService(AudioManager::class.java)

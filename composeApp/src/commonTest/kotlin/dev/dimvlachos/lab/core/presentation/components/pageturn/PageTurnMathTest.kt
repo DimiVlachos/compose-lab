@@ -151,7 +151,7 @@ class PageTurnMathTest {
         // Unbowed and flat, every strip stands at -pi t.
         assertTrue(frame(t = 1.5f / PI.toFloat(), bendDirection = 0f, restLift = 0f).facesReader(0))
         assertFalse(
-            frame(t = 1.65f / PI.toFloat(), bendDirection = 0f, restLift = 0f).facesReader(0)
+            frame(t = 1.65f / PI.toFloat(), bendDirection = 0f, restLift = 0f).facesReader(0),
         )
     }
 

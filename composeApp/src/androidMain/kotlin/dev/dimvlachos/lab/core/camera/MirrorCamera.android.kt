@@ -99,9 +99,9 @@ private class AndroidMirrorCamera(
                             ResolutionStrategy(
                                 AnalysisSize,
                                 ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
-                            )
+                            ),
                         )
-                        .build()
+                        .build(),
                 )
                 .setTargetRotation(display.rotation)
         // A front camera's small sensor sees little in a dim bathroom: let it expose each frame
@@ -152,7 +152,7 @@ private class AndroidMirrorCamera(
                 val error = state.error ?: return@Observer
                 if (error.type == CameraState.ErrorType.CRITICAL) {
                     failure.completeExceptionally(
-                        IllegalStateException("camera error ${error.code}")
+                        IllegalStateException("camera error ${error.code}"),
                     )
                 } else {
                     log.w { "the camera dropped out (${error.code}), waiting for it" }

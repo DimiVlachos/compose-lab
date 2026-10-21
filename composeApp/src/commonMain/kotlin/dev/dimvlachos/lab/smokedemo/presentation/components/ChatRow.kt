@@ -102,7 +102,7 @@ internal fun ChatRow(chat: Chat, divider: Boolean, modifier: Modifier = Modifier
         }
         Box(
             Modifier.size(9.dp)
-                .background(if (chat.unread) colors.accent else Color.Transparent, CircleShape)
+                .background(if (chat.unread) colors.accent else Color.Transparent, CircleShape),
         )
     }
 }

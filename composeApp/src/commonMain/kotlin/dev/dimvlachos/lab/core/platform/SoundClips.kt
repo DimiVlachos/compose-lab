@@ -34,7 +34,7 @@ internal fun decodeWave(bytes: ByteArray): WaveClip {
     require(
         bytes.size >= 12 &&
             bytes.decodeToString(0, 4) == "RIFF" &&
-            bytes.decodeToString(8, 12) == "WAVE"
+            bytes.decodeToString(8, 12) == "WAVE",
     ) {
         "Not a WAVE file"
     }

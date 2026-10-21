@@ -50,7 +50,7 @@ class MagnetDemoUiTest {
         val start = mainClock.currentTime
         fun at(seconds: Double) =
             mainClock.advanceTimeBy(
-                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime
+                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
             )
         fun results(tag: String) = table!!.results[tag].orEmpty()
         val corfuAndNaxos = setOf("corfu", "naxos")
@@ -119,7 +119,7 @@ class MagnetDemoUiTest {
         val start = mainClock.currentTime
         fun at(seconds: Double) =
             mainClock.advanceTimeBy(
-                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime
+                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
             )
         fun results(tag: String) = table!!.results[tag].orEmpty()
         // The hint lies over the table, which has every bit of height over the strip.

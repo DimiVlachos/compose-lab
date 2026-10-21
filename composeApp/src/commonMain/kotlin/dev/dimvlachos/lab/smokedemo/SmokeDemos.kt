@@ -51,6 +51,6 @@ internal object SmokeDemos {
                 tall = true,
             ) {
                 SmokeDemo(it)
-            }
+            },
         )
 }

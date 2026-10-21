@@ -45,7 +45,7 @@ class SantoriniSceneTest {
         assertEquals(1f, sun[T / 2, T / 8].alpha, 0.01f)
         assertTrue(
             shower[T / 2, T / 8].blue - shower[T / 2, T / 8].red <
-                sun[T / 2, T / 8].blue - sun[T / 2, T / 8].red
+                sun[T / 2, T / 8].blue - sun[T / 2, T / 8].red,
         )
     }
 }

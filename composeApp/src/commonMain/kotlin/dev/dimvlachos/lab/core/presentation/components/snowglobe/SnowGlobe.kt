@@ -162,7 +162,7 @@ internal fun SnowGlobe(
                 .size(
                     with(LocalDensity.current) {
                         DpSize(place.boxWidth.toDp(), place.boxHeight.toDp())
-                    }
+                    },
                 )
                 .testTag("snowglobe")
                 .semantics {
@@ -192,7 +192,7 @@ internal fun SnowGlobe(
                         change.consume()
                         state.drag(drag.x / density)
                     }
-                }
+                },
         )
         // The room: wall, table and the shadows and caustic the globe throws, which follow it.
         Canvas(Modifier.fillMaxSize()) {
@@ -228,7 +228,7 @@ internal fun SnowGlobe(
                         place.cx / size.width.coerceAtLeast(1).toFloat(),
                         place.pivotY / size.height.coerceAtLeast(1).toFloat(),
                     )
-            }
+            },
         ) {
             // The base's top face and groove, behind the glass.
             Canvas(Modifier.fillMaxSize()) {
@@ -252,7 +252,7 @@ internal fun SnowGlobe(
                                         state.sceneTo,
                                         state.fade,
                                         state.tilt,
-                                    )
+                                    ),
                                 )
                     }
                     .drawBehind {
@@ -268,7 +268,7 @@ internal fun SnowGlobe(
                                 glassBubble(state.tilt),
                             )
                         }
-                    }
+                    },
             )
             // The turned body and its plaque, in front.
             Canvas(Modifier.fillMaxSize()) {

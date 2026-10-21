@@ -217,7 +217,7 @@ internal class EngineSoundPlayer : SoundPlayer {
     /** Voices are wired for one format, so clips of different rates or channels get their own. */
     private data class ClipFormat(val sampleRate: Double, val channels: UInt) {
         constructor(
-            buffer: AVAudioPCMBuffer
+            buffer: AVAudioPCMBuffer,
         ) : this(buffer.format.sampleRate, buffer.format.channelCount)
     }
 

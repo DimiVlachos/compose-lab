@@ -107,7 +107,7 @@ internal constructor(internal val photos: List<MagnetPhoto>, internal val tags: 
             photos.mapIndexed { i, photo ->
                 val tilt = (random.nextFloat() - 0.5f) * 2f * MagnetDimens.MostTilt
                 PhotoBody(photo.id, photo.strengths, seeds[i], tilt)
-            }
+            },
         )
     }
 

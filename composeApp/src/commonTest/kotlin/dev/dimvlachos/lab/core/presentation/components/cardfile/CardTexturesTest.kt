@@ -39,7 +39,7 @@ class CardTexturesTest {
                     "SANS" to FontFamily.SansSerif,
                 ),
                 makeGrain(),
-            )
+            ),
         )
     }
 

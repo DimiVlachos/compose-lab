@@ -89,8 +89,8 @@ internal fun BookDemo(state: DemoState, onSpreadChange: (Int) -> Unit = {}) {
                 else
                     Modifier.windowInsetsPadding(
                         WindowInsets(left = TableMarginX, right = TableMarginX)
-                            .union(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                    )
+                            .union(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                    ),
             )
             .padding(vertical = TableMarginY),
         contentAlignment = Alignment.Center,

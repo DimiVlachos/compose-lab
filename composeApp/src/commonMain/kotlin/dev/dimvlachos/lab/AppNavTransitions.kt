@@ -17,7 +17,7 @@ private const val PUSH_PARALLAX_DIVISOR = 3
  * way left behind it; back, it slides off to the right again, over the one coming back.
  */
 internal fun AnimatedContentTransitionScope<AppScreen>.appTransition(
-    motion: Motion
+    motion: Motion,
 ): ContentTransform {
     val spec = tween<IntOffset>(motion.slowMs, easing = motion.ease)
     return if (targetState.pushesOver(initialState)) {

@@ -66,7 +66,7 @@ internal class RectF(
     var bottom: Float = 0f,
 ) {
     constructor(
-        r: Rect
+        r: Rect,
     ) : this(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat())
 
     fun width() = right - left
@@ -186,7 +186,7 @@ internal class BitmapShader(
 /** `BlurMaskFilter`: blurs what is drawn by [radius], as Skia turns a radius into a sigma. */
 internal class BlurMaskFilter(val radius: Float, @Suppress("unused") val blur: Blur) {
     enum class Blur {
-        NORMAL
+        NORMAL,
     }
 }
 
@@ -218,8 +218,8 @@ internal class LightingColorFilter(private val mul: Int, private val add: Int) {
                     0f,
                     1f,
                     0f,
-                )
-            )
+                ),
+            ),
         )
     }
 }
@@ -700,7 +700,7 @@ internal class Canvas(internal val compose: ComposeCanvas) {
             // Fake bold strokes each glyph's outline a little, as Skia does.
             val stroke =
                 androidx.compose.ui.graphics.drawscope.Stroke(
-                    fakeBoldStroke(paint.textSize) * TEXT_OVERSAMPLE
+                    fakeBoldStroke(paint.textSize) * TEXT_OVERSAMPLE,
                 )
             if (shader != null)
                 line.multiParagraph.paint(

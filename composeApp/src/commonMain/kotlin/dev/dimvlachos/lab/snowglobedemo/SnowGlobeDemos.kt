@@ -38,6 +38,6 @@ internal object SnowGlobeDemos {
                 tall = true,
             ) {
                 SnowGlobeDemo(it)
-            }
+            },
         )
 }

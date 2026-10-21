@@ -63,8 +63,8 @@ internal fun MirrorOnWall(
                         topRight = round(cut.top, cut.right),
                         bottomRight = round(cut.bottom, cut.right),
                         bottomLeft = round(cut.bottom, cut.left),
-                    )
-                )
+                    ),
+                ),
         ) {
             glass(Modifier.fillMaxSize())
         }

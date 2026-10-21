@@ -151,7 +151,7 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
                 stage(
                     Modifier.fillMaxWidth()
                         .weight(1f)
-                        .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                        .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
                 )
             }
         }

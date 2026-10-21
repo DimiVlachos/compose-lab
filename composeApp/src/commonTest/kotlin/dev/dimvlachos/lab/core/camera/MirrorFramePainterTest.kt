@@ -149,8 +149,8 @@ class MirrorFramePainterTest {
                         0f,
                         1f,
                         0f,
-                    )
-                )
+                    ),
+                ),
             )
         val target = ImageBitmap(20, 20)
         CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(target), Size(20f, 20f)) {

@@ -41,7 +41,7 @@ internal fun MorphPhotoCard(
             indication = null,
             role = Role.Button,
             onClick = onClick,
-        )
+        ),
     ) {
         MorphNode(
             sharedTransitionScope = sharedTransitionScope,

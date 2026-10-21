@@ -31,7 +31,7 @@ internal object BookDemos {
                         ),
                         x = 0.9f,
                         y = 0.1f,
-                    )
+                    ),
                 )
             }
             // A short, fast flick from the middle of the edge is enough to turn it; let go, the
@@ -52,7 +52,7 @@ internal object BookDemos {
                         ),
                         x = 0.9f,
                         y = 0.1f,
-                    )
+                    ),
                 )
             }
             at(7.0.seconds) { select(2) } // already turned by the drag
@@ -67,7 +67,7 @@ internal object BookDemos {
                         ),
                         x = 0.9f,
                         y = 0.88f,
-                    )
+                    ),
                 )
             }
             // A page pulled back from the left by its top corner, down and in, and let go on its
@@ -79,7 +79,7 @@ internal object BookDemos {
                         releaseSpeed = 1.8f,
                         x = 0.1f,
                         y = 0.12f,
-                    )
+                    ),
                 )
             }
             at(11.2.seconds) { select(1) } // already turned back by the drag
@@ -92,7 +92,7 @@ internal object BookDemos {
                     PageDrag(
                         listOf(DragMove(0.33f, 0.35.seconds)),
                         x = 0.14f,
-                    )
+                    ),
                 )
             }
             at(14.68.seconds) {
@@ -101,7 +101,7 @@ internal object BookDemos {
                         listOf(DragMove(-0.22f, 0.22.seconds)),
                         releaseSpeed = -2.4f,
                         x = 0.6f,
-                    )
+                    ),
                 )
             }
             // And five back to the start.
@@ -120,6 +120,6 @@ internal object BookDemos {
                 landscape = true,
             ) {
                 BookDemo(it)
-            }
+            },
         )
 }
