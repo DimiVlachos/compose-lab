@@ -323,4 +323,53 @@
     <string name="bookshelf_next_page">Next page</string>
     <string name="bookshelf_previous_page">Previous page</string>
     <string name="bookshelf_open_book_page">%1$s, page %2$d of %3$d</string>
+
+    <!-- Paper bag cart -->
+    <string name="demo_paperbag">Paper bag cart</string>
+    <string name="demo_paperbag_description">Add groceries and they hop into a kraft paper bag in the top bar; tap the bag and it tips open</string>
+    <string name="paperbag_store">Fernwood Market</string>
+    <string name="paperbag_delivery">Delivery to 18 Linden Ave · 4–5 PM</string>
+    <string name="paperbag_hello">Fresh this morning</string>
+    <string name="paperbag_hello_line">Saturday, Oct 18 · picked up from the Hudson Valley</string>
+    <string name="paperbag_chip_produce">Produce</string>
+    <string name="paperbag_chip_bakery">Bakery</string>
+    <string name="paperbag_chip_dairy">Dairy &amp; eggs</string>
+    <string name="paperbag_chip_flowers">Flowers</string>
+    <string name="paperbag_baguette">Sourdough baguette</string>
+    <string name="paperbag_baguette_unit">Linden Street Bakery</string>
+    <string name="paperbag_celery">Celery hearts</string>
+    <string name="paperbag_celery_unit">1 bunch</string>
+    <string name="paperbag_apples">Honeycrisp apples</string>
+    <string name="paperbag_apples_unit">3 lb bag</string>
+    <string name="paperbag_sunflowers">Sunflowers</string>
+    <string name="paperbag_sunflowers_unit">Bunch of 5</string>
+    <string name="paperbag_milk">Whole milk</string>
+    <string name="paperbag_milk_unit">½ gal · Bramble Hill Dairy</string>
+    <string name="paperbag_eggs">Farm eggs</string>
+    <string name="paperbag_eggs_unit">1 dozen, brown</string>
+    <string name="paperbag_price_unit">%1$s · %2$s</string>
+    <string name="paperbag_in_bag">\u0020· %1$d in bag</string>
+    <string name="paperbag_add">Add</string>
+    <string name="paperbag_add_label">Add %1$s, %2$s</string>
+    <string name="paperbag_bag_empty">Bag, empty</string>
+    <plurals name="paperbag_bag_items">
+        <item quantity="one">Bag, %1$d item</item>
+        <item quantity="other">Bag, %1$d items</item>
+    </plurals>
+    <string name="paperbag_your_bag">Your bag</string>
+    <plurals name="paperbag_your_bag_items">
+        <item quantity="one">Your bag · %1$d item</item>
+        <item quantity="other">Your bag · %1$d items</item>
+    </plurals>
+    <string name="paperbag_done">Done</string>
+    <string name="paperbag_check_out">Check out</string>
+    <string name="paperbag_check_out_total">Check out · %1$s</string>
+    <string name="paperbag_order_placed">Order placed</string>
+    <string name="paperbag_order_line">Thanks! Arriving today, 4–5 PM</string>
+    <string name="paperbag_order_said">Order placed. Arriving today, 4 to 5 PM.</string>
+    <string name="paperbag_nothing">Nothing in the bag yet.</string>
+    <string name="paperbag_remove">Remove %1$s</string>
+    <string name="paperbag_added">%1$s added. %2$d in bag.</string>
+    <string name="paperbag_removed">%1$s removed. %2$d in bag.</string>
+    <string name="paperbag_full">The bag is full</string>
 </resources>
