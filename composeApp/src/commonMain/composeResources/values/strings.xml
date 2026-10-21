@@ -412,4 +412,35 @@
     <string name="mailbox_new_message">New message from %1$s</string>
     <string name="mailbox_row_unread">Unread. %1$s, %2$s</string>
     <string name="mailbox_row">%1$s, %2$s</string>
+    <string name="demo_padlock">Padlock password</string>
+    <string name="demo_padlock_description">A brass padlock locks shut as your password gets strong, and shows it when you tap</string>
+    <string name="padlock_title">Create account</string>
+    <string name="padlock_step">Step 2 of 3</string>
+    <string name="padlock_heading">Choose a password</string>
+    <string name="padlock_intro">It protects your Cedar Valley Credit Union account.</string>
+    <string name="padlock_level_empty">Waiting for a password</string>
+    <string name="padlock_level_weak">Weak</string>
+    <string name="padlock_level_fair">Fair</string>
+    <string name="padlock_level_good">Good</string>
+    <string name="padlock_level_strong">Strong</string>
+    <string name="padlock_tip_empty">Use 12 or more characters</string>
+    <string name="padlock_tip_strong">Locked tight. Nice one.</string>
+    <string name="padlock_tip_common">That one is on every list. Try another.</string>
+    <string name="padlock_tip_one">Add %1$s</string>
+    <string name="padlock_tip_two">Add %1$s and %2$s</string>
+    <plurals name="padlock_need_characters">
+        <item quantity="one">%1$d more character</item>
+        <item quantity="other">%1$d more characters</item>
+    </plurals>
+    <string name="padlock_need_number">a number</string>
+    <string name="padlock_need_capital">a capital</string>
+    <string name="padlock_need_symbol">a symbol</string>
+    <string name="padlock_email">Email</string>
+    <string name="padlock_email_value">maya.reyes@hollowmail.com</string>
+    <string name="padlock_password">Password</string>
+    <string name="padlock_rule_length">12+ characters</string>
+    <string name="padlock_rule_number">A number</string>
+    <string name="padlock_rule_mix">A symbol or capital</string>
+    <string name="padlock_continue">Continue</string>
+    <string name="padlock_show">Show password</string>
 </resources>

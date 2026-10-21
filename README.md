@@ -40,6 +40,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag) | `paperbag` | `paperbag.cart` | A cart icon that is a kraft grocery bag: things hop in on an arc, poke out of the top and fill it out, the count is rewritten in grease pencil, and the bag tips open over what is in it |
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
+| [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -64,6 +65,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag)
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
+- [Padlock](#padlock-corepresentationcomponentspadlock)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -679,6 +681,26 @@ Mailbox(box, unread = inbox.unread, letters = inbox.size, contentDescription = l
 box.deliver { inbox.add(message) }
 ```
 
+## Padlock (`core/presentation/components/padlock/`)
+
+![](docs/media/padlock.password.gif)
+
+A sign-up step where the password's strength meter is a solid brass padlock under a warm lamp. An empty or weak password leaves the shackle up and swung half a turn open, standing clear of the body, and each weak keystroke knocks it about in its holes. As the password gets stronger the body fills out, the shackle swings into line, lowers notch by notch and turns from soft brass to hardened steel; at strong it drops home under its own weight with a clunk, a small bounce and a glint across the brass. Erase a few characters and it springs back open. Tap the lock to show the password: the keyhole cover swings aside on its rivet and warm light shows through.
+
+- **Drawn as the prototype draws it.** The lock is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: the shackle is one U path stroked six times, each narrower and nudged toward the light, so it reads as a round bar; brass and steel are two colour ramps blended by one value; the body has a brushed grain baked once from a fixed seed, a debossed maker's stamp and a bevel.
+- **Springs and a drop.** Lift, swing, steel, rattle, bounce and the cover are springs aimed by the level, stepped in fixed 1/240 s substeps; locking swings the shackle into line, then lets it fall under gravity and lands it where it hits. The frame loop sleeps once everything is at rest.
+- **Feel and sound.** A clunk felt as a confirm where the shackle lands, a tick at each level and as it springs open; synthesized sounds for the clunk, the spring, the rattle and the cover.
+- **Screen readers.** The lock is a switch labelled Show password; the level under it is a polite live region, and the rules under the field say what is missing, so the lock is never the only cue.
+- **Reduced motion.** Every spring settles at once, and the rattle stops.
+
+The demo, `padlock.password`, is step 2 of signing up for an invented credit union. Its script types `maple42-River!` in the chunks a person types it in, shows the password and hides it, erases three characters so the lock springs open, types them again so it locks, and clears the field.
+
+```kotlin
+val lock = remember { PadlockState() }
+LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
+Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -813,6 +835,7 @@ The card file takes any number of cards, dividers included, and composes about n
 The bookshelf's ring takes as many books as you like and draws those within reach of the front; a plank takes at most nine. A book being read opens at a chapter set from its words, one chapter at a time, and a book not begun at its title page. The open page is a picture of its text, not text you can select. Which book is out and the page it is open at are not saved, and the layout is not mirrored for right-to-left.
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
+The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
 
 ## Contributing
 

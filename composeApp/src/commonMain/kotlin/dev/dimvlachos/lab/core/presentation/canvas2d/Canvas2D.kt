@@ -152,12 +152,13 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         var globalAlpha: Float,
         var composite: String,
         var lineCap: String,
+        var lineJoin: String,
         var filterBlur: Float,
         var shadowColor: Color,
         var shadowBlur: Float,
+        var shadowOffsetX: Float,
         var shadowOffsetY: Float,
         var imageShade: Color,
-        var shadowOffsetX: Float = 0f,
         var lineDash: FloatArray? = null,
     ) {
         fun copy() =
@@ -169,12 +170,13 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 globalAlpha,
                 composite,
                 lineCap,
+                lineJoin,
                 filterBlur,
                 shadowColor,
                 shadowBlur,
+                shadowOffsetX,
                 shadowOffsetY,
                 imageShade,
-                shadowOffsetX,
                 lineDash,
             )
     }
@@ -188,8 +190,10 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             1f,
             "source-over",
             "butt",
+            "miter",
             0f,
             Color.Transparent,
+            0f,
             0f,
             0f,
             Color.Transparent,
@@ -232,6 +236,13 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         get() = state.lineCap
         set(value) {
             state.lineCap = value
+        }
+
+    /** `miter`, `round` or `bevel`. */
+    var lineJoin: String
+        get() = state.lineJoin
+        set(value) {
+            state.lineJoin = value
         }
 
     /** `blur(Npx)` or `none`, as the prototype sets it. */
@@ -550,7 +561,12 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 "square" -> StrokeCap.Square
                 else -> StrokeCap.Butt
             }
-        paint.strokeJoin = StrokeJoin.Miter
+        paint.strokeJoin =
+            when (state.lineJoin) {
+                "round" -> StrokeJoin.Round
+                "bevel" -> StrokeJoin.Bevel
+                else -> StrokeJoin.Miter
+            }
         paint.pathEffect = state.lineDash?.takeIf { !fill }?.let { PathEffect.dashPathEffect(it) }
         paint.blendMode =
             when (state.composite) {

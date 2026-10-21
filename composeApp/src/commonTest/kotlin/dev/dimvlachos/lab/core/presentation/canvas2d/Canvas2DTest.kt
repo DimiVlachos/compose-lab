@@ -113,6 +113,40 @@ class Canvas2DTest {
     }
 
     @Test
+    fun aShadowIsOffsetAcrossAndDown() {
+        val c = Canvas2D.create(40, 40)
+        c.shadowColor = "rgba(0,0,0,1)"
+        c.shadowBlur = 0.5f
+        c.shadowOffsetX = 12f
+        c.shadowOffsetY = 12f
+        c.fillStyle = "#ff0000"
+        c.fillRect(4f, 4f, 10f, 10f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[8, 8])
+        assertTrue(px[22, 22].alpha > .8f && px[22, 22].red < .2f, "shadow at ${px[22, 22]}")
+        near(Color.Transparent, px[22, 8])
+    }
+
+    @Test
+    fun aRoundJoinRoundsTheOuterCorner() {
+        fun corner(join: String): Color {
+            val c = Canvas2D.create(40, 40)
+            c.lineJoin = join
+            c.lineWidth = 12f
+            c.strokeStyle = "#0000ff"
+            c.beginPath()
+            c.moveTo(30f, 10f)
+            c.lineTo(10f, 10f)
+            c.lineTo(10f, 30f)
+            c.stroke()
+            return c.bitmap.toPixelMap()[5, 5]
+        }
+        near(Color.Blue, corner("miter"))
+        val round = corner("round")
+        assertTrue(round.alpha < .35f, "round corner at $round")
+    }
+
+    @Test
     fun anArcFillsACircle() {
         val c = Canvas2D.create(20, 20)
         c.beginPath()

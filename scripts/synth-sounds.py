@@ -509,6 +509,91 @@ def mail_tick(rate):
     n = seconds(0.07, rate)
     tick = mix(damped_sine(n, rate, 2350, 0.012), scale(damped_sine(n, rate, 3870, 0.007), 0.5), scale(damped_sine(n, rate, 1180, 0.02), 0.3))
     return fade(normalise(tick, 0.35), rate, 0.0003, 0.01)
+# ---------- Padlock ----------
+
+def chirp(n, rate, f0, f1, sweep, decay):
+    """A damped sine whose pitch glides exponentially from f0 to f1 over sweep seconds."""
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate
+        f = f1 if t >= sweep else f0 * (f1 / f0) ** (t / sweep)
+        phase += 2 * math.pi * f / rate
+        out.append(math.sin(phase) * math.exp(-t / decay))
+    return out
+
+
+def modes(n, rate, partials):
+    """A struck metal body: inharmonic partials (freq, gain, decay), each ringing down on its own."""
+    return mix(*[scale(damped_sine(n, rate, f, d, phase=f * 0.37), a) for f, a, d in partials])
+
+
+def brass_impact(rng, rate, n, weight):
+    """One hit of the shackle on the brass body: a hard tick, a thud of mass, and the block's ring."""
+    tick = mul(highpass(noise(n, rng), 2500, rate), env_exp(n, rate, 0.0018, 0.0002))
+    thud = mul(lowpass(noise(n, rng), 600, rate), env_exp(n, rate, 0.028))
+    body = chirp(n, rate, 150, 72, 0.22, 0.085)
+    block = modes(n, rate, [(1180, 0.6, 0.12), (1734, 0.45, 0.09), (2611, 0.3, 0.07), (3487, 0.18, 0.05), (4953, 0.1, 0.03)])
+    return mix(scale(tick, 0.9), scale(thud, 1.5 * weight), scale(body, 0.75 * weight), scale(block, 0.32))
+
+
+def padlock_clunk(rng, rate):
+    """The shackle dropping home: the latch snapping, a heavy brass hit, a small bounce and a ring."""
+    n = seconds(0.6, rate)
+    track = [0.0] * n
+    latch = mix(
+        mul(bandpass(noise(n, rng), 4200, 5.0, rate), env_exp(n, rate, 0.0015, 0.0002)),
+        scale(damped_sine(n, rate, 4200, 0.004), 0.3),
+    )
+    place(track, scale(latch, 0.35), 0)
+    place(track, brass_impact(rng, rate, n, 1.0), seconds(0.006, rate))
+    # The body bounces once on the shackle and lands again, lighter.
+    place(track, scale(brass_impact(rng, rate, n, 0.5), 0.34), seconds(0.044, rate))
+    # The hardened steel shackle sings on after the brass has stopped.
+    place(track, scale(modes(n, rate, [(2213, 0.2, 0.34), (6094, 0.07, 0.18), (11950, 0.02, 0.06)]), 0.55), seconds(0.006, rate))
+    return fade(normalise(track), rate, 0.0002, 0.06)
+
+
+def padlock_pop(rng, rate):
+    """The shackle springing open: the latch letting go, and the spring's short twang."""
+    n = seconds(0.24, rate)
+    release = mix(
+        mul(bandpass(noise(n, rng), 3200, 5.0, rate), env_exp(n, rate, 0.0016, 0.0002)),
+        scale(damped_sine(n, rate, 3200, 0.005), 0.35),
+    )
+    twang = mix(chirp(n, rate, 640, 420, 0.09, 0.05), scale(chirp(n, rate, 1920, 1260, 0.09, 0.03), 0.18))
+    coil = mul(damped_sine(n, rate, 180, 0.04), [0.5 + 0.5 * math.sin(2 * math.pi * 31 * i / rate) for i in range(n)])
+    ring = damped_sine(n, rate, 2213, 0.08)
+    track = mix(scale(release, 1.0), scale(twang, 0.45), scale(coil, 0.25), scale(ring, 0.12))
+    return fade(normalise(track, 0.7), rate, 0.0002, 0.03)
+
+
+def padlock_rattle(rng, rate):
+    """A loose shackle knocking in its holes: three small metal ticks, each quieter."""
+    n = seconds(0.1, rate)
+    track = [0.0] * n
+    for at, freq, gain in [(0.0, 3400, 1.0), (0.024, 2900, 0.7), (0.052, 3700, 0.45)]:
+        tick = mix(
+            mul(bandpass(noise(n, rng), freq, 7.0, rate), env_exp(n, rate, 0.004, 0.0002)),
+            scale(damped_sine(n, rate, freq * 0.65, 0.008), 0.4),
+        )
+        place(track, scale(tick, gain), seconds(at, rate))
+    return fade(normalise(track, 0.5), rate, 0.0002, 0.01)
+
+
+def padlock_swing(rng, rate):
+    """The keyhole cover turning on its rivet: a soft brass scrape that ends in a small tick."""
+    n = seconds(0.17, rate)
+    track = [0.0] * n
+    w = seconds(0.075, rate)
+    swell = [math.sin(math.pi * i / w) if i < w else 0.0 for i in range(n)]
+    scrape = mul(bandpass(noise(n, rng), 1900, 3.0, rate), swell)
+    place(track, scale(scrape, 0.5), 0)
+    stop = mix(
+        mul(bandpass(noise(n, rng), 2600, 6.0, rate), env_exp(n, rate, 0.003, 0.0002)),
+        scale(damped_sine(n, rate, 1300, 0.03), 0.25),
+    )
+    place(track, stop, w)
+    return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
 def main():
@@ -554,6 +639,11 @@ def main():
     write("door_creak", door_creak(tin, fast), fast)
     write("envelope_slip", envelope_slip(tin, fast), fast)
     write("mail_tick", mail_tick(fast), fast)
+    lock = random.Random(1021)
+    write("padlock_clunk", padlock_clunk(lock, fast), fast)
+    write("padlock_pop", padlock_pop(lock, fast), fast)
+    write("padlock_rattle", padlock_rattle(lock, fast), fast)
+    write("padlock_swing", padlock_swing(lock, fast), fast)
 
 
 if __name__ == "__main__":
