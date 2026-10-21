@@ -32,7 +32,12 @@ internal enum class Sound(val file: String) {
     BagTip("bag_tip"),
     StickerPeel("sticker_peel"),
     StickerPress("sticker_press"),
-    StickerSettle("sticker_settle");
+    StickerSettle("sticker_settle"),
+    TinTunk("tin_tunk"),
+    FlagTwang("flag_twang"),
+    DoorCreak("door_creak"),
+    EnvelopeSlip("envelope_slip"),
+    MailTick("mail_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

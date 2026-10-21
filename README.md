@@ -39,6 +39,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf) | `bookshelf` | `bookshelf.reading` | A reading list on real shelves: books on a ring that spins and on oak planks; tip one out by its spine and it opens at your bookmark, its pages turning like paper |
 | [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag) | `paperbag` | `paperbag.cart` | A cart icon that is a kraft grocery bag: things hop in on an arc, poke out of the top and fill it out, the count is rewritten in grease pencil, and the bag tips open over what is in it |
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
+| [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -62,6 +63,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Bookshelf](#bookshelf-corepresentationcomponentsbookshelf)
 - [Paper bag cart](#paper-bag-cart-corepresentationcomponentspaperbag)
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
+- [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -652,6 +654,29 @@ StarStickerRating(
     labelColor = muted,
     labelSetColor = accent,
 )
+```
+
+## Mailbox badge (`core/presentation/components/mailbox/`)
+
+![](docs/media/mailbox.badge.gif)
+
+An inbox button in a top bar that is a little tin rural mailbox on its post, seen from the front left. When mail comes, the door cracks open, an envelope slips in and the door claps shut, and the red flag swings up on its spring with the unread count painted on it. More mail while it is up jiggles the flag and bumps the number. Tap the mailbox, or pull down on it past halfway, and the door drops open on the letters inside as the inbox slides in. Read everything and the flag comes down by itself.
+
+- **One canvas.** The galvanized body, its two pressed ribs and the sun's glint along its top, the arched door on its bottom hinge, the dark inside, airmail envelopes and the flag are all drawn in one `Canvas` through the shared `canvas2d` port of the prototype's drawing. The dark theme draws the tin and the post at dusk.
+- **A flag that reads at icon size.** The flag pivots low on the box's side. Down, it lies along the side; up, it stands clear of the box, and its plate and number are sized so the count reads at icon size.
+- **Springs, not tweens.** The flag rises on a bouncy spring and comes down on a slow, fully damped one. The door swings on a hinge spring with a stop at each end. Everything steps at 240 Hz in simulated time, and the frame loop sleeps once nothing moves.
+- **Feel and sound.** Synthesized tin sounds play for the door clapping shut and the flag landing, along with a spring twang, a hinge creak, a paper slip and a tick for the count. A light haptic tick marks the flag going up.
+- **Screen readers.** The mailbox is a button labelled "Inbox, 2 unread" (or "no unread messages"), and new mail is announced.
+- **Reduced motion.** The flag and the door snap to where they are going, and nothing flies.
+
+The demo, `mailbox.badge`, is an invented neighborhood app for Elm Street: a morning feed of porch swaps and lost helmets, and an inbox of neighbors' mail.
+
+```kotlin
+val box = remember { MailboxState() }
+Mailbox(box, unread = inbox.unread, letters = inbox.size, contentDescription = label, dark = isDark,
+    onClick = { box.open { showInbox() } })
+// When a message arrives:
+box.deliver { inbox.add(message) }
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

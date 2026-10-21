@@ -8,6 +8,7 @@ import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.magnetdemo.MagnetDemos
+import dev.dimvlachos.lab.mailboxdemo.MailboxDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
 import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
@@ -45,7 +46,8 @@ internal object Catalog {
                     CardFileDemos.all +
                     BookshelfDemos.all +
                     PaperBagDemos.all +
-                    StickerDemos.all)
+                    StickerDemos.all +
+                    MailboxDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
