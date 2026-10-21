@@ -33,6 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
@@ -285,7 +286,10 @@ private fun TopBar(
     targets: Targets,
     mailbox: @Composable () -> Unit,
 ) {
-    val swap by animateFloatAsState(if (inbox) 1f else 0f, tween(SwapMs))
+    val swap = animateFloatAsState(if (inbox) 1f else 0f, tween(SwapMs))
+    // The swap is read where it is drawn; composition only hears when the back button comes or
+    // goes.
+    val showBack by remember { derivedStateOf { swap.value > 0f } }
     Row(
         Modifier.fillMaxWidth()
             .height(BarHeight)
@@ -298,7 +302,7 @@ private fun TopBar(
             Box(
                 Modifier.padding(6.dp)
                     .size(32.dp)
-                    .alpha(1f - swap)
+                    .graphicsLayer { alpha = 1f - swap.value }
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
@@ -310,11 +314,11 @@ private fun TopBar(
             ) {
                 BasicText("M", style = AvatarStyle.copy(color = MailboxFaces.initials))
             }
-            if (inbox || swap > 0f) {
+            if (inbox || showBack) {
                 val backLabel = stringResource(Res.string.mailbox_back)
                 Canvas(
                     Modifier.size(44.dp)
-                        .alpha(swap)
+                        .graphicsLayer { alpha = swap.value }
                         .clip(CircleShape)
                         .onGloballyPositioned { targets[BackTarget] = it }
                         .then(
