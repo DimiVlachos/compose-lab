@@ -132,4 +132,14 @@ class PadlockStateTest {
         s.run(6f)
         assertTrue(s.settled, "rattle ${s.rattle} lift ${s.lift} swing ${s.swing}")
     }
+
+    @Test
+    fun reducedMotionTurnedOnMidSwingLetsTheFrameLoopSleep() {
+        val s = lock()
+        s.onText(StrengthLevel.Good)
+        s.run(.1f)
+        s.reducedMotion = true
+        s.step(1f / 60f)
+        assertTrue(s.settled)
+    }
 }

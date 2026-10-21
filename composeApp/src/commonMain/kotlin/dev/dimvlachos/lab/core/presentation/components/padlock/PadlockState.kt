@@ -167,6 +167,14 @@ internal class PadlockState(private val random: Random = Random.Default) {
         steel = Steel[lv]
         cover = if (peek) 1f else 0f
         rattle = 0f
+        bounce = 0f
+        // Nothing is left moving, so a frame loop caught mid-swing can go back to sleep.
+        liftV = 0f
+        swingV = 0f
+        steelV = 0f
+        rattleV = 0f
+        bounceV = 0f
+        coverV = 0f
         frame++
     }
 
