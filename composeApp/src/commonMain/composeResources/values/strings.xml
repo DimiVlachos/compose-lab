@@ -323,4 +323,20 @@
     <string name="bookshelf_next_page">Next page</string>
     <string name="bookshelf_previous_page">Previous page</string>
     <string name="bookshelf_open_book_page">%1$s, page %2$d of %3$d</string>
+    <!-- Mailbox badge -->
+    <string name="demo_mailbox">Mailbox badge</string>
+    <string name="demo_mailbox_description">The inbox icon is a tin mailbox: mail slips in and the red flag swings up with the count on it</string>
+    <string name="mailbox_inbox_unread">Inbox, %1$d unread</string>
+    <string name="mailbox_inbox_none">Inbox, no unread messages</string>
+    <string name="mailbox_home_title">Elm Street</string>
+    <string name="mailbox_home_subtitle">Neighbors · 214 homes</string>
+    <string name="mailbox_inbox_title">Inbox</string>
+    <string name="mailbox_unread">%1$d unread</string>
+    <string name="mailbox_no_unread">No unread</string>
+    <string name="mailbox_caught_up">All caught up</string>
+    <string name="mailbox_mark_all_read">Mark all read</string>
+    <string name="mailbox_back">Back to Elm Street</string>
+    <string name="mailbox_new_message">New message from %1$s</string>
+    <string name="mailbox_row_unread">Unread. %1$s, %2$s</string>
+    <string name="mailbox_row">%1$s, %2$s</string>
 </resources>

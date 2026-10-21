@@ -13,6 +13,7 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_magnet_filter
+import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_paper_plane
@@ -51,6 +52,7 @@ class CatalogTest {
                 "snowglobe.weather",
                 "cardfile.contacts",
                 "bookshelf.reading",
+                "mailbox.badge",
             ),
             Catalog.demos.map { it.id },
         )
@@ -71,6 +73,7 @@ class CatalogTest {
                 Res.string.demo_snowglobe,
                 Res.string.demo_cardfile,
                 Res.string.demo_bookshelf,
+                Res.string.demo_mailbox,
             ),
             Catalog.demos.map { it.title },
         )
@@ -141,6 +144,7 @@ class CatalogTest {
                 "snowglobe.weather",
                 "cardfile.contacts",
                 "bookshelf.reading",
+                "mailbox.badge",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
