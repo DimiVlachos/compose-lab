@@ -12,18 +12,25 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +47,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -49,6 +57,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -194,52 +203,65 @@ internal fun StickerDemo(
     ) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(demoInsets(state))) {
             AppBar(colors)
-            Column(Modifier.weight(1f).padding(start = 18.dp, end = 18.dp, top = 4.dp)) {
-                OrderCard(colors)
-                // The prototype left all its spare height under the note; here it is shared above
-                // the question and below the note, so a tall phone doesn't end in a blank band.
-                Spacer(Modifier.heightIn(min = 22.dp).weight(1f))
-                Text(
-                    question,
-                    Modifier.fillMaxWidth().padding(bottom = 2.dp),
-                    color = colors.ink,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    letterSpacing = (-.015 * 19).sp,
-                )
-                Text(
-                    stringResource(Res.string.stickers_order),
-                    Modifier.fillMaxWidth(),
-                    color = colors.muted,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(10.dp))
-                StarStickerRating(
-                    stickers,
-                    label = { n -> if (n == 0) hint else words[n - 1] },
-                    valueText = { n ->
-                        when (n) {
-                            0 -> none
-                            1 -> oneFormat.replace(WordSlot, words[0])
-                            else ->
-                                manyFormat
-                                    .replace(CountSlot, n.toString())
-                                    .replace(WordSlot, words[n - 1])
-                        }
-                    },
-                    description = question,
-                    labelColor = colors.muted,
-                    labelSetColor = colors.accent,
-                    inks = inks,
-                    sounds = sounds,
-                    reducedMotion = reducedMotion,
-                    finger = finger,
-                    hand = hand,
-                )
-                Note(colors)
-                Spacer(Modifier.weight(1f))
+            // The spare height is shared out against the height this part is shown in, and past
+            // that it scrolls: with the keyboard up the note scrolls into view instead of sinking
+            // under Submit and the keyboard. It scrolls only when there is more than fits.
+            val scroll = rememberScrollState()
+            BoxWithConstraints(Modifier.weight(1f)) {
+                val shown = maxHeight
+                Column(
+                    Modifier.fillMaxWidth()
+                        .verticalScroll(scroll, enabled = scroll.maxValue > 0)
+                        .heightIn(min = shown)
+                        .padding(start = 18.dp, end = 18.dp, top = 4.dp),
+                ) {
+                    OrderCard(colors)
+                    // The prototype left all its spare height under the note; here it is shared
+                    // above
+                    // the question and below the note, so a tall phone doesn't end in a blank band.
+                    Spacer(Modifier.heightIn(min = 22.dp).weight(1f))
+                    Text(
+                        question,
+                        Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                        color = colors.ink,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        letterSpacing = (-.015 * 19).sp,
+                    )
+                    Text(
+                        stringResource(Res.string.stickers_order),
+                        Modifier.fillMaxWidth(),
+                        color = colors.muted,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    StarStickerRating(
+                        stickers,
+                        label = { n -> if (n == 0) hint else words[n - 1] },
+                        valueText = { n ->
+                            when (n) {
+                                0 -> none
+                                1 -> oneFormat.replace(WordSlot, words[0])
+                                else ->
+                                    manyFormat
+                                        .replace(CountSlot, n.toString())
+                                        .replace(WordSlot, words[n - 1])
+                            }
+                        },
+                        description = question,
+                        labelColor = colors.muted,
+                        labelSetColor = colors.accent,
+                        inks = inks,
+                        sounds = sounds,
+                        reducedMotion = reducedMotion,
+                        finger = finger,
+                        hand = hand,
+                    )
+                    Note(colors)
+                    Spacer(Modifier.weight(1f))
+                }
             }
             val rated = stickers.target > 0
             Box(Modifier.padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 22.dp)) {
@@ -265,6 +287,7 @@ internal fun StickerDemo(
         AnimatedVisibility(
             thanks > 0,
             Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(demoInsets(state))
                 .padding(start = 16.dp, end = 16.dp, bottom = 92.dp),
             enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { it / 6 },
             exit = fadeOut(tween(250)) + slideOutVertically(tween(250)) { it / 6 },
@@ -413,7 +436,16 @@ private fun TacoAvatar() {
 private fun Note(colors: StarStickerScreenColors) {
     var text by rememberSaveable { mutableStateOf("") }
     val shape = RoundedCornerShape(12.dp)
-    Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // A text field only scrolls its cursor's line into view. Bring the whole note, label and box,
+    // above the keyboard whenever it has focus and the keyboard moves.
+    val whole = remember { BringIntoViewRequester() }
+    var focused by remember { mutableStateOf(false) }
+    val keyboard = WindowInsets.ime.getBottom(LocalDensity.current)
+    LaunchedEffect(focused, keyboard) { if (focused) whole.bringIntoView() }
+    Column(
+        Modifier.bringIntoViewRequester(whole).padding(top = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         Text(
             stringResource(Res.string.stickers_note_label),
             color = colors.muted,
@@ -424,6 +456,8 @@ private fun Note(colors: StarStickerScreenColors) {
             text,
             { text = it },
             Modifier.fillMaxWidth()
+                .testTag("note")
+                .onFocusChanged { focused = it.isFocused }
                 .height(64.dp)
                 .clip(shape)
                 .background(colors.card)

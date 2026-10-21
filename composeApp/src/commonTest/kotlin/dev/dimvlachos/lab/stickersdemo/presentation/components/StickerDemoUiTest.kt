@@ -1,5 +1,8 @@
 package dev.dimvlachos.lab.stickersdemo.presentation.components
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -17,6 +20,7 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.stickers.StarStickerState
 import kotlin.test.Test
@@ -108,5 +112,31 @@ class StickerDemoUiTest {
         mainClock.advanceTimeBy(1_000)
         onNodeWithTag("submit").performClick()
         onNodeWithText("Thanks! Lupita’s Taco Truck will see your 1 star.").assertExists()
+    }
+
+    /**
+     * With the keyboard up the screen is short. The note used to be squeezed out under Submit and
+     * the keyboard; focused, it now scrolls up whole above Submit.
+     */
+    @Test
+    fun aFocusedNoteScrollsAboveSubmitOnAShortScreen() = runComposeUiTest {
+        setContent {
+            Box(Modifier.size(360.dp, 420.dp)) {
+                StickerDemo(DemoState(), StarStickerState(), reducedMotion = true)
+            }
+        }
+        onNodeWithTag("note").requestFocus()
+        waitForIdle()
+        val note = onNodeWithTag("note").fetchSemanticsNode().boundsInRoot
+        val submit = onNodeWithTag("submit").fetchSemanticsNode().boundsInRoot
+        // Squeezed out of a column that can't scroll, the box used to be laid out with no height.
+        // Its text area is the 64 dp box less its 10 dp padding above and below.
+        val full = with(density) { 44.dp.toPx() }
+        assertTrue(note.height >= full - 1f, "note is ${note.height} high, not $full")
+        assertTrue(note.top >= 0f, "note top ${note.top}")
+        assertTrue(
+            note.bottom <= submit.top,
+            "note ends at ${note.bottom}, Submit starts at ${submit.top}",
+        )
     }
 }
