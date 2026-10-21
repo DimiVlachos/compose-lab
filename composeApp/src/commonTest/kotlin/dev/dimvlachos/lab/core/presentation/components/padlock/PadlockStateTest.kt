@@ -10,7 +10,12 @@ import kotlin.test.assertTrue
 class PadlockStateTest {
     private val events = mutableListOf<PadlockEvent>()
 
-    private fun lock() = PadlockState(Random(1)).also { s -> s.onEvent = { e, _ -> events += e } }
+    // Starts at an empty field, as the demo's first look at its text does.
+    private fun lock() =
+        PadlockState(Random(1)).also { s ->
+            s.onText(StrengthLevel.Empty)
+            s.onEvent = { e, _ -> events += e }
+        }
 
     private fun PadlockState.run(seconds: Float) {
         var left = seconds
@@ -74,7 +79,7 @@ class PadlockStateTest {
         s.onText(StrengthLevel.Fair)
         s.onText(StrengthLevel.Good)
         s.onText(StrengthLevel.Good)
-        assertEquals(2, events.count { it == PadlockEvent.Notch })
+        assertEquals(3, events.count { it == PadlockEvent.Notch })
     }
 
     @Test
@@ -141,5 +146,26 @@ class PadlockStateTest {
         s.reducedMotion = true
         s.step(1f / 60f)
         assertTrue(s.settled)
+    }
+
+    @Test
+    fun theFirstLevelIsWhereTheLockStartsWithoutADropOrASound() {
+        val s = PadlockState(Random(1)).also { s -> s.onEvent = { e, _ -> events += e } }
+        s.onText(StrengthLevel.Strong)
+        assertTrue(s.locked)
+        assertTrue(s.settled)
+        s.run(1f)
+        assertEquals(0, s.clunks)
+        assertTrue(events.isEmpty(), "$events")
+    }
+
+    @Test
+    fun reducedMotionStillClunksShut() {
+        val s = lock()
+        s.reducedMotion = true
+        s.onText(StrengthLevel.Good)
+        s.onText(StrengthLevel.Strong)
+        s.onText(StrengthLevel.Strong)
+        assertEquals(1, events.count { it == PadlockEvent.Clunk })
     }
 }

@@ -93,6 +93,14 @@ internal class PadlockState(private val random: Random = Random.Default) {
      */
     fun onText(next: StrengthLevel) {
         wake++
+        if (!started) {
+            // The first level is where the field already stands, as when the screen is made again
+            // with a password in it: the lock starts there, without a drop, a clunk or a rattle.
+            started = true
+            level = next
+            settle()
+            return
+        }
         val prev = level
         level = next
         val strong = next == StrengthLevel.Strong
@@ -108,16 +116,23 @@ internal class PadlockState(private val random: Random = Random.Default) {
                 emit(PadlockEvent.Pop)
             }
         }
-        if (started && prev != next && !sprang && !strong && next != StrengthLevel.Empty) {
+        if (prev != next && !sprang && !strong && next != StrengthLevel.Empty) {
             emit(PadlockEvent.Notch)
         }
-        started = true
         if (next == StrengthLevel.Weak && !reducedMotion) {
             val kick = 1.6f + random.nextFloat() * 1.2f
             rattleV += if (random.nextBoolean()) -kick else kick
             emit(PadlockEvent.Rattle)
         }
-        if (reducedMotion) settle()
+        if (reducedMotion) {
+            val was = locked
+            settle()
+            // Without the drop it still shuts with a clunk, heard and felt.
+            if (locked && !was) {
+                clunks++
+                emit(PadlockEvent.Clunk)
+            }
+        }
     }
 
     /** Shows the password ([on]) or hides it: the keyhole cover swings aside or back. */
