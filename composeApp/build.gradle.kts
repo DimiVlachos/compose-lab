@@ -79,7 +79,7 @@ tasks.named<Test>("jvmTest") {
     filter {
         excludeTestsMatching("*ProfileGalleryUiTest.aCloseDuringTheOpenWaitsForTheMorphToLand")
         excludeTestsMatching(
-            "*MagnetTableUiTest.aJoinedMagnetFlickedHomeGoesAloneAndTheOtherStaysPut"
+            "*MagnetTableUiTest.aJoinedMagnetFlickedHomeGoesAloneAndTheOtherStaysPut",
         )
         excludeTestsMatching("*SnowGlobeUiTest.steadyFramesDoNotRecompose")
     }
