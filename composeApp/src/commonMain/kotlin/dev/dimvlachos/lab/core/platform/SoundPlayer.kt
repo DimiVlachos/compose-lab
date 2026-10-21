@@ -26,7 +26,10 @@ internal enum class Sound(val file: String) {
     BookOpen("book_open"),
     RingTick("ring_tick"),
     PageTurn("page_turn"),
-    PageLand("page_land");
+    PageLand("page_land"),
+    StickerPeel("sticker_peel"),
+    StickerPress("sticker_press"),
+    StickerSettle("sticker_settle");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
