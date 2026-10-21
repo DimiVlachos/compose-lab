@@ -596,6 +596,8 @@ ReadingShelf(content, shelf, chapterFor = { id -> chapters[id] }, style = ShelfS
 
 ## Padlock (`core/presentation/components/padlock/`)
 
+![](docs/media/padlock.password.gif)
+
 A sign-up step where the password's strength meter is a solid brass padlock under a warm lamp. An empty or weak password leaves the shackle up and swung half a turn open, standing clear of the body, and each weak keystroke knocks it about in its holes. As the password gets stronger the body fills out, the shackle swings into line, lowers notch by notch and turns from soft brass to hardened steel; at strong it drops home under its own weight with a clunk, a small bounce and a glint across the brass. Erase a few characters and it springs back open. Tap the lock to show the password: the keyhole cover swings aside on its rivet and warm light shows through.
 
 - **Drawn as the prototype draws it.** The lock is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: the shackle is one U path stroked six times, each narrower and nudged toward the light, so it reads as a round bar; brass and steel are two colour ramps blended by one value; the body has a brushed grain baked once from a fixed seed, a debossed maker's stamp and a bevel.
