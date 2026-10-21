@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -46,13 +45,17 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -214,7 +217,7 @@ internal fun PadlockDemo(
             Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 22.dp)
                 .fillMaxWidth()
                 .heightIn(min = 50.dp)
-                .alpha(alpha)
+                .graphicsLayer { this.alpha = alpha }
                 .clip(RoundedCornerShape(14.dp))
                 .background(colors.ink)
                 .clickable(enabled = enabled, role = Role.Button) {}
@@ -376,7 +379,7 @@ private fun Form(
         Modifier.padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        FieldCard(colors.card, colors.line, Color.Transparent) {
+        FieldCard(colors.card, { colors.line }, { Color.Transparent }) {
             Label(stringResource(Res.string.padlock_email), colors)
             Text(
                 stringResource(Res.string.padlock_email_value),
@@ -388,7 +391,7 @@ private fun Form(
             )
         }
         val label = stringResource(Res.string.padlock_password)
-        FieldCard(colors.card, edge, ring) {
+        FieldCard(colors.card, { edge }, { ring }) {
             Label(label, colors)
             BasicSecureTextField(
                 state = field,
@@ -427,21 +430,45 @@ private fun Form(
     }
 }
 
-/** A field's card: its hairline [edge], and a soft [ring] round it while it has focus. */
+/**
+ * A field's card: its hairline [edge], and a soft [ring] spread 3 dp round it while it has focus,
+ * as the prototype's box-shadow. Both are read as they are drawn, so their fades only redraw.
+ */
 @Composable
-private fun FieldCard(fill: Color, edge: Color, ring: Color, content: @Composable () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
-    Box(Modifier.border(3.dp, ring, RoundedCornerShape(17.dp))) {
-        Column(
-            Modifier.fillMaxWidth()
-                .clip(shape)
-                .background(fill)
-                .border(1.dp, edge, shape)
-                .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            content()
-        }
+private fun FieldCard(
+    fill: Color,
+    edge: () -> Color,
+    ring: () -> Color,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .drawBehind {
+                val spread = 3.dp.toPx()
+                drawRoundRect(
+                    ring(),
+                    Offset(-spread, -spread),
+                    Size(size.width + spread * 2f, size.height + spread * 2f),
+                    CornerRadius(14.dp.toPx() + spread),
+                )
+            }
+            .clip(RoundedCornerShape(14.dp))
+            .background(fill)
+            .drawWithContent {
+                drawContent()
+                val w = 1.dp.toPx()
+                drawRoundRect(
+                    edge(),
+                    Offset(w / 2f, w / 2f),
+                    Size(size.width - w, size.height - w),
+                    CornerRadius(14.dp.toPx() - w / 2f),
+                    style = Stroke(w),
+                )
+            }
+            .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        content()
     }
 }
 
