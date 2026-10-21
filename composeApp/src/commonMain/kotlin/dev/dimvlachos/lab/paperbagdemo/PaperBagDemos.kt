@@ -36,7 +36,7 @@ internal object PaperBagDemos {
         at(7.95.seconds, lasts = Tap) { tapControl(RemovePrefix + "apples") }
         at(10.05.seconds, lasts = Tap) { tapControl(Done) }
         at(11.6.seconds, lasts = Tap) { tapControl(Bag) }
-        at(13.2.seconds, lasts = 3600.milliseconds) { tapControl(CheckOut) }
+        at(13.2.seconds, lasts = 4400.milliseconds) { tapControl(CheckOut) }
     }
 
     val all =

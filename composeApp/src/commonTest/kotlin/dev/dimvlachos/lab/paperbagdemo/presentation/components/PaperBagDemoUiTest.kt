@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,6 +40,7 @@ import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.presentation.components.paperbag.PaperBagState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.paperbagdemo.GroceryCart
+import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -246,6 +248,38 @@ class PaperBagDemoUiTest {
         assertEquals(0, cart.count)
         assertTrue(!bag.isOpen && !bag.checkingOut)
         bagSays("Bag, empty")
+    }
+
+    @Test
+    fun theScriptsCheckOutReturnsOnlyOnceTheBagIsBackEmptyInTheCorner() = runComposeUiTest {
+        val state = DemoState()
+        var go by mutableStateOf(false)
+        var returnedOpen = Float.NaN
+        var returnedCount = -1
+        setContent {
+            LabTheme {
+                Box(Modifier.size(360.dp, 744.dp)) {
+                    PaperBagDemo(state, cart, bag, reducedMotion = false)
+                }
+            }
+            LaunchedEffect(go) {
+                if (!go) return@LaunchedEffect
+                state.tapControl(PaperBagDemos.CheckOut)
+                returnedOpen = bag.open
+                returnedCount = cart.count
+            }
+        }
+        add("bread")
+        add("flowers")
+        waitForIdle()
+        onNodeWithTag("bag").performClick()
+        waitForIdle()
+        go = true
+        waitUntil(timeoutMillis = 10_000) { returnedCount >= 0 }
+        // A recording plays the script twice in a row, so its end must be its start.
+        assertEquals(0, returnedCount, "emptied before the script goes on")
+        assertTrue(returnedOpen < .01f, "closed in the corner, not $returnedOpen open")
+        assertTrue(!bag.isOpen && !bag.checkingOut)
     }
 
     @Test

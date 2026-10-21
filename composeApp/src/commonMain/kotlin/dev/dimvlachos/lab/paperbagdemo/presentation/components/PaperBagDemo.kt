@@ -457,7 +457,17 @@ internal fun PaperBagDemo(
                     if (entry != null) fingerTap("rm-${entry.key}") { remove(entry) }
                 }
                 control == PaperBagDemos.Done -> fingerTap("done") { closeBag() }
-                control == PaperBagDemos.CheckOut -> fingerTap("check-out") { checkOut() }
+                control == PaperBagDemos.CheckOut -> {
+                    fingerTap("check-out") { checkOut() }
+                    // A recording plays the script twice in a row, so the tap returns only once
+                    // the order is placed and the bag is back empty and still in the corner.
+                    checkoutJob?.join()
+                    snapshotFlow {
+                        bag.frame
+                        !bag.isOpen && bag.open < .01f && !bag.moving
+                    }
+                        .first { it }
+                }
             }
         }
         state.setFeedResetHandler { emptyBag() }
