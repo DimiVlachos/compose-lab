@@ -1,14 +1,20 @@
 package dev.dimvlachos.lab.paperbagdemo.presentation.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
@@ -27,7 +33,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.demo.DemoOverlay
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.presentation.components.paperbag.PaperBagState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.paperbagdemo.GroceryCart
@@ -112,6 +120,43 @@ class PaperBagDemoUiTest {
         onNodeWithTag("done").performClick()
         waitForIdle()
         assertTrue(!bag.isOpen && bag.open == 0f)
+    }
+
+    @Test
+    fun aFlightArcsOverTheScreensBarNotBehindIt() = runComposeUiTest {
+        // As the demo screen lays it out: a bar, the stage clipped under it, and the overlay over
+        // both.
+        val overlay = DemoOverlay()
+        setContent {
+            LabTheme {
+                Box(Modifier.size(360.dp, 804.dp).testTag("screen")) {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.fillMaxWidth().height(60.dp).background(Color.Red))
+                        Box(Modifier.fillMaxWidth().weight(1f).clipToBounds()) {
+                            CompositionLocalProvider(LocalDemoOverlay provides overlay) {
+                                PaperBagDemo(DemoState(), cart, bag, reducedMotion = false)
+                            }
+                        }
+                    }
+                    overlay.Layer()
+                }
+            }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        add("bread")
+        // Halfway, the baguette is at the top of its arc, above the stage.
+        mainClock.advanceTimeBy(280)
+        val pixels = onNodeWithTag("screen").captureToImage().toPixelMap()
+        var covered = 0
+        with(density) {
+            for (x in 0 until pixels.width step 2) for (y in 0 until 60.dp.toPx().toInt() step 2) {
+                val c = pixels[x, y]
+                if (!(c.red > .9f && c.green < .1f && c.blue < .1f)) covered++
+            }
+        }
+        mainClock.autoAdvance = true
+        assertTrue(covered > 20, "the baguette is drawn over the bar ($covered px)")
     }
 
     @Test

@@ -89,6 +89,7 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.rememberReducedMotion
@@ -552,7 +553,17 @@ internal fun PaperBagDemo(
             }
         }
 
-        // The bag, wherever it is between the corner and the sheet, and what is flying to it.
+        // The arc of a flight rises past the top of the stage, which clips under the screen's
+        // bar: it is drawn over the whole screen, the bar included, where there is a screen.
+        val overlay = LocalDemoOverlay.current
+        if (overlay != null) {
+            DisposableEffect(overlay) {
+                overlay.show({ root }) { drawFlights() }
+                onDispose { overlay.clear() }
+            }
+        }
+
+        // The bag, wherever it is between the corner and the sheet.
         Canvas(Modifier.fillMaxSize()) {
             bag.frame
             val g = Canvas2D(drawContext.canvas, size.width.toInt(), size.height.toInt())
@@ -562,7 +573,7 @@ internal fun PaperBagDemo(
                 val items = cart.entries.map { BagItem(it.product.art, it.slot, bag.rise(it.key)) }
                 drawBag(g, at.x, at.y, at.s, bag.pose(items), ink, dark, density)
             }
-            drawFlights()
+            if (overlay == null) drawFlights()
             if (finger.shown > 0f) {
                 val k = if (finger.down) .82f else 1f
                 scale(k, k, pivot = finger.at) { drawTouch(touch, finger.at, finger.shown) }
