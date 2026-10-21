@@ -151,9 +151,11 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         var globalAlpha: Float,
         var composite: String,
         var lineCap: String,
+        var lineJoin: String,
         var filterBlur: Float,
         var shadowColor: Color,
         var shadowBlur: Float,
+        var shadowOffsetX: Float,
         var shadowOffsetY: Float,
         var imageShade: Color,
     ) {
@@ -166,9 +168,11 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 globalAlpha,
                 composite,
                 lineCap,
+                lineJoin,
                 filterBlur,
                 shadowColor,
                 shadowBlur,
+                shadowOffsetX,
                 shadowOffsetY,
                 imageShade,
             )
@@ -183,8 +187,10 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             1f,
             "source-over",
             "butt",
+            "miter",
             0f,
             Color.Transparent,
+            0f,
             0f,
             0f,
             Color.Transparent,
@@ -229,6 +235,13 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             state.lineCap = value
         }
 
+    /** `miter`, `round` or `bevel`. */
+    var lineJoin: String
+        get() = state.lineJoin
+        set(value) {
+            state.lineJoin = value
+        }
+
     /** `blur(Npx)` or `none`, as the prototype sets it. */
     var filter: String = "none"
         set(value) {
@@ -249,6 +262,12 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         get() = state.shadowBlur
         set(value) {
             state.shadowBlur = value
+        }
+
+    var shadowOffsetX: Float
+        get() = state.shadowOffsetX
+        set(value) {
+            state.shadowOffsetX = value
         }
 
     var shadowOffsetY: Float
@@ -441,7 +460,12 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
                 "square" -> StrokeCap.Square
                 else -> StrokeCap.Butt
             }
-        paint.strokeJoin = StrokeJoin.Miter
+        paint.strokeJoin =
+            when (state.lineJoin) {
+                "round" -> StrokeJoin.Round
+                "bevel" -> StrokeJoin.Bevel
+                else -> StrokeJoin.Miter
+            }
         paint.blendMode =
             when (state.composite) {
                 "lighter" -> BlendMode.Plus
@@ -495,7 +519,7 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         val shadow = styled(state.shadowColor, fill)
         shadow.setBlur(state.shadowBlur / 2f * scaleOf())
         canvas.save()
-        canvas.translate(0f, state.shadowOffsetY)
+        canvas.translate(state.shadowOffsetX, state.shadowOffsetY)
         canvas.concat(state.matrix)
         canvas.drawPath(p, shadow)
         canvas.restore()
