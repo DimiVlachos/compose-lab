@@ -303,6 +303,83 @@ def ring_tick(rng, rate):
     return fade(normalise(click, 0.45), rate, 0.0002, 0.005)
 
 
+# ---------- Mailbox ----------
+
+def tin_ring(n, rate, f0, decay, detune=2.5):
+    """A thin galvanized panel ringing: inharmonic plate modes, each a close pair that beats."""
+    modes = [(1.0, 1.0, 1.0), (1.59, 0.62, 0.8), (2.14, 0.45, 0.62), (2.65, 0.3, 0.5), (3.48, 0.2, 0.36), (4.91, 0.1, 0.24)]
+    out = []
+    for r, a, d in modes:
+        f = f0 * r
+        out.append(scale(damped_sine(n, rate, f, decay * d), a * 0.6))
+        out.append(scale(damped_sine(n, rate, f + detune * r, decay * d, 1.3), a * 0.4))
+    return mix(*out)
+
+
+def tin_tunk(rng, rate):
+    """The mailbox's door or flag landing on tin: a dull knock, then the box rings and beats briefly."""
+    n = seconds(0.7, rate)
+    knock = mul(bandpass(noise(n, rng), 1100, 1.6, rate), env_exp(n, rate, 0.012, 0.0006))
+    thump = damped_sine(n, rate, 170, 0.035)
+    ring = tin_ring(n, rate, 560, 0.22)
+    rattle = mul(highpass(noise(n, rng), 3500, rate), env_exp(n, rate, 0.03, 0.002))
+    return fade(normalise(mix(scale(knock, 1.2), scale(thump, 0.7), scale(ring, 0.55), scale(rattle, 0.12)), 0.8), rate, 0.0003, 0.06)
+
+
+def flag_twang(rng, rate):
+    """The flag swinging up: its spring-steel arm twangs with a wobble, over a light knock on the stop."""
+    n = seconds(0.62, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate
+        glide = 330 * (400 / 330) ** (t / 0.06) if t < 0.06 else 400 * (350 / 400) ** min(1.0, (t - 0.06) / 0.34)
+        f = glide + 18 * math.sin(2 * math.pi * 15 * t)
+        phase += 2 * math.pi * f / rate
+        tone = math.sin(phase) + 0.35 * math.sin(2 * phase + 0.4) + 0.12 * math.sin(3 * phase)
+        out.append(tone * min(1.0, t / 0.004) * math.exp(-t / 0.16))
+    ping = scale(damped_sine(n, rate, 1760, 0.06), 0.25)
+    knock = mul(bandpass(noise(n, rng), 1300, 2.0, rate), env_exp(n, rate, 0.01, 0.0005))
+    ring = tin_ring(n, rate, 610, 0.12)
+    return fade(normalise(mix(scale(out, 0.55), ping, scale(knock, 0.6), scale(ring, 0.25)), 0.7), rate, 0.0003, 0.05)
+
+
+def door_creak(rng, rate):
+    """The door swinging down on its hinge: stick-slip pulses quickening through the hinge's resonances."""
+    n = seconds(0.36, rate)
+    pulses, t = [0.0] * n, 0.0
+    while True:
+        p = t / 0.36
+        hz = 38 + 110 * p * p
+        t += (1 / hz) * rng.uniform(0.82, 1.18)
+        i = int(t * rate)
+        if i >= n:
+            break
+        pulses[i] = rng.uniform(0.6, 1.0)
+    body = mix(scale(bandpass(pulses, 880, 9.0, rate), 1.0), scale(bandpass(pulses, 2150, 7.0, rate), 0.55), scale(bandpass(pulses, 430, 5.0, rate), 0.4))
+    swell = [math.sin(math.pi * min(1.0, i / n)) ** 0.7 for i in range(n)]
+    air = mul(bandpass(noise(n, rng), 1500, 1.2, rate), [s * 0.04 for s in swell])
+    return fade(normalise(mix(mul(body, swell), air), 0.45), rate, 0.004, 0.04)
+
+
+def envelope_slip(rng, rate):
+    """An envelope sliding in over tin: dry paper hiss that swells and stops with a soft pat."""
+    n = seconds(0.26, rate)
+    hiss = highpass(bandpass(noise(n, rng), 3200, 0.8, rate), 1800, rate)
+    swell = [math.sin(math.pi * i / (0.85 * n)) ** 1.5 if i < 0.85 * n else 0.0 for i in range(n)]
+    grain = [1.0 + 0.5 * math.sin(2 * math.pi * 47 * i / rate) for i in range(n)]
+    pat = [0.0] * n
+    m = seconds(0.04, rate)
+    place(pat, mul(lowpass(noise(m, rng), 1400, rate), env_exp(m, rate, 0.007, 0.0008)), seconds(0.215, rate))
+    return fade(normalise(mix(mul(mul(hiss, swell), grain), scale(pat, 1.6)), 0.4), rate, 0.004, 0.02)
+
+
+def mail_tick(rate):
+    """The count on the flag ticking: a small bright tick off the tin."""
+    n = seconds(0.07, rate)
+    tick = mix(damped_sine(n, rate, 2350, 0.012), scale(damped_sine(n, rate, 3870, 0.007), 0.5), scale(damped_sine(n, rate, 1180, 0.02), 0.3))
+    return fade(normalise(tick, 0.35), rate, 0.0003, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -332,6 +409,12 @@ def main():
     leaf = random.Random(1019)
     write("page_turn", page_turn(leaf, fast), fast)
     write("page_land", page_land(leaf, fast), fast)
+    tin = random.Random(1021)
+    write("tin_tunk", tin_tunk(tin, fast), fast)
+    write("flag_twang", flag_twang(tin, fast), fast)
+    write("door_creak", door_creak(tin, fast), fast)
+    write("envelope_slip", envelope_slip(tin, fast), fast)
+    write("mail_tick", mail_tick(fast), fast)
 
 
 if __name__ == "__main__":

@@ -26,7 +26,12 @@ internal enum class Sound(val file: String) {
     BookOpen("book_open"),
     RingTick("ring_tick"),
     PageTurn("page_turn"),
-    PageLand("page_land");
+    PageLand("page_land"),
+    TinTunk("tin_tunk"),
+    FlagTwang("flag_twang"),
+    DoorCreak("door_creak"),
+    EnvelopeSlip("envelope_slip"),
+    MailTick("mail_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
