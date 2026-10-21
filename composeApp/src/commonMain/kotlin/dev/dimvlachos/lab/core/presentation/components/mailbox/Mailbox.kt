@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -59,6 +61,8 @@ internal fun Mailbox(
     sounds: SoundPlayer = rememberSoundPlayer(MailboxSounds),
 ) {
     val haptics = LocalHapticFeedback.current
+    // The gesture outlives a recomposition, so it calls the latest onClick, not the first.
+    val currentOnClick by rememberUpdatedState(onClick)
     SideEffect {
         state.cue = { cue, volume ->
             when (cue) {
@@ -110,7 +114,7 @@ internal fun Mailbox(
                             state.dragDoor(dy)
                         }
                         if (!change.pressed) {
-                            if (moved && state.releaseDoor()) onClick()
+                            if (moved && state.releaseDoor()) currentOnClick()
                             break
                         }
                     }
