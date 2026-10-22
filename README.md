@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,24 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Key hook sign-out (`core/presentation/components/keyhook/`)
+
+A family streaming app's account switcher as the key rack by the front door. Everyone's keys hang on their own brass hook on a walnut board under a name plate, and whoever is signed in has their set clipped to the D-ring under the account card. Pick that set up and drop it anywhere on the rack: it flies to its owner's hook, catches with a clack and swings, and the app asks who's home. Take someone else's set off its hook and carry it up toward the card: the keys hang from your finger and swing as you move, and let go above the rack, they clip on and that person's shows load below. Take a set while someone else's keys are on the card and the old set flies home to its own hook. A tap toggles a set without dragging.
+
+- **Drawn as the prototype draws it.** The rack is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: the walnut grain is baked once per size from a fixed seed; hooks and the D-ring are one path stroked in five passes so they read as round brass rod; the ring is drawn over the hook and the hook's front curl again over the ring, so the keys look threaded on.
+- **Pendulums, not animations.** Each set's anchor follows the finger, or flies an arc home, on a stiff spring; the ring is a pendulum swung by its anchor's acceleration and each key a shorter pendulum loosely tied to it, stepped in fixed 1/240 s substeps. A set never drops when picked up, a dragged set stays inside the rack, and the frame loop sleeps once everything hangs still.
+- **Feel and sound.** A tick as a set is picked up and a confirm as it lands; synthesized key tinks whenever the keys knock together, a clack on landing and a small scrape on pickup.
+- **Screen readers and keys.** Each set is a button where it hangs ("Sign in as Ava Miller", "Sign out Jordan Miller"); a polite live region says who is signed in, and the greeting and account card say it in plain text, so the keys are never the only cue.
+- **Reduced motion.** Sets go home at once, every key resting at the angle the pendulums settle at.
+
+The demo, `keyhook.signout`, is the home screen of an invented streaming app for the Miller household. Its script hangs Jordan's keys on his hook, carries Ava's up to the card so she is signed in, and puts the rack back as it began.
+
+```kotlin
+val rack = remember { KeyRackState(household) }
+KeyRack(rack, labels, sounds, Modifier.fillMaxSize())
+// rack.signedIn changes once a set lands on the card, or the one there lands back on its hook.
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -836,6 +856,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+
+The key rack's hooks share one board, which suits about four people, each with two or three things on their ring: keys, a fob, a leather tag or a bobber. It fills its space, with the account card's 62 dp at its top, and its keys grow with the height it is given. Who is signed in is not saved, and the rack is not mirrored for right-to-left.
 
 ## Contributing
 
