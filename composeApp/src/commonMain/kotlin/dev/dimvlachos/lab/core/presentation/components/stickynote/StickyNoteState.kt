@@ -226,7 +226,8 @@ internal class StickyNoteState(
             r.ty = slotY(i)
             r.y = r.ty
         }
-        changed()
+        // What lists the notes and pads places them by the layout, so it is a change to the list.
+        listChanged()
     }
 
     // ---- Pads ----
@@ -337,6 +338,17 @@ internal class StickyNoteState(
         snooze.bump = 0f
         listChanged()
     }
+
+    /**
+     * Whether every note is back in the list in its place, the pads empty and nothing in the air.
+     */
+    val asBegun: Boolean
+        get() =
+            flights.isEmpty() &&
+                archive.stack.isEmpty() &&
+                snooze.stack.isEmpty() &&
+                rows.size == items.size &&
+                rows.indices.all { rows[it].item === items[it] }
 
     /** Whether nothing moves: the frame loop can sleep. */
     val settled: Boolean

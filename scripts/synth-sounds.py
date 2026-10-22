@@ -596,6 +596,68 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Sticky notes ----------
+
+def web_ramp(n, rate, dur, attack=0.004):
+    """WebAudio's envelope: a linear rise over attack, then an exponential fall to 1e-4 at dur."""
+    a = max(1, seconds(attack, rate)) if attack > 0 else 0
+    d = max(a + 1, seconds(dur, rate))
+    k = math.log(1e-4) / (d - a)
+    return [(i / a) if i < a else (math.exp(k * (i - a)) if i < d else 0.0) for i in range(n)]
+
+
+def note_grain(rng, rate):
+    """One crackle of paper coming away from its glue: a short band of noise, and now and then a
+    tiny bright tick after it."""
+    n = seconds(0.03, rate)
+    grain = mul(bandpass(noise(n, rng), 3200, 1.4, rate), web_ramp(n, rate, 0.022))
+    tick = [0.0] * n
+    m = seconds(0.008, rate)
+    place(tick, scale(mul(highpass(noise(m, rng), 5000, rate), web_ramp(m, rate, 0.008, 0.001)), 0.35), seconds(0.01, rate))
+    return fade(normalise(mix(grain, tick), 0.36), rate, 0.0005, 0.004)
+
+
+def note_tick(rate):
+    """The pull crossing the line where letting go takes the note off: a small 1.9 kHz tick."""
+    n = seconds(0.04, rate)
+    tone = [math.sin(2 * math.pi * 1900 * i / rate) for i in range(n)]
+    return fade(normalise(mul(tone, web_ramp(n, rate, 0.03, 0)), 0.1), rate, 0.0005, 0.005)
+
+
+def note_rip(rng, rate):
+    """The note coming off its glue: six quick grains of tearing paper, 18 ms apart."""
+    n = seconds(0.14, rate)
+    track = [0.0] * n
+    for i in range(6):
+        d = rng.uniform(0.015, 0.03)
+        m = seconds(d + 0.002, rate)
+        grain = mul(bandpass(noise(m, rng), rng.uniform(2500, 5000), 1.2, rate), web_ramp(m, rate, d))
+        place(track, grain, seconds(i * 0.018, rate))
+    return fade(normalise(track, 0.32), rate, 0.0005, 0.01)
+
+
+def note_stick(rng, rate):
+    """The note pressed onto a pad: a soft low thud and a short drop from 150 to 70 Hz."""
+    n = seconds(0.12, rate)
+    thud = mul(lowpass(noise(n, rng), 420, rate), web_ramp(n, rate, 0.09))
+    body = mul(chirp(n, rate, 150, 70, 0.08, 10.0), web_ramp(n, rate, 0.1, 0))
+    return fade(normalise(mix(scale(thud, 0.35), scale(body, 0.12)), 0.8), rate, 0.0005, 0.01)
+
+
+def note_pat(rng, rate):
+    """A note pressed back flat onto the screen: a muffled pat."""
+    n = seconds(0.13, rate)
+    pat = mul(lowpass(noise(n, rng), 700, rate), web_ramp(n, rate, 0.12))
+    return fade(normalise(pat, 0.5), rate, 0.0005, 0.01)
+
+
+def note_lift(rng, rate):
+    """A pad's top note lifting off to go back, or a tapped corner lifting: a light paper flick."""
+    n = seconds(0.055, rate)
+    flick = mul(bandpass(noise(n, rng), 2600, 1.0, rate), web_ramp(n, rate, 0.05))
+    return fade(normalise(flick, 0.24), rate, 0.0005, 0.005)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +706,13 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    note = random.Random(1022)
+    write("note_grain", note_grain(note, fast), fast)
+    write("note_tick", note_tick(fast), fast)
+    write("note_rip", note_rip(note, fast), fast)
+    write("note_stick", note_stick(note, fast), fast)
+    write("note_pat", note_pat(note, fast), fast)
+    write("note_lift", note_lift(note, fast), fast)
 
 
 if __name__ == "__main__":
