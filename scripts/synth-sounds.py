@@ -596,6 +596,78 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Conch ----------
+
+def wa_tone(rate, f0, f1, dur, gain, kind="sine"):
+    """The prototype's WebAudio tone(): an oscillator gliding exponentially from f0 to f1, its gain
+    ramping up from .0001 in 10 ms and exponentially back down to .0001 at dur."""
+    n = seconds(dur + 0.02, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate
+        f = f0 * (f1 / f0) ** min(1.0, t / dur)
+        phase += f / rate
+        x = phase % 1.0
+        w = math.sin(2 * math.pi * x) if kind == "sine" else 4 * abs(x - 0.5) - 1
+        if t < 0.01:
+            g = 0.0001 * (gain / 0.0001) ** (t / 0.01)
+        elif t < dur:
+            g = gain * (0.0001 / gain) ** ((t - 0.01) / (dur - 0.01))
+        else:
+            g = 0.0
+        out.append(w * g)
+    return out
+
+
+def wa_burst(rng, rate, freq, q, dur, gain, kind="bandpass"):
+    """The prototype's burst(): filtered noise whose gain falls exponentially to .0001 over dur."""
+    n = seconds(dur + 0.02, rate)
+    src = noise(n, rng)
+    if kind == "bandpass":
+        f = bandpass(src, freq, q, rate)
+    elif kind == "highpass":
+        f = highpass(src, freq, rate)
+    else:
+        f = lowpass(src, freq, rate)
+    env = [gain * (0.0001 / gain) ** (i / rate / dur) if i / rate < dur else 0.0 for i in range(n)]
+    return mul(f, env)
+
+
+def conch_clips(rng, rate):
+    """The conch's one-shots, as the prototype's snd() plays them, at one shared gain so they keep
+    their loudness against each other."""
+    clips = {
+        "conch_start": mix(wa_tone(rate, 520, 780, 0.14, 0.08), wa_burst(rng, rate, 900, 2, 0.18, 0.05)),
+        "conch_tick": wa_tone(rate, 900, 880, 0.05, 0.05, "triangle"),
+        "conch_untick": wa_tone(rate, 700, 720, 0.05, 0.04, "triangle"),
+        "conch_whoosh": wa_burst(rng, rate, 1400, 0.8, 0.32, 0.09),
+        "conch_clack": mix(wa_burst(rng, rate, 3100, 6, 0.04, 0.2), wa_tone(rate, 1250, 1100, 0.08, 0.06, "triangle")),
+    }
+    sand = [0.0] * seconds(0.4, rate)
+    place(sand, wa_burst(rng, rate, 2400, 0.6, 0.35, 0.08, "highpass"), 0)
+    place(sand, wa_burst(rng, rate, 600, 0.7, 0.25, 0.06, "lowpass"), seconds(0.05, rate))
+    clips["conch_sand"] = sand
+    peak = max(max(abs(x) for x in c) for c in clips.values())
+    return {name: fade(scale(c, 0.89 / peak), rate, 0.0005, 0.01) for name, c in clips.items()}, 0.89 / peak
+
+
+def conch_hum(rng, rate, gain):
+    """Playback: the shell hums like the sea in it, band-passed noise round 520 Hz over a soft 196 Hz
+    sine, at its loudest (the prototype's .02 + .16). One second holds 196 whole cycles of the sine,
+    and the noise's two ends are cross-faded, so it loops without a seam."""
+    n = seconds(1.0, rate)
+    x = seconds(0.25, rate)
+    sea = bandpass(noise(n + x, rng), 520, 1.4, rate)
+    loop = sea[:n]
+    for i in range(x):
+        w = i / x
+        loop[i] = sea[n + i] * (1 - w) + loop[i] * w
+    tone = [0.25 * math.sin(2 * math.pi * 196 * i / rate) for i in range(n)]
+    hum = scale(mix(loop, tone), 0.18 * gain)
+    # Louder than the one-shots, as in the prototype, but never clipped.
+    return normalise(hum, 0.89) if max(abs(v) for v in hum) > 0.89 else hum
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +716,11 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    shell = random.Random(1022)
+    clips, gain = conch_clips(shell, fast)
+    for name, clip in clips.items():
+        write(name, clip, fast)
+    write("conch_hum", conch_hum(shell, soft, gain), soft)
 
 
 if __name__ == "__main__":
