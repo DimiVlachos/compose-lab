@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Color
 /**
  * The help screen round the paper fans, as the prototype styles it: warm paper by day and a dark
  * grey by night. [card] is the questions' card and [line] its hairlines; [chip] is the chat
- * button's fill.
+ * button's fill, and [avatar] the two ends of Dana's initial's gradient, lettered in [avatarInk].
  */
 internal class PaperFanScreenColors(
     val background: Color,
@@ -15,6 +15,9 @@ internal class PaperFanScreenColors(
     val line: Color,
     val chip: Color,
 ) {
+    val avatar = listOf(Color(0xFF6A7FAE), Color(0xFF2D4370))
+    val avatarInk = Color.White
+
     internal companion object {
         val Light =
             PaperFanScreenColors(

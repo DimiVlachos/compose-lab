@@ -322,7 +322,7 @@ private fun HelpChip(colors: PaperFanScreenColors) {
                     val c = Offset(size.width / 2f, size.height / 2f)
                     drawRect(
                         Brush.linearGradient(
-                            listOf(Color(0xFF6A7FAE), Color(0xFF2D4370)),
+                            colors.avatar,
                             start = c - Offset(dx, dy) * half,
                             end = c + Offset(dx, dy) * half,
                         ),
@@ -333,7 +333,7 @@ private fun HelpChip(colors: PaperFanScreenColors) {
         ) {
             Text(
                 stringResource(Res.string.paperfan_help_avatar),
-                color = Color.White,
+                color = colors.avatarInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
