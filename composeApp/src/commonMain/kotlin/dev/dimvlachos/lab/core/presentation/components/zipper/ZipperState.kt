@@ -9,6 +9,7 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Something the zipper does that is heard or felt. */
@@ -96,6 +97,10 @@ internal class ZipperState {
         private set
 
     var sway = 0f
+        private set
+
+    /** [pos] in whole percent, for screen readers: it changes a hundred times down the list. */
+    var percent by mutableIntStateOf(0)
         private set
 
     /** The letter at the top of the list, which the tag shows. */
@@ -280,7 +285,13 @@ internal class ZipperState {
                 emit(ZipperEvent.Teeth, min(4f, n))
             }
         }
+        percent = (pos * 100f).roundToInt()
         frame++
+    }
+
+    /** Something outside, such as the list scrolling, may have moved the pull: wake the loop. */
+    fun poke() {
+        wake++
     }
 
     private fun substep(dt: Float) {

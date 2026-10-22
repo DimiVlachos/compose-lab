@@ -596,6 +596,58 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Zipper ----------
+
+def ramp_down(n, rate, gain, dur):
+    """WebAudio's exponentialRampToValueAtTime from gain to 0.0001 over dur, then silence."""
+    m = seconds(dur, rate)
+    return [gain * (0.0001 / gain) ** (i / m) if i < m else 0.0 for i in range(n)]
+
+
+def burst(rng, n, rate, freq, q, dur, gain):
+    """The prototype's burst(): a slice of noise through a band-pass, dying away over dur."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), ramp_down(n, rate, gain, dur))
+
+
+def glide_tone(n, rate, f0, f1, dur, gain):
+    """The prototype's tone(): a sine gliding from f0 to f1 over dur as it dies away."""
+    out, phase, m = [], 0.0, seconds(dur, rate)
+    for i in range(n):
+        f = f0 * (f1 / f0) ** min(1.0, i / m)
+        phase += 2 * math.pi * f / rate
+        out.append(math.sin(phase))
+    return mul(out, ramp_down(n, rate, gain, dur))
+
+
+def zip_clack(rng, rate):
+    """The pull's tab falling flat on the tape: a bright brass click over a dull knock."""
+    n = seconds(0.08, rate)
+    track = mix(glide_tone(n, rate, 2600, 2450, 0.06, 0.08), burst(rng, n, rate, 3800, 5, 0.035, 0.23), burst(rng, n, rate, 900, 2, 0.05, 0.08))
+    return fade(normalise(track, 0.8), rate, 0.0003, 0.01)
+
+
+def zip_tick(rng, rate):
+    """The tab bouncing on the tape, or the tag passing a letter: a tiny high tick."""
+    n = seconds(0.03, rate)
+    return fade(normalise(burst(rng, n, rate, 4200, 6, 0.02, 0.06), 0.5), rate, 0.0003, 0.005)
+
+
+def zip_teeth(rng, rate):
+    """Teeth passing the pull: a few grains of rasp, 7 ms apart, each at its own pitch."""
+    n = seconds(0.04, rate)
+    track = [0.0] * n
+    for i in range(3):
+        place(track, burst(rng, n, rate, 2600 + rng.random() * 1600, 3, 0.012, 0.045), seconds(i * 0.007, rate))
+    return fade(normalise(track, 0.5), rate, 0.0003, 0.004)
+
+
+def zip_lift(rng, rate):
+    """The pull taken: its tab lifting off the tape with a light metal tick."""
+    n = seconds(0.05, rate)
+    track = mix(burst(rng, n, rate, 3000, 4, 0.03, 0.07), glide_tone(n, rate, 1900, 2100, 0.04, 0.015))
+    return fade(normalise(track, 0.5), rate, 0.0003, 0.006)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +696,11 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    zipper = random.Random(1022)
+    write("zip_clack", zip_clack(zipper, fast), fast)
+    write("zip_tick", zip_tick(zipper, fast), fast)
+    write("zip_teeth", zip_teeth(zipper, fast), fast)
+    write("zip_lift", zip_lift(zipper, fast), fast)
 
 
 if __name__ == "__main__":
