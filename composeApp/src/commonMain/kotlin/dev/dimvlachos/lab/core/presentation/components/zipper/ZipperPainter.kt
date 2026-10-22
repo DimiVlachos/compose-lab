@@ -362,27 +362,25 @@ internal fun Canvas2D.drawZipper(
     ellipse(cx, holeY, 3.2f, 2.2f * max(.45f, cos(f)) + .6f, 0f, 0f, TAU)
     fill()
 
-    // Cotton tag with the letter, swinging out to the left while held.
-    val t = s.tag.coerceIn(0f, 1f)
-    if (t > .02f) {
-        val tx = cx - 34f - 30f * t
-        val ty = sy + SL_H / 2f + 4f
-        val a = s.sway - .12f * (1f - t)
+    // Cotton tag with the letter, always hanging on its thread from the hole, to the left of the
+    // tape. Lying on the page it casts a tight shadow; held, it lifts a little and its shadow
+    // grows.
+    run {
+        val t = s.tag.coerceIn(0f, 1f)
+        val tagS = ZipperTag.scale(t)
+        val hx = cx - 1f
+        // The eyelet at (13, 0) in the tag's rotated, scaled frame is at (ex, ey) in list
+        // coordinates: the thread ends there.
+        val ex = hx + ZipperTag.eyeletDx(s.swing)
+        val ey = holeY + ZipperTag.eyeletDy(s.swing)
         save()
-        globalAlpha = (t * 1.3f).coerceIn(0f, 1f)
-        // The eyelet at (13, 0) in the tag's rotated, scaled frame, in list coordinates: the thread
-        // ends there.
-        val tagS = .7f + .3f * t
-        val ex = tx + tagS * 13f * cos(a)
-        val ey = ty + tagS * 13f * sin(a)
-        save()
-        translate(tx, ty)
-        rotate(a)
+        translate(hx + ZipperTag.originDx(s.swing, tagS), holeY + ZipperTag.originDy(s.swing, tagS))
+        rotate(ZipperTag.angle(s.swing))
         scale(tagS, tagS)
-        shadowColor = "rgba(0,0,0,.28)"
-        shadowBlur = 10f * k
-        shadowOffsetX = 2f * k
-        shadowOffsetY = 4f * k
+        shadowColor = TagShadows[(t * 40f).toInt().coerceIn(0, 40)]
+        shadowBlur = (4f + 6f * t) * k
+        shadowOffsetX = (1f + t) * k
+        shadowOffsetY = (2f + 2f * t) * k
         beginPath()
         moveTo(-26f, -22f)
         lineTo(8f, -22f)
@@ -418,18 +416,20 @@ internal fun Canvas2D.drawZipper(
         textBaseline = "middle"
         fillText(s.letter, -8f, 2f)
         restore()
-        // Thread drawn over the tag so it visibly runs into the eyelet hole.
+        // Thread drawn over the tag so it visibly runs into the eyelet hole, with a little slack.
         strokeStyle = if (dark) "rgba(236,228,210,.75)" else "rgba(120,108,90,.85)"
         lineWidth = 1.2f
         beginPath()
-        moveTo(cx - 1f, holeY)
-        quadraticCurveTo((cx + tx) / 2f + 6f, holeY + 10f, ex, ey)
+        moveTo(hx, holeY)
+        quadraticCurveTo((hx + ex) / 2f, (holeY + ey) / 2f + 3f, ex, ey)
         stroke()
-        restore()
     }
 }
 
 private val Sides = intArrayOf(-1, 1)
+
+// The tag's shadow as it lifts, in a few steps, so a lifting tag doesn't build a string a frame.
+private val TagShadows = Array(41) { "rgba(0,0,0,${.24f + .04f * it / 40f})" }
 private val Stitch = floatArrayOf(2.5f, 2.5f)
 private val NoDash = floatArrayOf()
 private val OpenShadowRadii = floatArrayOf(0f, 0f, 7f, 7f)

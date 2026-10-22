@@ -10,6 +10,7 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Something the zipper does that is heard or felt. */
@@ -30,8 +31,9 @@ internal enum class ZipperEvent {
  * The zipper's springs and gestures, ported from the prototype's `st`, `step()` and pointer
  * handlers. [pos] is how far down the list is, 0 to 1; the pull's top sits at [sliderTopFor] of it
  * on a track the height of the list area ([layout], in dp). Held, the tab ([flip], radians) springs
- * up off the tape and the tag ([tag], 0 to 1) swings out, swaying ([sway]) with the pull's speed;
- * let go, the tab falls under a constant pull and bounces on the tape.
+ * up off the tape and lifts the tag ([tag], 0 to 1); let go, the tab falls under a constant pull
+ * and bounces on the tape. The tag always hangs from the tab's hole on its thread, a pendulum at
+ * [swing] (see [ZipperTag]) that the hole's acceleration swings and that settles at rest.
  *
  * The list is the truth for [pos] while nothing here drives it: each frame [follow] hands it in. A
  * drag or a glide moves [pos] itself and leaves [scrollRequest] for the list to follow.
@@ -69,6 +71,19 @@ internal class ZipperState {
         trackBot = height - 8f
         range = max(1f, trackBot - trackTop - SliderHeight - Tab - 6f)
         sy = sliderTopFor(pos)
+        // A new size moves the hole: the tag is hung there afresh rather than yanked.
+        pivot = ZipperTag.holeY(sy, flip)
+        pivotV = 0f
+        swing = ZipperTag.fit(swing, pivot, ZipperTag.scale(tag), height)
+        // Where it rests may have moved too (off a bottom edge that has gone): the springs carry
+        // it.
+        swingRest =
+            ZipperTag.fit(
+                if (held) ZipperTag.SwingHeld else ZipperTag.SwingRest,
+                pivot,
+                ZipperTag.scale(tag),
+                height,
+            )
         wake++
     }
 
@@ -96,7 +111,11 @@ internal class ZipperState {
     var tag = 0f
         private set
 
-    var sway = 0f
+    /** The tag's angle on its thread from straight down; positive is out to the left. */
+    var swing = ZipperTag.SwingRest
+        private set
+
+    var swingV = 0f
         private set
 
     /** [pos] in whole percent, for screen readers: it changes a hundred times down the list. */
@@ -120,7 +139,10 @@ internal class ZipperState {
         private set
 
     private var tagV = 0f
-    private var swayV = 0f
+    // A point that follows the tab's hole through a stiff spring: its acceleration swings the tag.
+    private var pivot = ZipperTag.holeY(sliderTopFor(0f), 0f)
+    private var pivotV = 0f
+    private var swingRest = ZipperTag.SwingRest
     private var glideV = 0f
     private var sy = sliderTopFor(0f)
     private var syV = 0f
@@ -241,9 +263,12 @@ internal class ZipperState {
         flipV = 0f
         tag = 0f
         tagV = 0f
-        sway = 0f
-        swayV = 0f
         sy = sliderTopFor(0f)
+        pivot = ZipperTag.holeY(sy, 0f)
+        pivotV = 0f
+        swing = ZipperTag.fit(ZipperTag.SwingRest, pivot, ZipperTag.scale(0f), height)
+        swingV = 0f
+        swingRest = swing
         syV = 0f
         clacks = 0
         teethAcc = 0f
@@ -254,7 +279,7 @@ internal class ZipperState {
 
     /**
      * Nothing would move on the next frame, so the frame loop can stop until [wake] changes: a pull
-     * held still sleeps too, with its tab up and its tag out, until the finger moves.
+     * held still sleeps too, with its tab up and its tag lifted, until the finger moves.
      */
     val settled: Boolean
         get() =
@@ -266,8 +291,10 @@ internal class ZipperState {
                 else flip == 0f && flipV == 0f) &&
                 abs(tag - (if (held) 1f else 0f)) < .005f &&
                 abs(tagV) < .01f &&
-                abs(sway) < Rest &&
-                abs(swayV) < Rest &&
+                pivot == ZipperTag.holeY(sy, flip) &&
+                pivotV == 0f &&
+                swing == swingRest &&
+                swingV == 0f &&
                 abs(syV) < .5f
 
     /** Advances [seconds] in the prototype's 1/240 s substeps, then rasps for the teeth passed. */
@@ -325,8 +352,17 @@ internal class ZipperState {
             flipV = 0f
             tag = if (held) 1f else 0f
             tagV = 0f
-            sway = 0f
-            swayV = 0f
+            pivot = ZipperTag.holeY(sy, flip)
+            pivotV = 0f
+            swing =
+                ZipperTag.fit(
+                    if (held) ZipperTag.SwingHeld else ZipperTag.SwingRest,
+                    pivot,
+                    ZipperTag.scale(tag),
+                    height,
+                )
+            swingV = 0f
+            swingRest = swing
             return
         }
         if (held) {
@@ -362,20 +398,46 @@ internal class ZipperState {
             tag = (tag + tagV * dt).coerceIn(0f, 1.1f)
         }
         run {
-            val k = 55f
-            val c = 2f * sqrt(k) * .3f
-            val target = (-syV * .0009f).coerceIn(-.4f, .4f)
-            swayV += (k * (target - sway) - c * swayV) * dt
-            sway += swayV * dt
+            // The tag's pendulum. The pivot follows the hole through a stiff spring, so its
+            // acceleration is smooth even when the list moves the pull in frame-sized jumps; that
+            // acceleration swings the tag as it would a weight on a thread: yanked down, the tag
+            // lags up; stopped, it swings on down.
+            val hy = ZipperTag.holeY(sy, flip)
+            val pa = PivotK * (hy - pivot) - PivotC * pivotV
+            pivotV += pa * dt
+            pivot += pivotV * dt
+            val k = ZipperTag.scale(tag)
+            val rest =
+                ZipperTag.fit(
+                    if (held) ZipperTag.SwingHeld else ZipperTag.SwingRest,
+                    hy,
+                    k,
+                    height,
+                )
+            swingRest = rest
+            swingV +=
+                (SwingK * (rest - swing) - SwingC * swingV +
+                    SwingDrive * pa * sin(swing) / ZipperTag.Thread) * dt
+            val next = swing + swingV * dt
+            val fit = ZipperTag.fit(next, hy, k, height)
+            // Against an edge or a limit it stops there, as on the edge it rests on.
+            if (fit != next && (fit - next) * swingV < 0f) swingV = 0f
+            swing = fit
+            // The prototype's springs ring down forever; below these they are drawn as at rest.
+            if (abs(hy - pivot) < Rest && abs(pivotV) < Rest * 10f) {
+                pivot = hy
+                pivotV = 0f
+            }
+            // The light damping rings on long after it shows: a few thousandths of a radian is
+            // under a tenth of a dp at the tag's tip.
+            if (abs(rest - swing) < SwingSnap && abs(swingV) < Rest * 10f) {
+                swing = rest
+                swingV = 0f
+            }
         }
-        // The prototype's springs ring down forever; below these they are drawn as at rest.
         if (!held && abs(tag) < Rest && abs(tagV) < Rest) {
             tag = 0f
             tagV = 0f
-        }
-        if (abs(sway) < Rest && abs(swayV) < Rest) {
-            sway = 0f
-            swayV = 0f
         }
     }
 
@@ -394,5 +456,17 @@ internal class ZipperState {
 
         private const val Substep = 1f / 240f
         private const val Rest = 1e-3f
+
+        /**
+         * The tag's pendulum: its spring and damping about rest, and how hard the pivot drives it.
+         */
+        private const val SwingK = 121f
+        private const val SwingC = 2f * 11f * .16f
+        private const val SwingDrive = .18f
+        private const val SwingSnap = 3e-3f
+
+        /** The spring by which the tag's pivot follows the hole in the tab. */
+        private const val PivotK = 900f
+        private const val PivotC = 60f
     }
 }
