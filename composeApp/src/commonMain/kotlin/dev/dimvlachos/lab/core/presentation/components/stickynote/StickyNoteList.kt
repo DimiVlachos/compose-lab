@@ -1,5 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.stickynote
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -7,7 +11,9 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -20,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -32,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -69,6 +77,7 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.caveat_semibold
+import kotlin.math.max
 import kotlin.random.Random
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
@@ -89,8 +98,9 @@ internal val StickyNoteSounds =
 internal const val TitleSlot = "\u0001"
 
 /**
- * What the list says: the canvas's [words], the list's own [label] for screen readers, and what is
- * announced when a note is [archived], [snoozed] or [putBack], each with [TitleSlot] for its title.
+ * What the list says: the canvas's [words], the list's own [label] for screen readers, what is
+ * announced when a note is [archived], [snoozed] or [putBack], each with [TitleSlot] for its title,
+ * and what the [empty] list says, after the last note's announcement too.
  */
 internal class StickyNoteText(
     val words: NoteWords,
@@ -98,6 +108,7 @@ internal class StickyNoteText(
     val archived: String,
     val snoozed: String,
     val putBack: String,
+    val empty: String,
 )
 
 /**
@@ -108,7 +119,9 @@ internal class StickyNoteText(
  *
  * [topBar] is the screen's bar over the list: the notes that peel or fly are drawn over it, so the
  * paper covers its text, and the list starts 10 under it. [padLabel] names a pad and how many notes
- * it holds for screen readers; [ring] is the keyboard focus ring.
+ * it holds for screen readers; [ring] is the keyboard focus ring. [emptyState] is centred between
+ * the list's top and the pads' labels while no note is left, fading in as the last one leaves and
+ * out as a pad puts one back; screen readers read it as [StickyNoteText.empty].
  */
 @Composable
 internal fun StickyNoteList(
@@ -118,6 +131,7 @@ internal fun StickyNoteList(
     sounds: SoundPlayer,
     ring: Color,
     modifier: Modifier = Modifier,
+    emptyState: @Composable () -> Unit,
     topBar: @Composable () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -141,8 +155,10 @@ internal fun StickyNoteList(
                 StickyNoteEvent.Lift -> sounds.play(Sound.NoteLift)
                 // The prototype's peek is the same flick, a little higher and softer.
                 StickyNoteEvent.Peek -> sounds.play(Sound.NoteLift, .8f, 1.23f)
-                StickyNoteEvent.Archived -> said = text.archived.replace(TitleSlot, item!!.title)
-                StickyNoteEvent.Snoozed -> said = text.snoozed.replace(TitleSlot, item!!.title)
+                StickyNoteEvent.Archived ->
+                    said = text.archived.replace(TitleSlot, item!!.title) + emptied(state, text)
+                StickyNoteEvent.Snoozed ->
+                    said = text.snoozed.replace(TitleSlot, item!!.title) + emptied(state, text)
                 StickyNoteEvent.PutBack -> said = text.putBack.replace(TitleSlot, item!!.title)
             }
         }
@@ -220,6 +236,7 @@ internal fun StickyNoteList(
         ) {
             topBar()
         }
+        EmptyNotes(state, text.empty, emptyState)
         // Peeling and flying notes go on this layer, above the app bar.
         Canvas(Modifier.fillMaxSize()) { paint(lift = true) }
         Nodes(state, text, padLabel, ring)
@@ -231,6 +248,52 @@ internal fun StickyNoteList(
         )
     }
 }
+
+// What the last note's announcement adds: that the list is now empty.
+private fun emptied(state: StickyNoteState, text: StickyNoteText) =
+    if (state.rows.isEmpty()) " ${text.empty}" else ""
+
+/**
+ * The prototype's `.empty`: over the list, under the lift layer so a note flying back passes over
+ * it. It fades in over 420 ms after 180 as the last note leaves, and out over 200 ms when one comes
+ * back, at once with reduced motion; it is read only while the list is empty.
+ */
+@Composable
+private fun EmptyNotes(state: StickyNoteState, said: String, content: @Composable () -> Unit) {
+    state.listVersion
+    val empty = state.rows.isEmpty()
+    val shown by
+        animateFloatAsState(
+            if (empty) 1f else 0f,
+            when {
+                state.reducedMotion -> snap()
+                empty -> tween(420, delayMillis = 180, easing = CssEase)
+                else -> tween(200, easing = CssEase)
+            },
+            label = "empty",
+        )
+    if (!empty && shown <= 0f) return
+    val top = state.top0
+    val height = max(0f, state.padY() - 20 - top)
+    Box(
+        Modifier.fillMaxWidth()
+            .offset(y = top.dp)
+            .height(height.dp)
+            .graphicsLayer { alpha = shown }
+            .then(
+                if (empty)
+                    Modifier.testTag("empty").clearAndSetSemantics { contentDescription = said }
+                else Modifier.clearAndSetSemantics {},
+            )
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+// CSS's `ease`.
+private val CssEase = CubicBezierEasing(.25f, .1f, .25f, 1f)
 
 // The finger on the list, as the prototype's pointer handlers: down, moves, up; a touch cancelled
 // lets go as a pointerup does. A real touch takes over from the script's finger first.

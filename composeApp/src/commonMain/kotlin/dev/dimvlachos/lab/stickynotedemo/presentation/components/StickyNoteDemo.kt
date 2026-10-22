@@ -25,12 +25,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -51,10 +54,13 @@ import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.StickyNoteScreenColors
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.caveat_semibold
+import dev.dimvlachos.lab.resources.stickynote_all_clear
 import dev.dimvlachos.lab.resources.stickynote_archive
 import dev.dimvlachos.lab.resources.stickynote_archived
 import dev.dimvlachos.lab.resources.stickynote_back
 import dev.dimvlachos.lab.resources.stickynote_done
+import dev.dimvlachos.lab.resources.stickynote_empty_said
 import dev.dimvlachos.lab.resources.stickynote_item_1
 import dev.dimvlachos.lab.resources.stickynote_item_1_meta
 import dev.dimvlachos.lab.resources.stickynote_item_2
@@ -70,6 +76,7 @@ import dev.dimvlachos.lab.resources.stickynote_item_6_meta
 import dev.dimvlachos.lab.resources.stickynote_later
 import dev.dimvlachos.lab.resources.stickynote_left
 import dev.dimvlachos.lab.resources.stickynote_list
+import dev.dimvlachos.lab.resources.stickynote_nothing_left
 import dev.dimvlachos.lab.resources.stickynote_pad_done
 import dev.dimvlachos.lab.resources.stickynote_pad_done_empty
 import dev.dimvlachos.lab.resources.stickynote_pad_later
@@ -84,6 +91,7 @@ import dev.dimvlachos.lab.resources.stickynote_title
 import dev.dimvlachos.lab.resources.stickynote_tomorrow
 import dev.dimvlachos.lab.stickynotedemo.StickyNoteHand
 import kotlin.coroutines.cancellation.CancellationException
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -177,6 +185,7 @@ internal fun StickyNoteDemo(
     val archived = stringResource(Res.string.stickynote_archived, TitleSlot)
     val snoozed = stringResource(Res.string.stickynote_snoozed, TitleSlot)
     val putBack = stringResource(Res.string.stickynote_put_back, TitleSlot)
+    val empty = stringResource(Res.string.stickynote_empty_said)
     // Made once for the strings, so the list's painter and event listener aren't made again.
     val text =
         remember(
@@ -191,8 +200,9 @@ internal fun StickyNoteDemo(
             archived,
             snoozed,
             putBack,
+            empty,
         ) {
-            StickyNoteText(words, label, archived, snoozed, putBack)
+            StickyNoteText(words, label, archived, snoozed, putBack, empty)
         }
     val touch = LabTheme.colors.touch
     Box(Modifier.fillMaxSize().background(colors.background)) {
@@ -204,6 +214,7 @@ internal fun StickyNoteDemo(
                 sounds = sounds,
                 ring = colors.accent,
                 modifier = Modifier.fillMaxSize(),
+                emptyState = { AllClear(colors) },
             ) {
                 AppBar(colors, notes)
             }
@@ -226,6 +237,34 @@ private fun padLabel(kind: NoteAction, n: Int): String =
         n == 0 -> stringResource(Res.string.stickynote_pad_later_empty)
         else -> pluralStringResource(Res.plurals.stickynote_pad_later, n, n)
     }
+
+/** The prototype's empty list: a handwritten all-clear, and that nothing is left for today. */
+@Composable
+private fun AllClear(colors: StickyNoteScreenColors) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            stringResource(Res.string.stickynote_all_clear),
+            Modifier.graphicsLayer { alpha = .8f },
+            color = colors.ink,
+            fontSize = 34.sp,
+            lineHeight = 1.1.em,
+            fontFamily = FontFamily(Font(Res.font.caveat_semibold, FontWeight.SemiBold)),
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            stringResource(Res.string.stickynote_nothing_left),
+            color = colors.muted,
+            fontSize = 13.sp,
+            lineHeight = BodyLine,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
 
 /** The list's bar: back to the lists, the day, and how many reminders are left. */
 @Composable

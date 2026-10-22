@@ -8,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -118,6 +120,39 @@ class StickyNoteDemoUiTest {
         onNodeWithTag("pad:snooze").performClick()
         waitForIdle()
         assertTrue(notes.asBegun)
+    }
+
+    @Test
+    fun anEmptyListSaysAllClearUntilAPadPutsANoteBack() = runComposeUiTest {
+        lateinit var notes: StickyNoteState
+        setContent {
+            notes = rememberStickyNotes()
+            Phone { StickyNoteDemo(DemoState(), notes) }
+        }
+        waitForIdle()
+        onNodeWithTag("empty").assertDoesNotExist()
+        for (item in notes.items) {
+            val node = onNodeWithTag("note:${item.title}")
+            val kind = if (item.color % 2 == 0) "Archive" else "Snooze"
+            val action =
+                node.fetchSemanticsNode().config[SemanticsActions.CustomActions].first {
+                    it.label == kind
+                }
+            runOnIdle { action.action() }
+            mainClock.advanceTimeBy(1_500)
+        }
+        waitForIdle()
+        onNodeWithTag("count").assertTextEquals("0 left")
+        val said = "All clear. Nothing left for today."
+        onNodeWithTag("empty").assertContentDescriptionEquals(said)
+        // The last note's announcement tells a screen reader the list is now empty.
+        onNode(hasContentDescription("until tomorrow, 9 AM. $said", substring = true))
+            .assertExists()
+        onNodeWithTag("pad:archive").performSemanticsAction(SemanticsActions.OnClick)
+        mainClock.advanceTimeBy(1_500)
+        waitForIdle()
+        onNodeWithTag("count").assertTextEquals("1 left")
+        onNodeWithTag("empty").assertDoesNotExist()
     }
 
     // A phone's stage, so a 214 pull is past 42 % of the note as on the phone.

@@ -472,6 +472,9 @@
     <string name="stickynote_archived">Archived “%1$s”. The Done pad puts it back.</string>
     <string name="stickynote_snoozed">Snoozed “%1$s” until tomorrow, 9 AM.</string>
     <string name="stickynote_put_back">Put back “%1$s”.</string>
+    <string name="stickynote_all_clear">All clear</string>
+    <string name="stickynote_nothing_left">Nothing left for today</string>
+    <string name="stickynote_empty_said">All clear. Nothing left for today.</string>
     <plurals name="stickynote_pad_done">
         <item quantity="one">Done pad, %1$d note. Put the last one back</item>
         <item quantity="other">Done pad, %1$d notes. Put the last one back</item>

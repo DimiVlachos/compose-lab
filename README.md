@@ -705,20 +705,27 @@ Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sou
 
 ## Sticky note swipe (`core/presentation/components/stickynote/`)
 
-A reminders list where every row is a sticky note pressed onto the screen along its glue strip. Swipe one and it peels up from the corner like paper, curling toward the finger, with Archive or Snooze underneath and its shadow growing as it comes away. Pull it past about 42 % of its width, or flick it, and it comes off, flies onto the Done or Later pad under the list and sticks there at a slight angle; let go early and it presses back flat with a small flutter. Tap a pad to put its top note back where it came from, or tap a note to see its corner lift.
+A reminders list where every row is a sticky note pressed onto the screen along its glue strip. Swipe one and it peels up from the corner like paper, curling toward the finger, with Archive or Snooze underneath and its shadow growing as it comes away. Pull it past about 42 % of its width, or flick it, and it comes off, flies onto the Done or Later pad under the list and sticks there at a slight angle; let go early and it presses back flat with a small flutter. Tap a pad to put its top note back where it came from, or tap a note to see its corner lift. When every note is gone, a handwritten "All clear" fades in where the list was, and fades out again as a pad puts one back.
 
 - **Drawn as the prototype draws it.** The notes are ported call by call from their HTML prototype onto the shared `canvas2d` adapter. The fold is the perpendicular bisector between the pulled corner and where it is pulled to: what stays down is the note clipped to one side, and the flap is the other side mirrored across it, with the ink showing through reversed. Paper grain is baked once from a fixed seed, and shadows grow with the lift, sized in dp at the note's own scale.
 - **Above the bar.** Notes that are peeling or flying are drawn on a layer over the app bar, so the paper covers its text.
 - **Flights.** A note flies to its pad on a curve while it unfolds, shrinks and turns, kept inside the side margins, and lands at exactly the angle and offset it then keeps on the pad; going back is the same curve in reverse.
 - **Feel and sound.** A tick as the pull crosses the line where letting go commits, a confirm as a note sticks to a pad; synthesized crackles while it peels, a rip, a stick, a pat and a lift.
-- **Screen readers and keys.** Every note is a node with Archive and Snooze actions; with a keyboard, ← (or Delete) archives, → snoozes and ↑ ↓ move between notes. The pads are buttons that put the last note back, and what happens is announced politely.
+- **Screen readers and keys.** Every note is a node with Archive and Snooze actions; with a keyboard, ← (or Delete) archives, → snoozes and ↑ ↓ move between notes. The pads are buttons that put the last note back, and what happens is announced politely, including that the list is empty once the last note leaves.
 - **Reduced motion.** A note comes off and lands at once, and nothing flutters or bumps.
 
 The demo, `stickynote.swipe`, is a Today list of six reminders. Its script pulls the second note a little and lets it smooth back down, archives it, snoozes the next, and then taps Later and Done so both notes go back to their places.
 
 ```kotlin
 val notes = remember { StickyNoteState(reminders) }
-StickyNoteList(notes, text, padLabel = { kind, n -> "…" }, sounds = sounds, ring = accent) {
+StickyNoteList(
+    notes,
+    text,
+    padLabel = { kind, n -> "…" },
+    sounds = sounds,
+    ring = accent,
+    emptyState = { AllClear() },
+) {
     AppBar()
 }
 ```
