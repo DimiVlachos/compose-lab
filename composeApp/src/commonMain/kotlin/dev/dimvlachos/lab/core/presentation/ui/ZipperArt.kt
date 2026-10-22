@@ -39,3 +39,19 @@ internal class ZipperScreenColors(
             )
     }
 }
+
+/** The contacts' avatar colours, dealt out in turn, as the prototype's. */
+internal val ZipperAvatarColors =
+    listOf(
+        Color(0xFF5B7FA8),
+        Color(0xFFA8655B),
+        Color(0xFF5B9A83),
+        Color(0xFF8A6FA8),
+        Color(0xFFB0893A),
+        Color(0xFF5F8AA0),
+        Color(0xFFA86B8F),
+        Color(0xFF6F8F4E),
+    )
+
+/** The owner's own avatar. */
+internal val ZipperMeAvatar = Color(0xFFB0763A)

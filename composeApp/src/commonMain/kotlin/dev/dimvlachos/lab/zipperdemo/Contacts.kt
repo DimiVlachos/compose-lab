@@ -1,6 +1,8 @@
 package dev.dimvlachos.lab.zipperdemo
 
 import androidx.compose.ui.graphics.Color
+import dev.dimvlachos.lab.core.presentation.ui.ZipperAvatarColors
+import dev.dimvlachos.lab.core.presentation.ui.ZipperMeAvatar
 
 /** One person in the address book: their [name], the line under it and their avatar's colour. */
 internal class Contact(val first: String, val last: String, val sub: String, val avatar: Color) {
@@ -54,18 +56,7 @@ internal object Contacts {
             "Mobile",
             "Work · Cedar & Co. Realty",
         )
-    private val Avatars =
-        listOf(
-                0xFF5B7FA8,
-                0xFFA8655B,
-                0xFF5B9A83,
-                0xFF8A6FA8,
-                0xFFB0893A,
-                0xFF5F8AA0,
-                0xFFA86B8F,
-                0xFF6F8F4E,
-            )
-            .map { Color(it) }
+    private val Avatars = ZipperAvatarColors
 
     val people: List<Contact> = First.mapIndexed { i, f ->
         Contact(f, Last[(i * 7 + 3) % Last.size], Sub[i % Sub.size], Avatars[i % Avatars.size])
@@ -87,7 +78,7 @@ internal object Contacts {
     /** The owner's own card above the list. */
     const val MeName = "Maya Reyes"
     const val MeInitials = "MR"
-    val MeAvatar = Color(0xFFB0763A)
+    val MeAvatar = ZipperMeAvatar
 
     /** Each item's kind for the zipper's track: a header, a first row, or a row under a rule. */
     const val KindHeader = 0
