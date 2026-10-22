@@ -19,6 +19,7 @@ import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
 import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
+import dev.dimvlachos.lab.resources.demo_paperfan
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
@@ -59,6 +60,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "paperfan.faq",
             ),
             Catalog.demos.map { it.id },
         )
@@ -83,6 +85,7 @@ class CatalogTest {
                 Res.string.demo_stickers,
                 Res.string.demo_mailbox,
                 Res.string.demo_padlock,
+                Res.string.demo_paperfan,
             ),
             Catalog.demos.map { it.title },
         )
@@ -157,6 +160,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "paperfan.faq",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

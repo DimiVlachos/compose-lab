@@ -443,4 +443,25 @@
     <string name="padlock_rule_mix">A symbol or capital</string>
     <string name="padlock_continue">Continue</string>
     <string name="padlock_show">Show password</string>
+    <string name="demo_paperfan">Paper fan FAQ</string>
+    <string name="demo_paperfan_description">Each question’s arrow is a folded paper fan that snaps open with the answer printed on its pleats</string>
+    <string name="paperfan_back">Back</string>
+    <string name="paperfan_title">Help</string>
+    <string name="paperfan_heading">Questions, answered</string>
+    <string name="paperfan_intro">Orders, returns and Trail Rewards at Cobble Creek Outfitters.</string>
+    <string name="paperfan_q1">Where’s my order?</string>
+    <string name="paperfan_a1">Most orders leave our Bozeman warehouse within a day. Track yours under Account, then Orders. We text you when it ships.</string>
+    <string name="paperfan_q2">How do returns work?</string>
+    <string name="paperfan_a2">Send anything back within 60 days, worn or not. Print a free label from your order page or drop it at any store.</string>
+    <string name="paperfan_q3">Do you ship to Alaska and Hawaii?</string>
+    <string name="paperfan_a3">We do! Standard shipping takes 5 to 8 business days. It’s $9.95, or free on orders over $150.</string>
+    <string name="paperfan_q4">How do Trail Rewards work?</string>
+    <string name="paperfan_a4">Earn a point for every dollar. At 200 points we mail you a $20 card, plus early access to the fall sale.</string>
+    <string name="paperfan_q5">Can I change my order?</string>
+    <string name="paperfan_a5">You have 30 minutes after checkout. Open the order and tap Edit, or call (406) 555-0142 and we’ll catch it.</string>
+    <string name="paperfan_expanded">Expanded</string>
+    <string name="paperfan_collapsed">Collapsed</string>
+    <string name="paperfan_help_avatar">D</string>
+    <string name="paperfan_help_title">Still stuck? Chat with Dana</string>
+    <string name="paperfan_help_subtitle">Usually replies in 5 minutes</string>
 </resources>

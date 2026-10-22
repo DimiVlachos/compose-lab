@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,24 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Paper fan (`core/presentation/components/paperfan/`)
+
+A store's help page where the expand arrow on each question is a little folded paper fan resting in the row. Tap a question and the fan drops out of the row, slides over, turns and grows, then flicks open across the card with a fwap; the leading guard clicks home and the inner ribs flutter as the paper catches up. The answer is printed on its pleats in a serif, with an indigo band along the rim, a pine sprig and the shop's red seal, so you watch it unfold as the paper spreads. Tap another question and the open fan folds itself away first, then the new one lifts, so only one answer is out at a time; tap again, or sweep the open fan shut with a finger, and it folds back into the row.
+
+- **Drawn as the prototype draws it.** Ported call by call from its HTML prototype onto the shared `canvas2d` adapter. Each fan's print is baked once in its open pose, and every pleat draws its slice of it through a rotate-and-squeeze transform, so the print compresses as the fan folds; pleats alternate lit and shaded, more so as they steepen, and the lacquered guards, bamboo ribs, brass rivet, the fan's soft shadow and the lamp's pool of light on the card are drawn over and under it.
+- **Springs.** One spring lifts each fan out of its row and one per rib spreads it, softer further from the leading guard, stepped in fixed 1/240 s substeps. The answer area's height follows the lift, set as the list is laid out, and the panels trade height so they never hold more than one open answer between them. The frame loop sleeps once everything is at rest.
+- **By hand.** Put a finger on the open fan and sweep it from right to left: the leading guard stays under the finger and the inner ribs are pulled along. Let go before halfway and it springs back open.
+- **Feel and sound.** A tick as the guard clicks home and as a fan clacks shut; synthesized fwap, click, swish and clack.
+- **Screen readers.** Each question is a button that says whether it is expanded or collapsed, with expand and collapse actions, and the open answer is real text in the semantics tree; the fans are only its picture.
+- **Reduced motion.** Fans open and fold at once; folding by hand still works.
+
+The demo, `paperfan.faq`, is the help page of an invented outdoor outfitter. Its script opens the returns answer, then the Trail Rewards one, so the first folds away as the second opens, and sweeps the open fan shut by hand.
+
+```kotlin
+val fans = remember { PaperFanState(entries.size) }
+PaperFanFaq(entries, fans, sounds, colors, expanded = "Expanded", collapsed = "Collapsed")
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -836,6 +856,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+
+The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
 ## Contributing
 
