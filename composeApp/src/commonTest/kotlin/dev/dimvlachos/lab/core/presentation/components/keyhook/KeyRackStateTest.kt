@@ -298,7 +298,7 @@ class KeyRackStateTest {
             } else left = true
         }
         assertTrue(opened && left, "opened $opened, left $left")
-        // Carried away, the gate shuts behind it with a lighter click.
+        // Carried away, the gate shuts behind it, with a click but no haptic.
         s.moveGrab(W * .3f, H * .6f)
         s.run(.6f)
         assertTrue(s.gate.shut)
@@ -324,6 +324,39 @@ class KeyRackStateTest {
         s.run(.1f)
         assertEquals(0f, s.gate.angle)
     }
+
+    @Test
+    fun aSetLetGoRightByTheClipKeepsItsGateOpenUntilItIsOn() {
+        val s = rack()
+        val g = s.geometry!!
+        s.toggle(s.rings[0])
+        s.run(3f)
+        val ava = s.rings[1]
+        // Carried until her ring hangs just outside the clip's mouth: the gate swings open for it.
+        val fx = s.ringPointX(ava)
+        val fy = s.ringPointY(ava)
+        val tx = g.clipX(1f)
+        val ty = g.clipY(1f) + (fy - ava.y)
+        s.startGrab(ava, fx, fy)
+        for (i in 1..16) {
+            s.moveGrab(fx + (tx - fx) * i / 16f, fy + (ty - fy) * i / 16f)
+            s.run(.03f)
+        }
+        s.run(.6f)
+        assertTrue(hypot(ava.x - g.clipX(1f), ava.y - g.clipY(1f)) < 36f * g.u, "close")
+        assertTrue(s.gate.angle > .9f, "open ${s.gate.angle}")
+        s.endGrab(tx, ty)
+        events.clear()
+        var shutBeforeOn = false
+        s.run(2f) { if (!ava.on && s.gate.angle == 0f) shutBeforeOn = true }
+        assertTrue(!shutBeforeOn, "the gate shut before the ring was on")
+        assertEquals(listOf(KeyRackEvent.ClipShut), events.filter { it.isClip })
+        assertTrue(ava.on && s.atCard(ava))
+        assertSame(ava.holder, s.signedIn)
+    }
+
+    private val KeyRackEvent.isClip
+        get() = this == KeyRackEvent.ClipShut || this == KeyRackEvent.ClipShutEmpty
 
     private companion object {
         const val W = 412f

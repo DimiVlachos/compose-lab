@@ -491,21 +491,24 @@ internal class KeyRackState(
         if (r.mode == KeyRing.Mode.Rest || (r.mode == KeyRing.Mode.Fly && isCarried(r))) 0f else 1f
 
     /**
-     * Whether some ring wants the clip's gate open: passing its gap, arriving, or carried close.
+     * Whether some ring wants the clip's gate open: passing its gap, arriving, or carried close. A
+     * set let go close to the clip keeps the gate it opened open on its short flight to the mouth,
+     * rather than letting it snap shut and swing open again.
      */
     private fun gateWanted(): Boolean {
         val geo = geometry ?: return false
         val ex = geo.clipX(1f)
         val ey = geo.clipY(1f)
         for (r in rings) {
+            val close = hypot(r.x - ex, r.y - ey) < 36f * geo.u
             if (r.on) {
                 val wants =
                     if (clipGoal(r) == 1f) !(r.mode == KeyRing.Mode.Fly && r.flyEl < 0f)
                     else r.clip > .25f
                 if (wants) return true
-            } else if (r.mode == KeyRing.Mode.Fly && isCarried(r) && r.flyMs - r.flyEl < 160f) {
-                return true
-            } else if (r.mode == KeyRing.Mode.Drag && hypot(r.x - ex, r.y - ey) < 36f * geo.u) {
+            } else if (r.mode == KeyRing.Mode.Fly && isCarried(r)) {
+                if (r.flyMs - r.flyEl < 160f || (close && gate.angle > 0f)) return true
+            } else if (r.mode == KeyRing.Mode.Drag && close) {
                 return true
             }
         }
