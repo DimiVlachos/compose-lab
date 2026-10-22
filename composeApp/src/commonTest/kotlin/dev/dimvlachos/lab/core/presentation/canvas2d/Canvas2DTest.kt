@@ -509,4 +509,20 @@ class Canvas2DTest {
         near(Color.Blue, px[16, 30])
         near(Color.Transparent, px[4, 36])
     }
+
+    @Test
+    fun strokeShadowDrawsTheShadowAloneInAColourSetDirectly() {
+        val c = Canvas2D.create(40, 20)
+        c.setShadowColor(Color(0f, 0f, 1f, 1f))
+        c.shadowBlur = 1f
+        c.shadowOffsetX = 20f
+        c.lineWidth = 6f
+        c.beginPath()
+        c.moveTo(4f, 10f)
+        c.lineTo(14f, 10f)
+        c.strokeShadow()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Transparent, px[9, 10])
+        assertTrue(px[29, 10].blue > .6f, "the shadow, moved right: ${px[29, 10]}")
+    }
 }
