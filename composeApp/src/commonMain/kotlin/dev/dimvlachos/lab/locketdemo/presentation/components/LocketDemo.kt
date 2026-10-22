@@ -84,6 +84,8 @@ import dev.dimvlachos.lab.resources.locket_tip_placing
 import dev.dimvlachos.lab.resources.locket_title
 import dev.dimvlachos.lab.resources.locket_use_photo
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -101,11 +103,14 @@ internal fun LocketDemo(
     SideEffect { locket.reducedMotion = reducedMotion }
     val photos = remember { locketPhotos() }
     val hand = remember(locket) { LocketHand(locket) }
+    // The script's steps run one after another, as the prototype awaits each: on a slow device a
+    // step that runs late holds the next back rather than overlapping it.
+    val turn = remember { Mutex() }
 
     DisposableEffect(state, locket, hand) {
         state.setControlTapHandler { control ->
             try {
-                hand.play(control, locket)
+                turn.withLock { hand.play(control, locket) }
             } catch (e: CancellationException) {
                 hand.stop()
                 throw e
@@ -113,8 +118,10 @@ internal fun LocketDemo(
         }
         // Shut, still, with the Blue Ridge photo back in, so the clip loops.
         state.setFeedResetHandler {
-            hand.stop()
-            locket.reset()
+            turn.withLock {
+                hand.stop()
+                locket.reset()
+            }
         }
         onDispose {
             state.setControlTapHandler(null)
