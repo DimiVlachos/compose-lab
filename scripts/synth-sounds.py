@@ -596,6 +596,78 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Birdcage ----------
+
+def biquad_lowpass(signal, cutoff, q_db, rate):
+    """The browser's BiquadFilterNode low-pass: RBJ, with its Q given in dB as WebAudio takes it."""
+    q = 10 ** (q_db / 20)
+    w = 2 * math.pi * cutoff / rate
+    alpha = math.sin(w) / (2 * q)
+    cw = math.cos(w)
+    b0, b1, b2 = (1 - cw) / 2, 1 - cw, (1 - cw) / 2
+    a0, a1, a2 = 1 + alpha, -2 * cw, 1 - alpha
+    out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
+    for x in signal:
+        y = (b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0
+        x2, x1, y2, y1 = x1, x, y1, y
+        out.append(y)
+    return out
+
+
+def exp_ramps(n, rate, peak, attack, dur):
+    """A WebAudio gain: .0001, an exponential ramp up to peak by attack, and down to .0001 by dur."""
+    out = []
+    for i in range(n):
+        t = i / rate
+        if t < attack:
+            out.append(0.0001 * (peak / 0.0001) ** (t / attack))
+        elif t < dur:
+            out.append(peak * (0.0001 / peak) ** ((t - attack) / (dur - attack)))
+        else:
+            out.append(0.0)
+    return out
+
+
+def web_tone(track, rate, start, f0, f1, dur, gain):
+    """The prototype's tone(): a sine swept exponentially from f0 to f1, in and out in exponential ramps."""
+    n = seconds(dur, rate)
+    phase, wave_ = 0.0, []
+    for i in range(n):
+        phase += 2 * math.pi * f0 * (f1 / f0) ** (i / n) / rate
+        wave_.append(math.sin(phase))
+    place(track, mul(wave_, exp_ramps(n, rate, gain, 0.01, dur)), seconds(start, rate))
+
+
+def web_burst(track, rng, rate, start, freq, q_db, dur, gain):
+    """The prototype's burst(): white noise through a low-pass, swelling in and dying away."""
+    n = seconds(dur, rate)
+    sound = mul(biquad_lowpass(noise(n, rng), freq, q_db, rate), exp_ramps(n, rate, gain, min(0.05, dur * 0.3), dur))
+    place(track, sound, seconds(start, rate))
+
+
+def birdcage_clips(rng, rate):
+    """The cage's five sounds at the prototype's own gains, so they keep their loudness to each other."""
+    chirp = [0.0] * seconds(0.5, rate)
+    for i in range(2):
+        web_tone(chirp, rate, i * 0.16, 3100, 4300, 0.07, 0.07)
+        web_tone(chirp, rate, i * 0.16 + 0.075, 4200, 3300, 0.06, 0.05)
+    web_tone(chirp, rate, 0.36, 3600, 4700, 0.12, 0.05)
+    settle = [0.0] * seconds(0.47, rate)
+    web_burst(settle, rng, rate, 0, 900, 0.7, 0.45, 0.12)
+    lift = [0.0] * seconds(0.35, rate)
+    web_burst(lift, rng, rate, 0, 1400, 0.8, 0.3, 0.09)
+    web_tone(lift, rate, 0.25, 3800, 4400, 0.08, 0.04)
+    rustle = [0.0] * seconds(0.27, rate)
+    web_burst(rustle, rng, rate, 0, 1100, 0.6, 0.25, 0.05)
+    swish = [0.0] * seconds(0.22, rate)
+    web_burst(swish, rng, rate, 0, 1600, 0.7, 0.2, 0.05)
+    clips = {"birdcage_chirp": chirp, "birdcage_settle": settle, "birdcage_lift": lift,
+             "birdcage_rustle": rustle, "birdcage_swish": swish}
+    # One gain for all five, so the loudest peaks where the others' clips do.
+    loudest = max(max(abs(x) for x in c) for c in clips.values())
+    return {name: fade(scale(c, 0.89 / loudest), rate, 0.0005, 0.01) for name, c in clips.items()}
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +716,8 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    for name, clip in birdcage_clips(random.Random(1022), fast).items():
+        write(name, clip, fast)
 
 
 if __name__ == "__main__":
