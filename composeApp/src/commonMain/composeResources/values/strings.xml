@@ -443,4 +443,22 @@
     <string name="padlock_rule_mix">A symbol or capital</string>
     <string name="padlock_continue">Continue</string>
     <string name="padlock_show">Show password</string>
+    <string name="demo_birdcage">Birdcage mute</string>
+    <string name="demo_birdcage_description">Pull a linen cover over a brass birdcage to mute a chat, and the canary goes to sleep</string>
+    <string name="birdcage_title">Group info</string>
+    <string name="birdcage_edit">Edit</string>
+    <string name="birdcage_initials">BR</string>
+    <string name="birdcage_group">Barton Creek Runners</string>
+    <string name="birdcage_group_meta">14 members · Austin, TX</string>
+    <string name="birdcage_on">Notifications on</string>
+    <string name="birdcage_on_tip">Pull the cover down to mute this chat</string>
+    <string name="birdcage_muted">Muted</string>
+    <string name="birdcage_muted_tip">Lift the cover to hear new messages</string>
+    <string name="birdcage_latest">Latest</string>
+    <string name="birdcage_silenced">%1$d silenced</string>
+    <string name="birdcage_media">Media, links and docs</string>
+    <string name="birdcage_media_count">128</string>
+    <string name="birdcage_pinned">Pinned messages</string>
+    <string name="birdcage_pinned_count">3</string>
+    <string name="birdcage_mute">Mute this chat</string>
 </resources>

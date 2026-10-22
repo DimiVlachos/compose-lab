@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,25 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Birdcage (`core/presentation/components/birdcage/`)
+
+A group chat's notification switch as a little brass birdcage with a canary inside, hanging in the window light. Each new message makes the canary hop on its perch and sing, with notes rising from its beak. To mute the chat, take the rolled hem of the linen cover on top of the cage and pull it down, the way you'd put a bird to bed: let go past halfway, or with a flick, and it drops over the cage with a soft sway; let go early and it rolls back up. Under the cover the canary tucks its head into its shoulder and sleeps, and new messages only stir the cloth while a grey count collects on the Latest row. Push the hem up and it wakes and shakes out its feathers. A tap on the cage toggles it too.
+
+- **Drawn as the prototype draws it.** The cage is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: dome ribs and rings stroked three times each (a dark edge, the brass and a highlight toward the window), the back half dimmed behind the bird; the cover is one path that follows the dome down to its scalloped hem, filled with a linen weave baked once from a fixed seed, with pleats drawn on their own layer and faded in at their tops, and a rolled hem stroked as a tube.
+- **Springs and a fling.** The hem follows the finger 1:1 past a 6 dp slop, with a little give past either end; on release its speed over the last 100 ms is projected forward and the cover springs fully down or up, and the hem swings when it stops. The canary's sleep follows how far down the cover is, so it tucks in only once it's dark.
+- **Feel and sound.** A confirm where the cover settles and mutes, a tick as it lifts; synthesized chirps, a cloth settle, a lift, a rustle for a muted message and a swish as the hem is taken.
+- **Screen readers.** The cage is a switch labelled Mute this chat that takes focus and Space or Enter; the state under it is a polite live region, so the drawing is never the only cue.
+- **Reduced motion.** The cover goes straight to where it is aimed and the hem doesn't sway.
+
+The demo, `birdcage.mute`, is the group info screen of an invented running club in Austin. Its script delivers a message (the canary sings), pulls the cover down, delivers another (it is silenced and counted), pushes the cover back up and delivers a third, then puts the first message back.
+
+```kotlin
+val cage = remember { BirdcageState() }
+LaunchedEffect(messages) { messages.collect { cage.deliver() } }
+Birdcage(cage, label = "Mute this chat", sounds = sounds)
+// cage.muted says whether the chat is muted.
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -836,6 +857,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+
+The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 times, standing on the bottom of it, and is not mirrored for right-to-left. The canary breathes and the cloth ripples all the time, so its frame loop runs while the screen is in front. How long a chat stays muted is the app's to decide.
 
 ## Contributing
 

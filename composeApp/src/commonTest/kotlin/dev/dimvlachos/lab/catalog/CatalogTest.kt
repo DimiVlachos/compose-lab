@@ -5,6 +5,7 @@ package dev.dimvlachos.lab.catalog
 import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_birdcage
 import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
@@ -59,6 +60,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "birdcage.mute",
             ),
             Catalog.demos.map { it.id },
         )
@@ -83,6 +85,7 @@ class CatalogTest {
                 Res.string.demo_stickers,
                 Res.string.demo_mailbox,
                 Res.string.demo_padlock,
+                Res.string.demo_birdcage,
             ),
             Catalog.demos.map { it.title },
         )
@@ -157,6 +160,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "birdcage.mute",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

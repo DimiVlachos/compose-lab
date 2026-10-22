@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.catalog
 
+import dev.dimvlachos.lab.birdcagedemo.BirdcageDemos
 import dev.dimvlachos.lab.bookdemo.BookDemos
 import dev.dimvlachos.lab.bookshelfdemo.BookshelfDemos
 import dev.dimvlachos.lab.cardfiledemo.CardFileDemos
@@ -49,7 +50,8 @@ internal object Catalog {
                     PaperBagDemos.all +
                     StickerDemos.all +
                     MailboxDemos.all +
-                    PadlockDemos.all)
+                    PadlockDemos.all +
+                    BirdcageDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
