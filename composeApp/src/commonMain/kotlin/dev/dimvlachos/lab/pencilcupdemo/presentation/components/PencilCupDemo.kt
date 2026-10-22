@@ -6,10 +6,8 @@ import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -330,6 +328,7 @@ internal fun PencilCupDemo(
             cupFocus = cupFocus,
         ) {
             Sheet(
+                cup = cup,
                 open = cup.sheetOpen,
                 title = labels[cup.sheetTool],
                 tool = cup.sheetTool,
@@ -496,10 +495,13 @@ private fun NoteCard(
 
 /**
  * The new item's sheet, as the prototype's: 64 % of the screen high, sliding up from below with its
- * grab handle, the tool's name and Done, and a body for what the tool makes.
+ * grab handle, the tool's name and Done, and a body for what the tool makes. The [cup] slides it,
+ * on its own clock, so the tool tucked in the pocket at its corner rides with it; the title stands
+ * clear of that pocket.
  */
 @Composable
 private fun BoxScope.Sheet(
+    cup: PencilCupState,
     open: Boolean,
     title: String,
     tool: Int,
@@ -509,19 +511,16 @@ private fun BoxScope.Sheet(
     doneFocus: FocusRequester,
     onDone: () -> Unit,
 ) {
-    val slide by
-        animateFloatAsState(
-            if (open) 0f else 1.05f,
-            if (reducedMotion) snap() else tween(380, easing = SheetEasing),
-            label = "sheet",
-        )
     val shadow = remember { Paint() }
     val shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
     Column(
         Modifier.align(Alignment.BottomCenter)
             .fillMaxWidth()
             .fillMaxHeight(.64f)
-            .graphicsLayer { translationY = slide * size.height }
+            .graphicsLayer {
+                cup.frame
+                translationY = cup.sheetSlide * size.height
+            }
             .drawBehind {
                 // box-shadow: 0 -12px 40px rgba(20,14,8,.22).
                 shadow.color = Color(20, 14, 8, 56)
@@ -554,7 +553,7 @@ private fun BoxScope.Sheet(
         ) {
             BasicText(
                 title,
-                Modifier.weight(1f).semantics { heading() },
+                Modifier.weight(1f).padding(start = 46.dp).semantics { heading() },
                 style =
                     TextStyle(
                         lineHeightStyle = CssLines,
@@ -808,9 +807,6 @@ private val PrototypeEase = Easing { PencilCupState.ease(it) }
 
 /** CSS `ease-out`. */
 private val EaseOut = CubicBezierEasing(0f, 0f, .58f, 1f)
-
-/** The sheet's slide, the prototype's cubic-bezier(.2, .9, .25, 1). */
-private val SheetEasing = CubicBezierEasing(.2f, .9f, .25f, 1f)
 
 /** The prototype's body line height, which every line on the screen inherits. */
 private val BodyLine = 1.55.em

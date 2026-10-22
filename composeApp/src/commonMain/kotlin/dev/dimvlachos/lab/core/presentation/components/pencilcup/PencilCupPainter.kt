@@ -477,13 +477,13 @@ internal fun Canvas2D.drawPencilCup(s: PencilCupState, dark: Boolean, density: F
     // Tools, back to front. The front wall covers whatever is below the rim.
     for (i in 0 until CupTools.count) {
         val t = s.tools[i]
-        if (t.mode == ToolMode.Away || t.mode == ToolMode.Fly) continue
+        if (t.mode.gone) continue
         val spec = CupTools.specs[i]
         save()
         translate(t.x, t.y)
         rotate(t.a)
         scale(t.s, t.s)
-        val lift = ((s.restY() - t.y) / (60 * k)).coerceIn(0f, 1f)
+        val lift = ((s.restY(i) - t.y) / (60 * k)).coerceIn(0f, 1f)
         shadowCapsule(spec.length * k, spec.width * k * .8f, lift, k, dark, density)
         tool(i, spec.length * k, spec.width * k, k, dark)
         restore()
@@ -564,18 +564,40 @@ internal fun Canvas2D.drawPencilCup(s: PencilCupState, dark: Boolean, density: F
     restore()
 }
 
-/** The tool flying up into the new sheet, on its own layer above the sheet. */
+/**
+ * The tool riding in the pocket on the sheet, or flying between the cup and the sheet, on its own
+ * layer above the sheet. Tucked in, it is clipped at the sheet's top edge, with a soft shade on the
+ * sheet where it goes in behind it.
+ */
 internal fun Canvas2D.drawPencilCupFlight(s: PencilCupState, dark: Boolean, density: Float) {
     val k = s.k
+    val top = s.sheetTop()
     for (i in 0 until CupTools.count) {
         val t = s.tools[i]
-        if (t.mode != ToolMode.Fly || t.al <= 0f) continue
+        if (!t.mode.gone) continue
         val spec = CupTools.specs[i]
         save()
-        globalAlpha = t.al
+        if (t.tuck) {
+            // The pocket's lip: a soft shade on the sheet, just under its edge.
+            val inn = (t.depth / (14 * k)).coerceIn(0f, 1f)
+            val hw = (min(spec.width, 14f) / 2 + 5) * k
+            save()
+            translate(PencilCupState.PocketX * k, top)
+            scale(1f, .45f)
+            val g = createRadialGradient(0f, 0f, 0f, 0f, 0f, hw)
+            g.addColorStop(0f, Color(40, 25, 10, alpha255((if (dark) .55f else .32f) * inn)))
+            g.addColorStop(1f, Color(40, 25, 10, 0))
+            fillStyle = g
+            beginPath()
+            arc(0f, 0f, hw, 0f, Pi)
+            fill()
+            restore()
+            beginPath()
+            rect(0f, 0f, s.width, top)
+            clip()
+        }
         translate(t.x, t.y)
         rotate(t.a)
-        scale(t.s, t.s)
         shadowCapsule(spec.length * k, spec.width * k * .8f, 1f, k, dark, density)
         tool(i, spec.length * k, spec.width * k, k, dark)
         restore()

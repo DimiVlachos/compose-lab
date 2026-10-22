@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.pencilcup
 
+import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -76,7 +79,21 @@ class PencilCupStateTest {
     }
 
     @Test
-    fun pickingFliesTheToolOffAndDoneDropsItBackFromAbove() {
+    fun theLoupeStandsInsideTheMouthWithItsLensAboveTheRim() {
+        val s = cup()
+        val i = CupTools.Scan
+        val a = s.restA(i)
+        val l = CupTools.specs[i].length * s.k
+        // Its lens, with the gold rim, and where its handle crosses the rim's height.
+        val lensY = s.restY(i) - cos(a) * (l - 20 * s.k)
+        val r = 21.6f * s.k
+        assertTrue(lensY + r < s.rimY - s.rimDepth - s.k, "${lensY + r} vs ${s.rimY - s.rimDepth}")
+        val handleX = s.restX(i) + sin(a) * (s.restY(i) - s.rimY) / cos(a)
+        assertTrue(abs(handleX - s.cupX) + 6 * s.k < s.topWidth / 2 - 4 * s.k, "$handleX")
+    }
+
+    @Test
+    fun pickingTucksTheToolIntoAPocketOnTheSheetAndDoneArcsItIntoTheCup() {
         val s = cup()
         val events = mutableListOf<CupEvent>()
         s.onEvent = { e, _, _ -> events += e }
@@ -86,19 +103,45 @@ class PencilCupStateTest {
         assertTrue(s.sheetOpen)
         assertEquals(CupTools.List, s.sheetTool)
         assertTrue(CupEvent.Pick in events)
+        val t = s.tools[CupTools.List]
+        val l = CupTools.specs[CupTools.List].length * s.k
         assertTrue(
             s.run(2500) {
-                s.tools[CupTools.List].mode == ToolMode.Away &&
+                t.mode == ToolMode.Pocket &&
+                    t.depth > l * PencilCupState.PocketIn - .5f &&
                     listOf(0, 1, 3).all { s.tools[it].mode == ToolMode.Rest }
             },
         )
+        // The sheet is up, 64 % of the screen; half the tool is behind its top edge, half above, at
+        // the top-left corner.
+        val top = s.sheetTop()
+        assertEquals(800f * .36f, top, .5f)
+        assertTrue(t.tuck)
+        assertTrue(t.y > top + 20 * s.k)
+        assertTrue(t.y - cos(t.a) * l < top - 20 * s.k)
+        assertEquals(PencilCupState.PocketX * s.k, t.x + sin(t.a) * (t.y - top) / cos(t.a), .5f)
+        assertTrue(s.run(3000) { s.settled })
+        val fromX = t.x
+        val fromY = t.y
         assertEquals(CupTools.List, s.done())
         assertFalse(s.sheetOpen)
-        s.run(300)
-        // It starts above the screen.
-        assertTrue(s.tools[CupTools.List].y < 60f, "${s.tools[CupTools.List].y}")
+        // It lifts off at once, from where it sat.
+        assertEquals(ToolMode.Arc, t.mode)
+        assertEquals(fromX, t.x)
+        assertEquals(fromY, t.y)
+        var highest = Float.MAX_VALUE
+        assertTrue(
+            s.run(1500) {
+                highest = minOf(highest, t.y)
+                t.mode == ToolMode.Home
+            },
+        )
+        // An arc up off the sheet, never from above the screen.
+        assertTrue(highest > 0f && highest < fromY, "$highest")
+        assertFalse(t.tuck)
         assertTrue(s.run(3000) { s.allRest() })
         assertTrue(CupEvent.Clink in events)
+        assertTrue(s.sheetTop() >= 800f * 1.01f)
     }
 
     @Test
@@ -176,7 +219,8 @@ class PencilCupStateTest {
         assertTrue(s.allRest())
         s.pick(CupTools.Note)
         s.run(600)
-        assertEquals(ToolMode.Away, s.tools[CupTools.Note].mode)
+        assertEquals(ToolMode.Pocket, s.tools[CupTools.Note].mode)
+        assertEquals(0f, s.sheetSlide)
         s.done()
         s.step(.016f)
         assertTrue(s.allRest())
@@ -188,7 +232,9 @@ class PencilCupStateTest {
         s.tap()
         s.run(500)
         s.pick(CupTools.Scan)
+        s.run(200)
         s.reset()
+        assertEquals(PencilCupState.SheetDown, s.sheetSlide)
         assertFalse(s.isOpen)
         assertFalse(s.sheetOpen)
         assertTrue(s.allRest())

@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.pencilcup
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -19,8 +20,8 @@ import kotlin.math.sqrt
 /**
  * One tool in the cup, in design units that [PencilCupState.k] scales: its [length] and [width],
  * how far from the cup its tip lands when fanned ([reach]) at [fanAngle], where it stands in the
- * cup ([restX], [restAngle]), the label's [gap] from its tip, and the most it may lean right
- * ([lean]), where the cup's wall stops it.
+ * cup ([restX], [restAngle], standing [restUp] higher on the others), the label's [gap] from its
+ * tip, and the most it may lean right ([lean]), where the cup's wall stops it.
  */
 internal class CupToolSpec(
     val length: Float,
@@ -31,6 +32,7 @@ internal class CupToolSpec(
     val restAngle: Float,
     val gap: Float,
     val lean: Float = Float.NaN,
+    val restUp: Float = 0f,
 )
 
 /**
@@ -44,10 +46,11 @@ internal object CupTools {
 
     val specs =
         listOf(
-            CupToolSpec(108f, 40f, 134f, -1.28f, -11f, -.27f, 28f),
-            CupToolSpec(112f, 18f, 150f, -.86f, 3f, .23f, 16f, lean = .3f),
-            CupToolSpec(116f, 17f, 166f, -.43f, 3f, .05f, 14f),
-            CupToolSpec(128f, 11f, 196f, -.07f, -6f, -.11f, 14f),
+            // The loupe stands up on the others, so its whole lens is above the rim.
+            CupToolSpec(108f, 40f, 134f, -1.28f, -4f, -.2f, 28f, restUp = 14f),
+            CupToolSpec(112f, 18f, 150f, -.86f, 5f, .28f, 16f, lean = .3f),
+            CupToolSpec(116f, 17f, 166f, -.43f, 8f, .1f, 14f),
+            CupToolSpec(128f, 11f, 196f, -.07f, 0f, .06f, 14f),
         )
 
     /** The menu reads top to bottom: note, checklist, clip, scan. */
@@ -60,22 +63,26 @@ internal object CupTools {
 internal enum class CupEvent {
     /** A tool leaps out of the cup, or a drag lights it. */
     Lift,
-    /** A tool was picked and flies off into its sheet. */
+    /** A tool was picked and flies off onto its sheet. */
     Pick,
     /** A tool lands in the cup; the strength is how hard, .15 to 1. */
     Clink,
 }
 
 /**
- * Where a tool is in its life: in the cup, fanned out, falling home, flying off, or gone into its
- * sheet.
+ * Where a tool is in its life: in the cup, fanned out, falling home, flying up into the pocket on
+ * its sheet and riding there, or arcing from the sheet back to the cup.
  */
 internal enum class ToolMode {
     Rest,
     Fan,
     Home,
-    Fly,
-    Away,
+    Pocket,
+    Arc;
+
+    /** On the sheet or between it and the cup: drawn above the sheet, not in the cup. */
+    val gone
+        get() = this == Pocket || this == Arc
 }
 
 /** A tool's live pose: its foot at ([x], [y]), turned [a] radians, scaled [s], [al] opaque. */
@@ -93,6 +100,15 @@ internal class CupTool {
     internal var fromX = 0f
     internal var fromY = 0f
     internal var fromA = 0f
+    // The arc's control point, from the pocket to just above the cup.
+    internal var arcCx = 0f
+    internal var arcCy = 0f
+
+    /** Partly behind the sheet's top edge, which clips it. */
+    var tuck = false
+
+    /** How far the foot is below the sheet's edge, along the tool, in dp. */
+    var depth = 0f
 }
 
 /**
@@ -125,6 +141,34 @@ internal class PencilCupState {
     /** A picked tool's sheet is up. */
     var sheetOpen by mutableStateOf(false)
         private set
+
+    // The sheet's slide runs on the cup's clock: where it was when it last turned, and when.
+    private var sheetFrom = SheetDown
+    private var sheetAt = -1e9f
+
+    /**
+     * The sheet's slide: 0 up, 1.05 tucked below the screen, on the prototype's curve. The host's
+     * sheet reads it so the tool riding in its pocket moves with it.
+     */
+    val sheetSlide: Float
+        get() {
+            val to = if (sheetOpen) 0f else SheetDown
+            if (reducedMotion) return to
+            return lerp(
+                sheetFrom,
+                to,
+                SheetEasing.transform(((now - sheetAt) / SheetMs).coerceIn(0f, 1f)),
+            )
+        }
+
+    /** The sheet's top edge, in dp from the top of the screen. */
+    fun sheetTop() = height * (1 - SheetHeight * (1 - sheetSlide))
+
+    private fun turnSheet(open: Boolean) {
+        sheetFrom = sheetSlide
+        sheetAt = now
+        sheetOpen = open
+    }
 
     /** The tool whose sheet shows, or showed last; it stays while the sheet slides away. */
     var sheetTool by mutableIntStateOf(CupTools.Note)
@@ -236,7 +280,15 @@ internal class PencilCupState {
 
     fun restX(i: Int) = cupX + CupTools.specs[i].restX * k
 
-    fun restY() = botY - 6 * k
+    fun restY(i: Int) = botY - (6 + CupTools.specs[i].restUp) * k
+
+    /**
+     * Where a tool's foot is when it sits in the pocket at the sheet's top-left corner, [depth] dp
+     * below the edge along its own length; the sheet's top is [top].
+     */
+    fun pocketX(depth: Float) = PocketX * k - sin(PocketA) * depth
+
+    fun pocketY(depth: Float, top: Float = sheetTop()) = top + cos(PocketA) * depth
 
     fun restA(i: Int) = CupTools.specs[i].restAngle
 
@@ -283,7 +335,7 @@ internal class PencilCupState {
 
     private fun restInto(i: Int, t: CupTool) {
         t.x = restX(i)
-        t.y = restY()
+        t.y = restY(i)
         t.a = restA(i)
     }
 
@@ -297,7 +349,7 @@ internal class PencilCupState {
         for (i in tools.indices) {
             val t = tools[i]
             val go = {
-                if (isOpen && t.mode != ToolMode.Away) {
+                if (isOpen && !t.mode.gone) {
                     t.mode = ToolMode.Fan
                     t.vy -= 260 * k
                     emit(CupEvent.Lift, 1f, i)
@@ -329,7 +381,7 @@ internal class PencilCupState {
             if (i == except) continue
             val t = tools[i]
             val go = {
-                if (!isOpen && t.mode != ToolMode.Away && t.mode != ToolMode.Fly) {
+                if (!isOpen && !t.mode.gone) {
                     t.mode = ToolMode.Home
                     if (reducedMotion) {
                         restInto(i, t)
@@ -343,7 +395,7 @@ internal class PencilCupState {
 
     fun toggle() = if (isOpen) close() else open()
 
-    /** Picks tool [i]: it flies off into its sheet while the rest go home. */
+    /** Picks tool [i]: it flies up into the pocket on its sheet while the rest go home. */
     fun pick(i: Int) {
         if (sheetOpen) return
         if (!isOpen) open()
@@ -354,41 +406,42 @@ internal class PencilCupState {
         t.fromX = t.x
         t.fromY = t.y
         t.fromA = t.a
-        t.mode = ToolMode.Fly
+        t.mode = ToolMode.Pocket
         t.flyAt = now
+        t.tuck = false
+        t.depth = 0f
         emit(CupEvent.Pick, 1f, i)
-        sheetOpen = true
+        turnSheet(true)
         wake++
     }
 
     /**
-     * The sheet's Done: it goes, and the tool that made it falls back into the cup from above the
-     * screen. Returns that tool, for the new item, or -1 if no sheet was up.
+     * The sheet's Done: it slides away, and the tool that made it lifts off it at once, from where
+     * it sits, and arcs into the cup. Returns that tool, for the new item, or -1 if no sheet was
+     * up.
      */
     fun done(): Int {
         if (!sheetOpen) return -1
         val i = picked
-        sheetOpen = false
+        turnSheet(false)
         wake++
         if (i >= 0) {
             val t = tools[i]
-            later(if (reducedMotion) 0f else 260f) {
-                if (reducedMotion) {
-                    restInto(i, t)
-                    t.mode = ToolMode.Rest
-                    t.s = 1f
-                    t.al = 1f
-                } else {
-                    t.mode = ToolMode.Home
-                    t.x = restX(i) - 14 * k
-                    t.y = -10 * k
-                    t.vx = 0f
-                    t.vy = 0f
-                    t.a = restA(i) + .35f
-                    t.va = 0f
-                    t.s = 1f
-                    t.al = 1f
-                }
+            if (reducedMotion) {
+                restInto(i, t)
+                t.mode = ToolMode.Rest
+                t.vx = 0f
+                t.vy = 0f
+                t.va = 0f
+                t.tuck = false
+            } else {
+                t.fromX = t.x
+                t.fromY = t.y
+                t.fromA = t.a
+                t.arcCx = lerp(t.x, restX(i), .4f)
+                t.arcCy = min(t.y, restY(i) - 90 * k) - 100 * k
+                t.mode = ToolMode.Arc
+                t.flyAt = now
             }
             picked = -1
         }
@@ -400,6 +453,8 @@ internal class PencilCupState {
         timers.clear()
         isOpen = false
         sheetOpen = false
+        sheetFrom = SheetDown
+        sheetAt = -1e9f
         hover = -1
         picked = -1
         rock = 0f
@@ -417,6 +472,7 @@ internal class PencilCupState {
             t.va = 0f
             t.s = 1f
             t.al = 1f
+            t.tuck = false
             restInto(i, t)
         }
         wake++
@@ -507,7 +563,7 @@ internal class PencilCupState {
         var best = -1
         var bd = 1e9f
         for (i in tools.indices) {
-            if (tools[i].mode == ToolMode.Away) continue
+            if (tools[i].mode.gone) continue
             if (overLabel(i, x, y)) {
                 if (-1f < bd) {
                     best = i
@@ -536,13 +592,13 @@ internal class PencilCupState {
     val settled: Boolean
         get() {
             if (timers.isNotEmpty() || pressing) return false
+            if (now - sheetAt < SheetMs) return false
             if (abs(press) > 1e-3f || abs(pressV) > 1e-3f) return false
             if (abs(rock) > 1e-3f || abs(rockV) > 1e-3f) return false
             for (i in tools.indices) {
                 val t = tools[i]
                 when (t.mode) {
-                    ToolMode.Away -> Unit
-                    ToolMode.Rest -> if (!still(t, restX(i), restY(), restA(i))) return false
+                    ToolMode.Rest -> if (!still(t, restX(i), restY(i), restA(i))) return false
                     // Fanned out and arrived: the fan holds still until the next touch.
                     ToolMode.Fan -> {
                         val extra = if (hover == i) 10f else 0f
@@ -550,6 +606,8 @@ internal class PencilCupState {
                             return false
                         }
                     }
+                    // Tucked all the way into its pocket: it rides the sheet, which has stopped.
+                    ToolMode.Pocket -> if (now - t.flyAt < FlyMs + TuckMs) return false
                     else -> return false
                 }
             }
@@ -603,7 +661,7 @@ internal class PencilCupState {
         for (i in tools.indices) {
             val t = tools[i]
             val rx = restX(i)
-            val ry = restY()
+            val ry = restY(i)
             val ra = restA(i)
             when (t.mode) {
                 ToolMode.Rest -> {
@@ -654,19 +712,42 @@ internal class PencilCupState {
                         }
                     }
                 }
-                ToolMode.Fly -> {
-                    val p = ((now - t.flyAt) / 420f).coerceIn(0f, 1f)
+                ToolMode.Pocket -> {
+                    // Up to just above the pocket, aimed at where the sheet ends up, then down into
+                    // it along its own length.
+                    val el = if (reducedMotion) 1e9f else now - t.flyAt
+                    val p = (el / FlyMs).coerceIn(0f, 1f)
+                    val q = ((el - FlyMs) / TuckMs).coerceIn(0f, 1f)
+                    val iq = 1 - q
+                    t.depth =
+                        lerp(-6 * k, CupTools.specs[i].length * k * PocketIn, 1 - iq * iq * iq)
+                    t.tuck = q > 0f
+                    val top = if (q > 0f) sheetTop() else height * (1 - SheetHeight)
                     val e = ease(p)
-                    val tx = width / 2 + 40 * k
-                    val ty = height * .36f + 40 * k
-                    t.x = lerp(t.fromX, tx, e)
-                    t.y = lerp(t.fromY, ty, e) - sin(p * PI.toFloat()) * 30 * k
-                    t.a = lerp(t.fromA, -1.35f, e)
-                    t.s = lerp(1f, .55f, e)
-                    t.al = 1f - ((p - .55f) / .45f).coerceIn(0f, 1f)
-                    if (p >= 1f) t.mode = ToolMode.Away
+                    t.x = lerp(t.fromX, pocketX(t.depth), e)
+                    t.y = lerp(t.fromY, pocketY(t.depth, top), e) - sin(p * PI.toFloat()) * 30 * k
+                    t.a = lerp(t.fromA, PocketA, e)
                 }
-                ToolMode.Away -> Unit
+                ToolMode.Arc -> {
+                    // A thrown arc: a parabola from the pocket to just above the cup's mouth, then
+                    // it drops in as any tool does.
+                    val p = ((now - t.flyAt) / ArcMs).coerceIn(0f, 1f)
+                    val w = 1 - p
+                    val ex = rx
+                    val ey = ry - 90 * k
+                    t.x = w * w * t.fromX + 2 * w * p * t.arcCx + p * p * ex
+                    t.y = w * w * t.fromY + 2 * w * p * t.arcCy + p * p * ey
+                    t.a = lerp(t.fromA, ra, ease(p))
+                    // Out of the pocket once its foot is above the sheet's edge, sliding away.
+                    if (t.tuck && t.y < sheetTop()) t.tuck = false
+                    if (p >= 1f) {
+                        t.mode = ToolMode.Home
+                        t.tuck = false
+                        t.vx = 2 * (ex - t.arcCx) / (ArcMs / 1000f)
+                        t.vy = 2 * (ey - t.arcCy) / (ArcMs / 1000f)
+                        t.va = 0f
+                    }
+                }
             }
             // The cup's right wall stops a tool that leans out, so it can't swing past the edge.
             val lean = CupTools.specs[i].lean
@@ -688,6 +769,24 @@ internal class PencilCupState {
         const val Slop = 10f
 
         const val Gravity = 2600f
+
+        /** The sheet: its slide, how high it stands, and how far below the screen it tucks. */
+        const val SheetMs = 380f
+        const val SheetHeight = .64f
+        const val SheetDown = 1.05f
+        val SheetEasing = CubicBezierEasing(.2f, .9f, .25f, 1f)
+
+        /**
+         * The pocket at the sheet's top-left corner: where the tool crosses the edge (× k), its
+         * slant, and how much of its length goes in. Then how long it flies, tucks in, and arcs
+         * back to the cup.
+         */
+        const val PocketX = 30f
+        const val PocketA = .3f
+        const val PocketIn = .48f
+        const val FlyMs = 420f
+        const val TuckMs = 200f
+        const val ArcMs = 560f
 
         fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 

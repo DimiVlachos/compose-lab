@@ -41,7 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
-| [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked flies up into a new sheet while the rest clatter back in |
+| [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked rides in a pocket on its new sheet while the rest clatter back in |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -705,10 +705,10 @@ Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sou
 
 ## Pencil cup FAB (`core/presentation/components/pencilcup/`)
 
-A notes app whose floating + button is a little cobalt-glazed pencil cup in the corner of the screen, under a warm lamp. Tap it and the four tools inside leap out one after another and fan up and to the left, each with its label: a pencil for a new note, a highlighter for a checklist, scissors to clip from the web, a loupe to scan a page. Pick one and it flies up into a new sheet while the others fall back into the cup, bounce and rattle; tap Done and the new note joins the list as the tool drops back into the cup from above the screen. Or in one move: press the cup, slide up onto a tool and let go.
+A notes app whose floating + button is a little cobalt-glazed pencil cup in the corner of the screen, under a warm lamp. Tap it and the four tools inside leap out one after another and fan up and to the left, each with its label: a pencil for a new note, a highlighter for a checklist, scissors to clip from the web, a loupe to scan a page. Pick one and it flies up and slips into a pocket at the top corner of a new sheet, riding there half out, while the others fall back into the cup, bounce and rattle; tap Done and the new note joins the list as the tool lifts out of its pocket and arcs back into the cup while the sheet slides away under it. Or in one move: press the cup, slide up onto a tool and let go.
 
-- **Drawn as the prototype draws it.** The cup and tools are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the dark inside and back rim first, then the tools, each a few paths in its own frame, then the glazed front wall with its drips, speckles and slip-painted plus, so whatever is below the rim is hidden. The tool in flight draws on its own layer above the sheet.
-- **Springs and gravity.** Fanning out is springs toward targets on an arc, staggered 45 ms apart, with the angle lagging so each tool rises before it leans. Dropping back is gravity: each tool bounces off the bottom of the cup, an underdamped angle spring rattles it and the cup rocks; the landing speed sets the clink's volume. Fixed 1/240 s substeps; the frame loop sleeps once everything is at rest.
+- **Drawn as the prototype draws it.** The cup and tools are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the dark inside and back rim first, then the tools, each a few paths in its own frame, then the glazed front wall with its drips, speckles and slip-painted plus, so whatever is below the rim is hidden. The tool on the sheet draws on its own layer above it, clipped at the sheet's top edge so its lower half is tucked behind it, with a soft shade where it goes in.
+- **Springs and gravity.** Fanning out is springs toward targets on an arc, staggered 45 ms apart, with the angle lagging so each tool rises before it leans. The cup also slides the sheet on its own clock, so the tool in its pocket rides with it, and on Done throws the tool on a parabola to just above the cup. Dropping back is gravity: each tool bounces off the bottom of the cup, an underdamped angle spring rattles it and the cup rocks; the landing speed sets the clink's volume. Fixed 1/240 s substeps; the frame loop sleeps once everything is at rest.
 - **The gesture.** One pointer handler on the cup: a tap toggles, a drag opens the fan and lights the tool nearest the finger, and the release point picks it, so even a fast swipe with few samples picks the right tool.
 - **Feel and sound.** A tick as the fan opens and as a drag lights each tool, a confirm on a pick; synthesized lift, pick and clink sounds, each tool's clink a little higher on the glaze.
 - **Screen readers and keys.** The cup is a Create new button that expands and collapses; the labels are buttons (Up and Down move between them, Escape and Back close the fan or the sheet), and what happens is announced in a polite live region.
@@ -719,7 +719,8 @@ The demo, `pencilcup.fab`, is Fieldbook, an invented notes app. Its script taps 
 ```kotlin
 val cup = remember { PencilCupState() }
 PencilCupFab(cup, labels, cupLabel = "Create new", colors, dark, sounds) {
-    MySheet(open = cup.sheetOpen, tool = cup.sheetTool, onDone = { cup.done() })
+    // Slide the sheet by cup.sheetSlide (0 up, 1.05 below the screen), 64 % of the screen high.
+    MySheet(slide = { cup.sheetSlide }, tool = cup.sheetTool, onDone = { cup.done() })
 }
 ```
 
