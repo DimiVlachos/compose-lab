@@ -1,7 +1,7 @@
 package dev.dimvlachos.lab.keyhookdemo.presentation.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -58,6 +59,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
@@ -191,7 +193,7 @@ internal fun KeyHookDemo(
         }
         // The hero takes what the screen leaves, the same whoever is signed in: the feed below it
         // is one row of shows tall either way.
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(Modifier.weight(1f).fillMaxWidth().testTag("keyhook-hero")) {
             AccountCard(who, colors)
             Hint(
                 stringResource(
@@ -380,12 +382,25 @@ private fun Hint(text: String, colors: KeyHookScreenColors, count: Int) {
 /** What the person signed in is watching, or a note that nobody is; one row tall either way. */
 @Composable
 private fun Feed(who: KeyHolder?, colors: KeyHookScreenColors, reducedMotion: Boolean) {
-    // The row fades up whenever it changes, as the prototype's does.
-    val shown = remember { Animatable(1f) }
+    // Each change of person crossfades one row into the next, as the prototype's crossfadeRow():
+    // the old row lies under the new one while it fades in.
+    var current by remember { mutableStateOf(FeedRow(who)) }
+    var previous by remember { mutableStateOf<FeedRow?>(null) }
+    val fade = remember { Animatable(1f) }
     LaunchedEffect(who) {
-        if (reducedMotion) return@LaunchedEffect
-        shown.snapTo(0f)
-        shown.animateTo(1f, tween(450, easing = CssEase))
+        if (who === current.who) return@LaunchedEffect
+        if (reducedMotion) {
+            previous = null
+            current = FeedRow(who)
+            return@LaunchedEffect
+        }
+        // Cut short, the row that shows the most stays as the one fading out.
+        val out = previous
+        previous = if (out != null && fade.value < .5f) out else current
+        current = FeedRow(who)
+        fade.snapTo(0f)
+        fade.animateTo(1f, tween(FeedCrossfade.Ms, easing = FeedCrossfade.Easing))
+        previous = null
     }
     Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 2.dp, bottom = 8.dp)) {
         Text(
@@ -394,58 +409,99 @@ private fun Feed(who: KeyHolder?, colors: KeyHookScreenColors, reducedMotion: Bo
             color = colors.ink,
             style = FeedTitleStyle,
         )
-        Box(
-            Modifier.graphicsLayer {
-                alpha = shown.value
-                translationY = (1f - shown.value) * 6.dp.toPx()
-            },
-        ) {
-            val shows = who?.let { Household.showsOf(it) }
-            // Signed out, two invisible shows hold the row open under the note.
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (i in 0..1) {
-                    ShowCard(
-                        shows?.get(i),
-                        colors,
-                        Modifier.weight(1f)
-                            .then(
-                                if (shows == null)
-                                    Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics {}
-                                else Modifier,
-                            ),
-                    )
-                }
+        Box(Modifier.testTag("keyhook-feed")) {
+            val out = previous
+            if (out != null) {
+                // Over another person's shows the old thumbnails stay solid underneath, so each
+                // card's colours, title and progress blend straight across; anything else fades.
+                val keep = out.who != null && current.who != null
+                ShowRow(
+                    out.who,
+                    colors,
+                    Modifier.clearAndSetSemantics { testTag = "keyhook-feed-out" }
+                        .graphicsLayer {
+                            alpha = FeedCrossfade.outgoing(fade.value, keep)
+                        },
+                    labelAlpha = { if (keep) 1f - fade.value else 1f },
+                )
             }
-            if (shows == null) {
-                Box(
-                    Modifier.matchParentSize()
-                        .drawBehind {
-                            val w = 1.5.dp.toPx()
-                            drawRoundRect(
-                                colors.line,
-                                Offset(w / 2f, w / 2f),
-                                Size(size.width - w, size.height - w),
-                                CornerRadius(12.dp.toPx() - w / 2f),
-                                style =
-                                    Stroke(
-                                        w,
-                                        pathEffect =
-                                            PathEffect.dashPathEffect(
-                                                floatArrayOf(w * 3f, w * 3f),
-                                            ),
-                                    ),
-                            )
-                        }
-                        .padding(horizontal = 18.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        stringResource(Res.string.keyhook_empty),
-                        color = colors.muted,
-                        style = EmptyStyle,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+            ShowRow(
+                current.who,
+                colors,
+                Modifier.graphicsLayer { alpha = if (previous != null) fade.value else 1f },
+                labelAlpha = { 1f },
+            )
+        }
+    }
+}
+
+/** One person's row in the feed, or the empty one: a box, so nobody signed in is a row too. */
+private class FeedRow(val who: KeyHolder?)
+
+/** The feed's crossfade, as the prototype's stepCrossfade(). */
+internal object FeedCrossfade {
+    const val Ms = 400
+    val Easing = Easing { KeyRackState.ease(it) }
+
+    /**
+     * The outgoing row's alpha [p] (eased) of the way in: solid under the new shows when [keep],
+     * since they cover it as they fade in, otherwise fading out.
+     */
+    fun outgoing(p: Float, keep: Boolean) = if (keep) 1f else 1f - p
+}
+
+/** Two shows, or, signed out, two invisible ones holding the row open under the empty note. */
+@Composable
+private fun ShowRow(
+    who: KeyHolder?,
+    colors: KeyHookScreenColors,
+    modifier: Modifier,
+    labelAlpha: () -> Float,
+) {
+    Box(modifier) {
+        val shows = who?.let { Household.showsOf(it) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (i in 0..1) {
+                ShowCard(
+                    shows?.get(i),
+                    colors,
+                    Modifier.weight(1f)
+                        .then(
+                            if (shows == null)
+                                Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics {}
+                            else Modifier,
+                        ),
+                    labelAlpha,
+                )
+            }
+        }
+        if (shows == null) {
+            Box(
+                Modifier.matchParentSize()
+                    .drawBehind {
+                        val w = 1.5.dp.toPx()
+                        drawRoundRect(
+                            colors.line,
+                            Offset(w / 2f, w / 2f),
+                            Size(size.width - w, size.height - w),
+                            CornerRadius(12.dp.toPx() - w / 2f),
+                            style =
+                                Stroke(
+                                    w,
+                                    pathEffect =
+                                        PathEffect.dashPathEffect(floatArrayOf(w * 3f, w * 3f)),
+                                ),
+                        )
+                    }
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(Res.string.keyhook_empty),
+                    color = colors.muted,
+                    style = EmptyStyle,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -453,7 +509,12 @@ private fun Feed(who: KeyHolder?, colors: KeyHookScreenColors, reducedMotion: Bo
 
 /** One show: its thumbnail, its title on it and how far in, and the episode under it. */
 @Composable
-private fun ShowCard(show: Show?, colors: KeyHookScreenColors, modifier: Modifier) {
+private fun ShowCard(
+    show: Show?,
+    colors: KeyHookScreenColors,
+    modifier: Modifier,
+    labelAlpha: () -> Float,
+) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
             Modifier.fillMaxWidth()
@@ -497,6 +558,7 @@ private fun ShowCard(show: Show?, colors: KeyHookScreenColors, modifier: Modifie
         }
         Text(
             show?.episode ?: " ",
+            Modifier.graphicsLayer { alpha = labelAlpha() },
             color = colors.muted,
             style = EpisodeStyle,
             maxLines = 1,
@@ -688,7 +750,6 @@ private class ScriptFinger {
 }
 
 private val CardShadow = Color(40, 25, 10).copy(alpha = .06f)
-private val CssEase = CubicBezierEasing(.25f, .1f, .25f, 1f)
 
 // The prototype's text sits on CSS lines, 1.55 times its size unless it says otherwise, with the
 // spare height shared above and below.
