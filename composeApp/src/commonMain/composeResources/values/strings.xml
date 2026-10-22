@@ -448,11 +448,9 @@
     <string name="locket_title">Edit profile</string>
     <string name="locket_business">Fern &amp; Finch</string>
     <string name="locket_status">Profile photo · %1$s</string>
-    <string name="locket_status_new">New photo · %1$s</string>
     <string name="locket_tip_closed">Tap the catch to open the locket</string>
     <string name="locket_tip_open">Drag a photo in from Recent</string>
     <string name="locket_tip_placed">Tap the locket to close it</string>
-    <string name="locket_tip_placing">Trimming it to the oval</string>
     <string name="locket_open">Open locket</string>
     <string name="locket_close">Close locket</string>
     <string name="locket_recent">RECENT</string>

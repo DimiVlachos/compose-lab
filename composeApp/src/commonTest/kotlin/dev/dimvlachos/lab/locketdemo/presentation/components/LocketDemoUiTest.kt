@@ -58,6 +58,25 @@ class LocketDemoUiTest {
     }
 
     @Test
+    fun theTextHoldsStillWhileAPhotoTrimsInThenChangesOnce() = runComposeUiTest {
+        val locket = LocketState()
+        setContent { LocketDemo(DemoState(), locket) }
+        waitForIdle()
+        // Stepped by hand, so checking the text doesn't run the trim to its end first.
+        mainClock.autoAdvance = false
+        // Used on the closed locket: it opens and the photo trims in over 480 ms.
+        onNodeWithTag("photo-3").performSemanticsAction(SemanticsActions.OnClick)
+        mainClock.advanceTimeBy(200)
+        assertTrue(locket.isOpen && locket.placingPhoto == 3, "mid-trim")
+        // Neither the opening nor the trim changes the text.
+        onNodeWithTag("status").assertTextEquals("Profile photo · Blue Ridge at dusk")
+        onNodeWithTag("tip").assertTextEquals("Tap the catch to open the locket")
+        mainClock.advanceTimeBy(1_300)
+        onNodeWithTag("status").assertTextEquals("Profile photo · Sunflowers on Haywood Road")
+        onNodeWithTag("tip").assertTextEquals("Tap the locket to close it")
+    }
+
+    @Test
     fun theScriptOpensDragsInClosesAndResets() = runComposeUiTest {
         val state = DemoState()
         val locket = LocketState()

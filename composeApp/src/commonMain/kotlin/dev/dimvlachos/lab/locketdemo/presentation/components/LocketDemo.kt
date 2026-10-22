@@ -26,9 +26,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,14 +92,13 @@ import dev.dimvlachos.lab.resources.locket_photo_sunflowers
 import dev.dimvlachos.lab.resources.locket_recent
 import dev.dimvlachos.lab.resources.locket_save
 import dev.dimvlachos.lab.resources.locket_status
-import dev.dimvlachos.lab.resources.locket_status_new
 import dev.dimvlachos.lab.resources.locket_tip_closed
 import dev.dimvlachos.lab.resources.locket_tip_open
 import dev.dimvlachos.lab.resources.locket_tip_placed
-import dev.dimvlachos.lab.resources.locket_tip_placing
 import dev.dimvlachos.lab.resources.locket_title
 import dev.dimvlachos.lab.resources.locket_use_photo
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
@@ -267,17 +269,22 @@ private fun Who(
     names: List<String>,
     colors: LocketScreenColors,
 ) {
-    val placing = locket.placingPhoto
-    val status =
-        if (placing >= 0) stringResource(Res.string.locket_status_new, names[placing])
-        else stringResource(Res.string.locket_status, names[locket.photo])
+    val status = stringResource(Res.string.locket_status, names[locket.photo])
     val tip =
         when {
-            placing >= 0 -> stringResource(Res.string.locket_tip_placing)
             locket.isOpen && locket.placed > 0 -> stringResource(Res.string.locket_tip_placed)
             locket.isOpen -> stringResource(Res.string.locket_tip_open)
             else -> stringResource(Res.string.locket_tip_closed)
         }
+    // While a photo trims into the oval the text holds still, as the prototype's; it changes once,
+    // when the photo is in. A photo dropped on the closed locket opens it as it starts, so this
+    // also
+    // keeps the opening from changing the tip a moment before the photo lands.
+    val held = remember { arrayOf(status, tip) }
+    if (locket.placingPhoto < 0) {
+        held[0] = status
+        held[1] = tip
+    }
     Row(
         Modifier.fillMaxWidth()
             .padding(start = 20.dp, end = 20.dp, bottom = 10.dp)
@@ -305,13 +312,13 @@ private fun Who(
         }
         Column(Modifier.weight(1f)) {
             CrossfadeText(
-                status,
+                held[0],
                 locket,
                 Modifier.testTag("status").semantics { liveRegion = LiveRegionMode.Polite },
                 colors.ink,
                 css(14f, FontWeight(650)),
             )
-            CrossfadeText(tip, locket, Modifier.testTag("tip"), colors.muted, css(12f))
+            CrossfadeText(held[1], locket, Modifier.testTag("tip"), colors.muted, css(12f))
         }
     }
 }
@@ -328,40 +335,56 @@ private fun DrawScope.drawPhoto(photo: ImageBitmap, alpha: Float) =
 
 /**
  * A crossfade between values of [target], as the prototype's: the new one fades in while the old
- * one fades out from wherever it had got to, over [Locket.FADE_MS] with its smoothstep. A change of
- * [snapKey] (a reset) or [reduced] motion jumps instead. [progress] is read in the draw phase.
+ * one fades out, over [Locket.FADE_MS] with its smoothstep. Cut short, the half-shown value becomes
+ * one more fading [ghosts] entry, from the opacity it had reached, and older ones keep fading as
+ * they were, so nothing jumps. A change of [snapKey] (a reset) or [reduced] motion jumps instead.
+ * [progress] and each ghost's [Ghost.alpha] are read in the draw phase.
  */
 @Stable
 private class Crossfade<T>(initial: T) {
     var current by mutableStateOf(initial)
-    var previous by mutableStateOf<T?>(null)
-    /** How far [previous] still showed when this fade began. */
-    var from = 1f
+    val ghosts = mutableStateListOf<Ghost<T>>()
     val fade = Animatable(1f)
     val progress: Float
         get() = Locket.fadeEase(fade.value)
+
+    /** The value shown before [current], if it is still fading out. */
+    val previous: T?
+        get() = ghosts.lastOrNull()?.value
+}
+
+/** A value fading out, from the opacity [from] it showed when it was replaced. */
+@Stable
+private class Ghost<T>(val value: T, val from: Float) {
+    val fade = Animatable(0f)
+    val alpha: Float
+        get() = from * (1f - Locket.fadeEase(fade.value))
 }
 
 @Composable
 private fun <T> rememberCrossfade(target: T, snapKey: Int, reduced: Boolean): Crossfade<T> {
     val x = remember { Crossfade(target) }
+    val scope = rememberCoroutineScope()
     var key by remember { mutableIntStateOf(snapKey) }
     LaunchedEffect(target, snapKey) {
         if (reduced || snapKey != key) {
             key = snapKey
             x.current = target
-            x.previous = null
+            x.ghosts.clear()
             x.fade.snapTo(1f)
             return@LaunchedEffect
         }
         if (target == x.current) return@LaunchedEffect
-        // Interrupted, the text that was fading in fades out from where it had got to.
-        x.from = if (x.previous != null) x.progress else 1f
-        x.previous = x.current
+        val ghost = Ghost(x.current, x.progress)
+        x.ghosts += ghost
+        // Each ghost fades on its own, so a later change can't cut it off.
+        scope.launch {
+            ghost.fade.animateTo(1f, tween(Locket.FADE_MS.toInt(), easing = LinearEasing))
+            x.ghosts.remove(ghost)
+        }
         x.current = target
         x.fade.snapTo(0f)
         x.fade.animateTo(1f, tween(Locket.FADE_MS.toInt(), easing = LinearEasing))
-        x.previous = null
     }
     return x
 }
@@ -380,16 +403,17 @@ private fun CrossfadeText(
 ) {
     val x = rememberCrossfade(text, locket.resets, locket.reducedMotion)
     Box(modifier.fillMaxWidth().clearAndSetSemantics { this.text = AnnotatedString(text) }) {
-        val old = x.previous
-        if (old != null) {
-            Text(
-                old,
-                Modifier.graphicsLayer { alpha = x.from * (1f - x.progress) },
-                color = color,
-                style = style,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        for (ghost in x.ghosts) {
+            key(ghost) {
+                Text(
+                    ghost.value,
+                    Modifier.graphicsLayer { alpha = ghost.alpha },
+                    color = color,
+                    style = style,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Text(
             x.current,
