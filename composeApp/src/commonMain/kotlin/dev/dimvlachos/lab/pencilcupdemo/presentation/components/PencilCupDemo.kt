@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -53,6 +54,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -63,6 +66,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -72,6 +76,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -161,6 +166,9 @@ internal fun PencilCupDemo(
     var announcement by remember { mutableStateOf("") }
     val density = LocalDensity.current.density
     SideEffect { places.density = density }
+    val input = LocalInputModeManager.current
+    val cupFocus = remember { FocusRequester() }
+    val doneFocus = remember { FocusRequester() }
 
     val labels =
         listOf(
@@ -190,18 +198,32 @@ internal fun PencilCupDemo(
         notes.add(0, note)
         fresh = note.id
         announcement = added.replace("%s", note.title)
+        // Keys go back to the cup, as the prototype's do; a touch leaves focus where it was.
+        if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
     }
 
-    // What changed, for a screen reader: the fan out, shut, or a tool picked.
+    // A sheet opened from the keyboard hands it Done, as the prototype's does, but not in the clip.
+    LaunchedEffect(cup) {
+        snapshotFlow { cup.sheetOpen }
+            .collect { open ->
+                if (open && !state.replay && input.inputMode == InputMode.Keyboard) {
+                    delay(50)
+                    runCatching { doneFocus.requestFocus() }
+                }
+            }
+    }
+
+    // What changed, for a screen reader: the fan out, shut, or a tool picked, in today's words.
+    val said by rememberUpdatedState(Triple(labels, opened, closed))
     LaunchedEffect(cup) {
         var wasOpen = false
         var wasSheet = false
         snapshotFlow { cup.isOpen to cup.sheetOpen }
             .collect { (open, sheet) ->
                 when {
-                    sheet && !wasSheet -> announcement = labels[cup.sheetTool]
-                    open && !wasOpen -> announcement = opened
-                    !open && wasOpen && !sheet -> announcement = closed
+                    sheet && !wasSheet -> announcement = said.first[cup.sheetTool]
+                    open && !wasOpen -> announcement = said.second
+                    !open && wasOpen && !sheet -> announcement = said.third
                 }
                 wasOpen = open
                 wasSheet = sheet
@@ -305,6 +327,7 @@ internal fun PencilCupDemo(
             sounds = sounds,
             modifier = Modifier.fillMaxSize(),
             reducedMotion = reducedMotion,
+            cupFocus = cupFocus,
         ) {
             Sheet(
                 open = cup.sheetOpen,
@@ -313,6 +336,7 @@ internal fun PencilCupDemo(
                 colors = colors,
                 reducedMotion = reducedMotion,
                 places = places,
+                doneFocus = doneFocus,
                 onDone = { finish() },
             )
         }
@@ -482,6 +506,7 @@ private fun BoxScope.Sheet(
     colors: PencilCupScreenColors,
     reducedMotion: Boolean,
     places: Places,
+    doneFocus: FocusRequester,
     onDone: () -> Unit,
 ) {
     val slide by
@@ -543,6 +568,7 @@ private fun BoxScope.Sheet(
                 Modifier.heightIn(min = 44.dp)
                     .widthIn(min = 64.dp)
                     .onGloballyPositioned { places.done = it }
+                    .focusRequester(doneFocus)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(enabled = open, role = Role.Button, onClick = onDone)
                     .testTag("pencil-done"),

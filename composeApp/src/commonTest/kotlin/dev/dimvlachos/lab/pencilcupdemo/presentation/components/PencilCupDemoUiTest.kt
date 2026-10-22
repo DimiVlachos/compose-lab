@@ -3,9 +3,13 @@ package dev.dimvlachos.lab.pencilcupdemo.presentation.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +21,7 @@ import dev.dimvlachos.lab.core.presentation.components.pencilcup.CupTools
 import dev.dimvlachos.lab.core.presentation.components.pencilcup.PencilCupState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.pencilcupdemo.PencilCupDemos
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -97,5 +102,24 @@ class PencilCupDemoUiTest {
         onNodeWithText("Fieldbook · 6 notes").assertExists()
         assertTrue(cup.settled)
         assertFalse(cup.isOpen)
+    }
+
+    @Test
+    fun theCupsTouchTargetFollowsTheCupWhenTheScreenChangesSize() = runComposeUiTest {
+        val cup = PencilCupState()
+        var height by mutableStateOf(800.dp)
+        setContent {
+            LabTheme {
+                Box(Modifier.size(412.dp, height)) {
+                    PencilCupDemo(DemoState(), cup, reducedMotion = false)
+                }
+            }
+        }
+        val before = onNodeWithTag("pencil-cup").getUnclippedBoundsInRoot().top
+        height = 640.dp
+        waitForIdle()
+        val after = onNodeWithTag("pencil-cup").getUnclippedBoundsInRoot().top
+        assertTrue(after < before - 50.dp, "before $before, after $after")
+        assertTrue(abs((after.value) - cup.cupTop) < 1f, "${after.value} vs ${cup.cupTop}")
     }
 }

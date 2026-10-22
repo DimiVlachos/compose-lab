@@ -12,17 +12,17 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -50,6 +51,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -63,6 +65,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -80,6 +83,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.archivo_extrabold
 import dev.dimvlachos.lab.resources.jetbrains_mono_semibold
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -111,6 +115,7 @@ internal fun PencilCupFab(
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = false,
     onTouch: () -> Unit = {},
+    cupFocus: FocusRequester = remember { FocusRequester() },
     sheet: @Composable BoxScope.() -> Unit = {},
 ) {
     SideEffect { state.reducedMotion = reducedMotion }
@@ -184,11 +189,24 @@ internal fun PencilCupFab(
     val fonts =
         remember(mono, sans) { mapOf(MonoFont to FontFamily(mono), SansFont to FontFamily(sans)) }
     val measurer = rememberTextMeasurer()
-    val cupFocus = remember { FocusRequester() }
     val itemFocus = remember { List(CupTools.count) { FocusRequester() } }
+    // Opened from the keyboard: the first label takes focus once it can, as the prototype's does.
+    var focusMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(focusMenu) {
+        if (!focusMenu) return@LaunchedEffect
+        withFrameNanos {}
+        runCatching { itemFocus[CupTools.menuOrder[0]].requestFocus() }
+        focusMenu = false
+    }
 
-    BoxWithConstraints(modifier) {
-        state.layout(maxWidth.value, maxHeight.value)
+    Box(
+        // The cup is laid out from the space it fills, before anything in it is placed.
+        modifier.layout { measurable, constraints ->
+            state.layout(constraints.maxWidth.toDp().value, constraints.maxHeight.toDp().value)
+            val p = measurable.measure(constraints)
+            layout(p.width, p.height) { p.place(0, 0) }
+        },
+    ) {
         val dimmed = state.isOpen || state.sheetOpen
         val scrim by
             animateFloatAsState(
@@ -208,14 +226,19 @@ internal fun PencilCupFab(
                                 down.consume()
                                 onTouch()
                                 var at = down.position
+                                var lifted = false
                                 while (true) {
                                     val e = awaitPointerEvent()
                                     val c = e.changes.firstOrNull { it.id == down.id } ?: break
                                     at = c.position
                                     c.consume()
-                                    if (!c.pressed) break
+                                    if (!c.pressed) {
+                                        lifted = true
+                                        break
+                                    }
                                 }
-                                state.tapScrim(at.x / density, at.y / density)
+                                // A gesture the system took away is no tap.
+                                if (lifted) state.tapScrim(at.x / density, at.y / density)
                             }
                         }
                     } else Modifier,
@@ -231,7 +254,7 @@ internal fun PencilCupFab(
                 c.drawPencilCup(state, dark, density)
             }
         }
-        CupButton(state, cupLabel, colors, cupFocus, itemFocus, onTouch)
+        CupButton(state, cupLabel, colors, cupFocus, { focusMenu = true }, onTouch)
         for (i in CupTools.menuOrder) {
             ToolLabel(state, i, labels[i], colors, reducedMotion, itemFocus, cupFocus, onTouch)
         }
@@ -260,18 +283,34 @@ private fun CupButton(
     label: String,
     colors: PencilCupScreenColors,
     focus: FocusRequester,
-    items: List<FocusRequester>,
+    onKeyOpen: () -> Unit,
     onTouch: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val input = LocalInputModeManager.current
     fun toggleByKey() {
         state.toggle()
-        if (state.isOpen) runCatching { items[CupTools.menuOrder[0]].requestFocus() }
+        if (state.isOpen) onKeyOpen()
     }
     Box(
-        Modifier.offset(state.cupLeft.dp, state.cupTop.dp)
-            .size(state.cupWidth.dp, state.cupHeight.dp)
+        // Placed from the cup's geometry as it is laid out, so it follows the cup when it moves.
+        Modifier.layout { measurable, constraints ->
+                state.geometry
+                val p =
+                    measurable.measure(
+                        Constraints.fixed(
+                            (state.cupWidth * density).roundToInt(),
+                            (state.cupHeight * density).roundToInt(),
+                        ),
+                    )
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    p.place(
+                        (state.cupLeft * density).roundToInt(),
+                        (state.cupTop * density).roundToInt(),
+                    )
+                }
+            }
             .testTag("pencil-cup")
             .focusRequester(focus)
             .onKeyEvent {
@@ -293,8 +332,8 @@ private fun CupButton(
             }
             .focusable(interactionSource = interaction)
             .drawBehind {
-                // The keyboard's focus ring; a touch never focuses the cup, so never shows it.
-                if (focused) {
+                // The keyboard's focus ring, never after a touch.
+                if (focused && input.inputMode == InputMode.Keyboard) {
                     val o = 2.dp.toPx()
                     drawRoundRect(
                         colors.accent,
@@ -375,7 +414,8 @@ private fun ToolLabel(
     onTouch: () -> Unit,
 ) {
     val shown = state.labelShown(tool)
-    val hot = state.hover == tool
+    val hot by remember(state, tool) { derivedStateOf { state.hover == tool } }
+    val input = LocalInputModeManager.current
     val show by
         animateFloatAsState(
             if (shown) 1f else 0f,
@@ -410,6 +450,7 @@ private fun ToolLabel(
         Modifier.layout { measurable, constraints ->
                 val p = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
                 state.setLabelSize(tool, p.width / density, p.height / density)
+                state.geometry
                 layout(constraints.maxWidth, constraints.maxHeight) {
                     p.place(
                         (state.labelRight(tool) * density).toInt() - p.width,
@@ -454,7 +495,7 @@ private fun ToolLabel(
                         style = Stroke(2 * w),
                     )
                 }
-                if (focused) {
+                if (focused && input.inputMode == InputMode.Keyboard) {
                     val o = 3.dp.toPx()
                     drawRoundRect(
                         colors.accent,
@@ -477,13 +518,20 @@ private fun ToolLabel(
                                     val c = e.changes.firstOrNull { it.id == down.id } ?: break
                                     c.consume()
                                     if (!c.pressed) {
-                                        state.pick(tool)
+                                        // Only a release still on the label picks its tool.
+                                        val q = c.position
+                                        val on =
+                                            q.x >= 0f &&
+                                                q.y >= 0f &&
+                                                q.x <= size.width &&
+                                                q.y <= size.height
+                                        if (on) state.pick(tool)
                                         break
                                     }
                                 }
                             }
                         }
-                        .semantics {
+                        .semantics(mergeDescendants = true) {
                             role = Role.Button
                             onClick {
                                 state.pick(tool)
@@ -497,11 +545,13 @@ private fun ToolLabel(
                 if (it.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (it.key) {
                     Key.DirectionDown -> {
-                        items[order[(at + 1) % order.size]].requestFocus()
+                        runCatching { items[order[(at + 1) % order.size]].requestFocus() }
                         true
                     }
                     Key.DirectionUp -> {
-                        items[order[(at + order.size - 1) % order.size]].requestFocus()
+                        runCatching {
+                            items[order[(at + order.size - 1) % order.size]].requestFocus()
+                        }
                         true
                     }
                     Key.Enter,
@@ -518,7 +568,8 @@ private fun ToolLabel(
                     else -> false
                 }
             }
-            .focusable(enabled = shown, interactionSource = interaction)
+            // Reachable by keys as soon as the fan is out, before its label has faded in.
+            .focusable(enabled = state.isOpen, interactionSource = interaction)
             .padding(horizontal = 13.dp, vertical = 7.dp),
     ) {
         BasicText(

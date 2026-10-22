@@ -199,6 +199,12 @@ internal class PencilCupState {
     var rimDepth = 0f
         private set
 
+    /**
+     * Bumped whenever [layout] moves the cup, so what is placed from its geometry is placed again.
+     */
+    var geometry by mutableIntStateOf(0)
+        private set
+
     private val labelW = FloatArray(CupTools.count)
     private val labelH = FloatArray(CupTools.count)
 
@@ -216,6 +222,7 @@ internal class PencilCupState {
         botY = h - 26 * k - safe
         rimY = botY - 72 * k
         for (i in tools.indices) if (tools[i].mode == ToolMode.Rest) restInto(i, tools[i])
+        geometry++
         wake++
     }
 
