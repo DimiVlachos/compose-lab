@@ -99,7 +99,9 @@ class LocketStateTest {
         s.run(.016f)
         s.move(b.tcx(3) + 100f, b.tcy - 114f)
         val d = assertNotNull(s.drag)
-        assertTrue(d.moved && abs(d.x - (b.tcx(3) + 90f)) < .01f && abs(d.y - (b.tcy - 120f)) < .01f)
+        assertTrue(
+            d.moved && abs(d.x - (b.tcx(3) + 90f)) < .01f && abs(d.y - (b.tcy - 120f)) < .01f,
+        )
         s.run(.016f)
         s.move(280f, 250f)
         s.run(.016f)
@@ -147,6 +149,15 @@ class LocketStateTest {
         assertTrue(!s.isOpen && s.a < .05f)
         assertTrue(LocketEvent.Snap in events && LocketEvent.Place in events)
         assertTrue(LocketEvent.Chain in events && LocketEvent.Back in events)
+    }
+
+    @Test
+    fun anOpenLocketComesToRestTiltedAgainstTheBoxsSide() {
+        val s = locket()
+        s.usePhoto(3)
+        s.run(20f)
+        assertTrue(s.settled, "th ${s.th}, tw ${s.tw}, a ${s.a}")
+        assertTrue(s.th > 0f, "the open lid keeps it off the left edge: ${s.th}")
     }
 
     @Test

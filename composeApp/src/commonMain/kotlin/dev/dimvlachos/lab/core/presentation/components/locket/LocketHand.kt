@@ -68,8 +68,8 @@ internal class LocketHand(private val state: LocketState) {
     }
 
     /**
-     * The prototype's `dragAlong`: glides to the first point in 560 ms, presses, waits 160 ms, drags
-     * through the rest at [ms] a leg, waits 120 ms and lets go.
+     * The prototype's `dragAlong`: glides to the first point in 560 ms, presses, waits 160 ms,
+     * drags through the rest at [ms] a leg, waits 120 ms and lets go.
      */
     suspend fun dragAlong(points: List<Pair<Float, Float>>, ms: Float) = guarded {
         glide(points[0].first, points[0].second, 560f)

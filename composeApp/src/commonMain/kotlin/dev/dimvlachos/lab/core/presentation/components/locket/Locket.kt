@@ -155,7 +155,8 @@ internal fun Locket(
                                 } != null
                             }
                         state.idle(
-                            if (woke || rest == null) mark.elapsedNow().inWholeMilliseconds.toFloat()
+                            if (woke || rest == null)
+                                mark.elapsedNow().inWholeMilliseconds.toFloat()
                             else rest + 1f,
                         )
                         last = 0L
@@ -175,8 +176,10 @@ internal fun Locket(
     val measurer = rememberTextMeasurer(cacheSize = 16)
     val vibes = FontFamily(Font(Res.font.great_vibes_regular))
     val cormorant = FontFamily(Font(Res.font.cormorant_garamond_medium_italic))
-    val fonts = remember(vibes, cormorant) { mapOf(InitialFont to vibes, EngravingFont to cormorant) }
-    val ink = remember(muted, accent, labels) { LocketInk(muted, accent, labels.recent, labels.hint) }
+    val fonts =
+        remember(vibes, cormorant) { mapOf(InitialFont to vibes, EngravingFont to cormorant) }
+    val ink =
+        remember(muted, accent, labels) { LocketInk(muted, accent, labels.recent, labels.hint) }
     val touched by rememberUpdatedState(onTouch)
     BoxWithConstraints(
         modifier.onPreviewKeyEvent {
@@ -304,7 +307,10 @@ private fun HitBox(
             .size((w * box.s).dp, (h * box.s).dp)
             .then(modifier)
             .onKeyEvent {
-                if (it.type == KeyEventType.KeyDown && (it.key == Key.Enter || it.key == Key.Spacebar)) {
+                if (
+                    it.type == KeyEventType.KeyDown &&
+                        (it.key == Key.Enter || it.key == Key.Spacebar)
+                ) {
                     onKey()
                     true
                 } else false

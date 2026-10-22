@@ -48,7 +48,9 @@ internal object Locket {
     /** Open stops at 150°, which keeps the swung lid inside the hero. */
     const val OPEN = 2.62f
 
-    /** The overshoot past [OPEN] stops here, so the lid's free edge stays clear of the box's side. */
+    /**
+     * The overshoot past [OPEN] stops here, so the lid's free edge stays clear of the box's side.
+     */
     const val LIDMAX = 2.75f
 
     /** How far a press moves before it is a drag. */
@@ -531,8 +533,8 @@ internal class LocketState(initialPhoto: Int = 2) {
 
     /**
      * Whether nothing moves: the lid and the chain at rest, no photo carried or flying, and the
-     * glint and the glass's sweep over. The closed catch still glints now and then; see
-     * [restMs].
+     * glint and the glass's sweep over. The chain rests straight down, or, open, against the box's
+     * side where the lid would cross it. The closed catch still glints now and then; see [restMs].
      */
     val settled: Boolean
         get() =
@@ -541,7 +543,7 @@ internal class LocketState(initialPhoto: Int = 2) {
                 back.isEmpty() &&
                 abs(a - aTarget) < RestGap &&
                 abs(av) < RestSpeed &&
-                abs(th) < RestGap &&
+                abs(th - 0f.coerceIn(limitLo(), limitHi())) < RestGap &&
                 abs(tw) < RestSpeed &&
                 lift < RestGap &&
                 (glint < 0f || now - glint > GlintMs) &&

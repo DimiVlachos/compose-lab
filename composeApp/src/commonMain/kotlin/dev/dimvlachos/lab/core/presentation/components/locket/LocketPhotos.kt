@@ -179,7 +179,9 @@ private fun Canvas2D.drawRidge() {
             val fx = x.toFloat()
             lineTo(
                 fx,
-                base - 14f * sin(fx / 38f + ph[0]) - 8f * sin(fx / 17f + ph[1]) -
+                base -
+                    14f * sin(fx / 38f + ph[0]) -
+                    8f * sin(fx / 17f + ph[1]) -
                     4f * sin(fx / 7f + ph[2]),
             )
             x += 6
@@ -245,5 +247,15 @@ internal fun Canvas2D.drawCover(img: ImageBitmap, x: Float, y: Float, w: Float, 
     val sw = w / s
     val sh = h / s
     val k = PhotoScale.toFloat()
-    drawImage(img, (PhotoUnits - sw) / 2f * k, (PhotoUnits - sh) / 2f * k, sw * k, sh * k, x, y, w, h)
+    drawImage(
+        img,
+        (PhotoUnits - sw) / 2f * k,
+        (PhotoUnits - sh) / 2f * k,
+        sw * k,
+        sh * k,
+        x,
+        y,
+        w,
+        h,
+    )
 }

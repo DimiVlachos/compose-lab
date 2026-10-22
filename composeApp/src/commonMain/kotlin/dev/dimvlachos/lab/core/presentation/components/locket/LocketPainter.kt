@@ -88,7 +88,15 @@ internal fun Canvas2D.drawLocket(
     // A warm lamp above the locket. It goes in a layer of its own, as the browser's canvas is, so
     // the fade cuts only the glow, not the screen under it.
     beginLayer()
-    var g = createRadialGradient(box.ox + 150f * s, box.oy + 120f * s, 0f, box.ox + 150f * s, box.oy + 120f * s, 230f * s)
+    var g =
+        createRadialGradient(
+            box.ox + 150f * s,
+            box.oy + 120f * s,
+            0f,
+            box.ox + 150f * s,
+            box.oy + 120f * s,
+            230f * s,
+        )
     g.addColorStop(0f, if (dark) "rgba(255,196,120,.16)" else "rgba(255,236,200,.85)")
     g.addColorStop(1f, "rgba(255,236,200,0)")
     fillStyle = g
@@ -347,8 +355,7 @@ private fun Canvas2D.drawLid(st: LocketState) {
         ellipse(0f, 0f, RX, RY, 0f, 0f, Tau)
         fill()
         // The catch: a small nub on the free edge, glinting now and then while it waits.
-        val inv =
-            if (!st.isOpen && st.a < .02f) max(0f, sin(st.now / 520f)).pow(8) else 0f
+        val inv = if (!st.isOpen && st.a < .02f) max(0f, sin(st.now / 520f)).pow(8) else 0f
         fillStyle = gold(RX - 2f, -6f, RX + 5f, 6f)
         beginPath()
         roundRect(RX - 1.5f, -6.5f, 7f, 13f, 3f)
@@ -563,7 +570,8 @@ private fun Canvas2D.drawMoving(
     val ry = lerp(pl.size / 2f, PRY, e)
     val n = lerp(7f, 2f, e)
     // What falls outside the oval fades as it is trimmed away.
-    if (p < .6f) drawThumb(photos[pl.j], x, y, lerp(pl.size, PRY * 2f, e), 7f, rot, (1f - p / .6f) * .5f)
+    if (p < .6f)
+        drawThumb(photos[pl.j], x, y, lerp(pl.size, PRY * 2f, e), 7f, rot, (1f - p / .6f) * .5f)
     save()
     blob(x, y, rx, ry, n, rot)
     clip()
