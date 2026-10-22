@@ -596,6 +596,52 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Pencil cup ----------
+
+def ramp(n, rate, gain, dur):
+    """WebAudio's exponentialRampToValueAtTime from gain down to 0.0001 over dur, then silence."""
+    m = seconds(dur, rate)
+    return [gain * (0.0001 / gain) ** (i / m) if i < m else 0.0 for i in range(n)]
+
+
+def glide(n, rate, f0, f1, dur, gain, shape="sine"):
+    """WebAudio's oscillator gliding exponentially from f0 to f1 over dur, under a ramp of gain."""
+    out, phase = [], 0.0
+    env = ramp(n, rate, gain, dur)
+    for i in range(n):
+        t = i / rate
+        f = f1 if t >= dur else f0 * (f1 / f0) ** (t / dur)
+        phase += f / rate
+        p = phase % 1.0
+        wave_ = math.sin(2 * math.pi * p) if shape == "sine" else (4 * p - 1 if p < 0.5 else 3 - 4 * p)
+        out.append(wave_ * env[i])
+    return out
+
+
+def pencil_clink(rng, rate):
+    """A tool landing in the glazed cup: a wooden tick on stoneware with a short ceramic ring."""
+    n = seconds(0.26, rate)
+    tick = mul(bandpass(noise(n, rng), 2400, 5.0, rate), ramp(n, rate, 0.28, 0.035))
+    knock = mul(lowpass(lowpass(noise(n, rng), 900, rate), 900, rate), ramp(n, rate, 0.2, 0.05))
+    ring = mix(glide(n, rate, 1850, 1830, 0.22, 0.05), glide(n, rate, 3120, 3100, 0.14, 0.025))
+    return fade(normalise(mix(scale(tick, 3.0), scale(knock, 2.0), ring), 0.8), rate, 0.0003, 0.02)
+
+
+def pencil_lift(rng, rate):
+    """A tool leaping out of the cup: a light papery tick and a small rising triangle chirp."""
+    n = seconds(0.09, rate)
+    tick = mul(bandpass(noise(n, rng), 1500, 3.0, rate), ramp(n, rate, 0.1, 0.05))
+    chirp_ = glide(n, rate, 520, 640, 0.07, 0.02, "triangle")
+    return fade(normalise(mix(scale(tick, 3.0), chirp_), 0.5), rate, 0.0003, 0.01)
+
+
+def pencil_pick(rng, rate):
+    """A tool picked: a quick bright swish as it flies up into its sheet."""
+    n = seconds(0.18, rate)
+    swish = mul(highpass(highpass(noise(n, rng), 3800, rate), 3800, rate), ramp(n, rate, 0.07, 0.16))
+    return fade(normalise(swish, 0.45), rate, 0.002, 0.02)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +690,10 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    cup = random.Random(1022)
+    write("pencil_clink", pencil_clink(cup, fast), fast)
+    write("pencil_lift", pencil_lift(cup, fast), fast)
+    write("pencil_pick", pencil_pick(cup, fast), fast)
 
 
 if __name__ == "__main__":

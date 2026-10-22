@@ -41,7 +41,10 @@ internal enum class Sound(val file: String) {
     PadlockClunk("padlock_clunk"),
     PadlockPop("padlock_pop"),
     PadlockRattle("padlock_rattle"),
-    PadlockSwing("padlock_swing");
+    PadlockSwing("padlock_swing"),
+    PencilClink("pencil_clink"),
+    PencilLift("pencil_lift"),
+    PencilPick("pencil_pick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
