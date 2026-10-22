@@ -22,6 +22,7 @@ import dev.dimvlachos.lab.resources.ic_demo_fog
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
+import dev.dimvlachos.lab.stickynotedemo.StickyNoteDemos
 import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
 
 internal object Catalog {
@@ -49,7 +50,8 @@ internal object Catalog {
                     PaperBagDemos.all +
                     StickerDemos.all +
                     MailboxDemos.all +
-                    PadlockDemos.all)
+                    PadlockDemos.all +
+                    StickyNoteDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }

@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,26 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Sticky note swipe (`core/presentation/components/stickynote/`)
+
+A reminders list where every row is a sticky note pressed onto the screen along its glue strip. Swipe one and it peels up from the corner like paper, curling toward the finger, with Archive or Snooze underneath and its shadow growing as it comes away. Pull it past about 42 % of its width, or flick it, and it comes off, flies onto the Done or Later pad under the list and sticks there at a slight angle; let go early and it presses back flat with a small flutter. Tap a pad to put its top note back where it came from, or tap a note to see its corner lift.
+
+- **Drawn as the prototype draws it.** The notes are ported call by call from their HTML prototype onto the shared `canvas2d` adapter. The fold is the perpendicular bisector between the pulled corner and where it is pulled to: what stays down is the note clipped to one side, and the flap is the other side mirrored across it, with the ink showing through reversed. Paper grain is baked once from a fixed seed, and shadows grow with the lift, sized in dp at the note's own scale.
+- **Above the bar.** Notes that are peeling or flying are drawn on a layer over the app bar, so the paper covers its text.
+- **Flights.** A note flies to its pad on a curve while it unfolds, shrinks and turns, kept inside the side margins, and lands at exactly the angle and offset it then keeps on the pad; going back is the same curve in reverse.
+- **Feel and sound.** A tick as the pull crosses the line where letting go commits, a confirm as a note sticks to a pad; synthesized crackles while it peels, a rip, a stick, a pat and a lift.
+- **Screen readers and keys.** Every note is a node with Archive and Snooze actions; with a keyboard, ← (or Delete) archives, → snoozes and ↑ ↓ move between notes. The pads are buttons that put the last note back, and what happens is announced politely.
+- **Reduced motion.** A note comes off and lands at once, and nothing flutters or bumps.
+
+The demo, `stickynote.swipe`, is a Today list of six reminders. Its script pulls the second note a little and lets it smooth back down, archives it, snoozes the next, and then taps Later and Done so both notes go back to their places.
+
+```kotlin
+val notes = remember { StickyNoteState(reminders) }
+StickyNoteList(notes, text, padLabel = { kind, n -> "…" }, sounds = sounds, ring = accent) {
+    AppBar()
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -837,6 +859,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
 
+The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
@@ -878,6 +902,8 @@ The typewriter composer's face is [Special Elite](https://fonts.google.com/speci
 The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/CourierPrime), Copyright 2015 The Courier Prime Project Authors, [Caveat](https://github.com/googlefonts/caveat), Copyright 2014 The Caveat Project Authors, and [Archivo](https://github.com/Omnibus-Type/Archivo), Copyright 2020 The Archivo Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Caveat and Archivo are static instances, at weights 600 and 800, of the variable fonts).
 
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
+
+The sticky notes are handwritten in the card file's [Caveat](https://github.com/googlefonts/caveat), at weight 600 (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Caveat-OFL.txt`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 
