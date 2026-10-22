@@ -45,16 +45,93 @@ private val Specks: List<Speck> = run {
 // As the CSS rgba() alpha lands in a canvas: rounded to a byte.
 private fun alpha255(a: Float) = (a.coerceIn(0f, 1f) * 255f).toInt()
 
-private fun Canvas2D.lin(
-    x0: Float,
-    y0: Float,
-    x1: Float,
-    y1: Float,
-    vararg stops: Pair<Float, String>,
-): Gradient2D {
+/** A gradient's colour stops, made once: offsets and CSS colours. */
+private class Stops(vararg stops: Pair<Float, String>) {
+    val offsets = FloatArray(stops.size) { stops[it].first }
+    val colors = Array(stops.size) { stops[it].second }
+}
+
+private fun Canvas2D.lin(x0: Float, y0: Float, x1: Float, y1: Float, stops: Stops): Gradient2D {
     val g = createLinearGradient(x0, y0, x1, y1)
-    for ((o, col) in stops) g.addColorStop(o, col)
+    for (i in stops.offsets.indices) g.addColorStop(stops.offsets[i], stops.colors[i])
     return g
+}
+
+// The stops of every linear gradient the cup and tools are painted with, as the prototype's.
+private val EraserStops = Stops(0f to "#c95f72", .35f to "#f6a7b4", 1f to "#d77588")
+private val FerruleStops =
+    Stops(
+        0f to "#7b7468",
+        .3f to "#efe9da",
+        .6f to "#b9b09b",
+        1f to "#6c6556",
+    )
+private val WoodStops = Stops(0f to "#c99b66", .4f to "#f3d6ab", 1f to "#d1a674")
+private val BarrelStops =
+    Stops(
+        0f to "#c23c78",
+        .32f to "#ff8cc1",
+        .5f to "#ff5fa6",
+        1f to "#c4407d",
+    )
+private val CapStops =
+    Stops(
+        0f to "#9e2a5e",
+        .3f to "#ff7db8",
+        .55f to "#ee4b93",
+        1f to "#a32f64",
+    )
+private val ClipStops = Stops(0f to "#b23a70", 1f to "#ff9fcb")
+private val BladeStops =
+    Stops(
+        0f to "#7c848c",
+        .35f to "#f2f5f7",
+        .55f to "#aab3bb",
+        1f to "#5d656d",
+    )
+private val LoopStops =
+    Stops(
+        0f to "#ff9c55",
+        .5f to "#f0701f",
+        1f to "#b44a0c",
+    )
+private val HandleStops =
+    Stops(
+        0f to "#3e2715",
+        .35f to "#9a6a43",
+        .6f to "#6f4628",
+        1f to "#331f10",
+    )
+private val BrassStops = Stops(0f to "#7c5615", .35f to "#f7dc8f", 1f to "#8a6119")
+private val RimStops = Stops(0f to "#fbe7ae", .4f to "#c89a40", 1f to "#6b4a10")
+private val ClayStops = Stops(0f to "#9a7b5c", .35f to "#e2c7a2", 1f to "#86684b")
+private val GlazeStops =
+    Stops(
+        0f to "#0d1d4a",
+        .18f to "#2b4ea6",
+        .32f to "#5d85dc",
+        .42f to "#2f55b0",
+        .75f to "#1c3a86",
+        1f to "#0c1840",
+    )
+
+/** The tools' printing at the cup's scale, written out once per scale rather than every frame. */
+private object ToolFonts {
+    private var k = -1f
+    var mono = ""
+        private set
+
+    var sans = ""
+        private set
+
+    fun at(scale: Float): ToolFonts {
+        if (scale != k) {
+            k = scale
+            mono = "700 ${5.6f * scale}px $MonoFont"
+            sans = "800 ${5.2f * scale}px $SansFont"
+        }
+        return this
+    }
 }
 
 private fun Canvas2D.rr(x: Float, y: Float, w: Float, h: Float, radius: Float) {
@@ -71,7 +148,7 @@ private fun Canvas2D.rr(x: Float, y: Float, w: Float, h: Float, radius: Float) {
 private fun Canvas2D.pencil(len: Float, w: Float, k: Float, dark: Boolean) {
     val kk = k
     rr(-w / 2, -9 * kk, w, 9.5f * kk, 3 * kk)
-    fillStyle = lin(-w / 2, 0f, w / 2, 0f, 0f to "#c95f72", .35f to "#f6a7b4", 1f to "#d77588")
+    fillStyle = lin(-w / 2, 0f, w / 2, 0f, EraserStops)
     fill()
     fillStyle =
         lin(
@@ -79,10 +156,7 @@ private fun Canvas2D.pencil(len: Float, w: Float, k: Float, dark: Boolean) {
             0f,
             w / 2,
             0f,
-            0f to "#7b7468",
-            .3f to "#efe9da",
-            .6f to "#b9b09b",
-            1f to "#6c6556",
+            FerruleStops,
         )
     fillRect(-w / 2 - .4f, -17 * kk, w + .8f, 8.5f * kk)
     strokeStyle = "rgba(60,50,35,.45)"
@@ -123,7 +197,7 @@ private fun Canvas2D.pencil(len: Float, w: Float, k: Float, dark: Boolean) {
     restore()
     save()
     rotate(-Pi / 2)
-    font = "700 ${5.6f * kk}px $MonoFont"
+    font = ToolFonts.at(kk).mono
     textAlign = "left"
     fillStyle = "rgba(40,60,30,.65)"
     fillText("No. 2  HB", -yB + 14 * kk, 2 * kk)
@@ -136,7 +210,7 @@ private fun Canvas2D.pencil(len: Float, w: Float, k: Float, dark: Boolean) {
     lineTo(1.6f * kk, tip)
     lineTo(-1.6f * kk, tip)
     closePath()
-    fillStyle = lin(-w / 2, 0f, w / 2, 0f, 0f to "#c99b66", .4f to "#f3d6ab", 1f to "#d1a674")
+    fillStyle = lin(-w / 2, 0f, w / 2, 0f, WoodStops)
     fill()
     beginPath()
     moveTo(-1.6f * kk, tip)
@@ -157,15 +231,12 @@ private fun Canvas2D.highlighter(len: Float, w: Float, k: Float) {
             0f,
             w / 2,
             0f,
-            0f to "#c23c78",
-            .32f to "#ff8cc1",
-            .5f to "#ff5fa6",
-            1f to "#c4407d",
+            BarrelStops,
         )
     fill()
     fillStyle = "rgba(255,255,255,.82)"
     fillRect(-w / 2, -24 * kk, w, 15 * kk)
-    font = "800 ${5.2f * kk}px $SansFont"
+    font = ToolFonts.at(kk).sans
     fillStyle = "#d13f83"
     textAlign = "center"
     save()
@@ -180,17 +251,14 @@ private fun Canvas2D.highlighter(len: Float, w: Float, k: Float) {
             0f,
             w / 2,
             0f,
-            0f to "#9e2a5e",
-            .3f to "#ff7db8",
-            .55f to "#ee4b93",
-            1f to "#a32f64",
+            CapStops,
         )
     fill()
     fillStyle = "rgba(255,255,255,.35)"
     fillRect(-w * .22f, -len + 4 * kk, w * .12f, 28 * kk)
     // Pocket clip.
     rr(w / 2 - 3.5f * kk, -len + 4 * kk, 4.5f * kk, 28 * kk, 2 * kk)
-    fillStyle = lin(w / 2 - 4 * kk, 0f, w / 2 + 2 * kk, 0f, 0f to "#b23a70", 1f to "#ff9fcb")
+    fillStyle = lin(w / 2 - 4 * kk, 0f, w / 2 + 2 * kk, 0f, ClipStops)
     fill()
 }
 
@@ -210,10 +278,7 @@ private fun Canvas2D.scissors(len: Float, k: Float) {
             0f,
             5 * kk,
             0f,
-            0f to "#7c848c",
-            .35f to "#f2f5f7",
-            .55f to "#aab3bb",
-            1f to "#5d656d",
+            BladeStops,
         )
     fill()
     strokeStyle = "rgba(40,46,52,.5)"
@@ -233,9 +298,7 @@ private fun Canvas2D.scissors(len: Float, k: Float) {
                 cy - ry,
                 cx + rx,
                 cy + ry,
-                0f to "#ff9c55",
-                .5f to "#f0701f",
-                1f to "#b44a0c",
+                LoopStops,
             )
         fill("evenodd")
     }
@@ -277,13 +340,10 @@ private fun Canvas2D.loupe(len: Float, k: Float) {
             0f,
             5 * kk,
             0f,
-            0f to "#3e2715",
-            .35f to "#9a6a43",
-            .6f to "#6f4628",
-            1f to "#331f10",
+            HandleStops,
         )
     fill()
-    fillStyle = lin(-6 * kk, 0f, 6 * kk, 0f, 0f to "#7c5615", .35f to "#f7dc8f", 1f to "#8a6119")
+    fillStyle = lin(-6 * kk, 0f, 6 * kk, 0f, BrassStops)
     fillRect(-6 * kk, -hl - 6 * kk, 12 * kk, 7 * kk)
     fillRect(-2.6f * kk, cy + r, 5.2f * kk, -hl - 6 * kk - cy - r + 1)
     // Glass: a cool lens with the lamp in it.
@@ -295,7 +355,7 @@ private fun Canvas2D.loupe(len: Float, k: Float) {
     beginPath()
     arc(0f, cy, r, 0f, Pi * 2)
     fill()
-    strokeStyle = lin(-r, cy - r, r, cy + r, 0f to "#fbe7ae", .4f to "#c89a40", 1f to "#6b4a10")
+    strokeStyle = lin(-r, cy - r, r, cy + r, RimStops)
     lineWidth = 4.2f * kk
     beginPath()
     arc(0f, cy, r, 0f, Pi * 2)
@@ -433,8 +493,7 @@ internal fun Canvas2D.drawPencilCup(s: PencilCupState, dark: Boolean, density: F
     save()
     cupFront(s)
     clip()
-    fillStyle =
-        lin(cx - wT / 2, 0f, cx + wT / 2, 0f, 0f to "#9a7b5c", .35f to "#e2c7a2", 1f to "#86684b")
+    fillStyle = lin(cx - wT / 2, 0f, cx + wT / 2, 0f, ClayStops)
     fillRect(cx - wT, rimY - ry * 2, wT * 2, botY - rimY + ry * 4)
     beginPath()
     moveTo(cx - wT, rimY - ry * 2)
@@ -453,12 +512,7 @@ internal fun Canvas2D.drawPencilCup(s: PencilCupState, dark: Boolean, density: F
             0f,
             cx + wT / 2,
             0f,
-            0f to "#0d1d4a",
-            .18f to "#2b4ea6",
-            .32f to "#5d85dc",
-            .42f to "#2f55b0",
-            .75f to "#1c3a86",
-            1f to "#0c1840",
+            GlazeStops,
         )
     fill()
     save()
