@@ -80,10 +80,7 @@ internal class BirdcageState {
     var phase = 0f
         private set
 
-    /**
-     * How far the head is tucked into the shoulder: 0 up, 1 tucked. It dips a little below 0 as the
-     * head overshoots on waking.
-     */
+    /** How far the head is tucked into the shoulder: 0 up, 1 tucked. */
     var sleep = 0f
         private set
 
@@ -100,8 +97,8 @@ internal class BirdcageState {
         private set
 
     /**
-     * When the canary last began to wake, on [time]: its eye opens, then its head rises, then its
-     * feathers fluff ([fluff]) and its tail flicks ([tailFlick]). Negative while asleep or before.
+     * When the canary last began to wake, on [time]: its eye opens, then its head rises. Negative
+     * while asleep or before.
      */
     var wakeAt = -1f
         private set
@@ -110,9 +107,27 @@ internal class BirdcageState {
     internal var peak = 0f
         private set
 
+    /**
+     * How fast the cover is moving while it brakes into its end, in cover-lengths a second; 0 while
+     * it is falling, drawn up, held or still.
+     */
+    internal var braking = 0f
+        private set
+
+    /** The hem's dip as the cover lands on the base: up to 1, then it settles. */
+    var ripple = 0f
+        private set
+
+    /** How much the linen gathers at the crown as the cover is drawn into the top, 0 to 1. */
+    var gather = 0f
+        private set
+
     private var swayV = 0f
     private var sleepV = 0f
+    private var sleepAtWake = 0f
     private var lidV = 0f
+    private var rippleV = 0f
+    private var gatherV = 0f
     private var wasSleepy = false
     private var drag: Drag? = null
     private var drags = 0
@@ -272,7 +287,13 @@ internal class BirdcageState {
         lidV = 0f
         wasSleepy = false
         wakeAt = -1f
+        sleepAtWake = 0f
         peak = 0f
+        braking = 0f
+        ripple = 0f
+        rippleV = 0f
+        gather = 0f
+        gatherV = 0f
         sway = 0f
         swayV = 0f
         chirpAt = -1f
@@ -306,36 +327,45 @@ internal class BirdcageState {
         }
         if (!dragging) {
             val prev = coverV
-            val side = sign(cover - target)
-            // Heavy linen: critically damped, and it never passes its end. If it would, it stops
-            // there.
-            coverV = spring(cover, coverV, target, 60f, 1f, dt)
-            cover += coverV * dt
-            if (side != 0f && sign(cover - target) == -side) {
-                cover = target
-                coverV = 0f
-            }
+            stepCover(dt)
             // The hem swings a little when the cover slows.
             swayV += (prev - coverV) * .3f
             peak = max(peak, cover)
+        } else {
+            braking = 0f
         }
+        // As it brakes onto the base the hem ripples once; as it brakes into the top the linen
+        // gathers at the crown.
+        val down = if (target == 1f) braking else 0f
+        val up = if (target == 0f) braking else 0f
+        rippleV = spring(ripple, rippleV, (down * .5f).coerceIn(0f, 1f), 70f, .45f, dt)
+        ripple += rippleV * dt
+        gatherV = spring(gather, gatherV, (up * .45f).coerceIn(0f, 1f), 40f, 1f, dt)
+        gather += gatherV * dt
         swayV = spring(sway, swayV, 0f, 14f, .38f, dt)
         sway += swayV * dt
         phase += dt * (2.2f + abs(coverV) * 4f)
         val sleepy = muted && cover > .78f
-        // Waking is a little sequence: the eye blinks open, the head rises out of the shoulder,
-        // then
-        // the feathers fluff.
-        if (wasSleepy && !sleepy && (sleep > .3f || lid > .3f)) wakeAt = time
+        // Waking: the eye blinks open, then the head rises smoothly out of the shoulder.
+        if (wasSleepy && !sleepy && (sleep > .3f || lid > .3f)) {
+            wakeAt = time
+            sleepAtWake = sleep
+            sleepV = 0f
+        }
         if (sleepy) wakeAt = -1f
         wasSleepy = sleepy
         val w = if (wakeAt >= 0f) time - wakeAt else Float.POSITIVE_INFINITY
-        // Head: tucks in slowly when it gets dark; on waking it waits for the eye, then rises with
-        // a
-        // slight overshoot.
-        val head = if (sleepy) 1f else if (w < WakeHeadMs) sleep else 0f
-        sleepV = spring(sleep, sleepV, head, if (sleepy) 12f else 46f, if (sleepy) 1f else .62f, dt)
-        sleep += sleepV * dt
+        if (w < WakeHeadMs + WakeHeadLenMs) {
+            // An eased rise from where the head was, so it never passes upright.
+            sleep =
+                if (w < WakeHeadMs) sleepAtWake
+                else sleepAtWake * (1f - ease((w - WakeHeadMs) / WakeHeadLenMs))
+            sleepV = 0f
+        } else {
+            // Tucks in slowly when it gets dark.
+            sleepV = spring(sleep, sleepV, if (sleepy) 1f else 0f, if (sleepy) 12f else 30f, 1f, dt)
+            sleep += sleepV * dt
+        }
         // Eyelid: closes once the head is mostly tucked; on waking it opens first, then blinks
         // once.
         if (w < WakeEndMs) {
@@ -353,21 +383,50 @@ internal class BirdcageState {
         }
     }
 
-    /** How puffed the feathers are as it wakes: up and back down over [WakeFluffLenMs]. */
-    val fluff: Float
-        get() {
-            if (wakeAt < 0f) return 0f
-            val p = (time - wakeAt - WakeFluffMs) / WakeFluffLenMs
-            return if (p > 0f && p < 1f) sin(p * PI.toFloat()) * (1f - p * .35f) else 0f
+    /**
+     * Weighted linen. Let go going down and gravity takes it, faster and faster; going up, the roll
+     * draws it up. Near its end it brakes at whatever steady rate stops it exactly there (a = v² /
+     * 2d), so it never passes the end and never stops dead: a gentle landing on the base, a slower
+     * ease into the top. Speeds are in cover-lengths a second.
+     */
+    private fun stepCover(dt: Float) {
+        val t = target
+        val z = abs(t - cover)
+        // Pulled a little past its end by the finger: it eases back.
+        if ((t == 1f && cover > 1f) || (t == 0f && cover < 0f)) {
+            coverV = spring(cover, coverV, t, 160f, 1f, dt)
+            cover += coverV * dt
+            braking = 0f
+            return
         }
-
-    /** The tail's flick as it wakes, in radians. */
-    val tailFlick: Float
-        get() {
-            if (wakeAt < 0f) return 0f
-            val p = (time - wakeAt - WakeTailMs) / WakeTailLenMs
-            return if (p > 0f && p < 1f) sin(p * PI.toFloat() * 2f) * (1f - p) * .22f else 0f
+        if (z < 1e-3f && abs(coverV) < .3f) {
+            cover = t
+            coverV = 0f
+            braking = 0f
+            return
         }
+        val s = if (t > cover) 1f else -1f
+        val drive = if (t == 1f) FallDrive else LiftDrive
+        val brake = if (t == 1f) FallBrake else LiftBrake
+        val u = coverV * s
+        val a: Float
+        if (u > 0f && u * u / (2f * z) >= brake) {
+            a = -u * u / (2f * z)
+            braking = u
+        } else {
+            a = drive - CoverDrag * u
+            braking = 0f
+        }
+        var u2 = u + a * dt
+        if (braking > 0f && u2 < 0f) u2 = 0f
+        var c = cover + s * u2 * dt
+        if ((c - t) * s >= 0f) {
+            c = t
+            u2 = 0f
+        }
+        cover = c
+        coverV = s * u2
+    }
 
     private fun emit(event: BirdcageEvent) {
         onEvent?.invoke(event)
@@ -377,16 +436,21 @@ internal class BirdcageState {
         private const val Substep = 1f / 240f
         private const val MaxSamples = 12
 
+        // The cover, in cover-lengths a second (squared): gravity and the brake going down, the
+        // roll's pull and its gentler brake going up, and a little air drag.
+        private const val FallDrive = 10f
+        private const val FallBrake = 28f
+        private const val LiftDrive = 12f
+        private const val LiftBrake = 9f
+        private const val CoverDrag = .6f
+
         // The wake timeline, in ms from when the cover lets the light in.
         internal const val WakeOpenMs = 200f
         internal const val WakeHeadMs = 150f
+        internal const val WakeHeadLenMs = 520f
         private const val WakeBlinkMs = 460f
         private const val BlinkMs = 180f
-        internal const val WakeFluffMs = 560f
-        private const val WakeFluffLenMs = 650f
-        private const val WakeTailMs = 700f
-        private const val WakeTailLenMs = 460f
-        private const val WakeEndMs = 1400f
+        private const val WakeEndMs = 700f
     }
 }
 

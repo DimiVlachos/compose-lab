@@ -81,6 +81,17 @@ internal fun hemX(hy: Float, u: Float, inset: Float, sway: Float, phase: Float):
     lerp(clothSide(hy, -1, sway, phase) + inset, clothSide(hy, 1, sway, phase) - inset, u) +
         sway * 3f * (1f - abs(2f * u - 1f))
 
-/** How far the hem dips below [hy] at [u]: its scallops, and a ripple that grows as it sways. */
-internal fun hemDY(u: Float, sway: Float, phase: Float): Float =
-    abs(sin(u * PI.toFloat() * 4.5f)) * 3.2f + sin(phase * 1.3f + u * 6f) * (1f + abs(sway) * 2f)
+/**
+ * How far the hem dips below [hy] at [u]: its scallops, deeper as the linen [gather]s at the crown,
+ * a ripple that grows as it sways, and the middle's dip as it lands on the base ([ripple]).
+ */
+internal fun hemDY(
+    u: Float,
+    sway: Float,
+    phase: Float,
+    gather: Float = 0f,
+    ripple: Float = 0f,
+): Float =
+    abs(sin(u * PI.toFloat() * 4.5f)) * 3.2f * (1f + gather * 1.2f) +
+        sin(phase * 1.3f + u * 6f) * (1f + abs(sway) * 2f) +
+        max(0f, ripple) * 4f * sin(u * PI.toFloat())

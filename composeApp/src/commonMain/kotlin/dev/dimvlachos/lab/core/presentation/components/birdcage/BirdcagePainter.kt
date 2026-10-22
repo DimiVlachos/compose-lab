@@ -6,7 +6,6 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Pattern2D
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sin
 
 // The birdcage, ported line by line from the prototype's draw(): the same calls, in the same order,
@@ -92,8 +91,6 @@ private const val ZFont = "600 10px system-ui, sans-serif"
 private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     val now = s.time
     val sl = s.sleep.coerceIn(0f, 1f)
-    val hs = min(s.sleep, 1f)
-    val puff = s.fluff
     var hop = 0f
     var beak = 0f
     var tilt = 0f
@@ -110,11 +107,7 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     val py = 196f - hop
     save()
     translate(px, py)
-    // Tail, flicking once as it wakes.
-    save()
-    translate(-10f, -2f)
-    rotate(s.tailFlick)
-    translate(10f, 2f)
+    // Tail.
     fillStyle = "#c69614"
     beginPath()
     moveTo(-12f, -6f)
@@ -123,12 +116,11 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     lineTo(-8f, 2f)
     closePath()
     fill()
-    restore()
-    // Body, puffed a little when asleep, and fluffed up for a moment as it wakes.
+    // Body, puffed a little when asleep.
     val bx = 0f
-    val by = -16f + sl * 2f - puff * 1.2f
-    val brx = 19f + sl * 2f + breathe * .4f + puff * 3.2f
-    val bry = 15f + sl * 2.5f + breathe + puff * 3f
+    val by = -16f + sl * 2f
+    val brx = 19f + sl * 2f + breathe * .4f
+    val bry = 15f + sl * 2.5f + breathe
     var g = createRadialGradient(bx - 8f, by - 9f, 2f, bx, by, brx * 1.3f)
     g.addColorStop(0f, "#fff3a8")
     g.addColorStop(.45f, "#f7cf2c")
@@ -140,7 +132,7 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     // Wing.
     fillStyle = "rgba(176,122,10,.55)"
     beginPath()
-    ellipse(-4f, by + 1f, 12f + puff, 7.5f + puff * .8f, -.45f - puff * .22f, 0f, Pi * 2f)
+    ellipse(-4f, by + 1f, 12f, 7.5f, -.45f, 0f, Pi * 2f)
     fill()
     strokeStyle = "rgba(140,92,6,.45)"
     lineWidth = .8f
@@ -150,12 +142,10 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
         lineTo(-1f + i * 3f, by + 6f + i * .6f)
         stroke()
     }
-    // Head: up and alert, or tucked down into the shoulder. Unclamped above, so the head's
-    // overshoot
-    // on waking lifts it a touch past upright.
-    val hx = lerp(15f, 7f, hs)
-    val hy = lerp(-34f, -24f, hs) - puff * 1.5f
-    val ha = lerp(tilt, .7f, hs)
+    // Head: up and alert, or tucked down into the shoulder.
+    val hx = lerp(15f, 7f, sl)
+    val hy = lerp(-34f, -24f, sl)
+    val ha = lerp(tilt, .7f, sl)
     save()
     translate(hx, hy)
     rotate(ha)
@@ -441,12 +431,12 @@ internal fun Canvas2D.drawBirdcage(
     shadowBlur = 16f * shadowScale
     shadowOffsetX = 8f * shadowScale
     shadowOffsetY = 10f * shadowScale
-    clothPath(hy, sway, ph)
+    clothPath(hy, sway, ph, s.gather, s.ripple)
     fillStyle = if (dark) "#a99c80" else "#e9dfc8"
     fill()
     restore()
     save()
-    clothPath(hy, sway, ph)
+    clothPath(hy, sway, ph, s.gather, s.ripple)
     clip()
     fillStyle = weave
     fillRect(CX - 120f, TopY - 10f, 240f, 240f)
@@ -516,12 +506,12 @@ internal fun Canvas2D.drawBirdcage(
     restore()
     // Rolled hem: a fat linen tube that's easy to grab.
     val hw = halfW(hy)
-    val roll = lerp(11f, 7f, c.coerceIn(0f, 1f))
+    val roll = lerp(11f, 7f, c.coerceIn(0f, 1f)) + s.gather * 2.5f
     beginPath()
     for (i in 0..18) {
         val u = i / 18f
         val x = hemX(hy, u, (roll + 1.5f) / 2f, sway, ph)
-        val y = hy + hemDY(u, sway, ph) - 2f
+        val y = hy + hemDY(u, sway, ph, s.gather, s.ripple) - 2f
         if (i > 0) lineTo(x, y) else moveTo(x, y)
     }
     lineCap = "round"
@@ -561,7 +551,7 @@ internal fun Canvas2D.drawBirdcage(
 }
 
 /** The cover's outline, from the crown down the left side, along the hem and back up the right. */
-private fun Canvas2D.clothPath(hy: Float, sway: Float, ph: Float) {
+private fun Canvas2D.clothPath(hy: Float, sway: Float, ph: Float, gather: Float, ripple: Float) {
     beginPath()
     // Sampled densely near the crown (t²), where the dome outline turns fastest, so the top is
     // round.
@@ -574,7 +564,7 @@ private fun Canvas2D.clothPath(hy: Float, sway: Float, ph: Float) {
     val n = 18
     for (i in 0..n) {
         val u = i / n.toFloat()
-        lineTo(hemX(hy, u, 0f, sway, ph), hy + hemDY(u, sway, ph))
+        lineTo(hemX(hy, u, 0f, sway, ph), hy + hemDY(u, sway, ph, gather, ripple))
     }
     for (i in steps downTo 0) {
         val t = i / steps.toFloat()

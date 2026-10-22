@@ -135,7 +135,7 @@ class BirdcageStateTest {
     }
 
     @Test
-    fun wakingTheEyeOpensThenTheHeadRisesThenTheFeathersFluff() {
+    fun wakingTheEyeOpensThenTheHeadRisesSmoothlyNeverPastUpright() {
         dragBy(range * .75f, 12, 500f)
         run(2000f)
         assertTrue(s.lid > .9f, "asleep with the eye shut: lid ${s.lid}")
@@ -143,21 +143,79 @@ class BirdcageStateTest {
         var t = 0f
         var eyeAt = -1f
         var headAt = -1f
-        var fluffAt = -1f
         var lowest = 1f
+        var prev = 2f
+        var headBack = false
         while (t < 1300f) {
             run(8f)
             t += 8f
             if (eyeAt < 0f && s.lid < .5f) eyeAt = t
             if (headAt < 0f && s.sleep < .8f) headAt = t
-            if (fluffAt < 0f && s.fluff > .1f) fluffAt = t
+            if (s.wakeAt >= 0f && s.sleep > prev + 1e-6f) headBack = true
+            prev = s.sleep
             lowest = minOf(lowest, s.sleep)
         }
         assertTrue(eyeAt >= 0f && headAt >= 0f && eyeAt <= headAt, "eye $eyeAt, head $headAt")
-        assertTrue(fluffAt > headAt, "fluff $fluffAt, head $headAt")
-        // The head overshoots upright a little, then settles.
-        assertTrue(lowest < -.02f && lowest > -.2f, "lowest $lowest")
+        // No overshoot and no pumping: the head only ever rises, and stops upright.
+        assertTrue(lowest >= -1e-6f, "lowest $lowest")
+        assertFalse(headBack, "the head went back down while waking")
         assertTrue(abs(s.sleep) < .02f, "sleep ${s.sleep}")
+    }
+
+    @Test
+    fun aDroppedCoverFallsFasterAndFasterThenLandsSoftlyAndRipples() {
+        s.toggle()
+        val cs = mutableListOf<Float>()
+        val vs = mutableListOf<Float>()
+        var maxRipple = 0f
+        repeat(140) {
+            run(8f)
+            cs += s.cover
+            vs += s.coverV
+            maxRipple = maxOf(maxRipple, s.ripple)
+        }
+        val early = cs.indexOfFirst { it > .1f }
+        val mid = cs.indexOfFirst { it > .5f }
+        assertTrue(vs[mid] > vs[early] * 1.5f, "speed at a tenth ${vs[early]}, at half ${vs[mid]}")
+        // Slow in its last 3%: it brakes onto the base, never stopping dead or passing it.
+        val last = cs.indices.filter { cs[it] > .97f && cs[it] < 1f }
+        assertTrue(
+            last.isNotEmpty() && last.all { vs[it] < 1.6f },
+            "landing speeds ${last.map { vs[it] }}",
+        )
+        assertTrue(cs.all { it <= 1f })
+        assertEquals(1f, s.cover)
+        assertTrue(
+            maxRipple > .1f && abs(s.ripple) < .05f,
+            "ripple peaked $maxRipple, now ${s.ripple}",
+        )
+    }
+
+    @Test
+    fun aLiftedCoverEasesIntoTheTopAndGathersAtTheCrown() {
+        s.toggle()
+        run(1300f)
+        s.toggle()
+        val cs = mutableListOf<Float>()
+        val vs = mutableListOf<Float>()
+        var maxGather = 0f
+        repeat(160) {
+            run(8f)
+            cs += s.cover
+            vs += s.coverV
+            maxGather = maxOf(maxGather, s.gather)
+        }
+        val last = cs.indices.filter { cs[it] < .05f && cs[it] > 0f }
+        assertTrue(
+            last.isNotEmpty() && last.all { -vs[it] < 1.1f },
+            "arrival speeds ${last.map { vs[it] }}",
+        )
+        assertTrue(cs.all { it >= 0f })
+        assertEquals(0f, s.cover)
+        assertTrue(
+            maxGather > .1f && s.gather < maxGather * .5f,
+            "gather peaked $maxGather, now ${s.gather}",
+        )
     }
 
     @Test
