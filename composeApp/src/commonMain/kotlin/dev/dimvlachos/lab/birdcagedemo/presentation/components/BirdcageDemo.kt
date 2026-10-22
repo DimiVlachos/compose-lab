@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.birdcagedemo.presentation.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -211,7 +212,7 @@ internal fun BirdcageDemo(
                         hero = it
                     },
             )
-            StateText(cage.muted, colors)
+            StateText(cage.muted, reducedMotion, colors)
             Details(chat.latest, cage.silenced, { flash.value }, colors)
             Spacer(Modifier.height(22.dp))
         }
@@ -317,29 +318,47 @@ private fun DrawScope.drawAvatar() {
     )
 }
 
-/** The state under the cage, read out as it changes: the drawing is never the only cue. */
+/**
+ * The state under the cage, read out as it changes: the drawing is never the only cue. Each line
+ * crossfades in place, the old one fading out under the new, as the prototype's `xfade()` does.
+ */
 @Composable
-private fun StateText(muted: Boolean, colors: BirdcageScreenColors) {
+private fun StateText(muted: Boolean, reducedMotion: Boolean, colors: BirdcageScreenColors) {
+    val fade = tween<Float>(if (reducedMotion) 0 else StateFadeMs, easing = EaseInOutQuad)
     Column(
         Modifier.fillMaxWidth()
             .padding(start = 22.dp, end = 22.dp, bottom = 10.dp)
             .heightIn(min = 46.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BasicText(
-            stringResource(if (muted) Res.string.birdcage_muted else Res.string.birdcage_on),
-            Modifier.testTag("state").semantics { liveRegion = LiveRegionMode.Polite },
-            style =
-                css(15f, FontWeight.Bold).copy(color = colors.ink, textAlign = TextAlign.Center),
-        )
-        BasicText(
-            stringResource(
-                if (muted) Res.string.birdcage_muted_tip else Res.string.birdcage_on_tip,
-            ),
-            style = css(12.5f).copy(color = colors.muted, textAlign = TextAlign.Center),
-        )
+        Crossfade(muted, animationSpec = fade, label = "state") { m ->
+            BasicText(
+                stringResource(if (m) Res.string.birdcage_muted else Res.string.birdcage_on),
+                Modifier.fillMaxWidth().testTag("state").semantics {
+                    liveRegion = LiveRegionMode.Polite
+                },
+                style =
+                    css(15f, FontWeight.Bold)
+                        .copy(color = colors.ink, textAlign = TextAlign.Center),
+            )
+        }
+        Crossfade(muted, animationSpec = fade, label = "tip") { m ->
+            BasicText(
+                stringResource(
+                    if (m) Res.string.birdcage_muted_tip else Res.string.birdcage_on_tip,
+                ),
+                Modifier.fillMaxWidth().testTag("tip"),
+                style = css(12.5f).copy(color = colors.muted, textAlign = TextAlign.Center),
+            )
+        }
     }
 }
+
+/** The prototype's state-line crossfade, in ms. */
+internal const val StateFadeMs = 250
+
+/** The prototype's `ease()`, an in-out quad, as a cubic. */
+private val EaseInOutQuad = CubicBezierEasing(.455f, .03f, .515f, .955f)
 
 /** The chat's card: the latest message with its silenced count, then media and pins. */
 @Composable

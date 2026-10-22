@@ -3,9 +3,11 @@ package dev.dimvlachos.lab.birdcagedemo.presentation.components
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -33,13 +35,30 @@ class BirdcageDemoUiTest {
         onNodeWithTag("birdcage").assertIsOff()
         onNodeWithTag("state").assertTextEquals("Notifications on")
         onNodeWithTag("birdcage").performClick()
-        mainClock.advanceTimeBy(100)
+        mainClock.advanceTimeBy(400)
         onNodeWithTag("birdcage").assertIsOn()
         onNodeWithTag("state").assertTextEquals("Muted")
+        onNodeWithTag("tip").assertTextEquals("Lift the cover to hear new messages")
         assertTrue(cage.muted)
         onNodeWithTag("birdcage").performClick()
         mainClock.advanceTimeBy(100)
         assertFalse(cage.muted)
+    }
+
+    @Test
+    fun theStateLinesCrossfadeInPlace() = runComposeUiTest {
+        // The canary breathes on every frame, so the clock is moved by hand.
+        mainClock.autoAdvance = false
+        val cage = BirdcageState()
+        setContent { BirdcageDemo(DemoState(), cage) }
+        onNodeWithTag("birdcage").performClick()
+        // Partway through, the old line is still fading out under the new one.
+        mainClock.advanceTimeBy(StateFadeMs / 2L)
+        onAllNodesWithTag("state").assertCountEquals(2)
+        onAllNodesWithTag("tip").assertCountEquals(2)
+        mainClock.advanceTimeBy(StateFadeMs + 100L)
+        onAllNodesWithTag("state").assertCountEquals(1)
+        onNodeWithTag("state").assertTextEquals("Muted")
     }
 
     @Test
