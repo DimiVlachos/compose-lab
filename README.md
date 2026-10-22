@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,25 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Locket avatar (`core/presentation/components/locket/`)
+
+An edit-profile screen where the profile photo lives in a small gold locket hanging on a fine chain under a warm lamp. Outside, only an engraved script initial shows. Tap the catch and the lid springs open on its hinge, swings a little past and settles, showing the photo behind its glass and the inside of the lid engraved with the owner's initials and a date. Drag a photo up from Recent and, as you let go over the locket, it shrinks and trims itself from a rounded square to the oval, with a sweep of light across the glass. Tap the locket, or push the lid across with a finger, and it snaps shut with a glint, and the chain swings. Grab the closed locket to swing it on its chain.
+
+- **Drawn as the prototype draws it.** The locket is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: three ellipses for the rim, the cup and the bezel, and a lid drawn under `scale(cos angle, 1)` about its hinge, so it reads as a 3D turn, with its mirrored inside face past 90°. The four photos are drawn in code from fixed seeds, once.
+- **Springs and a pendulum.** The hinge is an underdamped spring opening and a stiff one closing, its overshoot stopped short of the screen's edge; the chain is a damped pendulum whose swing is walled in so the whole locket, lid included, stays on screen. The trim is a superellipse whose exponent goes from 7 to 2. The frame loop sleeps between the catch's glints.
+- **A drop that lands.** Only where a photo is let go counts, and the point is turned into the swinging locket's frame, so a quick swipe lands. A photo dropped on the shut locket opens it on the way in; let go anywhere else and it slides back to its slot.
+- **Feel and sound.** A tick as it opens and as a photo lands, a confirm on the snap, and synthesized sounds for the catch, the snap, the chime of the glass, the photo lifting and sliding home, and the chain.
+- **Screen readers and keys.** The locket is a button, Open or Close locket, with expand and collapse; each Recent photo is a button "Use photo: …", and Enter or Space works them. The photo's name is a polite live region, and the round chip under the locket shows what others see. Escape closes the locket.
+- **Reduced motion.** The lid opens and shuts at once, and the chain hangs still.
+
+The demo, `locket.avatar`, edits the profile of a gardener at an invented garden shop. Its script taps the catch, drags a beach photo up into the open locket, taps it shut, and puts the first photo back.
+
+```kotlin
+val locket = remember { LocketState() }
+val photos = remember { locketPhotos() }
+Locket(locket, photos, labels, muted = muted, accent = accent, sounds = sounds)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -837,6 +858,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
 
+The locket holds one of the four Recent photos it draws itself; a real app would pass its own pictures and crop the stored image to the oval. It is drawn in a 300 × 380 box scaled to its space, no more than 1.45 times, with the Recent strip never below its dp size, and is not mirrored for right-to-left. Which photo is in the locket is not saved.
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
@@ -880,6 +903,8 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
+
+The locket's engraving is in [Great Vibes](https://github.com/googlefonts/great-vibes), Copyright 2015 The Great Vibes Pro Project Authors, and [Cormorant Garamond](https://github.com/CatharsisFonts/Cormorant), Copyright 2015 the Cormorant Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Cormorant Garamond Italic is a static instance, at weight 500, of the variable font).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 

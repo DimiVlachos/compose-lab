@@ -12,6 +12,7 @@ import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_magnet_filter
 import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
@@ -59,6 +60,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "locket.avatar",
             ),
             Catalog.demos.map { it.id },
         )
@@ -83,6 +85,7 @@ class CatalogTest {
                 Res.string.demo_stickers,
                 Res.string.demo_mailbox,
                 Res.string.demo_padlock,
+                Res.string.demo_locket,
             ),
             Catalog.demos.map { it.title },
         )
@@ -157,6 +160,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "locket.avatar",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
