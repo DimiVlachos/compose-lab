@@ -120,9 +120,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The prototype's family streaming app, whose account switcher is the key rack by the front door:
- * Jordan's keys are clipped to the account card; hang them on the rack to sign out, or carry
- * someone else's set up to the card to sign in as them, and their shows load below. The script's
- * drags go through the same rack a finger does.
+ * Jordan's keys hang on the account card; hang them on the rack to sign out, or carry someone
+ * else's set up to the card to sign in as them, and their shows load below. The script's drags go
+ * through the same rack a finger does.
  */
 @Composable
 internal fun KeyHookDemo(
@@ -266,7 +266,9 @@ private fun AppBar(colors: KeyHookScreenColors) {
     }
 }
 
-/** Who is signed in, or that nobody is: an avatar and two lines, the snap clip hanging under it. */
+/**
+ * Who is signed in, or that nobody is: an avatar and two lines, the card's hook hanging under it.
+ */
 @Composable
 private fun AccountCard(who: KeyHolder?, colors: KeyHookScreenColors) {
     val shape = RoundedCornerShape(16.dp)

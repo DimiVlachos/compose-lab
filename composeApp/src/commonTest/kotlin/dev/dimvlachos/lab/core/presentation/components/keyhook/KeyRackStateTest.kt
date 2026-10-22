@@ -210,149 +210,71 @@ class KeyRackStateTest {
     }
 
     @Test
-    fun theGateSwingsOpenQuicklyAndSnapsShutOnceWithAClick() {
-        val g = ClipGate()
-        var t = 0f
-        while (g.angle < .8f) {
-            assertEquals(0f, g.step(1f / 240f, open = true, reduced = false))
-            t += 1f / 240f
-        }
-        assertTrue(t < .15f, "open in ${t}s")
-        repeat(60) { g.step(1f / 240f, open = true, reduced = false) }
-        assertEquals(1f, g.angle, .02f)
-        var snaps = 0
-        var strength = 0f
-        t = 0f
-        var shutAt = -1f
-        while (t < .5f) {
-            val k = g.step(1f / 240f, open = false, reduced = false)
-            if (k > 0f) {
-                snaps++
-                strength = k
-                if (shutAt < 0f) shutAt = t
-            }
-            t += 1f / 240f
-        }
-        assertEquals(1, snaps)
-        assertTrue(shutAt < .06f, "snapped shut after ${shutAt}s")
-        assertTrue(strength > .9f, "a hard snap: $strength")
-        assertTrue(g.shut)
-    }
-
-    @Test
-    fun withReducedMotionTheGateIsOpenOrShutAndNeverClicks() {
-        val g = ClipGate()
-        assertEquals(0f, g.step(1f / 240f, open = true, reduced = true))
-        assertEquals(1f, g.angle)
-        assertEquals(0f, g.step(1f / 240f, open = false, reduced = true))
-        assertEquals(0f, g.angle)
-        assertTrue(g.shut)
-    }
-
-    @Test
-    fun avasRingThreadsInThroughTheOpenGateWhichSnapsShutOnIt() {
+    fun avasRingRisesPastTheCardHooksTipAndDropsIntoItsCurl() {
         val s = rack()
         val ava = s.rings[1]
         val g = s.geometry!!
         s.toggle(ava)
-        var onMs = 0f
-        var maxGate = 0f
+        var over = false
         s.run(2f) {
-            maxGate = max(maxGate, s.gate.angle)
-            if (ava.on && ava.mode != KeyRing.Mode.Rest) {
-                onMs += 1000f / 60f
-                // Threaded, the ring follows the clip's path exactly.
-                assertEquals(g.clipX(ava.clip), ava.x, .01f)
-                assertEquals(g.clipY(ava.clip), ava.y, .01f)
-                // It is never in the gap unless the gate is open.
-                if (ava.clip > .25f && ava.clip < .75f) {
-                    assertTrue(s.gate.angle >= .8f, "gate ${s.gate.angle} at ${ava.clip}")
-                }
-            }
+            val tip = g.carryY - 12f * CardHook.Scale * g.u
+            if (ava.mode == KeyRing.Mode.Fly && ava.y < tip && ava.x > g.carryX) over = true
         }
-        assertTrue(maxGate > .95f, "the gate opened to $maxGate")
-        assertTrue(onMs in 250f..500f, "threaded in for $onMs ms")
-        assertEquals(1, events.count { it == KeyRackEvent.ClipShut })
-        assertTrue(ava.on && ava.clip == 0f && s.atCard(ava), "ava ${ava.on} ${ava.clip}")
-        assertTrue(!s.rings[0].on && s.atHook(s.rings[0]), "jordan home")
-        // Jordan's set left by the clip, and nothing clacks on the card.
-        assertEquals(1, events.count { it == KeyRackEvent.Clack })
+        assertTrue(over, "it came down over the tip")
+        assertTrue(ava.mode == KeyRing.Mode.Rest && s.atCard(ava), "ava ${ava.x}, ${ava.y}")
+        assertTrue(s.atHook(s.rings[0]), "jordan home")
+        assertSame(ava.holder, s.signedIn)
+        // Both sets catch on their hooks with a clack.
+        assertEquals(2, events.count { it == KeyRackEvent.Clack })
         s.run(20f)
-        assertTrue(s.gate.shut, "shut")
         assertTrue(s.settled, "settled")
     }
 
     @Test
-    fun takingTheKeysOffTheCardSlidesTheRingOutThroughTheGate() {
+    fun aCarriedSetStaysRightUnderTheFingerOnAndOffTheCard() {
         val s = rack()
         val jordan = s.rings[0]
-        val g = s.geometry!!
-        s.startGrab(jordan, s.ringPointX(jordan), s.ringPointY(jordan))
-        var left = false
-        var opened = false
-        s.run(.6f) {
-            if (s.gate.angle > .8f) opened = true
-            if (jordan.on) {
-                assertEquals(g.clipX(jordan.clip), jordan.x, .01f)
-                if (jordan.clip > .25f) assertTrue(s.gate.angle >= .8f)
-            } else left = true
-        }
-        assertTrue(opened && left, "opened $opened, left $left")
-        // Carried away, the gate shuts behind it, with a click but no haptic.
-        s.moveGrab(W * .3f, H * .6f)
-        s.run(.6f)
-        assertTrue(s.gate.shut)
-        assertTrue(KeyRackEvent.ClipShutEmpty in events)
-        s.endGrab(W * .3f, H * .6f)
-        s.run(2f)
-        assertTrue(s.atHook(jordan))
-    }
-
-    @Test
-    fun withReducedMotionTheClipTakesTheSetAtOnceAndClicks() {
-        val s = rack(reduced = true)
-        val jordan = s.rings[0]
-        s.startGrab(jordan, s.ringPointX(jordan), s.ringPointY(jordan))
-        assertTrue(!jordan.on)
-        s.run(.1f) { assertTrue(s.gate.angle == 0f || s.gate.angle == 1f) }
-        // Held right by the clip, it shows open.
-        assertEquals(1f, s.gate.angle)
-        s.endGrab(s.ringPointX(jordan), s.ringPointY(jordan))
-        s.toggle(s.rings[2])
-        assertTrue(s.rings[2].on && s.atCard(s.rings[2]))
-        assertTrue(KeyRackEvent.ClipShut in events)
-        s.run(.1f)
-        assertEquals(0f, s.gate.angle)
-    }
-
-    @Test
-    fun aSetLetGoRightByTheClipKeepsItsGateOpenUntilItIsOn() {
-        val s = rack()
-        val g = s.geometry!!
-        s.toggle(s.rings[0])
-        s.run(3f)
-        val ava = s.rings[1]
-        // Carried until her ring hangs just outside the clip's mouth: the gate swings open for it.
-        val fx = s.ringPointX(ava)
-        val fy = s.ringPointY(ava)
-        val tx = g.clipX(1f)
-        val ty = g.clipY(1f) + (fy - ava.y)
-        s.startGrab(ava, fx, fy)
+        val fx = s.ringPointX(jordan)
+        val fy = s.ringPointY(jordan)
+        val dy = jordan.y - fy
+        s.startGrab(jordan, fx, fy)
+        // Off the card it comes with the finger at once, rather than first leaving along a path.
+        s.moveGrab(fx - 20f, fy - 6f)
+        s.step(1f / 60f)
+        assertEquals(fy - 6f + dy, jordan.y, .01f)
         for (i in 1..16) {
-            s.moveGrab(fx + (tx - fx) * i / 16f, fy + (ty - fy) * i / 16f)
+            val x = fx - 20f - 150f * i / 16f
+            val y = fy - 6f + 200f * i / 16f
+            s.moveGrab(x, y)
             s.run(.03f)
+            assertEquals(y + dy, jordan.y, .01f)
         }
-        s.run(.6f)
-        assertTrue(hypot(ava.x - g.clipX(1f), ava.y - g.clipY(1f)) < 36f * g.u, "close")
-        assertTrue(s.gate.angle > .9f, "open ${s.gate.angle}")
+        // Held still, it settles straight above the fingertip.
+        s.run(1f)
+        assertEquals(fx - 170f, jordan.x, .5f)
+        // And back up to the card: it is right under the finger until it is let go.
+        val tx = s.geometry!!.carryX
+        val ty = s.geometry!!.carryY - dy
+        for (i in 1..16) {
+            val x = fx - 170f + (tx - fx + 170f) * i / 16f
+            val y = fy + 194f + (ty - fy - 194f) * i / 16f
+            s.moveGrab(x, y)
+            s.run(.03f)
+            assertEquals(y + dy, jordan.y, .01f)
+        }
         s.endGrab(tx, ty)
-        events.clear()
-        var shutBeforeOn = false
-        s.run(2f) { if (!ava.on && s.gate.angle == 0f) shutBeforeOn = true }
-        assertTrue(!shutBeforeOn, "the gate shut before the ring was on")
-        assertEquals(listOf(KeyRackEvent.ClipShut), events.filter { it.isClip })
-        assertTrue(ava.on && s.atCard(ava))
-        assertSame(ava.holder, s.signedIn)
+        s.run(2f)
+        assertTrue(s.atCard(jordan))
+        assertSame(jordan.holder, s.signedIn)
+    }
+
+    @Test
+    fun withReducedMotionASetHangsOnTheCardAtOnce() {
+        val s = rack(reduced = true)
+        s.toggle(s.rings[2])
+        assertTrue(s.atCard(s.rings[2]) && s.atHook(s.rings[0]))
+        assertSame(s.rings[2].holder, s.signedIn)
+        assertTrue(KeyRackEvent.Clack in events)
     }
 
     @Test
@@ -360,22 +282,18 @@ class KeyRackStateTest {
         val s = KeyRackState(Household.people, random = Random(7))
         s.toggle(s.rings[1])
         assertSame(s.rings[1].holder, s.signedIn)
-        assertTrue(s.rings[1].on && !s.rings[0].on)
         s.layout(W, H)
         s.run(1f)
         assertTrue(s.atCard(s.rings[1]) && s.atHook(s.rings[0]))
-        // Jordan's set, on its hook, comes off it rather than out of the clip.
+        // Jordan's set, on its hook, comes off it rather than off the card.
         val jordan = s.rings[0]
         s.startGrab(jordan, s.ringPointX(jordan), s.ringPointY(jordan))
         s.run(.3f)
         assertTrue(
-            !jordan.on && jordan.y > s.geometry!!.boardTop,
+            jordan.y > s.geometry!!.boardTop,
             "jordan ${jordan.x}, ${jordan.y}",
         )
     }
-
-    private val KeyRackEvent.isClip
-        get() = this == KeyRackEvent.ClipShut || this == KeyRackEvent.ClipShutEmpty
 
     private companion object {
         const val W = 412f

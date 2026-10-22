@@ -56,17 +56,18 @@ import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.Font
 
 /** The clips the key rack plays. */
-internal val KeyRackSounds = setOf(Sound.KeyTink, Sound.KeyClack, Sound.KeyLift, Sound.ClipSnap)
+internal val KeyRackSounds = setOf(Sound.KeyTink, Sound.KeyClack, Sound.KeyLift)
 
 // The tink's four pitches, as the prototype picks them, over the clip's own 3150 Hz.
 private val TinkRates = floatArrayOf(1f, 3720f / 3150f, 4380f / 3150f, 5050f / 3150f)
 
 /**
  * A walnut key rack by the door that is an account switcher, as the prototype draws it: whoever is
- * signed in has their keys clipped to the snap clip under the account card at the top of the space;
- * everyone else's hang on their own hooks. Drag a set down onto the rack to sign out, or carry one
- * up to the card to sign in; a tap toggles a set. It fills its space, which should be the screen's
- * hero, with the account card ([RackGeometry.CardBottom] dp tall) drawn under it at its top.
+ * signed in has their keys hanging on the little hook under the account card at the top of the
+ * space; everyone else's hang on their own hooks. Drag a set down onto the rack to sign out, or
+ * carry one up to the card to sign in; a tap toggles a set. It fills its space, which should be the
+ * screen's hero, with the account card ([RackGeometry.CardBottom] dp tall) drawn under it at its
+ * top.
  *
  * [labels] names each set's button for screen readers and keys, by [KeyRackState.rings]' order. A
  * real finger calls [onTouch], so a script can let go. A set's button focused from a keyboard is
@@ -94,12 +95,6 @@ internal fun KeyRack(
                     sounds.play(Sound.KeyClack, k)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
-                KeyRackEvent.ClipShut -> {
-                    sounds.play(Sound.ClipSnap, k)
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                }
-                // As loud as the prototype's snap; only a set it shuts on is felt.
-                KeyRackEvent.ClipShutEmpty -> sounds.play(Sound.ClipSnap, k)
                 KeyRackEvent.Lift -> {
                     sounds.play(Sound.KeyLift, .8f)
                     haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)

@@ -44,8 +44,7 @@ internal enum class Sound(val file: String) {
     PadlockSwing("padlock_swing"),
     KeyTink("key_tink"),
     KeyClack("key_clack"),
-    KeyLift("key_lift"),
-    ClipSnap("clip_snap");
+    KeyLift("key_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

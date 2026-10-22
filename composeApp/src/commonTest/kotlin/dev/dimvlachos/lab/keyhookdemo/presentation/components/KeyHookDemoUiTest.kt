@@ -129,7 +129,7 @@ class KeyHookDemoUiTest {
             assertEquals(1f, mid.alpha, .01f)
             // Signing out fades the shows into the empty note; nothing above or below moves.
             // As a screen reader or keyboard does: a tap there goes to whichever keys are under it,
-            // and Ava's are still swinging from the clip.
+            // and Ava's are still swinging from the card's hook.
             onNodeWithTag("keys-1").performSemanticsAction(SemanticsActions.OnClick)
             repeat(160) {
                 mainClock.advanceTimeBy(16)

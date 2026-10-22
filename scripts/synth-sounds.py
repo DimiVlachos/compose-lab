@@ -646,16 +646,6 @@ def key_lift(rng, rate):
     return fade(normalise(track, 0.3), rate, 0.0002, 0.01)
 
 
-def clip_snap(rng, rate):
-    """The card's clip snapping its gate onto its nose: a hard bright tick, a short brass ring and a knock."""
-    n = seconds(0.06, rate)
-    track = [0.0] * n
-    place(track, mul(bandpass(noise(n, rng), 5200, 5.0, rate), ramp(n, rate, 0.22, 0.012)), 0)
-    place(track, mul(glide(n, rate, 2650, 2480, 0.045, "triangle"), ramp(n, rate, 0.05, 0.045)), 0)
-    place(track, mul(bandpass(noise(n, rng), 1700, 3.0, rate), ramp(n, rate, 0.12, 0.022)), seconds(0.003, rate))
-    return fade(normalise(track, 0.7), rate, 0.0002, 0.01)
-
-
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -708,7 +698,6 @@ def main():
     write("key_tink", key_tink(keys, fast), fast)
     write("key_clack", key_clack(keys, fast), fast)
     write("key_lift", key_lift(keys, fast), fast)
-    write("clip_snap", clip_snap(random.Random(1023), fast), fast)
 
 
 if __name__ == "__main__":
