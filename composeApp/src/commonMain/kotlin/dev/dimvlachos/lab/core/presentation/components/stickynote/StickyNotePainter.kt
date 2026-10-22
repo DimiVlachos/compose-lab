@@ -183,15 +183,7 @@ internal class StickyNotePainter(
         c.fillStyle = gl
         c.fillRect(0f, 0f, w, h)
         for (gh in s.ghosts) {
-            drawAction(
-                gh.kind,
-                s.mx,
-                gh.y,
-                s.noteW,
-                s.rh,
-                if (gh.kind == NoteAction.Archive) -s.noteW else s.noteW,
-                gh.a,
-            )
+            drawAction(gh.kind, s.mx, gh.y, s.noteW, s.rh, gh.a)
         }
         // The rows that lie flat first, then the panels under the ones peeling, as the
         // prototype's sort puts them.
@@ -202,7 +194,7 @@ internal class StickyNotePainter(
         for (r in s.rows) {
             if (r.hidden || abs(r.dx) <= .5f) continue
             val kind = if (r.dx < 0) NoteAction.Archive else NoteAction.Snooze
-            drawAction(kind, s.mx, r.y, s.noteW, s.rh, r.dx, 1f)
+            drawAction(kind, s.mx, r.y, s.noteW, s.rh, 1f)
         }
         drawPad(s, NoteAction.Archive)
         drawPad(s, NoteAction.Snooze)
@@ -501,10 +493,8 @@ internal class StickyNotePainter(
         y: Float,
         w: Float,
         h: Float,
-        dx: Float,
         alpha: Float,
     ) {
-        val armed = abs(dx) >= StickyNoteState.Commit * w
         c.save()
         c.globalAlpha = alpha
         c.beginPath()
@@ -517,12 +507,13 @@ internal class StickyNotePainter(
         gr.addColorStop(.3f, "rgba(0,0,0,0)")
         c.fillStyle = gr
         c.fill()
-        val s = if (armed) 1.07f else 1f
         val right = kind == NoteAction.Archive
         val snz = kind == NoteAction.Snooze
         val label = if (right) words.archive else words.snooze
         // Icon and lines share one centre, 34 in from the edge or further if the widest line
-        // needs it (10 clear when armed).
+        // needs it. The group never moves or grows with the pull, so the paper uncovers it in
+        // place from the first pixel; arming is the tick and the haptic, not a jump in size.
+        // (The inset keeps the room a 7 % grow once needed, so the words sit where they did.)
         c.font = F1
         var half = c.measureText(label) / 2
         if (snz) {
@@ -535,9 +526,6 @@ internal class StickyNotePainter(
         val lastBase = if (snz) 33f else 20f
         val cx = if (right) x + w - inset else x + inset
         val cy = y + h / 2 - (lastBase - 9.5f) / 2
-        c.translate(cx, cy)
-        c.scale(s, s)
-        c.translate(-cx, -cy)
         icon(kind, cx, cy - 2, 7.5f, "rgba(255,255,255,.95)")
         c.fillStyle = "#fff"
         c.font = F1
