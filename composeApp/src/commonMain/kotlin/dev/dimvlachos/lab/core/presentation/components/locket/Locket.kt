@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -193,7 +194,8 @@ internal fun Locket(
         SideEffect { state.box = box }
         val current by rememberUpdatedState(box)
         Canvas(
-            Modifier.fillMaxSize().pointerInput(state) {
+            // Clipped to the hero, as the prototype's canvas is: the chain hangs from above it.
+            Modifier.fillMaxSize().clipToBounds().pointerInput(state) {
                 awaitEachGesture {
                     val first = awaitFirstDown(requireUnconsumed = false)
                     touched()
