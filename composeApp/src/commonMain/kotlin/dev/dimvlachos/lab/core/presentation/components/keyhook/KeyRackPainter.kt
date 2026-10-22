@@ -2,6 +2,8 @@ package dev.dimvlachos.lab.core.presentation.components.keyhook
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.font.FontFamily
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
@@ -90,14 +92,37 @@ internal fun bakeWood(w: Float, h: Float, px: Float): ImageBitmap {
 internal const val TagFont = "archivo"
 internal const val PlateFont = "mono"
 
-/** Draws the rack for [state] in its hero, [dark] or light, with the baked [wood]. */
-internal fun Canvas2D.drawKeyRack(
+/**
+ * Bakes what never moves for [g0] — the lamp's glow, the board with its [wood], the name plates,
+ * rosettes and hooks, and the D-ring's back — into a bitmap the size of the hero at [px] pixels per
+ * dp, drawn as the prototype draws them each frame. [measurer] and [fonts] set the plates.
+ */
+internal fun bakeRackBackdrop(
     state: KeyRackState,
+    g0: RackGeometry,
     dark: Boolean,
     px: Float,
-    wood: ImageBitmap?,
+    wood: ImageBitmap,
+    measurer: TextMeasurer,
+    fonts: Map<String, FontFamily>,
+): ImageBitmap {
+    val c = Canvas2D.create(backdropSize(g0.width, px), backdropSize(g0.height, px))
+    c.textMeasurer = measurer
+    c.fonts = fonts
+    c.scale(px, px)
+    c.drawBackdrop(state, g0, dark, px, wood)
+    return c.bitmap.also { it.freeze() }
+}
+
+private fun backdropSize(dp: Float, px: Float) = max(1, (dp * px).roundToInt())
+
+private fun Canvas2D.drawBackdrop(
+    state: KeyRackState,
+    g0: RackGeometry,
+    dark: Boolean,
+    px: Float,
+    wood: ImageBitmap,
 ) {
-    val g0 = state.geometry ?: return
     val u = g0.u
     val w = g0.width
     val h = g0.height
@@ -146,7 +171,7 @@ internal fun Canvas2D.drawKeyRack(
     save()
     rr(boardL, boardTop, bw, bh, 7f * u)
     clip()
-    if (wood != null) drawImage(wood, boardL, boardTop, bw, bh)
+    drawImage(wood, boardL, boardTop, bw, bh)
     if (dark) {
         fillStyle = "rgba(10,6,3,.22)"
         fillRect(boardL, boardTop, bw, bh)
@@ -258,6 +283,26 @@ internal fun Canvas2D.drawKeyRack(
     stroke()
     setLineDash(NoDash)
     tube(2.4f * u, u) { dPath(g0, false) }
+}
+
+/**
+ * Draws the rack for [state] in its hero: the [backdrop] baked for its size, then the keys over it.
+ */
+internal fun Canvas2D.drawKeyRack(
+    state: KeyRackState,
+    dark: Boolean,
+    px: Float,
+    backdrop: ImageBitmap,
+) {
+    val g0 = state.geometry ?: return
+    // Laid out for another size, as while the screen turns: the next frame has the right one.
+    if (backdrop.width != backdropSize(g0.width, px)) return
+    if (backdrop.height != backdropSize(g0.height, px)) return
+    val u = g0.u
+    drawImage(backdrop, 0f, 0f, g0.width, g0.height)
+    // The browser's context keeps these from the first frame on: every stroke after it is round.
+    lineCap = "round"
+    lineJoin = "round"
 
     // ---- Keys: resting sets first, then anything in flight or in hand on top ----
     for (pass in 0..1) {

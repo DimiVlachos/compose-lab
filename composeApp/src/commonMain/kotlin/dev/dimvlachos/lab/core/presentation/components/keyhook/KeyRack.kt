@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,10 +13,18 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
@@ -60,7 +69,8 @@ private val TinkRates = floatArrayOf(1f, 3720f / 3150f, 4380f / 3150f, 5050f / 3
  * hero, with the account card ([RackGeometry.CardBottom] dp tall) drawn under it at its top.
  *
  * [labels] names each set's button for screen readers and keys, by [KeyRackState.rings]' order. A
- * real finger calls [onTouch], so a script can let go.
+ * real finger calls [onTouch], so a script can let go. A set's button focused from a keyboard is
+ * ringed in [focusColor].
  */
 @Composable
 internal fun KeyRack(
@@ -68,6 +78,7 @@ internal fun KeyRack(
     labels: List<String>,
     sounds: SoundPlayer,
     modifier: Modifier = Modifier,
+    focusColor: Color = Color.Unspecified,
     onTouch: () -> Unit = {},
 ) {
     val haptics = LocalHapticFeedback.current
@@ -129,8 +140,12 @@ internal fun KeyRack(
             remember(maxWidth, maxHeight) {
                 RackGeometry(maxWidth.value, maxHeight.value, state.holders.size)
             }
-        val wood =
-            remember(geo, density) { bakeWood(geo.boardR - geo.boardL, 66f * geo.u, density) }
+        // What never moves is drawn once for this size and theme; a frame draws only the keys.
+        val backdrop =
+            remember(geo, density, dark, fonts) {
+                val wood = bakeWood(geo.boardR - geo.boardL, 66f * geo.u, density)
+                bakeRackBackdrop(state, geo, dark, density, wood, measurer, fonts)
+            }
         // The sets' buttons, where each hangs, under the canvas: touches go to the rack, and the
         // buttons are for screen readers and keys, as the prototype's.
         val carried = state.carriedIndex
@@ -139,20 +154,39 @@ internal fun KeyRack(
             val x = if (home) geo.carryX else geo.hookX(r.index)
             val y = if (home) geo.carryY else geo.hookY
             val uk = geo.u * geo.ks
-            Box(
-                Modifier.offset((x - 22f * uk).dp, (y - 6f * geo.u).dp)
-                    .size((44f * uk).dp, (72f * uk).dp)
-                    .testTag("keys-${r.index}")
-                    .semantics { contentDescription = labels[r.index] }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        role = Role.Button,
-                    ) {
-                        onTouch()
-                        state.toggle(r)
-                    },
-            )
+            key(r.index) {
+                val source = remember { MutableInteractionSource() }
+                val focused by source.collectIsFocusedAsState()
+                Box(
+                    Modifier.offset((x - 22f * uk).dp, (y - 6f * geo.u).dp)
+                        .size((44f * uk).dp, (72f * uk).dp)
+                        .drawBehind {
+                            // The prototype's focus ring: 2 dp of accent, 2 dp out, round 14 dp.
+                            if (!focused) return@drawBehind
+                            val out = 3.dp.toPx()
+                            drawRoundRect(
+                                focusColor,
+                                Offset(-out, -out),
+                                Size(size.width + 2f * out, size.height + 2f * out),
+                                CornerRadius(14.dp.toPx() + out),
+                                style = Stroke(2.dp.toPx()),
+                            )
+                        }
+                        .testTag("keys-${r.index}")
+                        .semantics { contentDescription = labels[r.index] }
+                        .clickable(
+                            interactionSource = source,
+                            indication = null,
+                            role = Role.Button,
+                        ) {
+                            onTouch()
+                            // A screen reader or key takes over from the script, which lets go
+                            // first.
+                            if (state.grabIsScripted) state.letGo()
+                            state.toggle(r)
+                        },
+                )
+            }
         }
         Canvas(
             Modifier.fillMaxSize()
@@ -192,7 +226,7 @@ internal fun KeyRack(
                 c.textMeasurer = measurer
                 c.fonts = fonts
                 c.scale(density, density)
-                c.drawKeyRack(state, dark, density, wood)
+                c.drawKeyRack(state, dark, density, backdrop)
             }
         }
     }
