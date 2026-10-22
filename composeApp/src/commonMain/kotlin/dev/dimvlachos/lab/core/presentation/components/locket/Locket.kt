@@ -236,6 +236,9 @@ internal fun Locket(
                 val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
                 c.textMeasurer = measurer
                 c.fonts = fonts
+                // The labels and the engraving are small fonts under a large scale: laid out at the
+                // size they are seen, their spaces stay open.
+                c.textResolution = density * box.s
                 c.scale(density, density)
                 c.drawLocket(state, box, dark, photos, ink, density)
             }
