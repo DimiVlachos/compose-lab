@@ -98,7 +98,8 @@ internal fun KeyRack(
                     sounds.play(Sound.ClipSnap, k)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
-                KeyRackEvent.ClipShutEmpty -> sounds.play(Sound.ClipSnap, k * .6f)
+                // As loud as the prototype's snap; only a set it shuts on is felt.
+                KeyRackEvent.ClipShutEmpty -> sounds.play(Sound.ClipSnap, k)
                 KeyRackEvent.Lift -> {
                     sounds.play(Sound.KeyLift, .8f)
                     haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
