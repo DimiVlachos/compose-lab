@@ -15,6 +15,15 @@ internal class KeyHookScreenColors(
     val accent: Color,
 ) {
     internal companion object {
+        /** The progress bar along a show's thumbnail. */
+        val Progress = Color(0xFFFFCF6A)
+
+        /** An avatar's colour, given as the prototype's `#rrggbb`. */
+        fun avatar(hex: String) = Color(0xFF000000 or hex.removePrefix("#").toLong(16))
+
+        /** A thumbnail's gradient colour, given as `0xAARRGGBB`. */
+        fun thumb(argb: Long) = Color(argb)
+
         val Light =
             KeyHookScreenColors(
                 background = Color(0xFFF2EEE7),

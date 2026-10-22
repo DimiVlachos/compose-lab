@@ -51,10 +51,12 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +106,7 @@ import dev.dimvlachos.lab.resources.keyhook_tab_live
 import dev.dimvlachos.lab.resources.keyhook_take_keys
 import dev.dimvlachos.lab.resources.keyhook_welcome
 import dev.dimvlachos.lab.resources.keyhook_whos_home
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -128,9 +131,14 @@ internal fun KeyHookDemo(
     val sounds = rememberSoundPlayer(KeyRackSounds)
     SideEffect { rack.reducedMotion = reducedMotion }
     val finger = remember { ScriptFinger() }
+    // Once the user has touched the rack the script's steps leave it alone, even those already
+    // under way, as the prototype's demo token does.
+    var takenOver by remember { mutableStateOf(false) }
+    SideEffect { finger.live = { !takenOver } }
 
     DisposableEffect(state, rack) {
         state.setControlTapHandler { control ->
+            if (takenOver) return@setControlTapHandler
             try {
                 when (control) {
                     KeyHookDemos.HangJordan -> finger.hangJordan(rack)
@@ -142,6 +150,7 @@ internal fun KeyHookDemo(
             }
         }
         state.setFeedResetHandler {
+            if (takenOver) return@setFeedResetHandler
             finger.hide()
             rack.reset()
         }
@@ -203,24 +212,26 @@ internal fun KeyHookDemo(
                 labels,
                 sounds,
                 Modifier.fillMaxSize(),
+                focusColor = colors.accent,
                 onTouch = {
+                    takenOver = true
                     if (state.replay) state.endReplay()
                     finger.hide()
                 },
             )
             Canvas(Modifier.fillMaxSize()) { with(finger) { drawFinger(touch) } }
+            val status =
+                if (who != null) stringResource(Res.string.keyhook_status_in, who.name)
+                else stringResource(Res.string.keyhook_status_out)
+            Box(
+                Modifier.size(1.dp).semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    contentDescription = status
+                },
+            )
         }
         Feed(who, colors, reducedMotion)
         TabBar(colors)
-        val status =
-            if (who != null) stringResource(Res.string.keyhook_status_in, who.name)
-            else stringResource(Res.string.keyhook_status_out)
-        Box(
-            Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = status
-            },
-        )
     }
 }
 
@@ -242,7 +253,10 @@ private fun AppBar(colors: KeyHookScreenColors) {
         }
         val search = stringResource(Res.string.keyhook_search)
         Box(
-            Modifier.size(44.dp).semantics { contentDescription = search },
+            Modifier.size(44.dp).semantics {
+                contentDescription = search
+                role = Role.Button
+            },
             contentAlignment = Alignment.Center,
         ) {
             Icon(SearchIcon, colors.ink, 21f)
@@ -287,7 +301,9 @@ private fun AccountCard(who: KeyHolder?, colors: KeyHookScreenColors) {
         // The avatar's colour changes with its initials, at once.
         if (who != null) {
             Box(
-                Modifier.size(38.dp).clip(CircleShape).background(cssHex(who.color)),
+                Modifier.size(38.dp)
+                    .clip(CircleShape)
+                    .background(KeyHookScreenColors.avatar(who.color)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(who.initials, color = Color.White, style = AvatarStyle)
@@ -451,13 +467,16 @@ private fun ShowCard(show: Show?, colors: KeyHookScreenColors, modifier: Modifie
                     val c = Offset(size.width / 2f, size.height / 2f)
                     drawRect(
                         Brush.linearGradient(
-                            listOf(Color(show.from), Color(show.to)),
+                            listOf(
+                                KeyHookScreenColors.thumb(show.from),
+                                KeyHookScreenColors.thumb(show.to),
+                            ),
                             start = c - d,
                             end = c + d,
                         ),
                     )
                     drawRect(
-                        ProgressColor,
+                        KeyHookScreenColors.Progress,
                         Offset(0f, size.height - 3.dp.toPx()),
                         Size(size.width * show.progress, 3.dp.toPx()),
                     )
@@ -469,7 +488,9 @@ private fun ShowCard(show: Show?, colors: KeyHookScreenColors, modifier: Modifie
                 val d = LocalDensity.current.density
                 val style =
                     remember(d) {
-                        ThumbStyle.copy(shadow = Shadow(TitleShadow, Offset(0f, d), 3f * d))
+                        ThumbStyle.copy(
+                            shadow = Shadow(TitleShadow, Offset(0f, d), 2.6f * d - .87f),
+                        )
                     }
                 Text(show.title, color = Color.White, style = style)
             }
@@ -573,6 +594,9 @@ private class ScriptFinger {
     private var y by mutableStateOf(0f)
     private var alpha by mutableStateOf(0f)
 
+    /** False once the user has taken over: a move under way stops where it is. */
+    var live: () -> Boolean = { true }
+
     suspend fun hangJordan(rack: KeyRackState) {
         val g = rack.geometry ?: return
         val jordan = rack.rings[0]
@@ -601,12 +625,13 @@ private class ScriptFinger {
     }
 
     private suspend fun press(rack: KeyRackState, ring: KeyRing) {
+        if (!live()) throw CancellationException("The user took over")
         rack.startGrab(ring, x, y, scripted = true)
         fade(1f, ScriptedTouch.DownMs.toFloat())
     }
 
     private suspend fun release(rack: KeyRackState) {
-        rack.endGrab(x, y)
+        rack.endGrab(x, y, scripted = true)
         fade(.6f, ScriptedTouch.DownMs.toFloat())
     }
 
@@ -632,7 +657,7 @@ private class ScriptFinger {
             val e = KeyRackState.ease(p)
             x = x0 + (tx - x0) * e + sin(p * PI.toFloat()) * bend
             y = y0 + (ty - y0) * e
-            rack.moveGrab(x, y)
+            rack.moveGrab(x, y, scripted = true)
         }
     }
 
@@ -649,6 +674,7 @@ private class ScriptFinger {
         val start = withFrameNanos { it }
         var p = 0f
         while (p < 1f) {
+            if (!live()) throw CancellationException("The user took over")
             withFrameNanos { now -> p = ((now - start) / 1e6f / ms).coerceIn(0f, 1f) }
             frame(p)
         }
@@ -661,10 +687,7 @@ private class ScriptFinger {
     }
 }
 
-private fun cssHex(hex: String): Color = Color(0xFF000000 or hex.removePrefix("#").toLong(16))
-
 private val CardShadow = Color(40, 25, 10).copy(alpha = .06f)
-private val ProgressColor = Color(0xFFFFCF6A)
 private val CssEase = CubicBezierEasing(.25f, .1f, .25f, 1f)
 
 // The prototype's text sits on CSS lines, 1.55 times its size unless it says otherwise, with the
