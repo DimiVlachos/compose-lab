@@ -590,6 +590,10 @@ internal class StickyNoteState(
 
     /** A finger down at ([x], [y]) at [now] ms; [scripted] for the demo's. */
     fun down(x: Float, y: Float, now: Double, scripted: Boolean = false) {
+        // A finger on the list keeps it: the script's hand never takes over from it.
+        if (scripted && gest?.scripted == false) return
+        // Each gesture runs on its own clock (a finger's event times or the script's frames).
+        lastGrain = -1e9
         val row = hitRow(x, y)
         val g =
             Gesture(
@@ -612,8 +616,9 @@ internal class StickyNoteState(
         changed()
     }
 
-    fun move(x: Float, y: Float, now: Double) {
+    fun move(x: Float, y: Float, now: Double, scripted: Boolean = false) {
         val g = gest ?: return
+        if (g.scripted != scripted) return
         g.ts += now
         g.xs += x
         while (g.ts.size > 2 && now - g.ts.first() > 100) {

@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.stickynote
 
+import androidx.compose.ui.graphics.Color
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.Pattern2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
@@ -107,13 +108,14 @@ internal fun notePaper(seed: Int = 1022): Pattern2D {
     fun rand(a: Float, b: Float) = a + rnd.nextFloat() * (b - a)
     val c = Canvas2D.create(160, 160)
     repeat(2400) {
+        // Colour objects, not CSS strings: 2,400 distinct alphas would fill the parse cache.
         c.fillStyle =
-            if (rnd.nextFloat() < .5f) "rgba(90,70,30,${rand(.02f, .07f)})"
-            else "rgba(255,255,255,${rand(.04f, .12f)})"
+            if (rnd.nextFloat() < .5f) Speck.copy(alpha = rand(.02f, .07f))
+            else Color.White.copy(alpha = rand(.04f, .12f))
         c.fillRect(rnd.nextFloat() * 160, rnd.nextFloat() * 160, rand(.6f, 1.6f), rand(.6f, 1.6f))
     }
     repeat(40) {
-        c.strokeStyle = "rgba(110,85,40,${rand(.02f, .05f)})"
+        c.strokeStyle = Fibre.copy(alpha = rand(.02f, .05f))
         c.lineWidth = .6f
         val a = rnd.nextFloat() * 160
         val b = rnd.nextFloat() * 160
@@ -127,6 +129,9 @@ internal fun notePaper(seed: Int = 1022): Pattern2D {
     c.bitmap.freeze()
     return c.createPattern(c.bitmap)
 }
+
+private val Speck = Color(90, 70, 30)
+private val Fibre = Color(110, 85, 40)
 
 /** The fonts the canvas names: the notes' handwriting and the system's sans. */
 internal const val HandFont = "hand"
@@ -291,13 +296,25 @@ internal class StickyNotePainter(
 
     // ---------- Drawing ----------
 
+    // The notes' font at a size, made again only when the size changes: most notes share one.
+    private var fontSize = -1f
+    private var fontName = ""
+
+    private fun handFont(fs: Float): String {
+        if (fs != fontSize) {
+            fontSize = fs
+            fontName = "600 ${fs}px $HandFont"
+        }
+        return fontName
+    }
+
     private fun noteText(item: Reminder, x: Float, y: Float, w: Float, h: Float, color: String?) {
         var fs = (h * .36f).coerceIn(19f, 27f)
-        c.font = "600 ${fs}px $HandFont"
+        c.font = handFont(fs)
         val tw = c.measureText(item.title)
         if (tw > w - 34) {
             fs = max(16f, fs * (w - 34) / tw)
-            c.font = "600 ${fs}px $HandFont"
+            c.font = handFont(fs)
         }
         val block = fs * .82f + 6 + 12
         val by = y + (h - block) / 2 + fs * .8f + 1

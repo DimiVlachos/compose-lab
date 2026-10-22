@@ -120,7 +120,7 @@ internal class StickyNoteHand(private val notes: StickyNoteState) {
                     sx + by * p,
                     sy - abs(by) * StickyNoteState.K * p + sin(p * 3) * 1.5f,
                 )
-            notes.move(at.x, at.y, now)
+            notes.move(at.x, at.y, now, scripted = true)
         }
     }
 

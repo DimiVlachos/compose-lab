@@ -217,10 +217,25 @@ class StickyNoteStateTest {
     }
 
     @Test
+    fun theScriptsHandNeverTakesOverAFingersHold() {
+        val s = notes()
+        val x = s.width - s.mx - 5
+        s.down(x, s.slotY(0) + 40, now)
+        s.move(x - 20, s.slotY(0) + 40, now + 30)
+        s.move(x - 60, s.slotY(0) + 40, now + 60)
+        val dx = s.rows[0].dx
+        s.down(x, s.slotY(1) + 40, now + 70, scripted = true)
+        s.move(x - 200, s.slotY(1) + 40, now + 80, scripted = true)
+        assertEquals(dx, s.rows[0].dx)
+        assertEquals(0f, s.rows[1].dx)
+        assertFalse(s.scriptedTouch)
+    }
+
+    @Test
     fun aScriptedHoldIsLetGoButARealOneIsNot() {
         val s = notes()
         s.down(s.width - s.mx - 5, s.slotY(0) + 40, now, scripted = true)
-        s.move(s.width - s.mx - 60, s.slotY(0) + 40, now + 100)
+        s.move(s.width - s.mx - 60, s.slotY(0) + 40, now + 100, scripted = true)
         assertTrue(s.scriptedTouch)
         s.releaseScripted()
         assertFalse(s.scriptedTouch)

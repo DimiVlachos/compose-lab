@@ -179,7 +179,19 @@ internal fun StickyNoteDemo(
     val putBack = stringResource(Res.string.stickynote_put_back, TitleSlot)
     // Made once for the strings, so the list's painter and event listener aren't made again.
     val text =
-        remember(words.archive, words.snooze, words.tomorrow, words.done, label, archived) {
+        remember(
+            words.archive,
+            words.snooze,
+            words.tomorrow,
+            words.done,
+            words.later,
+            words.swipeLeft,
+            words.swipeRight,
+            label,
+            archived,
+            snoozed,
+            putBack,
+        ) {
             StickyNoteText(words, label, archived, snoozed, putBack)
         }
     val touch = LabTheme.colors.touch

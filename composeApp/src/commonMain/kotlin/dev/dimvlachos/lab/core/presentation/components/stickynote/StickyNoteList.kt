@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -21,7 +22,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -41,7 +43,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -275,7 +276,9 @@ private fun Nodes(
     ring: Color,
 ) {
     state.listVersion
-    val focusManager = LocalFocusManager.current
+    // Each note's focus, so an action can hand focus to its neighbour in the list, as the
+    // prototype keeps it: the next note, or the one before from the last.
+    val requesters = remember { mutableMapOf<NoteRow, FocusRequester>() }
     Box(
         Modifier.fillMaxSize().semantics {
             isTraversalGroup = true
@@ -285,12 +288,17 @@ private fun Nodes(
         for (row in state.rows.toList()) {
             key(row) {
                 var focused by remember { mutableStateOf(false) }
+                val requester = remember { FocusRequester() }
+                DisposableEffect(row) {
+                    requesters[row] = requester
+                    onDispose { requesters.remove(row) }
+                }
                 // An action moves focus on to the next note, as the list closes up under it.
                 fun act(kind: NoteAction): Boolean {
                     if (row.state == RowState.Tween || row.state == RowState.Gone) return false
-                    if (!focusManager.moveFocus(FocusDirection.Down)) {
-                        focusManager.moveFocus(FocusDirection.Up)
-                    }
+                    val i = state.rows.indexOf(row)
+                    val next = state.rows.getOrNull(i + 1) ?: state.rows.getOrNull(i - 1)
+                    if (focused) next?.let { requesters[it] }?.requestFocus()
                     state.commit(row, kind, fromKey = true)
                     return true
                 }
@@ -322,6 +330,7 @@ private fun Nodes(
                                 else -> false
                             }
                         }
+                        .focusRequester(requester)
                         .focusable(enabled = !row.hidden)
                         .drawBehind { if (focused) focusRing(ring, 4.dp.toPx()) },
                 )
