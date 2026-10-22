@@ -184,6 +184,34 @@ class LocketStateTest {
     }
 
     @Test
+    fun theSelectionFadesAcrossToTheNewPhotoAndResetJumpsBack() {
+        val s = locket()
+        assertEquals(listOf(0f, 0f, 1f, 0f), s.sel.toList())
+        s.usePhoto(0)
+        // The photo trims itself in over 480 ms; the selection then fades across in 250.
+        s.run(.6f)
+        assertEquals(0, s.photo)
+        assertTrue(s.sel[0] in .05f..<1f && s.sel[2] in 0f..<.95f, "mid-fade ${s.sel.toList()}")
+        assertEquals(1f, s.sel[0] + s.sel[2], .02f)
+        assertFalse(s.settled, "the frame loop keeps running while it fades")
+        s.run(.4f)
+        assertEquals(listOf(1f, 0f, 0f, 0f), s.sel.toList())
+        val resets = s.resets
+        s.reset()
+        assertEquals(listOf(0f, 0f, 1f, 0f), s.sel.toList())
+        assertEquals(resets + 1, s.resets)
+    }
+
+    @Test
+    fun underReducedMotionTheSelectionJumps() {
+        val s = locket()
+        s.reducedMotion = true
+        s.usePhoto(1)
+        s.run(.05f)
+        assertEquals(listOf(0f, 1f, 0f, 0f), s.sel.toList())
+    }
+
+    @Test
     fun theOvershootStopsAtLidMax() {
         val s = locket()
         s.open()

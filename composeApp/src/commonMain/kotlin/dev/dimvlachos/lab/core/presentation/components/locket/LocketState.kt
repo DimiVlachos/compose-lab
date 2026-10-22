@@ -65,6 +65,12 @@ internal object Locket {
     /** The photos in Recent, in order. */
     const val PHOTOS = 4
 
+    /** How long text, the selection and the header avatar crossfade, in ms. */
+    const val FADE_MS = 250f
+
+    /** The prototype's fade curve, smoothstep. */
+    fun fadeEase(t: Float) = t * t * (3f - 2f * t)
+
     /** A Recent thumb's centre in the strip's own units. */
     fun tcx0(j: Int) = 16f + THUMB / 2f + j * 70f
 }
@@ -216,6 +222,16 @@ internal class LocketState(initialPhoto: Int = 2) {
         private set
 
     var glass = -1f
+        private set
+
+    /**
+     * How far each Recent photo's accent border and check have faded in, 0 to 1: they fade out on
+     * the old photo as they fade in on the new one, linearly over [Locket.FADE_MS].
+     */
+    val sel = FloatArray(Locket.PHOTOS).also { it[initialPhoto] = 1f }
+
+    /** Bumped by [reset], which jumps rather than fades: text and the avatar snap with it. */
+    var resets by mutableIntStateOf(0)
         private set
 
     // ---- Frames ----
@@ -526,6 +542,8 @@ internal class LocketState(initialPhoto: Int = 2) {
         th = 0f
         tw = 0f
         photo = initial
+        for (j in sel.indices) sel[j] = if (j == initial) 1f else 0f
+        resets++
         drag = null
         place = null
         placingPhoto = -1
@@ -557,6 +575,7 @@ internal class LocketState(initialPhoto: Int = 2) {
                 abs(th - 0f.coerceIn(limitLo(), limitHi())) < RestGap &&
                 abs(tw) < RestSpeed &&
                 lift < RestGap &&
+                sel.indices.all { sel[it] == if (it == photo) 1f else 0f } &&
                 (glint < 0f || now - glint > GlintMs) &&
                 (glass < 0f || now - glass > GlassMs)
 
@@ -616,6 +635,7 @@ internal class LocketState(initialPhoto: Int = 2) {
             th = 0f.coerceIn(limitLo(), limitHi())
             tw = 0f
             av = 0f
+            for (j in sel.indices) sel[j] = if (j == photo) 1f else 0f
             return
         }
         if (!lidHeld) {
@@ -654,6 +674,8 @@ internal class LocketState(initialPhoto: Int = 2) {
             th = hi
             if (tw > 0f) tw = -tw * .3f
         }
+        val fade = dt * 1000f / Locket.FADE_MS
+        for (j in sel.indices) sel[j] = (sel[j] + if (j == photo) fade else -fade).coerceIn(0f, 1f)
         val lifting = d != null && d.kind == DragKind.Photo && d.moved
         lift += ((if (lifting) 1f else 0f) - lift) * min(1f, dt * 18f)
     }

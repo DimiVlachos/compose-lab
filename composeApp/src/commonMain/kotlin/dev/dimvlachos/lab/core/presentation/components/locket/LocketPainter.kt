@@ -497,15 +497,26 @@ private fun Canvas2D.drawStrip(
         clip()
         drawCover(photos[j], x - THUMB / 2f, TY, THUMB, THUMB)
         restore()
-        if (j == st.photo) {
+        // The accent border and check fade out on the old photo as they fade in on the new; the
+        // check also grows from 0.6.
+        val e = Locket.fadeEase(st.sel[j])
+        if (e > .001f) {
+            save()
+            globalAlpha = e
             strokeStyle = ink.accent
             lineWidth = 2f
             beginPath()
             roundRect(x - THUMB / 2f - 3f, TY - 3f, THUMB + 6f, THUMB + 6f, 13f)
             stroke()
+            val bx = x + THUMB / 2f - 7f
+            val by = TY + 7f
+            val k = lerp(.6f, 1f, e)
+            translate(bx, by)
+            scale(k, k)
+            translate(-bx, -by)
             fillStyle = ink.accent
             beginPath()
-            arc(x + THUMB / 2f - 7f, TY + 7f, 7f, 0f, Tau)
+            arc(bx, by, 7f, 0f, Tau)
             fill()
             strokeStyle = "#fff"
             lineWidth = 1.6f
@@ -514,6 +525,7 @@ private fun Canvas2D.drawStrip(
             lineTo(x + THUMB / 2f - 7.6f, TY + 9.4f)
             lineTo(x + THUMB / 2f - 3.8f, TY + 4.8f)
             stroke()
+            restore()
         }
     }
     restore()

@@ -1,5 +1,8 @@
 package dev.dimvlachos.lab.locketdemo.presentation.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,22 +24,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -272,40 +285,120 @@ private fun Who(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        val photo = photos[locket.photo]
+        // The avatar crossfades from the photo it showed to the new one, as the prototype's: the
+        // old photo whole, the new over it.
+        val avatar = rememberCrossfade(locket.photo, locket.resets, locket.reducedMotion)
+        val ring = remember { Path() }
         Canvas(Modifier.size(36.dp).testTag("avatar").clearAndSetSemantics {}) {
             val r = size.minDimension / 2f
             // The CSS rings: 2 dp of the card, then 1.5 dp of the hairline, outside the photo.
             drawCircle(colors.line, r + 3.5.dp.toPx())
             drawCircle(colors.card, r + 2.dp.toPx())
-            clipPath(Path().apply { addOval(Rect(Offset.Zero, size)) }) {
-                drawImage(
-                    photo,
-                    IntOffset.Zero,
-                    IntSize(photo.width, photo.height),
-                    IntOffset.Zero,
-                    IntSize(size.width.toInt(), size.height.toInt()),
-                )
+            ring.rewind()
+            ring.addOval(Rect(Offset.Zero, size))
+            clipPath(ring) {
+                val e = avatar.progress
+                val old = avatar.previous
+                if (old != null && e < 1f) drawPhoto(photos[old], 1f)
+                drawPhoto(photos[avatar.current], e)
             }
         }
         Column(Modifier.weight(1f)) {
-            Text(
+            CrossfadeText(
                 status,
+                locket,
                 Modifier.testTag("status").semantics { liveRegion = LiveRegionMode.Polite },
-                color = colors.ink,
-                style = css(14f, FontWeight(650)),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                colors.ink,
+                css(14f, FontWeight(650)),
             )
+            CrossfadeText(tip, locket, Modifier.testTag("tip"), colors.muted, css(12f))
+        }
+    }
+}
+
+private fun DrawScope.drawPhoto(photo: ImageBitmap, alpha: Float) =
+    drawImage(
+        photo,
+        IntOffset.Zero,
+        IntSize(photo.width, photo.height),
+        IntOffset.Zero,
+        IntSize(size.width.toInt(), size.height.toInt()),
+        alpha = alpha,
+    )
+
+/**
+ * A crossfade between values of [target], as the prototype's: the new one fades in while the old
+ * one fades out from wherever it had got to, over [Locket.FADE_MS] with its smoothstep. A change of
+ * [snapKey] (a reset) or [reduced] motion jumps instead. [progress] is read in the draw phase.
+ */
+@Stable
+private class Crossfade<T>(initial: T) {
+    var current by mutableStateOf(initial)
+    var previous by mutableStateOf<T?>(null)
+    /** How far [previous] still showed when this fade began. */
+    var from = 1f
+    val fade = Animatable(1f)
+    val progress: Float
+        get() = Locket.fadeEase(fade.value)
+}
+
+@Composable
+private fun <T> rememberCrossfade(target: T, snapKey: Int, reduced: Boolean): Crossfade<T> {
+    val x = remember { Crossfade(target) }
+    var key by remember { mutableIntStateOf(snapKey) }
+    LaunchedEffect(target, snapKey) {
+        if (reduced || snapKey != key) {
+            key = snapKey
+            x.current = target
+            x.previous = null
+            x.fade.snapTo(1f)
+            return@LaunchedEffect
+        }
+        if (target == x.current) return@LaunchedEffect
+        // Interrupted, the text that was fading in fades out from where it had got to.
+        x.from = if (x.previous != null) x.progress else 1f
+        x.previous = x.current
+        x.current = target
+        x.fade.snapTo(0f)
+        x.fade.animateTo(1f, tween(Locket.FADE_MS.toInt(), easing = LinearEasing))
+        x.previous = null
+    }
+    return x
+}
+
+/**
+ * One line of the who row that crossfades in place when it changes. Its semantics carry the new
+ * text at once, so a screen reader and tests never see the old one.
+ */
+@Composable
+private fun CrossfadeText(
+    text: String,
+    locket: LocketState,
+    modifier: Modifier,
+    color: Color,
+    style: TextStyle,
+) {
+    val x = rememberCrossfade(text, locket.resets, locket.reducedMotion)
+    Box(modifier.fillMaxWidth().clearAndSetSemantics { this.text = AnnotatedString(text) }) {
+        val old = x.previous
+        if (old != null) {
             Text(
-                tip,
-                Modifier.testTag("tip"),
-                color = colors.muted,
-                style = css(12f),
+                old,
+                Modifier.graphicsLayer { alpha = x.from * (1f - x.progress) },
+                color = color,
+                style = style,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        Text(
+            x.current,
+            Modifier.graphicsLayer { alpha = x.progress },
+            color = color,
+            style = style,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
