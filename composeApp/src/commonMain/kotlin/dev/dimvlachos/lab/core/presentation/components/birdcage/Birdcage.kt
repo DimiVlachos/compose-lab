@@ -11,9 +11,19 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -66,6 +76,7 @@ internal fun Birdcage(
     state: BirdcageState,
     label: String,
     sounds: SoundPlayer,
+    focusRing: Color,
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -121,7 +132,7 @@ internal fun Birdcage(
                 val slop = Slop.toPx()
                 var released = false
                 var at = 0f
-                state.down(down.position.y, 0f)
+                val id = state.down(down.position.y, 0f)
                 try {
                     while (true) {
                         val event = awaitPointerEvent()
@@ -137,7 +148,7 @@ internal fun Birdcage(
                     }
                 } finally {
                     // Taken away mid-gesture: the cover is let go where it is, without a fling.
-                    if (!released) state.cancel(at)
+                    if (!released && state.holds(id)) state.cancel(at)
                 }
             }
         },
@@ -161,9 +172,24 @@ internal fun Birdcage(
         }
         // The switch, round the cage: it takes focus and Space or Enter, and a screen reader's
         // tap. A finger's tap goes to the cage under it, as in the prototype.
+        var focused by remember { mutableStateOf(false) }
         Box(
             Modifier.offset(box.hitLeft.dp, box.hitTop.dp)
                 .size(box.hitWidth.dp, box.hitHeight.dp)
+                .drawBehind {
+                    // The prototype's focus outline: 2 dp of the accent, 4 dp out, rounded 22 dp.
+                    if (!focused) return@drawBehind
+                    val w = 2.dp.toPx()
+                    val out = 4.dp.toPx() + w / 2f
+                    drawRoundRect(
+                        focusRing,
+                        Offset(-out, -out),
+                        Size(size.width + out * 2f, size.height + out * 2f),
+                        CornerRadius(22.dp.toPx() + out),
+                        style = Stroke(w),
+                    )
+                }
+                .onFocusChanged { focused = it.isFocused }
                 .testTag("birdcage")
                 .semantics {
                     role = Role.Switch

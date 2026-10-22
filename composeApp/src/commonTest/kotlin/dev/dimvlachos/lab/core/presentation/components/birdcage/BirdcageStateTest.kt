@@ -150,6 +150,17 @@ class BirdcageStateTest {
     }
 
     @Test
+    fun aSecondFingerTakesTheHemOver() {
+        val first = s.down(100f, now)
+        assertTrue(s.holds(first))
+        val second = s.down(300f, now)
+        assertFalse(s.holds(first))
+        assertTrue(s.holds(second))
+        s.up(now)
+        assertFalse(s.holds(second))
+    }
+
+    @Test
     fun aFlickPastAQuarterStillDrops() {
         // 30% down in 80 ms is fast: projected on by its speed, it lands past halfway.
         dragBy(range * .3f, 4, 80f)

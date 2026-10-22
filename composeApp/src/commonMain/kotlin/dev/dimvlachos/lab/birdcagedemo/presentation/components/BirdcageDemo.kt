@@ -1,6 +1,7 @@
 package dev.dimvlachos.lab.birdcagedemo.presentation.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -57,6 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.birdcagedemo.BirdcageDemos
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.demo.demoInsets
@@ -127,9 +131,14 @@ internal fun BirdcageDemo(
         chat.next()
         if (cage.deliver()) {
             // The Latest row lights up and fades back, as the prototype's flash.
-            flash.snapTo(1f)
-            delay(FlashMs)
-            flash.animateTo(0f, tween(FadeMs))
+            try {
+                flash.snapTo(1f)
+                delay(FlashMs)
+                flash.animateTo(0f, tween(FadeMs, easing = CssEase))
+            } finally {
+                // Cut short, the row still clears, as the prototype's timeout always does.
+                withContext(NonCancellable) { flash.snapTo(0f) }
+            }
         }
     }
 
@@ -166,13 +175,23 @@ internal fun BirdcageDemo(
     // A script the user takes over leaves no fingertip behind.
     LaunchedEffect(state.replay) { if (!state.replay) finger.hide() }
     // Once the chat is the user's, a message drops in now and then, so they hear the difference.
-    LaunchedEffect(state.replay, state.recording) {
+    // Only while the screen is in front: a chirp from a phone in a pocket is no use to anyone.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(state.replay, state.recording, lifecycle) {
         if (state.replay || state.recording) return@LaunchedEffect
-        delay(if (tourEnded) AfterTourMs else FirstMessageMs)
-        while (true) {
-            while (cage.dragging) delay(50)
-            deliver()
-            delay(EveryMessageMs)
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            delay(
+                when {
+                    reducedMotion -> ReducedFirstMessageMs
+                    tourEnded -> AfterTourMs
+                    else -> FirstMessageMs
+                },
+            )
+            while (true) {
+                while (cage.dragging) delay(50)
+                deliver()
+                delay(EveryMessageMs)
+            }
         }
     }
 
@@ -186,6 +205,7 @@ internal fun BirdcageDemo(
                 state = cage,
                 label = stringResource(Res.string.birdcage_mute),
                 sounds = sounds,
+                focusRing = colors.accent,
                 modifier =
                     Modifier.weight(1f).fillMaxWidth().heightIn(min = 220.dp).onGloballyPositioned {
                         hero = it
@@ -455,7 +475,7 @@ private class HemFinger {
     }
 
     suspend fun hide() {
-        alpha.animateTo(0f, tween(FadeInMs))
+        alpha.animateTo(0f, tween(FadeInMs, easing = CssEase))
     }
 
     private suspend fun glide(to: Offset, ms: Int) {
@@ -487,24 +507,25 @@ private class HemFinger {
                 origin.y + (box.top + (cage.hemY + 2f) * box.scale) * density,
             )
         coroutineScope {
-            launch { alpha.animateTo(1f, tween(FadeInMs)) }
+            launch { alpha.animateTo(1f, tween(FadeInMs, easing = CssEase)) }
             glide(hem, GlideMs)
         }
         delay(PressMs)
         val y0 = hem.y - origin.y
-        cage.down(y0, cage.time)
+        val id = cage.down(y0, cage.time)
         var held = true
         try {
             animate(ms) { e ->
                 val y = y0 + dyBox * px * e
-                cage.move(y, cage.time, px, slop)
+                // A finger that took the hem over has it from here.
+                if (cage.holds(id)) cage.move(y, cage.time, px, slop)
                 at = Offset(hem.x, y + origin.y)
             }
             delay(60)
-            cage.up(cage.time)
+            if (cage.holds(id)) cage.up(cage.time)
             held = false
         } finally {
-            if (held) withContext(NonCancellable) { cage.up(cage.time) }
+            if (held && cage.holds(id)) withContext(NonCancellable) { cage.up(cage.time) }
         }
     }
 
@@ -552,5 +573,10 @@ private const val PressMs = 120L
 private const val DownMs = 700
 private const val UpMs = 650
 private const val FirstMessageMs = 7000L
-private const val AfterTourMs = 8000L
+// The prototype's next message comes 8 s after the tour's last, which is 2 s before its reset.
+private const val AfterTourMs = 6000L
+private const val ReducedFirstMessageMs = 4000L
+
+/** CSS's `ease`, which the prototype's fades use. */
+private val CssEase = CubicBezierEasing(.25f, .1f, .25f, 1f)
 private const val EveryMessageMs = 9000L

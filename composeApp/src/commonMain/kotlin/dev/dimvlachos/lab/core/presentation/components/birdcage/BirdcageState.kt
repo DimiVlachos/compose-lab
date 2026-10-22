@@ -96,6 +96,7 @@ internal class BirdcageState {
     private var swayV = 0f
     private var sleepV = 0f
     private var drag: Drag? = null
+    private var drags = 0
 
     private class Drag(var y0: Float, var c0: Float) {
         var moved = false
@@ -157,10 +158,18 @@ internal class BirdcageState {
         frame++
     }
 
-    /** A finger comes down at [y] (any unit, as long as [move] gets the same) at [at] ms. */
-    fun down(y: Float, at: Float) {
+    /**
+     * A finger comes down at [y] (any unit, as long as [move] gets the same) at [at] ms. Returns
+     * the gesture's number, which [holds] says is still the one with the hem: a later [down] takes
+     * it over.
+     */
+    fun down(y: Float, at: Float): Int {
         drag = Drag(y, cover).also { it.add(at, cover) }
+        return ++drags
     }
+
+    /** Whether gesture [id], from [down], still has the hem: not let go, nor taken over. */
+    fun holds(id: Int): Boolean = drag != null && drags == id
 
     /**
      * The finger is at [y] at [at] ms. Past [slop] it takes the hem, which then follows it 1:1:
