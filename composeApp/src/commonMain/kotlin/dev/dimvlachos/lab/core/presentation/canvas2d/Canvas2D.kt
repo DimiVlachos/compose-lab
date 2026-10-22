@@ -572,6 +572,8 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             when (state.composite) {
                 "lighter" -> BlendMode.Plus
                 "destination-out" -> BlendMode.DstOut
+                "destination-in" -> BlendMode.DstIn
+                "destination-over" -> BlendMode.DstOver
                 "source-atop" -> BlendMode.SrcAtop
                 "multiply" -> BlendMode.Multiply
                 "screen" -> BlendMode.Screen
@@ -680,11 +682,13 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
 
     /**
      * Not the canvas's own: [save], painting from here into a layer of its own that [endLayer] lays
-     * down, so a `source-atop` in it lands only on what was painted in it.
+     * down, so a `source-atop` in it lands only on what was painted in it. The layer is laid down
+     * at [alpha], as the browser draws an offscreen canvas with a `globalAlpha`.
      */
-    fun beginLayer() {
+    fun beginLayer(alpha: Float = 1f) {
         stack.addLast(state.copy())
-        canvas.saveLayer(Rect(0f, 0f, width.toFloat(), height.toFloat()), Paint())
+        val p = Paint().apply { this.alpha = alpha.coerceIn(0f, 1f) }
+        canvas.saveLayer(Rect(0f, 0f, width.toFloat(), height.toFloat()), p)
     }
 
     /** Lays down the layer [beginLayer] began, restoring what was saved with it. */
