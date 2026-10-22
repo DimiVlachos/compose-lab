@@ -240,6 +240,15 @@ internal fun PaperFanFaq(
                                     val down = awaitFirstDown(requireUnconsumed = false)
                                     if (!state.dragStart(i)) return@awaitEachGesture
                                     down.consume()
+                                    // Where the finger is in the card's own space (px): the answer
+                                    // area can slide under a still finger as the one above folds.
+                                    fun onCard(at: Offset): Offset? {
+                                        val box = here[0]?.takeIf { it.isAttached } ?: return null
+                                        val panel =
+                                            panels[i]?.takeIf { it.isAttached } ?: return null
+                                        return box.localPositionOf(panel, at)
+                                    }
+                                    val start = onCard(down.position)
                                     var moved = false
                                     try {
                                         while (true) {
@@ -249,31 +258,20 @@ internal fun PaperFanFaq(
                                                     ?: break
                                             if (!change.pressed) break
                                             change.consume()
+                                            val at = onCard(change.position) ?: continue
                                             if (
-                                                (change.position - down.position).getDistance() >
-                                                    slop
+                                                start != null && (at - start).getDistance() > slop
                                             ) {
                                                 moved = true
                                             }
                                             if (moved) {
-                                                val box = here[0]
-                                                val panel = panels[i]
-                                                if (
-                                                    box != null && panel != null && panel.isAttached
-                                                ) {
-                                                    val at =
-                                                        box.localPositionOf(
-                                                            panel,
-                                                            change.position,
-                                                        ) / density
-                                                    state.dragTo(
-                                                        i,
-                                                        PaperFanState.dragFraction(
-                                                            at.x - slots.pivotX[i],
-                                                            at.y - slots.pivotY[i],
-                                                        ),
-                                                    )
-                                                }
+                                                state.dragTo(
+                                                    i,
+                                                    PaperFanState.dragFraction(
+                                                        at.x / density - slots.pivotX[i],
+                                                        at.y / density - slots.pivotY[i],
+                                                    ),
+                                                )
                                             }
                                         }
                                     } finally {

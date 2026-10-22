@@ -578,10 +578,9 @@ internal class PaperFanPainter(count: Int) {
                 c.fillStyle = if (j % 2 == 0) rgba(255, 250, 236, a * .9f) else rgba(70, 45, 20, a)
                 c.fill()
                 // A gentle darkening toward the inner edge, where the pleats bunch.
-                val g = c.createRadialGradient(0f, 0f, rIn, 0f, 0f, r)
-                g.addColorStop(0f, rgba(90, 60, 30, .12f + .1f * steep))
-                g.addColorStop(.35f, "rgba(90,60,30,0)")
-                c.fillStyle = g
+                // One gradient for every pleat, its strength set by the alpha it is filled at.
+                c.globalAlpha = .12f + .1f * steep
+                c.fillStyle = bunch(c, r)
                 c.fill()
                 c.restore()
             }
@@ -656,6 +655,27 @@ internal class PaperFanPainter(count: Int) {
             addColorStop(.5f, "#c99a45")
             addColorStop(1f, "#5e400c")
         }
+
+    private var bunchFor = -1f
+    private var bunchGradient: Gradient2D? = null
+
+    // The darkening where the pleats bunch, at full strength: rgba(90,60,30,a) → 0 at .35.
+    private fun bunch(c: Canvas2D, r: Float): Gradient2D {
+        bunchGradient
+            ?.takeIf { bunchFor == r }
+            ?.let {
+                return it
+            }
+        return c.createRadialGradient(0f, 0f, r * .3f, 0f, 0f, r)
+            .apply {
+                addColorStop(0f, "rgba(90,60,30,1)")
+                addColorStop(.35f, "rgba(90,60,30,0)")
+            }
+            .also {
+                bunchGradient = it
+                bunchFor = r
+            }
+    }
 
     private var glowFor = -1f
     private var glowGradient: Gradient2D? = null

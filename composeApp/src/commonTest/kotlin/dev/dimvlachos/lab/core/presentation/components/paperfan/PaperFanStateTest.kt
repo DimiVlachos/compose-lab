@@ -113,6 +113,23 @@ class PaperFanStateTest {
     }
 
     @Test
+    fun aHeldFanFoldedByATapElsewhereIsLetGoAndTheAnswersStillTrade() {
+        val f = fans()
+        f.toggle(1)
+        f.run(1400)
+        assertTrue(f.dragStart(1))
+        assertFalse(f.dragStart(1))
+        events.clear()
+        f.toggle(3)
+        assertFalse(f.dragging(1))
+        var most = 0f
+        f.run(1600) { most = maxOf(most, f.heightFraction(1) + f.heightFraction(3)) }
+        assertTrue(most <= 1.003f, "most $most")
+        f.dragEnd(1, moved = true)
+        assertEquals(1, events.count { it == PaperFanEvent.Swish to 1 })
+    }
+
+    @Test
     fun aFanStillOnItsWayCannotBeHeld() {
         val f = fans()
         f.toggle(2)

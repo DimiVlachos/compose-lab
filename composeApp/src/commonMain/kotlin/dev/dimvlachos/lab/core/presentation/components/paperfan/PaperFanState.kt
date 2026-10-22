@@ -112,6 +112,8 @@ internal class PaperFanState(val count: Int) {
         if (openFlags[i] == on) return
         openFlags[i] = on
         val it = items[i]
+        // A fan folded by a tap elsewhere is let go of: it can't be held and folded at once.
+        if (!on) it.dragging = false
         wake++
         // The fwap plays when the fan actually lifts, which can be a beat later if another fan is
         // still folding.
@@ -135,7 +137,7 @@ internal class PaperFanState(val count: Int) {
      */
     fun dragStart(i: Int): Boolean {
         val it = items[i]
-        if (!openFlags[i] || it.tr < .9f) return false
+        if (!openFlags[i] || it.dragging || it.tr < .9f) return false
         it.dragging = true
         it.dragF = it.s[Ribs].coerceIn(0f, 1f)
         wake++
