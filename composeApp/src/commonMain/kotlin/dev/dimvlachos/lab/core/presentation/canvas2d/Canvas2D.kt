@@ -261,6 +261,14 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             state.shadowColor = cssColor(value)
         }
 
+    /**
+     * Not the canvas's own: sets the shadow's colour from a [Color], for a shadow whose alpha
+     * changes every frame, without a CSS string to build and parse.
+     */
+    fun setShadowColor(color: Color) {
+        state.shadowColor = color
+    }
+
     var shadowBlur: Float
         get() = state.shadowBlur
         set(value) {
