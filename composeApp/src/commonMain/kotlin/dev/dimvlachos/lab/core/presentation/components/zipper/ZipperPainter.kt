@@ -23,6 +23,26 @@ private const val TAU = (2 * PI).toFloat()
 /** How far in from the list area's right edge the zipper's middle runs. */
 internal const val ZipperInset = 26f
 
+/** How much further each opened half splays at most, and over how long a run above the gap. */
+internal const val ZipperFlare = 3f
+private const val FlareRun = 160f
+
+/**
+ * Half the gap between the opened halves, [d] dp above the gap's tight end: prised open quickly,
+ * then splaying a little more toward the top, as a real zipper's open end flares.
+ */
+internal fun zipperHalfGap(d: Float) = min(9f, 1f + d * .3f) + zipperFlare(d)
+
+/** How much further each opened half splays, [d] dp above the gap's tight end. */
+internal fun zipperFlare(d: Float) = ZipperFlare * ((d - 8f / .3f) / FlareRun).coerceIn(0f, 1f)
+
+/**
+ * Half the opened tape's outer width, [d] dp above the gap's tight end: the flare moves each half
+ * out whole, so the tape keeps its width as it splays.
+ */
+internal fun zipperOuterHalfWidth(d: Float) =
+    HW + max(0f, zipperHalfGap(d)) * .45f + zipperFlare(d) * .55f
+
 /** The tape's weave: a 4 × 4 tile, made once, as the prototype's pattern canvas. */
 internal fun zipperWeave(): Pattern2D {
     val c = Canvas2D.create(4, 4)
@@ -70,8 +90,9 @@ internal fun Canvas2D.drawZipper(
     val sb = sy + SL_H
     val tape = if (dark) "#222a3c" else "#2a3550"
     val tapeEdge = if (dark) "#151a26" else "#1c2438"
-    // Half the gap between the opened halves: tight at the pull, prised wider further up.
-    fun hgAt(y: Float) = min(9f, 1f + (sy + 4f - y) * .3f)
+    // Half the gap between the opened halves: tight at the pull, prised wider further up, and past
+    // that the halves keep splaying a little more toward the top.
+    fun hgAt(y: Float) = zipperHalfGap(sy + 4f - y)
     fun tapeLit(x0: Float, x1: Float) =
         createLinearGradient(x0, 0f, x1, 0f).apply {
             addColorStop(0f, "rgba(255,255,255,.10)")
@@ -85,8 +106,8 @@ internal fun Canvas2D.drawZipper(
     val b0 = sy + 6f
     val tr = 5f
     val br = 7f
-    fun hg0(y: Float) = if (open) max(0f, hgAt(y)) else 0f
-    fun outerX(side: Int, y: Float) = cx + side * (HW + hg0(y) * .45f)
+    fun outerX(side: Int, y: Float) =
+        cx + side * (if (open) zipperOuterHalfWidth(sy + 4f - y) else HW)
     fun innerX(side: Int, y: Float) = cx + side * (hgAt(y) + 3f)
     val ys0 = t0 + tr + 3f
     var nys = 0
@@ -158,12 +179,14 @@ internal fun Canvas2D.drawZipper(
         lin.addColorStop(0f, "#4f141b")
         lin.addColorStop(.5f, "#93303a")
         lin.addColorStop(1f, "#4a1219")
+        // As wide as the flared top's gap; past the gradient's ends its edge colours carry on.
+        val lw = 12f + ZipperFlare
         fillStyle = lin
-        fillRect(cx - 12f, trackTop, 24f, sy - trackTop + 8f)
+        fillRect(cx - lw, trackTop, lw * 2f, sy - trackTop + 8f)
         fillStyle = "rgba(255,220,200,.10)"
         var y = trackTop + 2f
         while (y < sy + 6f) {
-            fillRect(cx - 12f, y, 24f, 1.2f)
+            fillRect(cx - lw, y, lw * 2f, 1.2f)
             y += 6f
         }
         fillStyle = "rgba(0,0,0,.16)"
