@@ -596,6 +596,56 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Key hook ----------
+
+def ramp(n, rate, gain, dur):
+    """WebAudio's exponentialRampToValueAtTime from gain to 0.0001 over dur, then silence."""
+    m = seconds(dur, rate)
+    return [gain * (0.0001 / gain) ** (i / m) if i < m else 0.0 for i in range(n)]
+
+
+def glide(n, rate, f0, f1, dur, shape="sine"):
+    """An oscillator whose pitch ramps exponentially from f0 to f1 over dur."""
+    out, phase = [], 0.0
+    for i in range(n):
+        t = min(i / rate, dur)
+        phase += 2 * math.pi * f0 * (f1 / f0) ** (t / dur) / rate
+        if shape == "triangle":
+            out.append(2 / math.pi * math.asin(math.sin(phase)))
+        else:
+            out.append(math.sin(phase))
+    return out
+
+
+def key_tink(rng, rate):
+    """Small keys ringing against each other: a bright partial, an inharmonic one above, a tick."""
+    f = 3150
+    n = seconds(0.17, rate)
+    track = mix(
+        mul(glide(n, rate, f, f * 0.995, 0.15), ramp(n, rate, 0.045, 0.15)),
+        mul(glide(n, rate, f * 2.76, f * 2.75, 0.06), ramp(n, rate, 0.014, 0.06)),
+        mul(bandpass(noise(n, rng), f, 8.0, rate), ramp(n, rate, 0.05, 0.02)),
+    )
+    return fade(normalise(track, 0.4), rate, 0.0002, 0.01)
+
+
+def key_clack(rng, rate):
+    """A set landing on brass: a knock, a dropping triangle tone and a bright tick just after."""
+    n = seconds(0.1, rate)
+    track = [0.0] * n
+    place(track, mul(bandpass(noise(n, rng), 1500, 2.2, rate), ramp(n, rate, 0.3, 0.05)), 0)
+    place(track, mul(glide(n, rate, 880, 640, 0.07, "triangle"), ramp(n, rate, 0.07, 0.07)), 0)
+    place(track, mul(bandpass(noise(n, rng), 3800, 6.0, rate), ramp(n, rate, 0.08, 0.03)), seconds(0.012, rate))
+    return fade(normalise(track, 0.8), rate, 0.0002, 0.01)
+
+
+def key_lift(rng, rate):
+    """A set taken off its hook: a quick high scrape of the ring."""
+    n = seconds(0.05, rate)
+    track = mul(bandpass(noise(n, rng), 4200, 6.0, rate), ramp(n, rate, 0.06, 0.03))
+    return fade(normalise(track, 0.3), rate, 0.0002, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +694,10 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    keys = random.Random(1022)
+    write("key_tink", key_tink(keys, fast), fast)
+    write("key_clack", key_clack(keys, fast), fast)
+    write("key_lift", key_lift(keys, fast), fast)
 
 
 if __name__ == "__main__":

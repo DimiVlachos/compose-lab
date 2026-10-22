@@ -5,11 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -32,12 +34,27 @@ internal sealed class KeyItem {
     /** A leather tag in [color] (`#rrggbb`) with [text] stamped in it. */
     class Tag(val color: String, val text: String) : KeyItem() {
         override val length = 23f
+
+        // The shades the prototype mixes from its colour: the strap, and the face's light and dark.
+        internal val strap = mixColor(color, 0, .35f)
+        internal val lit = mixColor(color, 255, .18f)
+        internal val deep = mixColor(color, 0, .3f)
     }
 
     /** A fishing bobber. */
     data object Bobber : KeyItem() {
         override val length = 17f
     }
+}
+
+/**
+ * [hex] (`#rrggbb`) mixed [t] of the way to the grey [to] (0 black, 255 white), as the prototype's
+ * `mix()`.
+ */
+internal fun mixColor(hex: String, to: Int, t: Float): Color {
+    val n = hex.removePrefix("#").toInt(16)
+    fun ch(v: Int) = (v + (to - v) * t).roundToInt()
+    return Color(ch(n shr 16 and 255), ch(n shr 8 and 255), ch(n and 255))
 }
 
 internal enum class KeyMetal {
@@ -400,6 +417,9 @@ internal class KeyRackState(
         if (g.moved < 8f * u && time - g.t0 < 400f) toggle(r)
         else if (y < geo.boardTop - 8f * u) take(r) else hang(r)
     }
+
+    /** Lets go of the set in hand where the finger last was. */
+    fun letGo() = endGrab(fingX, fingY)
 
     /** Signs [r]'s holder in, or out if they are. */
     fun toggle(r: KeyRing) {
