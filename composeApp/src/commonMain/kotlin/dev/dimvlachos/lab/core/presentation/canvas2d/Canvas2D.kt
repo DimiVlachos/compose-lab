@@ -323,6 +323,18 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             }
     }
 
+    /**
+     * How much the transform scales along x: `hypot(a, b)` of the browser's `getTransform()`, which
+     * a prototype multiplies a shadow's size by to give it in user units.
+     */
+    val transformScale: Float
+        get() {
+            val v = state.matrix.values
+            return kotlin.math.sqrt(
+                v[Matrix.ScaleX] * v[Matrix.ScaleX] + v[Matrix.SkewY] * v[Matrix.SkewY],
+            )
+        }
+
     fun translate(x: Float, y: Float) = state.matrix.translate(x, y)
 
     fun scale(x: Float, y: Float) = state.matrix.scale(x, y)
