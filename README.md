@@ -881,6 +881,8 @@ The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instr
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 
+The paper fans' answers are printed in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; static instances, at weights 400 and 700, of the variable font).
+
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 
 The Moodboard's mainland photos are from [Wikimedia Commons](https://commons.wikimedia.org), cropped to 640×800. The cropped files (`moodboard/shared/src/commonMain/composeResources/files/photos/photo_{meteora,meteora_night,delphi,acropolis,nafplio,monemvasia,vikos,kalogeriko}.jpg`) stay under the Creative Commons licence listed for each, not the repo's MIT licence:
