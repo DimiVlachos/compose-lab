@@ -35,6 +35,10 @@ class StickyNoteDemoUiTest {
         waitForIdle()
         onNodeWithTag("count").assertTextEquals("6 left")
         assertEquals("Call Dr. Patel's office", notes.items[0].title)
+        // Compose resources draw an Android-style \' as typed: no note may carry an escape.
+        for (item in notes.items) {
+            assertTrue('\\' !in item.title && '\\' !in item.meta, "escaped: ${item.title}")
+        }
         val label =
             onNodeWithTag("note:Call Dr. Patel's office")
                 .fetchSemanticsNode()
