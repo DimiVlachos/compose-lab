@@ -107,7 +107,57 @@ class BirdcageStateTest {
         assertTrue(s.cover < .06f, "cover ${s.cover}")
         assertEquals(0, s.silenced)
         assertTrue(s.sleep < .2f, "sleep ${s.sleep}")
-        assertTrue(s.shakeAt >= 0f)
+        assertTrue(s.wakeAt >= 0f)
+        assertTrue(s.lid < .05f, "lid ${s.lid}")
+    }
+
+    @Test
+    fun theCoverNeverPassesItsEndAfterRelease() {
+        // A fast flick down: projected on, it eases into place without bouncing past the bottom.
+        dragBy(range * .75f, 4, 80f)
+        var top = 0f
+        repeat(120) {
+            run(1000f / 60f)
+            top = maxOf(top, s.cover)
+        }
+        assertTrue(s.muted)
+        assertTrue(top <= 1f, "cover peaked at $top")
+        assertTrue(s.peak <= 1f, "peak ${s.peak}")
+        // And a fast push up never passes the top.
+        dragBy(-range * .75f, 4, 80f)
+        var low = 1f
+        repeat(120) {
+            run(1000f / 60f)
+            low = minOf(low, s.cover)
+        }
+        assertFalse(s.muted)
+        assertTrue(low >= 0f, "cover dipped to $low")
+    }
+
+    @Test
+    fun wakingTheEyeOpensThenTheHeadRisesThenTheFeathersFluff() {
+        dragBy(range * .75f, 12, 500f)
+        run(2000f)
+        assertTrue(s.lid > .9f, "asleep with the eye shut: lid ${s.lid}")
+        dragBy(-range * .7f, 10, 400f)
+        var t = 0f
+        var eyeAt = -1f
+        var headAt = -1f
+        var fluffAt = -1f
+        var lowest = 1f
+        while (t < 1300f) {
+            run(8f)
+            t += 8f
+            if (eyeAt < 0f && s.lid < .5f) eyeAt = t
+            if (headAt < 0f && s.sleep < .8f) headAt = t
+            if (fluffAt < 0f && s.fluff > .1f) fluffAt = t
+            lowest = minOf(lowest, s.sleep)
+        }
+        assertTrue(eyeAt >= 0f && headAt >= 0f && eyeAt <= headAt, "eye $eyeAt, head $headAt")
+        assertTrue(fluffAt > headAt, "fluff $fluffAt, head $headAt")
+        // The head overshoots upright a little, then settles.
+        assertTrue(lowest < -.02f && lowest > -.2f, "lowest $lowest")
+        assertTrue(abs(s.sleep) < .02f, "sleep ${s.sleep}")
     }
 
     @Test
@@ -175,6 +225,7 @@ class BirdcageStateTest {
         s.step(1f / 60f)
         assertEquals(1f, s.cover)
         assertEquals(1f, s.sleep)
+        assertEquals(1f, s.lid)
         assertEquals(0f, s.sway)
         s.deliver()
         s.step(1f / 60f)
@@ -191,7 +242,8 @@ class BirdcageStateTest {
         assertFalse(s.muted)
         assertEquals(0f, s.cover)
         assertEquals(0, s.silenced)
-        assertEquals(-1f, s.shakeAt)
+        assertEquals(-1f, s.wakeAt)
+        assertEquals(0f, s.lid)
         assertTrue(events.isEmpty())
     }
 

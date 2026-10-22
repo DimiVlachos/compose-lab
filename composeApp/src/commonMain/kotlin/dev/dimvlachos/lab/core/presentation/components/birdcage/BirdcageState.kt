@@ -5,10 +5,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Something the cage does that is heard or felt. */
@@ -28,12 +30,12 @@ internal enum class BirdcageEvent {
 /**
  * The birdcage's springs and its cover's drag, ported from the prototype's `st`, `step()` and its
  * `down`/`move`/`up`: how far the linen cover is down ([cover], 0 rolled up on top of the cage, 1
- * over all of it), the hem's [sway], the ripple's [phase] and how asleep the canary is ([sleep]).
- * Pulling the hem past halfway, or with a flick, drops the cover and mutes the chat; a tap toggles
- * it.
+ * over all of it), the hem's [sway], the ripple's [phase], how far the canary's head is tucked in
+ * ([sleep]) and how shut its eye is ([lid]). Pulling the hem past halfway, or with a flick, drops
+ * the cover and mutes the chat; a tap toggles it.
  *
  * [time] is the cage's own clock in ms, which [step] advances; the chirp, the stir and the wake-up
- * shake are timed on it.
+ * sequence are timed on it.
  */
 @Stable
 internal class BirdcageState {
@@ -78,7 +80,15 @@ internal class BirdcageState {
     var phase = 0f
         private set
 
+    /**
+     * How far the head is tucked into the shoulder: 0 up, 1 tucked. It dips a little below 0 as the
+     * head overshoots on waking.
+     */
     var sleep = 0f
+        private set
+
+    /** How shut the canary's eye is: 0 open, 1 closed. */
+    var lid = 0f
         private set
 
     /** When the canary last sang, on [time]; negative before it first does. */
@@ -89,12 +99,21 @@ internal class BirdcageState {
     var stirAt = -1f
         private set
 
-    /** When the canary last woke and shook out its feathers, on [time]. */
-    var shakeAt = -1f
+    /**
+     * When the canary last began to wake, on [time]: its eye opens, then its head rises, then its
+     * feathers fluff ([fluff]) and its tail flicks ([tailFlick]). Negative while asleep or before.
+     */
+    var wakeAt = -1f
+        private set
+
+    /** The highest the cover has been since it was last let go, for the no-bounce check. */
+    internal var peak = 0f
         private set
 
     private var swayV = 0f
     private var sleepV = 0f
+    private var lidV = 0f
+    private var wasSleepy = false
     private var drag: Drag? = null
     private var drags = 0
 
@@ -123,10 +142,7 @@ internal class BirdcageState {
     fun setMuted(m: Boolean, quiet: Boolean = false) {
         if (m == muted) return
         muted = m
-        if (!m) {
-            silenced = 0
-            shakeAt = time
-        }
+        if (!m) silenced = 0
         if (!quiet) emit(if (m) BirdcageEvent.Settle else BirdcageEvent.Lift)
     }
 
@@ -237,6 +253,7 @@ internal class BirdcageState {
             }
         }
         coverV = v.coerceIn(-8f, 8f)
+        peak = cover
         val goDown = cover + coverV * .12f > .5f
         target = if (goDown) 1f else 0f
         setMuted(goDown)
@@ -251,6 +268,11 @@ internal class BirdcageState {
         dragging = false
         sleep = 0f
         sleepV = 0f
+        lid = 0f
+        lidV = 0f
+        wasSleepy = false
+        wakeAt = -1f
+        peak = 0f
         sway = 0f
         swayV = 0f
         chirpAt = -1f
@@ -258,7 +280,6 @@ internal class BirdcageState {
         silenced = 0
         drag = null
         muted = false
-        shakeAt = -1f
         frame++
     }
 
@@ -278,23 +299,75 @@ internal class BirdcageState {
         if (reducedMotion) {
             if (!dragging) cover = target
             sleep = if (muted && cover > .8f) 1f else 0f
+            lid = sleep
+            wasSleepy = sleep > 0f
             sway = 0f
             return
         }
         if (!dragging) {
             val prev = coverV
-            coverV = spring(cover, coverV, target, 70f, .42f, dt)
+            val side = sign(cover - target)
+            // Heavy linen: critically damped, and it never passes its end. If it would, it stops
+            // there.
+            coverV = spring(cover, coverV, target, 60f, 1f, dt)
             cover += coverV * dt
-            // The hem swings when the cover stops.
-            swayV += (prev - coverV) * .55f
+            if (side != 0f && sign(cover - target) == -side) {
+                cover = target
+                coverV = 0f
+            }
+            // The hem swings a little when the cover slows.
+            swayV += (prev - coverV) * .3f
+            peak = max(peak, cover)
         }
-        swayV = spring(sway, swayV, 0f, 38f, .16f, dt)
+        swayV = spring(sway, swayV, 0f, 14f, .38f, dt)
         sway += swayV * dt
         phase += dt * (2.2f + abs(coverV) * 4f)
-        val sleepy = if (muted && cover > .78f) 1f else 0f
-        sleepV = spring(sleep, sleepV, sleepy, if (sleepy > 0f) 14f else 30f, .9f, dt)
+        val sleepy = muted && cover > .78f
+        // Waking is a little sequence: the eye blinks open, the head rises out of the shoulder,
+        // then
+        // the feathers fluff.
+        if (wasSleepy && !sleepy && (sleep > .3f || lid > .3f)) wakeAt = time
+        if (sleepy) wakeAt = -1f
+        wasSleepy = sleepy
+        val w = if (wakeAt >= 0f) time - wakeAt else Float.POSITIVE_INFINITY
+        // Head: tucks in slowly when it gets dark; on waking it waits for the eye, then rises with
+        // a
+        // slight overshoot.
+        val head = if (sleepy) 1f else if (w < WakeHeadMs) sleep else 0f
+        sleepV = spring(sleep, sleepV, head, if (sleepy) 12f else 46f, if (sleepy) 1f else .62f, dt)
         sleep += sleepV * dt
+        // Eyelid: closes once the head is mostly tucked; on waking it opens first, then blinks
+        // once.
+        if (w < WakeEndMs) {
+            lid =
+                when {
+                    w < WakeOpenMs -> 1f - ease(w / WakeOpenMs)
+                    w >= WakeBlinkMs && w < WakeBlinkMs + BlinkMs ->
+                        sin((w - WakeBlinkMs) / BlinkMs * PI.toFloat()) * .9f
+                    else -> 0f
+                }
+            lidV = 0f
+        } else {
+            lidV = spring(lid, lidV, if (sleepy && sleep > .6f) 1f else 0f, 22f, 1f, dt)
+            lid += lidV * dt
+        }
     }
+
+    /** How puffed the feathers are as it wakes: up and back down over [WakeFluffLenMs]. */
+    val fluff: Float
+        get() {
+            if (wakeAt < 0f) return 0f
+            val p = (time - wakeAt - WakeFluffMs) / WakeFluffLenMs
+            return if (p > 0f && p < 1f) sin(p * PI.toFloat()) * (1f - p * .35f) else 0f
+        }
+
+    /** The tail's flick as it wakes, in radians. */
+    val tailFlick: Float
+        get() {
+            if (wakeAt < 0f) return 0f
+            val p = (time - wakeAt - WakeTailMs) / WakeTailLenMs
+            return if (p > 0f && p < 1f) sin(p * PI.toFloat() * 2f) * (1f - p) * .22f else 0f
+        }
 
     private fun emit(event: BirdcageEvent) {
         onEvent?.invoke(event)
@@ -303,10 +376,24 @@ internal class BirdcageState {
     internal companion object {
         private const val Substep = 1f / 240f
         private const val MaxSamples = 12
+
+        // The wake timeline, in ms from when the cover lets the light in.
+        internal const val WakeOpenMs = 200f
+        internal const val WakeHeadMs = 150f
+        private const val WakeBlinkMs = 460f
+        private const val BlinkMs = 180f
+        internal const val WakeFluffMs = 560f
+        private const val WakeFluffLenMs = 650f
+        private const val WakeTailMs = 700f
+        private const val WakeTailLenMs = 460f
+        private const val WakeEndMs = 1400f
     }
 }
 
 internal fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+/** The prototype's ease in-out quad. */
+private fun ease(t: Float) = if (t < .5f) 2f * t * t else 1f - (-2f * t + 2f).let { it * it } / 2f
 
 /**
  * One semi-implicit Euler step of a damped spring, stiffness [k] and damping ratio [z]: the new

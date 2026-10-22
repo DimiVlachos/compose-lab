@@ -6,6 +6,7 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Pattern2D
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 // The birdcage, ported line by line from the prototype's draw(): the same calls, in the same order,
@@ -91,6 +92,8 @@ private const val ZFont = "600 10px system-ui, sans-serif"
 private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     val now = s.time
     val sl = s.sleep.coerceIn(0f, 1f)
+    val hs = min(s.sleep, 1f)
+    val puff = s.fluff
     var hop = 0f
     var beak = 0f
     var tilt = 0f
@@ -102,18 +105,16 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
             tilt = sin(p * Pi) * -.35f
         }
     }
-    var shake = 0f
-    if (s.shakeAt >= 0f) {
-        val p = (now - s.shakeAt) / 700f
-        if (p >= 0f && p < 1f) shake = sin(p * 40f) * (1f - p) * .12f
-    }
     val breathe = sin(now / 520f) * .5f * (1f + sl)
     val px = CX + 2f
     val py = 196f - hop
     save()
     translate(px, py)
-    rotate(shake)
-    // Tail.
+    // Tail, flicking once as it wakes.
+    save()
+    translate(-10f, -2f)
+    rotate(s.tailFlick)
+    translate(10f, 2f)
     fillStyle = "#c69614"
     beginPath()
     moveTo(-12f, -6f)
@@ -122,11 +123,12 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     lineTo(-8f, 2f)
     closePath()
     fill()
-    // Body, puffed a little when asleep.
+    restore()
+    // Body, puffed a little when asleep, and fluffed up for a moment as it wakes.
     val bx = 0f
-    val by = -16f + sl * 2f
-    val brx = 19f + sl * 2f + breathe * .4f
-    val bry = 15f + sl * 2.5f + breathe
+    val by = -16f + sl * 2f - puff * 1.2f
+    val brx = 19f + sl * 2f + breathe * .4f + puff * 3.2f
+    val bry = 15f + sl * 2.5f + breathe + puff * 3f
     var g = createRadialGradient(bx - 8f, by - 9f, 2f, bx, by, brx * 1.3f)
     g.addColorStop(0f, "#fff3a8")
     g.addColorStop(.45f, "#f7cf2c")
@@ -138,7 +140,7 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     // Wing.
     fillStyle = "rgba(176,122,10,.55)"
     beginPath()
-    ellipse(-4f, by + 1f, 12f, 7.5f, -.45f, 0f, Pi * 2f)
+    ellipse(-4f, by + 1f, 12f + puff, 7.5f + puff * .8f, -.45f - puff * .22f, 0f, Pi * 2f)
     fill()
     strokeStyle = "rgba(140,92,6,.45)"
     lineWidth = .8f
@@ -148,10 +150,12 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
         lineTo(-1f + i * 3f, by + 6f + i * .6f)
         stroke()
     }
-    // Head: up and alert, or tucked down into the shoulder.
-    val hx = lerp(15f, 7f, sl)
-    val hy = lerp(-34f, -24f, sl)
-    val ha = lerp(tilt, .7f, sl)
+    // Head: up and alert, or tucked down into the shoulder. Unclamped above, so the head's
+    // overshoot
+    // on waking lifts it a touch past upright.
+    val hx = lerp(15f, 7f, hs)
+    val hy = lerp(-34f, -24f, hs) - puff * 1.5f
+    val ha = lerp(tilt, .7f, hs)
     save()
     translate(hx, hy)
     rotate(ha)
@@ -179,22 +183,30 @@ private fun Canvas2D.canary(s: BirdcageState, dark: Boolean) {
     lineTo(8f, 3f)
     closePath()
     fill()
-    // Eye: a bright bead, or a closed crescent.
-    if (sl < .5f) {
+    // Eye: a bright bead under a lid that closes down over it into a sleepy crescent.
+    val lid = s.lid.coerceIn(0f, 1f)
+    if (lid < .98f) {
         fillStyle = "#1b1307"
         beginPath()
-        arc(4f, -3f, 2f, 0f, Pi * 2f)
+        ellipse(4f, -3f + lid * .6f, 2f, 2f * (1f - lid), 0f, 0f, Pi * 2f)
         fill()
-        fillStyle = "#fff"
-        beginPath()
-        arc(4.6f, -3.7f, .7f, 0f, Pi * 2f)
-        fill()
-    } else {
+        if (lid < .6f) {
+            globalAlpha = 1f - lid / .6f
+            fillStyle = "#fff"
+            beginPath()
+            arc(4.6f, -3.7f + lid * .6f, .7f, 0f, Pi * 2f)
+            fill()
+            globalAlpha = 1f
+        }
+    }
+    if (lid > .55f) {
+        globalAlpha = ((lid - .55f) / .4f).coerceIn(0f, 1f)
         strokeStyle = "#5a3f0a"
         lineWidth = 1.2f
         beginPath()
         arc(4f, -3.5f, 2.2f, .2f, Pi - .2f)
         stroke()
+        globalAlpha = 1f
     }
     restore()
     restore()
