@@ -266,7 +266,7 @@ private fun AppBar(colors: KeyHookScreenColors) {
     }
 }
 
-/** Who is signed in, or that nobody is: an avatar and two lines, the D-ring hanging under it. */
+/** Who is signed in, or that nobody is: an avatar and two lines, the snap clip hanging under it. */
 @Composable
 private fun AccountCard(who: KeyHolder?, colors: KeyHookScreenColors) {
     val shape = RoundedCornerShape(16.dp)

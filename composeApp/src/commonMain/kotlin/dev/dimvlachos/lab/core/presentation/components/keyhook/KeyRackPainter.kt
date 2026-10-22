@@ -8,7 +8,9 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.TAU
 import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -94,8 +96,9 @@ internal const val PlateFont = "mono"
 
 /**
  * Bakes what never moves for [g0] — the lamp's glow, the board with its [wood], the name plates,
- * rosettes and hooks, and the D-ring's back — into a bitmap the size of the hero at [px] pixels per
- * dp, drawn as the prototype draws them each frame. [measurer] and [fonts] set the plates.
+ * rosettes and hooks, and the card's snap clip but for its gate — into a bitmap the size of the
+ * hero at [px] pixels per dp, drawn as the prototype draws them each frame. [measurer] and [fonts]
+ * set the plates.
  */
 internal fun bakeRackBackdrop(
     state: KeyRackState,
@@ -263,26 +266,8 @@ private fun Canvas2D.drawBackdrop(
         drawHookFront(hx, hy, u)
     }
 
-    // ---- The D-ring on the account card ----
-    val tx = g0.carryX
-    val ty = g0.cardBottom
-    save()
-    shadowColor = "rgba(30,15,0,.35)"
-    shadowBlur = 2f * u * px
-    shadowOffsetY = 1.5f * u * px
-    rr(tx - 6f * u, ty - 5f * u, 12f * u, 13f * u, 2f * u)
-    fillStyle = "#6a4326"
-    fill()
-    restore()
-    setLineDash(floatArrayOf(1.4f * u, 1.2f * u))
-    strokeStyle = "rgba(255,225,190,.5)"
-    lineWidth = .6f * u
-    beginPath()
-    moveTo(tx - 4f * u, ty + 4.5f * u)
-    lineTo(tx + 4f * u, ty + 4.5f * u)
-    stroke()
-    setLineDash(NoDash)
-    tube(2.4f * u, u) { dPath(g0, false) }
+    // ---- The snap clip on the account card ----
+    drawClip(g0, dark, px)
 }
 
 /**
@@ -303,6 +288,7 @@ internal fun Canvas2D.drawKeyRack(
     // The browser's context keeps these from the first frame on: every stroke after it is round.
     lineCap = "round"
     lineJoin = "round"
+    drawGate(g0, state.gate.angle, dark, px)
 
     // ---- Keys: resting sets first, then anything in flight or in hand on top ----
     for (pass in 0..1) {
@@ -311,10 +297,8 @@ internal fun Canvas2D.drawKeyRack(
             if ((pass == 0) != resting) continue
             drawRing(state, r, dark, px)
             // The front of whatever it hangs on goes over the ring, so it looks threaded on.
-            if (resting) {
-                if (state.carriedIndex == r.index) tube(2.4f * u, u) { dPath(g0, true) }
-                else drawHookFront(g0.hookX(r.index), g0.hookY, u)
-            }
+            if (r.on) tube(2.4f * u, u) { clipFrontPath(g0) }
+            else if (resting) drawHookFront(g0.hookX(r.index), g0.hookY, u)
         }
     }
 }
@@ -640,20 +624,129 @@ private fun Canvas2D.drawHookFront(x: Float, y: Float, u: Float) {
     fill()
 }
 
-private fun Canvas2D.dPath(g0: RackGeometry, front: Boolean) {
-    val u = g0.u
-    val x = g0.carryX
-    val y = g0.cardBottom + 6f * u
-    val rx = 8f * u
-    val ry = 13f * u
+// The snap clip, in its own U from the foot of the card straight under the strap.
+private fun clX(g0: RackGeometry, x: Float) = g0.carryX + x * g0.u
+
+private fun clY(g0: RackGeometry, y: Float) = g0.cardBottom + y * g0.u
+
+// Its body: from under the swivel, round the shoulder, down the spine, round the bend, up the nose.
+private fun Canvas2D.clipPath(g0: RackGeometry) {
+    val r = SnapClip.R
     beginPath()
-    if (front) {
-        ellipse(x, y, rx, ry, 0f, PI_F * .66f, PI_F * .34f, true)
-        return
+    moveTo(clX(g0, .9f), clY(g0, 13.5f))
+    lineTo(clX(g0, -1.4f), clY(g0, 13.5f))
+    quadraticCurveTo(clX(g0, -r), clY(g0, 13.5f), clX(g0, -r), clY(g0, 17.4f))
+    lineTo(clX(g0, -r), clY(g0, SnapClip.CenterY))
+    arc(clX(g0, SnapClip.CenterX), clY(g0, SnapClip.CenterY), r * g0.u, PI_F, 0f, true)
+    lineTo(clX(g0, SnapClip.NoseX), clY(g0, SnapClip.NoseY))
+}
+
+// The near half of the bend, drawn again over a ring that hangs in it so it looks threaded through.
+private fun Canvas2D.clipFrontPath(g0: RackGeometry) {
+    beginPath()
+    arc(
+        clX(g0, SnapClip.CenterX),
+        clY(g0, SnapClip.CenterY),
+        SnapClip.R * g0.u,
+        PI_F * .5f,
+        0f,
+        true,
+    )
+    lineTo(clX(g0, SnapClip.R), clY(g0, 21.6f))
+}
+
+private fun Canvas2D.drawClip(g0: RackGeometry, dark: Boolean, px: Float) {
+    val u = g0.u
+    // The swivel's eye, threaded on the strap.
+    tube(1.5f * u, u) {
+        beginPath()
+        arc(clX(g0, 0f), clY(g0, 8.4f), 2.5f * u, 0f, TAU)
     }
-    moveTo(x - rx, y)
-    lineTo(x + rx, y)
-    ellipse(x, y, rx, ry, 0f, 0f, PI_F)
+    val tx = g0.carryX
+    val ty = g0.cardBottom
+    save()
+    shadowColor = "rgba(30,15,0,.35)"
+    shadowBlur = 2f * u * px
+    shadowOffsetY = 1.5f * u * px
+    rr(tx - 6f * u, ty - 5f * u, 12f * u, 13f * u, 2f * u)
+    fillStyle = "#6a4326"
+    fill()
+    restore()
+    setLineDash(floatArrayOf(1.4f * u, 1.2f * u))
+    strokeStyle = "rgba(255,225,190,.5)"
+    lineWidth = .6f * u
+    beginPath()
+    moveTo(tx - 4f * u, ty + 4.5f * u)
+    lineTo(tx + 4f * u, ty + 4.5f * u)
+    stroke()
+    setLineDash(NoDash)
+    // The body, with its shadow on the wall.
+    save()
+    shadowColor = if (dark) "rgba(0,0,0,.55)" else "rgba(40,18,0,.4)"
+    shadowBlur = 2.5f * u * px
+    shadowOffsetX = 2f * u * px
+    shadowOffsetY = 3.5f * u * px
+    clipPath(g0)
+    lineWidth = 2.4f * u
+    strokeStyle = Brass.dark
+    lineCap = "round"
+    stroke()
+    restore()
+    tube(2.4f * u, u) { clipPath(g0) }
+    // The swivel's barrel, over the top of the body.
+    rr(clX(g0, -1.8f), clY(g0, 10.2f), 3.6f * u, 3.8f * u, 1.3f * u)
+    val g = createLinearGradient(clX(g0, -1.8f), 0f, clX(g0, 1.8f), 0f)
+    g.addColorStop(0f, Brass.dark)
+    g.addColorStop(.3f, Brass.light)
+    g.addColorStop(.6f, Brass.mid)
+    g.addColorStop(1f, Brass.edge)
+    fillStyle = g
+    fill()
+    strokeStyle = "rgba(40,24,4,.45)"
+    lineWidth = .5f * u
+    beginPath()
+    moveTo(clX(g0, -1.8f), clY(g0, 12.1f))
+    lineTo(clX(g0, 1.8f), clY(g0, 12.1f))
+    stroke()
+}
+
+private val GateLength = hypot(SnapClip.NoseX - SnapClip.HingeX, SnapClip.NoseY - SnapClip.HingeY)
+private val GateAngle = atan2(SnapClip.NoseY - SnapClip.HingeY, SnapClip.NoseX - SnapClip.HingeX)
+
+/** The gate: a short brass bar from its hinge pin to the nose, swung in by [open] (0 to 1). */
+private fun Canvas2D.drawGate(g0: RackGeometry, open: Float, dark: Boolean, px: Float) {
+    val u = g0.u
+    val a = GateAngle + open * SnapClip.GateOpen
+    val hx = clX(g0, SnapClip.HingeX)
+    val hy = clY(g0, SnapClip.HingeY)
+    val ex = hx + cos(a) * GateLength * u
+    val ey = hy + sin(a) * GateLength * u
+    save()
+    shadowColor = if (dark) "rgba(0,0,0,.5)" else "rgba(40,18,0,.32)"
+    shadowBlur = 1.5f * u * px
+    shadowOffsetX = 1f * u * px
+    shadowOffsetY = 1.8f * u * px
+    beginPath()
+    moveTo(hx, hy)
+    lineTo(ex, ey)
+    lineWidth = 1.9f * u
+    strokeStyle = Brass.dark
+    lineCap = "round"
+    stroke()
+    restore()
+    tube(1.9f * u, u) {
+        beginPath()
+        moveTo(hx, hy)
+        lineTo(ex, ey)
+    }
+    val g = createRadialGradient(hx - .4f * u, hy - .4f * u, 0f, hx, hy, 1.4f * u)
+    g.addColorStop(0f, "#fff2c8")
+    g.addColorStop(.5f, "#c99a3f")
+    g.addColorStop(1f, "#5e400c")
+    fillStyle = g
+    beginPath()
+    arc(hx, hy, 1.2f * u, 0f, TAU)
+    fill()
 }
 
 private fun Canvas2D.screw(x: Float, y: Float, r: Float, a: Float, u: Float) {

@@ -83,16 +83,123 @@ internal class KeyHolder(
 internal enum class KeyRackEvent {
     /** Keys knocking together. */
     Tink,
-    /** A set landing on its hook or the card's D-ring. */
+    /** A set landing on its hook. */
     Clack,
     /** A set picked up. */
     Lift,
+    /** The card's clip snapping shut on a set. */
+    ClipShut,
+    /** The card's clip snapping shut behind a set that has left it. */
+    ClipShutEmpty,
+}
+
+/**
+ * The snap clip under the account card, in U from the card's foot straight under its strap, as the
+ * prototype's `CLIP_*`: the bend's centre and radius, the gate's hinge, the nose its free end
+ * latches on, and the path a ring takes through it — E outside the mouth, M where the shut gate
+ * runs, G the gap the open gate leaves at the nose, B the bottom of the bend, where the ring hangs.
+ */
+internal object SnapClip {
+    const val R = 5.2f
+    const val CenterX = 0f
+    const val CenterY = 24.8f
+    const val HingeX = .8f
+    const val HingeY = 14f
+    const val NoseX = 5.2f
+    const val NoseY = 19.4f
+
+    /** How far the gate swings in, in radians, fully open. */
+    const val GateOpen = .9f
+
+    /** A full pass through the clip, from outside to the bend, in ms. */
+    const val ThreadMs = 300f
+
+    // E, M, G, B.
+    val PathX = floatArrayOf(7.26f, 3f, 2.1f, 0f)
+    val PathY = floatArrayOf(13.23f, 16.7f, 20.2f, 30f)
+    val PathLen =
+        FloatArray(4).also {
+            for (i in 1 until 4) {
+                it[i] = it[i - 1] + hypot(PathX[i] - PathX[i - 1], PathY[i] - PathY[i - 1])
+            }
+        }
+
+    /** The bottom of the bend, where a ring hangs, below the card's foot. */
+    val Drop = PathY[3]
+
+    /** Where along the path [c] (1 at E outside, 0 at B in the bend) is: x (or y if [y]) in U. */
+    fun point(c: Float, y: Boolean): Float {
+        val d = (1f - c) * PathLen[3]
+        var i = 1
+        while (i < 3 && PathLen[i] < d) i++
+        val t = ((d - PathLen[i - 1]) / (PathLen[i] - PathLen[i - 1])).coerceIn(0f, 1f)
+        val a = if (y) PathY else PathX
+        return a[i - 1] + (a[i] - a[i - 1]) * t
+    }
+}
+
+/**
+ * The clip's spring gate, as the prototype's `gate`: [angle] 0 shut on the nose to 1 swung in.
+ * Opening, a ring pushes it in against its spring; let go, the spring snaps it back onto the nose,
+ * where it bounces a little and rests.
+ */
+internal class ClipGate {
+    var angle = 0f
+        private set
+
+    internal var speed = 0f
+        private set
+
+    private var armed = false
+
+    /**
+     * Moves the gate toward [open] for [h] seconds; with [reduced] it is simply open or shut.
+     * Returns the strength of a snap onto the nose (0 for none).
+     */
+    fun step(h: Float, open: Boolean, reduced: Boolean): Float {
+        if (reduced) {
+            angle = if (open) 1f else 0f
+            speed = 0f
+            armed = false
+            return 0f
+        }
+        val k = if (open) 1400f else 2600f
+        val z = if (open) 1f else .3f
+        val to = if (open) 1f else -.3f
+        speed += (k * (to - angle) - 2f * sqrt(k) * z * speed) * h
+        angle += speed * h
+        if (angle > .5f) armed = true
+        if (angle > 1f) {
+            angle = 1f
+            speed = min(0f, speed)
+        }
+        var snap = 0f
+        if (angle < 0f) {
+            angle = 0f
+            if (armed) {
+                armed = false
+                snap = (-speed / 40f).coerceIn(.4f, 1f)
+            }
+            speed = if (speed < -4f) -speed * .25f else 0f
+        }
+        return snap
+    }
+
+    /** Shut and still on the nose. */
+    val shut: Boolean
+        get() = angle == 0f && speed == 0f
+
+    fun reset() {
+        angle = 0f
+        speed = 0f
+        armed = false
+    }
 }
 
 /**
  * The rack's geometry for a hero [width] × [height] (dp), as the prototype's `layout()` works it
  * out: [u] scales the rack, [ks] the keys, which grow into whatever height the screen gives them.
- * [cardBottom] is the account card's foot, where the D-ring hangs.
+ * [cardBottom] is the account card's foot, where the snap clip hangs.
  */
 internal class RackGeometry(val width: Float, val height: Float, val count: Int) {
     val cardBottom = CardBottom
@@ -104,7 +211,12 @@ internal class RackGeometry(val width: Float, val height: Float, val count: Int)
     val boardL = 12f * u
     val boardR = width - 12f * u
     val carryX = width * .76f
-    val carryY = cardBottom + 19f * u
+    val carryY = cardBottom + SnapClip.Drop * u
+
+    /** The clip's point [c] along its path, in dp (see [SnapClip.point]). */
+    fun clipX(c: Float) = carryX + SnapClip.point(c, false) * u
+
+    fun clipY(c: Float) = cardBottom + SnapClip.point(c, true) * u
 
     fun hookX(i: Int): Float {
         val inner = boardR - boardL - 40f * u
@@ -176,6 +288,23 @@ internal class KeyRing(val holder: KeyHolder, val index: Int) {
     internal var ctrlX = 0f
     internal var ctrlY = 0f
 
+    /**
+     * Whether the ring is threaded on the card's clip, and where along it (1 out at its mouth, 0 in
+     * its bend).
+     */
+    var on = false
+        internal set
+
+    var clip = 0f
+        internal set
+
+    // The clip pass under way, if any: from where, to where, how far in and for how long (ms).
+    internal var passing = false
+    internal var passFrom = 0f
+    internal var passTo = 0f
+    internal var passT = 0f
+    internal var passMs = 0f
+
     /** Each item's angle and speed. */
     val ph = FloatArray(holder.items.size)
     internal val pom = FloatArray(holder.items.size)
@@ -229,6 +358,9 @@ internal class KeyRackState(
         private set
 
     val rings = holders.mapIndexed { i, h -> KeyRing(h, i) }
+
+    /** The card's clip's spring gate. */
+    val gate = ClipGate()
 
     /** Whose set is on the card, or flying there: -1 for nobody. */
     var carriedIndex by mutableIntStateOf(startCarried ?: -1)
@@ -307,8 +439,12 @@ internal class KeyRackState(
         grab = null
         laterCount = 0
         carriedIndex = startCarried ?: -1
+        gate.reset()
         for (r in rings) {
             r.mode = KeyRing.Mode.Rest
+            r.on = r.index == startCarried
+            r.clip = 0f
+            r.passing = false
             if (geometry != null) {
                 r.x = destX(r)
                 r.y = destY(r)
@@ -340,6 +476,75 @@ internal class KeyRackState(
     fun destY(r: KeyRing): Float {
         val g = checkNotNull(geometry)
         return if (isCarried(r)) g.carryY else g.hookY
+    }
+
+    // Where a flight ends: a set bound for the card first flies to the clip's mouth, then threads
+    // in.
+    private fun flyToX(r: KeyRing) =
+        if (isCarried(r) && !r.on) checkNotNull(geometry).clipX(1f) else destX(r)
+
+    private fun flyToY(r: KeyRing) =
+        if (isCarried(r) && !r.on) checkNotNull(geometry).clipY(1f) else destY(r)
+
+    // Which way a ring on the clip is headed: down into the bend (0), or out (1).
+    private fun clipGoal(r: KeyRing) =
+        if (r.mode == KeyRing.Mode.Rest || (r.mode == KeyRing.Mode.Fly && isCarried(r))) 0f else 1f
+
+    /**
+     * Whether some ring wants the clip's gate open: passing its gap, arriving, or carried close.
+     */
+    private fun gateWanted(): Boolean {
+        val geo = geometry ?: return false
+        val ex = geo.clipX(1f)
+        val ey = geo.clipY(1f)
+        for (r in rings) {
+            if (r.on) {
+                val wants =
+                    if (clipGoal(r) == 1f) !(r.mode == KeyRing.Mode.Fly && r.flyEl < 0f)
+                    else r.clip > .25f
+                if (wants) return true
+            } else if (r.mode == KeyRing.Mode.Fly && isCarried(r) && r.flyMs - r.flyEl < 160f) {
+                return true
+            } else if (r.mode == KeyRing.Mode.Drag && hypot(r.x - ex, r.y - ey) < 36f * geo.u) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Moves [r] along the clip toward [goal] for [h] s, eased; it can't pass the gap until the gate
+     * is open. Returns whether it got there.
+     */
+    private fun moveClip(r: KeyRing, goal: Float, h: Float): Boolean {
+        if (!r.passing || r.passTo != goal) {
+            r.passing = true
+            r.passFrom = r.clip
+            r.passTo = goal
+            r.passT = 0f
+            r.passMs = SnapClip.ThreadMs * max(.3f, abs(goal - r.clip))
+        }
+        val t = min(r.passMs, r.passT + h * 1000f)
+        var c = r.passFrom + (r.passTo - r.passFrom) * ease(t / r.passMs)
+        var held = false
+        if (gate.angle < .8f) {
+            if (goal == 0f && r.clip >= .75f && c < .75f) {
+                c = .75f
+                held = true
+            }
+            if (goal == 1f && r.clip <= .25f && c > .25f) {
+                c = .25f
+                held = true
+            }
+        }
+        if (!held) r.passT = t
+        r.clip = c
+        if (r.passT >= r.passMs) {
+            r.clip = goal
+            r.passing = false
+            return true
+        }
+        return false
     }
 
     private val u
@@ -396,6 +601,12 @@ internal class KeyRackState(
         r.mode = KeyRing.Mode.Drag
         r.offX = r.x - x
         r.offY = r.y - y
+        // With no motion a set comes straight off the clip; otherwise it slides out through the
+        // gate.
+        if (reducedMotion) {
+            r.on = false
+            r.passing = false
+        }
         wake++
         emit(KeyRackEvent.Lift, 1f)
     }
@@ -456,31 +667,61 @@ internal class KeyRackState(
     private fun sendTo(r: KeyRing, delay: Float = 0f) {
         wake++
         if (geometry == null) return
-        val toX = destX(r)
-        val toY = destY(r)
-        val d = hypot(toX - r.x, toY - r.y)
         if (reducedMotion) {
+            val toX = destX(r)
+            val toY = destY(r)
             r.mode = KeyRing.Mode.Rest
             r.x = toX
             r.y = toY
             r.tx = toX
             r.ty = toY
+            r.on = isCarried(r)
+            r.clip = 0f
+            r.passing = false
             land(r)
             return
         }
+        // Still on the clip, it threads in or out first; the flight home starts at the mouth.
+        if (r.on) {
+            r.mode = KeyRing.Mode.Fly
+            r.flyEl = -delay
+            r.flyMs = 0f
+            return
+        }
+        startFly(r, delay)
+    }
+
+    private fun startFly(r: KeyRing, delay: Float) {
+        val toX = flyToX(r)
+        val toY = flyToY(r)
+        val d = hypot(toX - r.x, toY - r.y)
         r.mode = KeyRing.Mode.Fly
         r.flyEl = -delay
         r.flyMs = (300f + d * .9f).coerceIn(360f, 640f)
         r.fromX = r.x
         r.fromY = r.y
-        r.ctrlX = (r.x + toX) / 2f
-        r.ctrlY = min(r.y, toY) - min(70f * u, d * .35f)
+        if (isCarried(r)) {
+            // To the card it swings out past the clip and comes back into its mouth from outside.
+            val out = min(30f * u, d * .5f)
+            r.ctrlX = toX + out
+            r.ctrlY = toY - out * .15f
+        } else {
+            r.ctrlX = (r.x + toX) / 2f
+            r.ctrlY = min(r.y, toY) - min(70f * u, d * .35f)
+        }
     }
 
     private fun land(r: KeyRing) {
         val speed = hypot(r.vx, r.vy)
         r.mode = KeyRing.Mode.Rest
-        emit(KeyRackEvent.Clack, (speed / 900f).coerceIn(.25f, 1f))
+        // On a hook the set lands with a clack; on the card the clip's gate has just snapped shut
+        // on it (with no motion, now).
+        if (isCarried(r)) {
+            r.on = true
+            r.clip = 0f
+            r.passing = false
+            if (reducedMotion) emit(KeyRackEvent.ClipShut, 1f)
+        } else emit(KeyRackEvent.Clack, (speed / 900f).coerceIn(.25f, 1f))
         for (i in 0 until 3) {
             later(
                 time + 30.0 + i * (40.0 + random.nextFloat() * 50.0),
@@ -515,6 +756,7 @@ internal class KeyRackState(
     val settled: Boolean
         get() {
             if (grab != null || laterCount > 0 || geometry == null) return false
+            if (!gate.shut) return false
             for (r in rings) {
                 if (r.mode != KeyRing.Mode.Rest) return false
                 if (reducedMotion) continue
@@ -558,32 +800,65 @@ internal class KeyRackState(
         val geo = checkNotNull(geometry)
         val u = geo.u
         val ks = geo.ks
+        val snap = gate.step(h, gateWanted(), reducedMotion)
+        if (snap > 0f) {
+            val seated = rings.any { it.on }
+            emit(if (seated) KeyRackEvent.ClipShut else KeyRackEvent.ClipShutEmpty, snap)
+        }
         for (r in rings) {
-            when (r.mode) {
-                KeyRing.Mode.Drag -> {
-                    // The anchor slides sideways until it's straight above the fingertip but keeps
-                    // its height, so the keys never drop on pickup.
-                    val k = min(1f, h * 12f)
-                    r.offX += (0f - r.offX) * k
-                    r.offY = min(r.offY, -2f * u)
-                    // Dragged low, the set stops where its bottom (and shadow) still fits.
-                    r.tx = fingX + r.offX
-                    r.ty = min(fingY + r.offY, geo.height - (70f * ks + 28f) * u)
+            val threading = r.on && r.mode != KeyRing.Mode.Rest
+            if (threading) {
+                // On the clip: in through the gap and down into the bend, or out the way it came.
+                val goal = clipGoal(r)
+                var done = false
+                if (goal == 1f && r.mode == KeyRing.Mode.Fly && r.flyEl < 0f) r.flyEl += h * 1000f
+                else done = moveClip(r, goal, h)
+                r.tx = geo.clipX(r.clip)
+                r.ty = geo.clipY(r.clip)
+                if (done && goal == 0f) land(r)
+                else if (done) {
+                    r.on = false
+                    if (r.mode == KeyRing.Mode.Drag) {
+                        r.offX = r.tx - fingX
+                        r.offY = r.ty - fingY
+                    } else startFly(r, 0f)
                 }
-                KeyRing.Mode.Fly -> {
-                    r.flyEl += h * 1000f
-                    val p = (r.flyEl / r.flyMs).coerceIn(0f, 1f)
-                    val e = ease(p)
-                    val q = 1f - e
-                    r.tx = q * q * r.fromX + 2f * q * e * r.ctrlX + e * e * destX(r)
-                    r.ty = q * q * r.fromY + 2f * q * e * r.ctrlY + e * e * destY(r)
-                    if (r.flyEl >= r.flyMs) land(r)
+            } else
+                when (r.mode) {
+                    KeyRing.Mode.Drag -> {
+                        // The anchor slides sideways until it's straight above the fingertip but
+                        // keeps
+                        // its height, so the keys never drop on pickup.
+                        val k = min(1f, h * 12f)
+                        r.offX += (0f - r.offX) * k
+                        r.offY = min(r.offY, -2f * u)
+                        // Dragged low, the set stops where its bottom (and shadow) still fits.
+                        r.tx = fingX + r.offX
+                        r.ty = min(fingY + r.offY, geo.height - (70f * ks + 28f) * u)
+                    }
+                    KeyRing.Mode.Fly -> {
+                        r.flyEl += h * 1000f
+                        val p = (r.flyEl / r.flyMs).coerceIn(0f, 1f)
+                        val e = ease(p)
+                        val q = 1f - e
+                        r.tx = q * q * r.fromX + 2f * q * e * r.ctrlX + e * e * flyToX(r)
+                        r.ty = q * q * r.fromY + 2f * q * e * r.ctrlY + e * e * flyToY(r)
+                        // Bound for the card it reaches the clip's mouth and threads on; for a
+                        // hook, it
+                        // lands.
+                        if (r.flyEl >= r.flyMs) {
+                            if (isCarried(r)) {
+                                r.on = true
+                                r.clip = 1f
+                                r.passing = false
+                            } else land(r)
+                        }
+                    }
+                    KeyRing.Mode.Rest -> {
+                        r.tx = destX(r)
+                        r.ty = destY(r)
+                    }
                 }
-                KeyRing.Mode.Rest -> {
-                    r.tx = destX(r)
-                    r.ty = destY(r)
-                }
-            }
             if (reducedMotion) {
                 r.x = r.tx
                 r.y = r.ty
@@ -598,20 +873,33 @@ internal class KeyRackState(
                 continue
             }
             val resting = r.mode == KeyRing.Mode.Rest
-            val k =
-                when (r.mode) {
-                    KeyRing.Mode.Rest -> 700f
-                    KeyRing.Mode.Fly -> 1500f
-                    KeyRing.Mode.Drag -> 1100f
-                }
-            val z = if (resting) .7f else .9f
-            val c = 2f * sqrt(k) * z
-            r.ax = k * (r.tx - r.x) - c * r.vx
-            r.ay = k * (r.ty - r.y) - c * r.vy
-            r.vx += r.ax * h
-            r.vy += r.ay * h
-            r.x += r.vx * h
-            r.y += r.vy * h
+            if (r.on && !resting) {
+                // Threaded on the clip the ring goes exactly where the clip leads it; the pendulum
+                // still feels each turn.
+                val vx = (r.tx - r.x) / h
+                val vy = (r.ty - r.y) / h
+                r.ax = (vx - r.vx) / h
+                r.ay = (vy - r.vy) / h
+                r.vx = vx
+                r.vy = vy
+                r.x = r.tx
+                r.y = r.ty
+            } else {
+                val k =
+                    when (r.mode) {
+                        KeyRing.Mode.Rest -> 700f
+                        KeyRing.Mode.Fly -> 1500f
+                        KeyRing.Mode.Drag -> 1100f
+                    }
+                val z = if (resting) .7f else .9f
+                val c = 2f * sqrt(k) * z
+                r.ax = k * (r.tx - r.x) - c * r.vx
+                r.ay = k * (r.ty - r.y) - c * r.vy
+                r.vx += r.ax * h
+                r.vy += r.ay * h
+                r.x += r.vx * h
+                r.y += r.vy * h
+            }
             r.lift += ((if (resting) 0f else 1f) - r.lift) * min(1f, h * 9f)
             val g = 2600f * u
             val ax = r.ax
