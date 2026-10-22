@@ -527,4 +527,3 @@ internal fun Canvas2D.drawPencilCupFlight(s: PencilCupState, dark: Boolean, dens
         restore()
     }
 }
-

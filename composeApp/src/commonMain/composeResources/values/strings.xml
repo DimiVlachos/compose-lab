@@ -443,4 +443,33 @@
     <string name="padlock_rule_mix">A symbol or capital</string>
     <string name="padlock_continue">Continue</string>
     <string name="padlock_show">Show password</string>
+    <string name="demo_pencilcup">Pencil cup FAB</string>
+    <string name="demo_pencilcup_description">A cobalt pencil cup is the + button: tap it and its tools fan out as the actions</string>
+    <string name="pencilcup_title">Notes</string>
+    <plurals name="pencilcup_count">
+        <item quantity="one">Fieldbook · %1$d note</item>
+        <item quantity="other">Fieldbook · %1$d notes</item>
+    </plurals>
+    <string name="pencilcup_search">Search notes</string>
+    <string name="pencilcup_create">Create new</string>
+    <string name="pencilcup_opened">Create new: 4 options</string>
+    <string name="pencilcup_closed">Closed</string>
+    <string name="pencilcup_added">%1$s added</string>
+    <string name="pencilcup_scan">Scan a page</string>
+    <string name="pencilcup_clip">Clip from web</string>
+    <string name="pencilcup_list">New checklist</string>
+    <string name="pencilcup_note">New note</string>
+    <string name="pencilcup_made_scan">Scanned page</string>
+    <string name="pencilcup_made_scan_detail">1 page · Just now</string>
+    <string name="pencilcup_made_clip">Web clip</string>
+    <string name="pencilcup_made_list">Checklist</string>
+    <string name="pencilcup_made_list_detail">0 of 0 done · Just now</string>
+    <string name="pencilcup_made_note">Untitled note</string>
+    <string name="pencilcup_just_now">Just now</string>
+    <string name="pencilcup_done">Done</string>
+    <string name="pencilcup_untitled">Untitled note</string>
+    <string name="pencilcup_add_item">Add an item</string>
+    <string name="pencilcup_paste_link">Paste a link from your browser</string>
+    <string name="pencilcup_clip_about">Fieldbook saves the page, its title and a picture, and you can mark it up later.</string>
+    <string name="pencilcup_scan_hint">Hold a page inside the frame.\nFieldbook finds the edges for you.</string>
 </resources>

@@ -1,0 +1,101 @@
+package dev.dimvlachos.lab.pencilcupdemo.presentation.components
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
+import dev.dimvlachos.lab.core.demo.DemoState
+import dev.dimvlachos.lab.core.presentation.components.pencilcup.CupTools
+import dev.dimvlachos.lab.core.presentation.components.pencilcup.PencilCupState
+import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.pencilcupdemo.PencilCupDemos
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+@OptIn(ExperimentalTestApi::class)
+class PencilCupDemoUiTest {
+    private fun ComposeUiTest.show(
+        cup: PencilCupState,
+        state: DemoState = DemoState(),
+        play: Boolean = false,
+    ) {
+        setContent {
+            LabTheme {
+                Box(Modifier.size(412.dp, 800.dp)) {
+                    PencilCupDemo(state, cup, reducedMotion = false)
+                }
+                if (play) LaunchedEffect(Unit) { PencilCupDemos.all.single().script.play(state) }
+            }
+        }
+    }
+
+    private fun ComposeUiTest.advanceUntil(what: String, most: Long = 6_000, done: () -> Boolean) {
+        var waited = 0L
+        while (!done()) {
+            assertTrue(waited < most, "waited $most ms for $what")
+            mainClock.advanceTimeByFrame()
+            waited += 16
+        }
+    }
+
+    @Test
+    fun tappingTheCupFansTheToolsOutWithTheirLabels() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        onNodeWithText("Fieldbook · 6 notes").assertExists()
+        onNodeWithTag("pencil-cup").performTouchInput {
+            down(center)
+            up()
+        }
+        advanceUntil("the labels") { (0 until CupTools.count).all { cup.labelShown(it) } }
+        assertTrue(cup.isOpen)
+        onNodeWithText("New checklist").assertExists()
+    }
+
+    @Test
+    fun pickingALabelOpensItsSheetAndDoneAddsTheNote() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        onNodeWithTag("pencil-cup").performTouchInput {
+            down(center)
+            up()
+        }
+        advanceUntil("the labels") { cup.labelShown(CupTools.List) }
+        mainClock.advanceTimeBy(300)
+        onNodeWithTag("pencil-label-${CupTools.List}").performTouchInput {
+            down(center)
+            up()
+        }
+        assertTrue(cup.sheetOpen)
+        mainClock.advanceTimeBy(600)
+        onNodeWithText("Add an item").assertExists()
+        onNodeWithTag("pencil-done").performClick()
+        assertFalse(cup.sheetOpen)
+        mainClock.advanceTimeBy(800)
+        onNodeWithText("Fieldbook · 7 notes").assertExists()
+        onNodeWithText("Checklist").assertExists()
+    }
+
+    @Test
+    fun theScriptEndsAsItBegan() = runComposeUiTest {
+        val cup = PencilCupState()
+        val state = DemoState()
+        show(cup, state, play = true)
+        advanceUntil("the note's sheet", most = 9_000) { cup.sheetOpen }
+        assertTrue(cup.sheetTool == CupTools.Note)
+        advanceUntil("Done", most = 4_000) { !cup.sheetOpen }
+        mainClock.advanceTimeBy(4_000)
+        onNodeWithText("Fieldbook · 6 notes").assertExists()
+        assertTrue(cup.settled)
+        assertFalse(cup.isOpen)
+    }
+}
