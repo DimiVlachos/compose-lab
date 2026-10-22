@@ -265,37 +265,44 @@ internal fun Canvas2D.drawZipper(
         y += PITCH
     }
 
-    // Warm light pooled round the pull. Near the top it flattens into an ellipse so it fades out
-    // before the list's edge instead of being cut.
-    val glowK = min(1f, (sy + 8f) / 46f)
-    save()
-    translate(cx - 6f, sy + 8f)
-    scale(1f, glowK)
-    val glow = createRadialGradient(0f, 0f, 2f, 0f, 0f, 46f)
-    glow.addColorStop(0f, if (dark) "rgba(255,214,140,.22)" else "rgba(255,214,140,.16)")
-    glow.addColorStop(1f, "rgba(255,214,140,0)")
-    fillStyle = glow
-    fillRect(-44f, -48f, 100f, 100f)
-    restore()
-
-    // Slider body.
+    // Slider body: no light of its own on the list, only shadow. A tight dark contact shadow where
+    // it sits on the tape, under the soft one it casts further off.
+    fun bodyPath() {
+        beginPath()
+        moveTo(cx - 12f, sy + 3f)
+        quadraticCurveTo(cx - 12f, sy, cx - 9f, sy)
+        lineTo(cx + 9f, sy)
+        quadraticCurveTo(cx + 12f, sy, cx + 12f, sy + 3f)
+        lineTo(cx + 8.5f, sb - 3f)
+        quadraticCurveTo(cx + 8f, sb, cx + 5f, sb)
+        lineTo(cx - 5f, sb)
+        quadraticCurveTo(cx - 8f, sb, cx - 8.5f, sb - 3f)
+        closePath()
+    }
     save()
     shadowColor = "rgba(0,0,0,.4)"
     shadowBlur = 6f * k
     shadowOffsetX = 1.5f * k
     shadowOffsetY = 2.5f * k
-    beginPath()
-    moveTo(cx - 12f, sy + 3f)
-    quadraticCurveTo(cx - 12f, sy, cx - 9f, sy)
-    lineTo(cx + 9f, sy)
-    quadraticCurveTo(cx + 12f, sy, cx + 12f, sy + 3f)
-    lineTo(cx + 8.5f, sb - 3f)
-    quadraticCurveTo(cx + 8f, sb, cx + 5f, sb)
-    lineTo(cx - 5f, sb)
-    quadraticCurveTo(cx - 8f, sb, cx - 8.5f, sb - 3f)
-    closePath()
+    bodyPath()
     fillStyle = brass(cx - 12f, sy, cx + 10f, sb)
     fill()
+    shadowColor = "rgba(0,0,0,.35)"
+    shadowBlur = 2f * k
+    shadowOffsetX = .5f * k
+    shadowOffsetY = 1f * k
+    fill()
+    restore()
+    // A small specular on the brass's top-left shoulder, where the light from the top left catches
+    // it.
+    save()
+    bodyPath()
+    clip()
+    val spec = createRadialGradient(cx - 6f, sy + 5f, 0f, cx - 6f, sy + 5f, 8f)
+    spec.addColorStop(0f, "rgba(255,252,236,.5)")
+    spec.addColorStop(1f, "rgba(255,252,236,0)")
+    fillStyle = spec
+    fillRect(cx - 14f, sy - 3f, 16f, 16f)
     restore()
     strokeStyle = "rgba(255,248,220,.55)"
     lineWidth = 1f
@@ -323,9 +330,10 @@ internal fun Canvas2D.drawZipper(
     val wF = 14f + 3f * sf
     val shX = 1.5f + 9f * sf
     val shY = 2f + 7f * sf
+    // The further off the tape the tab stands, the softer and fainter the shadow it casts.
     save()
-    fillStyle = Color(0f, 0f, 0f, .32f - .1f * sf)
-    filter = blurOf((1.5f + 3f * sf) * k)
+    fillStyle = Color(0f, 0f, 0f, .32f - .14f * sf)
+    filter = blurOf((1.5f + 6f * sf) * k)
     rr(cx - wF / 2f + shX, hy + shY, wF, TAB, 6f)
     fill()
     filter = "none"
@@ -427,6 +435,7 @@ private val NoDash = floatArrayOf()
 private val OpenShadowRadii = floatArrayOf(0f, 0f, 7f, 7f)
 
 // The tab's shadow blur in a few hundred steps, so a moving tab doesn't build a string a frame.
-private val BlurSteps = Array(256) { "blur(${it / 20f}px)" }
+private val BlurSteps = Array(400) { "blur(${it / 20f}px)" }
 
-private fun blurOf(px: Float): String = BlurSteps[(px * 20f).toInt().coerceIn(0, 255)]
+private fun blurOf(px: Float): String =
+    BlurSteps[(px * 20f).toInt().coerceIn(0, BlurSteps.size - 1)]
