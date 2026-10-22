@@ -20,10 +20,52 @@ import kotlin.math.sin
  */
 private val Shell =
     floatArrayOf(
-        -.22f, -.71f, -.12f, -.57f, 0f, -.49f, .12f, -.5f, .24f, -.62f, .38f, -.7f, .53f, -.63f,
-        .6f, -.5f, .61f, -.35f, .69f, -.2f, .62f, -.03f, .68f, .13f, .59f, .29f, .54f, .43f,
-        .4f, .54f, .26f, .64f, .12f, .72f, .02f, .76f, -.08f, .6f, -.22f, .38f, -.33f, .1f,
-        -.37f, -.18f, -.32f, -.44f,
+        -.22f,
+        -.71f,
+        -.12f,
+        -.57f,
+        0f,
+        -.49f,
+        .12f,
+        -.5f,
+        .24f,
+        -.62f,
+        .38f,
+        -.7f,
+        .53f,
+        -.63f,
+        .6f,
+        -.5f,
+        .61f,
+        -.35f,
+        .69f,
+        -.2f,
+        .62f,
+        -.03f,
+        .68f,
+        .13f,
+        .59f,
+        .29f,
+        .54f,
+        .43f,
+        .4f,
+        .54f,
+        .26f,
+        .64f,
+        .12f,
+        .72f,
+        .02f,
+        .76f,
+        -.08f,
+        .6f,
+        -.22f,
+        .38f,
+        -.33f,
+        .1f,
+        -.37f,
+        -.18f,
+        -.32f,
+        -.44f,
     )
 
 /** The lip's free edge: [Shell] points [Free0] to [Free1], shoulder to canal. */
@@ -33,8 +75,32 @@ private const val Free1 = 17
 /** The body whorl inside the outline, only used to clip its sutures and axial lines. */
 private val Body =
     floatArrayOf(
-        -.22f, -.71f, -.12f, -.57f, 0f, -.49f, .14f, -.41f, .2f, -.2f, .16f, .2f, .08f, .6f,
-        .02f, .74f, -.08f, .6f, -.22f, .38f, -.33f, .1f, -.37f, -.18f, -.32f, -.44f,
+        -.22f,
+        -.71f,
+        -.12f,
+        -.57f,
+        0f,
+        -.49f,
+        .14f,
+        -.41f,
+        .2f,
+        -.2f,
+        .16f,
+        .2f,
+        .08f,
+        .6f,
+        .02f,
+        .74f,
+        -.08f,
+        .6f,
+        -.22f,
+        .38f,
+        -.33f,
+        .1f,
+        -.37f,
+        -.18f,
+        -.32f,
+        -.44f,
     )
 
 private const val MouthX = .1f
@@ -51,8 +117,21 @@ private val AxialX = floatArrayOf(-.28f, -.19f, -.1f, -.01f)
 private val GrowthLines = floatArrayOf(.9f, .2f, .8f, .15f, .69f, .1f)
 private val Knobs =
     floatArrayOf(
-        -.24f, -.4f, .045f, -.12f, -.45f, .055f, .01f, -.45f, .06f, -.18f, -.56f, .035f,
-        -.07f, -.57f, .035f,
+        -.24f,
+        -.4f,
+        .045f,
+        -.12f,
+        -.45f,
+        .055f,
+        .01f,
+        -.45f,
+        .06f,
+        -.18f,
+        -.56f,
+        .035f,
+        -.07f,
+        -.57f,
+        .035f,
     )
 
 private fun Canvas2D.smooth(p: FloatArray) {
@@ -66,8 +145,8 @@ private fun Canvas2D.smooth(p: FloatArray) {
 }
 
 /**
- * The free edge as an open path, drawn exactly as [smooth] draws it, scaled by [f] toward the
- * point (.1, .08): f < 1 gives the growth lines and the inner side of the rolled rim.
+ * The free edge as an open path, drawn exactly as [smooth] draws it, scaled by [f] toward the point
+ * (.1, .08): f < 1 gives the growth lines and the inner side of the rolled rim.
  */
 private fun Canvas2D.freeEdge(f: Float = 1f) {
     val p = Shell
@@ -91,11 +170,13 @@ private fun Canvas2D.slit() {
 
 /** The prototype's `mixv`/`mixc`: [a] toward [b] by [t], each channel rounded, at [alpha]. */
 private fun mix(a: Int, b: Int, t: Float, alpha: Float = 1f): Color {
-    fun ch(sh: Int) = lerp((a shr sh and 255).toFloat(), (b shr sh and 255).toFloat(), t).roundToInt()
+    fun ch(sh: Int) =
+        lerp((a shr sh and 255).toFloat(), (b shr sh and 255).toFloat(), t).roundToInt()
     return Color(ch(16), ch(8), ch(0), (alpha.coerceIn(0f, 1f) * 255f).toInt())
 }
 
-private fun rgba(r: Int, g: Int, b: Int, a: Float) = Color(r, g, b, (a.coerceIn(0f, 1f) * 255f).toInt())
+private fun rgba(r: Int, g: Int, b: Int, a: Float) =
+    Color(r, g, b, (a.coerceIn(0f, 1f) * 255f).toInt())
 
 /**
  * Contact shadow below a shell of size [s] centred at [y]: how far below it lies. When lifted it
@@ -241,7 +322,8 @@ internal fun Canvas2D.drawConch(
     g.addColorStop(1f, mix(lipA, lipB, cool, .92f))
     fillStyle = g
     fillRect(-.6f, -.8f, 1.4f, 1.6f)
-    // ...and the pink lives in the aperture and the inner lip, fading out toward the rim and the back.
+    // ...and the pink lives in the aperture and the inner lip, fading out toward the rim and the
+    // back.
     save()
     translate(.2f, .06f)
     scale(1f, 1.5f)

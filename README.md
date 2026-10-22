@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Conch voice note](#conch-voice-note-corepresentationcomponentsconch) | `conch` | `conch.voice` | Hold-to-record voice messages where the mic button is a pink-lipped conch: it lifts and glows with your voice, slide off to cancel, let go and it flies into the chat as a shell bubble |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Conch voice note](#conch-voice-note-corepresentationcomponentsconch)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,27 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Conch voice note (`core/presentation/components/conch/`)
+
+A chat whose record button is a small pink-lipped queen conch resting in the composer. Hold it and it lifts out into a warm lamp pool over the chat; as you talk, the slit of its mouth glows and ripples with your voice and soft rings spread from it. Slide left and the shell follows your finger, cools to a grey-blue and the line says "Release to cancel"; let go and it sinks back with a puff of sand. Let go anywhere else and it flies into the chat on an arc, landing as the little shell of a voice note bubble. Tap a bubble to hear it: its shell glows and hums with the recording while the bars fill in.
+
+- **Drawn as the prototype draws it.** The shell is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: one smoothed queen-conch outline for body and wing, a rolled rim and growth lines that follow its free edge, sutures and knobs on the spire, a pink aperture, and a drop shadow given in shell units so it scales and turns with the shell. The lifted shell's contact shadow and its rings stay above the composer.
+- **Springs.** Lift, slide and regrowth are springs stepped in fixed 1/240 s substeps; the slide is measured from where the finger went down, so one far move arms cancel as surely as many small ones. The frame loop sleeps when everything is at rest.
+- **A simulated voice.** The level is the prototype's made-up voice of syllables, words and pauses. Nothing asks for the microphone or records audio; playback is a synthesized sea hum whose loudness follows the note's stored levels.
+- **Feel and sound.** A long-press tick as recording starts, a tick as cancel arms and disarms, a confirm as the note lands and a reject on cancel; synthesized start, tick, whoosh, clack, sand and hum.
+- **Screen readers and keys.** The conch is a button: a tap (or Space/Enter) starts and another sends, Escape cancels, with Send and Cancel actions while it records. Notes are buttons that say whose they are, how long, and Play or Pause. Recording, sent and canceled are announced in a polite live region.
+- **Reduced motion.** The shell lifts and lands at once, without rings.
+
+The demo, `conch.voice`, is a chat with Maya Torres about the tide pools at Moss Cove. Its script plays her voice note, holds the conch to send one, then holds it again and slides off to cancel, and takes the sent note back out.
+
+```kotlin
+val conch = remember { ConchState().apply { reset() } }
+val anchors = remember { ConchAnchors(conch) }
+ConchEffects(conch, sounds) { event, note -> /* announce */ }
+// In the composer: ConchButton(conch, anchors, colors, label, sendLabel, cancelLabel)
+// Over the screen: ConchOverlay(conch, colors); in the chat: VoiceNoteBubble(note, conch, anchors, colors, label)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -836,6 +859,8 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+
+The conch voice note's voice is simulated, and sent notes say they were sent at 5:21 PM, just after the chat's last message. The lifted shell is placed for a phone in portrait: it rises to the middle of the screen above the composer, up to 190 dp tall, and isn't mirrored for right-to-left.
 
 ## Contributing
 

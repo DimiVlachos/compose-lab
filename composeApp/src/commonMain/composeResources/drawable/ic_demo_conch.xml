@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A queen conch seen from the front: the spire up-left, the flared lip, the slit of its mouth. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M5.5,3.5L9,6L12.5,5.2Q15,3 17.5,4.2Q20.5,6 20,9.5Q21,13 18.5,16Q15.5,19.5 12,21Q9.2,17.5 7.2,13.2Q5.6,9.5 5.5,3.5ZM12.6,9.2Q14.6,13 13.1,17.6Q11.6,13.2 12.6,9.2Z" />
+</vector>

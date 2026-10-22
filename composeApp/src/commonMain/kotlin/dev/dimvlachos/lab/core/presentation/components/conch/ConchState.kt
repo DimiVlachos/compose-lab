@@ -16,7 +16,9 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** What the conch is doing: at rest in the composer, recording, sinking back, or flying to the chat. */
+/**
+ * What the conch is doing: at rest in the composer, recording, sinking back, or flying to the chat.
+ */
 internal enum class ConchMode {
     Idle,
     Rec,
@@ -115,8 +117,8 @@ internal class ConchFlight(
  * the flight into the chat, the voice notes and their playback. The voice is simulated, the
  * prototype's made-up syllables, words and pauses; nothing listens to a microphone.
  *
- * Everything is in dp, in the coordinates of the screen the composer sits in, which [layout]
- * gives. [time] is the conch's own clock in ms, which [step] advances.
+ * Everything is in dp, in the coordinates of the screen the composer sits in, which [layout] gives.
+ * [time] is the conch's own clock in ms, which [step] advances.
  */
 @Stable
 internal class ConchState(
@@ -223,9 +225,13 @@ internal class ConchState(
     var composerTop = 0f
         private set
 
-    /** The screen is [width] wide, the conch button is centred at ([buttonX], [buttonY]), the composer starts at [top]. */
+    /**
+     * The screen is [width] wide, the conch button is centred at ([buttonX], [buttonY]), the
+     * composer starts at [top].
+     */
     fun layout(width: Float, buttonX: Float, buttonY: Float, top: Float) {
-        if (width == this.width && buttonX == slotX && buttonY + 1f == slotY && top == composerTop) return
+        if (width == this.width && buttonX == slotX && buttonY + 1f == slotY && top == composerTop)
+            return
         this.width = width
         slotX = buttonX
         slotY = buttonY + 1f
@@ -240,9 +246,14 @@ internal class ConchState(
         targetY = y + 1f
     }
 
-    val slotCenterX get() = slotX
-    val slotCenterY get() = slotY
-    val slotSize get() = SlotSize
+    val slotCenterX
+        get() = slotX
+
+    val slotCenterY
+        get() = slotY
+
+    val slotSize
+        get() = SlotSize
 
     /** The lifted shell's size, as big as the stage gives it. */
     val stageSize: Float
@@ -515,7 +526,14 @@ internal class ConchState(
             off = offT
             offV = 0f
         } else {
-            spring(lift, liftV, if (rec) 1f else 0f, if (rec) 170f else 210f, if (rec) .62f else .8f, dt)
+            spring(
+                lift,
+                liftV,
+                if (rec) 1f else 0f,
+                if (rec) 170f else 210f,
+                if (rec) .62f else .8f,
+                dt,
+            )
             lift = sx
             liftV = sv
             spring(off, offV, offT, 300f, .8f, dt)
@@ -547,10 +565,7 @@ internal class ConchState(
             }
             recSeconds = seconds(time - recStart)
             if (
-                !reducedMotion &&
-                    levelS > .22f &&
-                    time - lastRing > 300f - levelS * 140f &&
-                    !armed
+                !reducedMotion && levelS > .22f && time - lastRing > 300f - levelS * 140f && !armed
             ) {
                 rings += ConchRing(time, levelS)
                 lastRing = time
