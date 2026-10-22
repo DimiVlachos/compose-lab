@@ -596,6 +596,87 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Locket ----------
+
+def web_burst(rng, rate, freq, q, dur, gain):
+    """The prototype's WebAudio burst: band-passed noise whose gain ramps exponentially to 1e-4 over dur."""
+    n = seconds(dur, rate)
+    sig = bandpass(noise(n, rng), freq, q, rate)
+    k = math.log(1e-4 / gain)
+    return [x * gain * math.exp(k * i / n) for i, x in enumerate(sig)]
+
+
+def web_tone(rate, f0, f1, dur, gain, triangle=False):
+    """The prototype's WebAudio tone: a sine (or triangle) gliding exponentially from f0 to f1, its gain ramping to 1e-4."""
+    n = seconds(dur, rate)
+    k = math.log(1e-4 / gain)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / n
+        phase += 2 * math.pi * f0 * (f1 / f0) ** t / rate
+        v = (2 / math.pi) * math.asin(math.sin(phase)) if triangle else math.sin(phase)
+        out.append(v * gain * math.exp(k * t))
+    return out
+
+
+def layered(rate, length, parts):
+    """Lays (start, signal) parts into one track of length seconds."""
+    track = [0.0] * seconds(length, rate)
+    for start, sig in parts:
+        place(track, sig, seconds(start, rate))
+    return track
+
+
+# The prototype's gains are kept as they are, all scaled by one factor, so the clips stay as loud as each other.
+LOCKET_GAIN = 5.5
+
+
+def locket_open(rng, rate):
+    """The catch letting go: a bright click and the lid's thin ring."""
+    track = layered(rate, 0.2, [
+        (0.0, web_burst(rng, rate, 4600, 7, 0.03, 0.2)),
+        (0.01, web_tone(rate, 2600, 2500, 0.18, 0.035)),
+        (0.01, web_tone(rate, 3900, 3850, 0.12, 0.02)),
+    ])
+    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+
+
+def locket_snap(rng, rate):
+    """The lid snapping shut: a hard click, a short knock and the gold ringing on."""
+    track = layered(rate, 0.31, [
+        (0.0, web_burst(rng, rate, 3200, 5, 0.035, 0.4)),
+        (0.0, web_tone(rate, 1900, 1500, 0.06, 0.08, triangle=True)),
+        (0.006, web_tone(rate, 3100, 3080, 0.3, 0.03)),
+    ])
+    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+
+
+def locket_place(rng, rate):
+    """A photo settling behind the glass: a soft glassy chime and a breath of air."""
+    track = layered(rate, 0.4, [
+        (0.0, web_tone(rate, 3300, 3280, 0.4, 0.035)),
+        (0.0, web_tone(rate, 4950, 4930, 0.28, 0.02)),
+        (0.0, web_burst(rng, rate, 6000, 4, 0.03, 0.05)),
+    ])
+    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+
+
+def locket_lift(rng, rate):
+    """A photo lifted off the strip: a short soft brush."""
+    return fade(scale(web_burst(rng, rate, 2200, 2, 0.05, 0.05), LOCKET_GAIN), rate, 0.0005, 0.005)
+
+
+def locket_back(rng, rate):
+    """A photo sliding home: a lower, longer brush."""
+    return fade(scale(web_burst(rng, rate, 1600, 2, 0.06, 0.05), LOCKET_GAIN), rate, 0.0005, 0.005)
+
+
+def locket_chain(rng, rate):
+    """The chain let go: three tiny links ticking, each a little higher."""
+    track = layered(rate, 0.08, [(i * 0.03, web_burst(rng, rate, 6200 + i * 500, 9, 0.02, 0.05)) for i in range(3)])
+    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.005)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +725,13 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    locket = random.Random(1022)
+    write("locket_open", locket_open(locket, fast), fast)
+    write("locket_snap", locket_snap(locket, fast), fast)
+    write("locket_place", locket_place(locket, fast), fast)
+    write("locket_lift", locket_lift(locket, fast), fast)
+    write("locket_back", locket_back(locket, fast), fast)
+    write("locket_chain", locket_chain(locket, fast), fast)
 
 
 if __name__ == "__main__":
