@@ -83,6 +83,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -340,6 +341,7 @@ private fun AppBar(count: Int, colors: PencilCupScreenColors) {
                 Modifier.semantics { heading() },
                 style =
                     TextStyle(
+                        lineHeightStyle = CssLines,
                         color = colors.ink,
                         fontSize = 28.sp,
                         lineHeight = 1.05.em,
@@ -352,6 +354,7 @@ private fun AppBar(count: Int, colors: PencilCupScreenColors) {
                 Modifier.padding(top = 3.dp),
                 style =
                     TextStyle(
+                        lineHeightStyle = CssLines,
                         color = colors.muted,
                         fontSize = 12.5.sp,
                         lineHeight = BodyLine,
@@ -369,7 +372,12 @@ private fun AppBar(count: Int, colors: PencilCupScreenColors) {
             BasicText(
                 "JC",
                 style =
-                    TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                    TextStyle(
+                        lineHeightStyle = CssLines,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
             )
         }
     }
@@ -399,7 +407,13 @@ private fun Search(colors: PencilCupScreenColors) {
         }
         BasicText(
             stringResource(Res.string.pencilcup_search),
-            style = TextStyle(color = colors.muted, fontSize = 14.sp, lineHeight = BodyLine),
+            style =
+                TextStyle(
+                    lineHeightStyle = CssLines,
+                    color = colors.muted,
+                    fontSize = 14.sp,
+                    lineHeight = BodyLine,
+                ),
         )
     }
 }
@@ -432,6 +446,7 @@ private fun NoteCard(
             note.title,
             style =
                 TextStyle(
+                    lineHeightStyle = CssLines,
                     color = colors.ink,
                     fontSize = 14.5.sp,
                     lineHeight = BodyLine,
@@ -442,7 +457,13 @@ private fun NoteCard(
         )
         BasicText(
             note.text,
-            style = TextStyle(color = colors.muted, fontSize = 12.8.sp, lineHeight = BodyLine),
+            style =
+                TextStyle(
+                    lineHeightStyle = CssLines,
+                    color = colors.muted,
+                    fontSize = 12.8.sp,
+                    lineHeight = BodyLine,
+                ),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -511,6 +532,7 @@ private fun BoxScope.Sheet(
                 Modifier.weight(1f).semantics { heading() },
                 style =
                     TextStyle(
+                        lineHeightStyle = CssLines,
                         color = colors.ink,
                         fontSize = 18.sp,
                         lineHeight = BodyLine,
@@ -530,6 +552,7 @@ private fun BoxScope.Sheet(
                     stringResource(Res.string.pencilcup_done),
                     style =
                         TextStyle(
+                            lineHeightStyle = CssLines,
                             color = colors.accent,
                             fontSize = 15.5.sp,
                             lineHeight = BodyLine,
@@ -586,6 +609,7 @@ private fun RuledNote(colors: PencilCupScreenColors, blinking: Boolean) {
             Modifier.offset(4.dp, 2.dp).graphicsLayer { alpha = .35f },
             style =
                 TextStyle(
+                    lineHeightStyle = CssLines,
                     color = colors.ink,
                     fontSize = 20.sp,
                     lineHeight = BodyLine,
@@ -653,7 +677,12 @@ private fun ScanFrame(colors: PencilCupScreenColors) {
 }
 
 private fun bodyStyle(colors: PencilCupScreenColors) =
-    TextStyle(color = colors.muted, fontSize = 14.5.sp, lineHeight = BodyLine)
+    TextStyle(
+        lineHeightStyle = CssLines,
+        color = colors.muted,
+        fontSize = 14.5.sp,
+        lineHeight = BodyLine,
+    )
 
 /** A CSS dashed border: dashes three times the [width] long, as the browser draws them. */
 private fun Modifier.dashed(
@@ -759,3 +788,6 @@ private val SheetEasing = CubicBezierEasing(.2f, .9f, .25f, 1f)
 
 /** The prototype's body line height, which every line on the screen inherits. */
 private val BodyLine = 1.55.em
+
+/** CSS line boxes: the leading split above and below every line, the first and last included. */
+private val CssLines = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
