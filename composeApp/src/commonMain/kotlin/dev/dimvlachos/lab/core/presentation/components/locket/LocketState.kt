@@ -14,6 +14,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.time.TimeMark
 
 /** Something the locket does that is heard or felt. */
 internal enum class LocketEvent {
@@ -289,7 +290,11 @@ internal class LocketState(initialPhoto: Int = 2) {
         )
     }
 
-    fun limitHi(): Float = solve({ t -> edge(t, 0f, Locket.RX + 14f, 1f) }, 300f - Locket.MARGIN)
+    fun limitHi(): Float = HiLimit
+
+    // The right bound is the back's alone, the same whatever the lid does: found once.
+    private fun solveHi(): Float =
+        solve({ t -> edge(t, 0f, Locket.RX + 14f, 1f) }, 300f - Locket.MARGIN)
 
     private fun thumbAt(x: Float, y: Float): Int {
         val b = box
@@ -375,6 +380,9 @@ internal class LocketState(initialPhoto: Int = 2) {
     // ---- Input, in box units ----
 
     fun down(x: Float, y: Float) {
+        // A press on a sleeping locket brings its clock up to now first, so its first sample is
+        // timed where the finger came down.
+        wakeUp()
         wake++
         val j = thumbAt(x, y)
         if (j >= 0 && place == null && back.none { it.j == j }) {
@@ -525,6 +533,9 @@ internal class LocketState(initialPhoto: Int = 2) {
         glint = -1f
         glass = -1f
         lift = 0f
+        placed = 0
+        snaps = 0
+        opens = 0
         wake++
         frame++
     }
@@ -566,6 +577,16 @@ internal class LocketState(initialPhoto: Int = 2) {
     }
 
     /** Lets [ms] pass at rest, without stepping the springs. */
+    /** When the frame loop went to sleep, while it sleeps; [now] stands still meanwhile. */
+    var sleepMark: TimeMark? = null
+
+    /** Brings [now] up to the wall clock after a sleep, once. */
+    fun wakeUp() {
+        val mark = sleepMark ?: return
+        sleepMark = null
+        idle(mark.elapsedNow().inWholeMicroseconds / 1000f)
+    }
+
     fun idle(ms: Float) {
         now += ms
         frame++
@@ -591,10 +612,10 @@ internal class LocketState(initialPhoto: Int = 2) {
         val lidHeld = d != null && d.kind == DragKind.Lid && d.moved
         if (reducedMotion) {
             if (!lidHeld) a = aTarget
-            th = 0f
+            // Hanging straight, or, open, against the box's side, where it comes to rest.
+            th = 0f.coerceIn(limitLo(), limitHi())
             tw = 0f
             av = 0f
-            lift = if (d != null && d.kind == DragKind.Photo && d.moved) 1f else 0f
             return
         }
         if (!lidHeld) {
@@ -645,6 +666,7 @@ internal class LocketState(initialPhoto: Int = 2) {
         /** The pendulum's g/L, as the prototype's. */
         const val Gravity = 22f
         private const val Substep = 1f / 240f
+        private val HiLimit = LocketState().solveHi()
         private const val RestSpeed = .004f
         private const val RestGap = .002f
         private const val GlintMs = 640f

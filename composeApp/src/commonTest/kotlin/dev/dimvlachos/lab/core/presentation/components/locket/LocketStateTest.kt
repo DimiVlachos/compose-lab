@@ -161,6 +161,29 @@ class LocketStateTest {
     }
 
     @Test
+    fun underReducedMotionAnOpenLocketSettlesToo() {
+        val s = locket()
+        s.reducedMotion = true
+        s.open()
+        s.run(1f)
+        assertTrue(s.settled, "th ${s.th}")
+    }
+
+    @Test
+    fun resetStartsTheCountsAgainSoTheSecondTakeReadsAsTheFirst() {
+        val s = locket()
+        s.usePhoto(0)
+        s.run(1f)
+        s.close()
+        s.run(1f)
+        s.reset()
+        assertEquals(0, s.placed)
+        assertEquals(0, s.snaps)
+        assertEquals(2, s.photo)
+        assertFalse(s.isOpen)
+    }
+
+    @Test
     fun theOvershootStopsAtLidMax() {
         val s = locket()
         s.open()

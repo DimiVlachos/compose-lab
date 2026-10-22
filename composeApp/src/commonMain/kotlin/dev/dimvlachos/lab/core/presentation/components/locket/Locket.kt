@@ -145,7 +145,7 @@ internal fun Locket(
                     val rest = state.restMs()
                     if (rest == null || rest > 0f) {
                         val seen = state.wake
-                        val mark = TimeSource.Monotonic.markNow()
+                        state.sleepMark = TimeSource.Monotonic.markNow()
                         val woke =
                             if (rest == null) {
                                 snapshotFlow { state.wake }.first { it != seen }
@@ -155,11 +155,12 @@ internal fun Locket(
                                     snapshotFlow { state.wake }.first { it != seen }
                                 } != null
                             }
-                        state.idle(
-                            if (woke || rest == null)
-                                mark.elapsedNow().inWholeMilliseconds.toFloat()
-                            else rest + 1f,
-                        )
+                        if (woke) {
+                            state.wakeUp()
+                        } else {
+                            state.sleepMark = null
+                            state.idle(rest!! + 1f)
+                        }
                         last = 0L
                     }
                 }
@@ -185,6 +186,7 @@ internal fun Locket(
     BoxWithConstraints(
         modifier.onPreviewKeyEvent {
             if (it.type == KeyEventType.KeyDown && it.key == Key.Escape && state.isOpen) {
+                touched()
                 state.close()
                 true
             } else false
@@ -210,7 +212,10 @@ internal fun Locket(
                             val event = awaitPointerEvent()
                             val c = event.changes.firstOrNull { it.id == first.id } ?: break
                             if (c.changedToUpIgnoreConsumed()) {
-                                state.up(bx(c.position), by(c.position))
+                                // A cancelled pointer comes up already consumed: a carried photo
+                                // flies home rather than landing where it was.
+                                if (c.isConsumed) state.cancel()
+                                else state.up(bx(c.position), by(c.position))
                                 c.consume()
                                 ended = true
                                 break
@@ -253,22 +258,26 @@ internal fun Locket(
                 role = Role.Button
                 contentDescription = lockLabel
                 onClick {
+                    touched()
                     state.toggle()
                     true
                 }
                 if (state.isOpen) {
                     collapse {
+                        touched()
                         state.close()
                         true
                     }
                 } else {
                     expand {
+                        touched()
                         state.open()
                         true
                     }
                 }
             },
         ) {
+            touched()
             state.toggle()
         }
         for (j in 0 until Locket.PHOTOS) {
@@ -282,11 +291,13 @@ internal fun Locket(
                     role = Role.Button
                     contentDescription = labels.usePhoto[j]
                     onClick {
+                        touched()
                         state.usePhoto(j)
                         true
                     }
                 },
             ) {
+                touched()
                 state.usePhoto(j)
             }
         }

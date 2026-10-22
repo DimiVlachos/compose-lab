@@ -28,8 +28,13 @@ internal class LocketHand(private val state: LocketState) {
 
     private var pressed = false
 
+    // Set once a real finger or a stopped script takes over: the hand presses nothing more until
+    // it next appears, so a frame left in a cancelled script can't grab the user's gesture.
+    private var stopped = false
+
     /** Shows the fingertip, lifted, at ([x], [y]). */
     suspend fun appear(x: Float, y: Float) {
+        stopped = false
         this.x = x
         this.y = y
         animate(ScriptedTouch.UpMs.toFloat()) { alpha = it * .6f }
@@ -48,12 +53,14 @@ internal class LocketHand(private val state: LocketState) {
     }
 
     private suspend fun press() {
+        if (stopped) return
         pressed = true
         state.down(x, y)
         animate(ScriptedTouch.DownMs.toFloat()) { alpha = .6f + .4f * it }
     }
 
     private suspend fun release() {
+        if (!pressed) return
         pressed = false
         state.up(x, y)
         animate(ScriptedTouch.DownMs.toFloat()) { alpha = 1f - .4f * it }
@@ -88,6 +95,7 @@ internal class LocketHand(private val state: LocketState) {
 
     /** Lets go at once, when a script is stopped or a real finger takes over. */
     fun stop() {
+        stopped = true
         if (pressed) state.cancel()
         pressed = false
         alpha = 0f
