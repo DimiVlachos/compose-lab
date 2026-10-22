@@ -297,6 +297,18 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     /** `alphabetic`, `middle` or `top`. */
     var textBaseline: String = "alphabetic"
 
+    /**
+     * Not the canvas's own: how many times its size text is laid out at, then drawn scaled back
+     * down, so [fillText] and [measureText] keep their user units. Laid out at its size, a small
+     * font under a large transform takes the advances a few pixels' text would get, rounded, and
+     * its spaces close up; set this to about the transform's scale to lay it out as it will be
+     * seen. 1, the default, lays it out at its size.
+     */
+    var textResolution: Float = 1f
+        set(value) {
+            field = if (value.isFinite() && value > 0f) value else 1f
+        }
+
     // ---- State and transform ----
 
     fun save() {
@@ -720,18 +732,20 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             TextStyle(
                 fontFamily = family,
                 fontWeight = FontWeight(weight.coerceIn(1, 1000)),
-                fontSize = with(UnitDensity) { size.toSp() },
+                fontSize = with(UnitDensity) { (size * textResolution).toSp() },
             )
         return measurer.measure(text, style, softWrap = false, density = UnitDensity)
     }
 
     /** How wide [text] is in the current [font], in user units. */
-    fun measureText(text: String): Float = layout(text).multiParagraph.getLineWidth(0)
+    fun measureText(text: String): Float =
+        layout(text).multiParagraph.getLineWidth(0) / textResolution
 
     /** Draws [text] at ([x], [y]) in the fill colour, placed by [textAlign] and [textBaseline]. */
     fun fillText(text: String, x: Float, y: Float) {
         val l = layout(text)
-        val width = l.multiParagraph.getLineWidth(0)
+        val k = textResolution
+        val width = l.multiParagraph.getLineWidth(0) / k
         val dx =
             when (textAlign) {
                 "right",
@@ -741,15 +755,16 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             }
         val dy =
             when (textBaseline) {
-                "middle" -> -l.size.height / 2f
+                "middle" -> -l.size.height / 2f / k
                 "top" -> 0f
-                else -> -l.firstBaseline
+                else -> -l.firstBaseline / k
             }
         val style = state.fillStyle
         val c = if (style is Color) style else cssColor(style.toString())
         val ink = c.copy(alpha = c.alpha * state.globalAlpha)
         transformed {
             canvas.translate(x + dx, y + dy)
+            if (k != 1f) canvas.scale(1f / k, 1f / k)
             l.multiParagraph.paint(canvas, ink)
         }
     }
