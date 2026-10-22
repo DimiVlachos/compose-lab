@@ -596,6 +596,78 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Paper fan ----------
+
+def sweep_bandpass(signal, f0, f1, q, dur, rate):
+    """RBJ band-pass whose centre glides exponentially from f0 to f1 over dur seconds, as WebAudio's ramp."""
+    out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
+    for i, x in enumerate(signal):
+        t = min(1.0, i / (dur * rate))
+        w = 2 * math.pi * f0 * (f1 / f0) ** t / rate
+        alpha = math.sin(w) / (2 * q)
+        a0, a1, a2 = 1 + alpha, -2 * math.cos(w), 1 - alpha
+        y = (alpha * x - alpha * x2 - a1 * y1 - a2 * y2) / a0
+        x2, x1, y2, y1 = x1, x, y1, y
+        out.append(y)
+    return out
+
+
+def swell(n, rate, dur):
+    """The prototype's sweep envelope: up from silence over a quarter of dur, exponentially, and back down by dur."""
+    out, up = [], dur * 0.25
+    for i in range(n):
+        t = i / rate
+        if t < up:
+            out.append(0.0001 * (1 / 0.0001) ** (t / up))
+        elif t < dur:
+            out.append(0.0001 ** ((t - up) / (dur - up)))
+        else:
+            out.append(0.0)
+    return out
+
+
+def paper_sweep(rng, rate, f0, f1, q, dur, gain):
+    """One of the prototype's sweep()s: noise through a gliding band-pass, swelled in and out."""
+    n = seconds(dur + 0.02, rate)
+    return scale(mul(sweep_bandpass(noise(n, rng), f0, f1, q, dur, rate), swell(n, rate, dur)), gain)
+
+
+def paper_tick(rng, rate, freq, gain, dur=0.03):
+    """One of the prototype's tick()s: a burst of band-passed noise dying away exponentially."""
+    n = seconds(dur + 0.02, rate)
+    decay = [gain * 0.0001 ** min(1.0, i / (dur * rate)) for i in range(n)]
+    return mul(bandpass(noise(n, rng), freq, 5.0, rate), decay)
+
+
+def paperfan_fwap(rng, rate):
+    """The fan flicked open: a rising rush of paper through the air, and a brighter snap of the leaf going taut."""
+    track = [0.0] * seconds(0.28, rate)
+    place(track, paper_sweep(rng, rate, 700, 3600, 1.2, 0.16, 0.32), seconds(0.06, rate))
+    place(track, paper_sweep(rng, rate, 2400, 5200, 2.0, 0.1, 0.12), seconds(0.1, rate))
+    return fade(normalise(track, 0.72), rate, 0.001, 0.01)
+
+
+def paperfan_click(rng, rate):
+    """The leading guard clicking home: a bright tick and a lower knock of lacquered wood."""
+    track = [0.0] * seconds(0.09, rate)
+    place(track, paper_tick(rng, rate, 2300, 0.28), 0)
+    place(track, paper_tick(rng, rate, 1200, 0.14, 0.05), seconds(0.012, rate))
+    return fade(normalise(track, 0.62), rate, 0.0003, 0.01)
+
+
+def paperfan_swish(rng, rate):
+    """The fan starting to fold: a falling swish of paper."""
+    return fade(normalise(paper_sweep(rng, rate, 3200, 900, 1.1, 0.2, 0.16), 0.36), rate, 0.001, 0.01)
+
+
+def paperfan_clack(rng, rate):
+    """The guards clacking together as the fan shuts: two small knocks."""
+    track = [0.0] * seconds(0.1, rate)
+    place(track, paper_tick(rng, rate, 1500, 0.2, 0.04), 0)
+    place(track, paper_tick(rng, rate, 1800, 0.1), seconds(0.03, rate))
+    return fade(normalise(track, 0.45), rate, 0.0003, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -644,6 +716,11 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    fan = random.Random(1022)
+    write("paperfan_fwap", paperfan_fwap(fan, fast), fast)
+    write("paperfan_click", paperfan_click(fan, fast), fast)
+    write("paperfan_swish", paperfan_swish(fan, fast), fast)
+    write("paperfan_clack", paperfan_clack(fan, fast), fast)
 
 
 if __name__ == "__main__":

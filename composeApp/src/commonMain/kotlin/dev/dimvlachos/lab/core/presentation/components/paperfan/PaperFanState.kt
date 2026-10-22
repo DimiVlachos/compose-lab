@@ -142,7 +142,9 @@ internal class PaperFanState(val count: Int) {
         return true
     }
 
-    /** The finger holding fan [i] has the leading guard at [fraction] of open (see [dragFraction]). */
+    /**
+     * The finger holding fan [i] has the leading guard at [fraction] of open (see [dragFraction]).
+     */
     fun dragTo(i: Int, fraction: Float) {
         val it = items[i]
         if (!it.dragging) return
@@ -250,10 +252,7 @@ internal class PaperFanState(val count: Int) {
                 // they're softer and flutter.
                 val f = r.toFloat() / Ribs
                 val k = if (it.dragging) 520f else 150f + 330f * f
-                val z =
-                    if (it.dragging) .95f
-                    else if (open) .4f + .2f * f
-                    else .75f
+                val z = if (it.dragging) .95f else if (open) .4f + .2f * f else .75f
                 spring(it.s[r], it.sv[r], spreadT, k, z, dt)
                 it.s[r] = outX
                 it.sv[r] = outV

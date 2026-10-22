@@ -157,6 +157,10 @@ class PaperFanStateTest {
         assertEquals(1f, PaperFanState.dragFraction(5f, 3f))
         assertEquals(0f, PaperFanState.dragFraction(-5f, 3f))
         val a = -PI.toFloat() * .25f
-        assertEquals(.75f, PaperFanState.dragFraction(kotlin.math.cos(a), kotlin.math.sin(a)), 1e-5f)
+        assertEquals(
+            .75f,
+            PaperFanState.dragFraction(kotlin.math.cos(a), kotlin.math.sin(a)),
+            1e-5f,
+        )
     }
 }
