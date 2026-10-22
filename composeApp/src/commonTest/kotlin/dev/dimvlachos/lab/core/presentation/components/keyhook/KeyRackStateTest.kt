@@ -184,6 +184,31 @@ class KeyRackStateTest {
         assertTrue(s.atHook(s.rings[1]))
     }
 
+    @Test
+    fun aScriptCannotMoveOrDropTheSetAFingerHolds() {
+        val s = rack()
+        val ava = s.rings[1]
+        s.startGrab(ava, s.ringPointX(ava), s.ringPointY(ava))
+        s.moveGrab(10f, 10f, scripted = true)
+        s.endGrab(10f, 10f, scripted = true)
+        assertSame(ava, s.grabbed)
+        s.endGrab(s.ringPointX(ava), s.ringPointY(ava))
+        assertNull(s.grabbed)
+    }
+
+    @Test
+    fun takingHoldOfASecondSetLetsGoOfTheFirst() {
+        val s = rack()
+        val sam = s.rings[2]
+        val lou = s.rings[3]
+        s.startGrab(sam, s.ringPointX(sam), s.ringPointY(sam), scripted = true)
+        s.run(.5f)
+        s.startGrab(lou, s.ringPointX(lou), s.ringPointY(lou))
+        assertSame(lou, s.grabbed)
+        s.run(2f)
+        assertEquals(KeyRing.Mode.Rest, sam.mode)
+    }
+
     private companion object {
         const val W = 412f
         const val H = 560f

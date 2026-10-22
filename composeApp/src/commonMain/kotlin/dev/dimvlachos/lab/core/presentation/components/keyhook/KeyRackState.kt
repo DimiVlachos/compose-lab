@@ -212,6 +212,7 @@ internal class KeyRackState(
 ) {
     var reducedMotion = false
         set(value) {
+            if (field == value) return
             field = value
             wake++
         }
@@ -240,13 +241,13 @@ internal class KeyRackState(
     var geometry: RackGeometry? = null
         private set
 
-    var time = 0f
+    var time = 0.0
         private set
 
     private class Grab(
         val ring: KeyRing,
         val scripted: Boolean,
-        val t0: Float,
+        val t0: Double,
         val x0: Float,
         val y0: Float,
     ) {
@@ -258,7 +259,7 @@ internal class KeyRackState(
     private var fingY = 0f
 
     // Tinks after a landing, at a time on the clock, with a strength.
-    private val laterAt = FloatArray(MaxLater)
+    private val laterAt = DoubleArray(MaxLater)
     private val laterK = FloatArray(MaxLater)
     private var laterCount = 0
 
@@ -387,6 +388,8 @@ internal class KeyRackState(
 
     /** A finger takes hold of [r] at ([x], [y]). */
     fun startGrab(r: KeyRing, x: Float, y: Float, scripted: Boolean = false) {
+        // One hand at a time: whatever was held is let go first.
+        if (grab != null) letGo()
         grab = Grab(r, scripted, time, x, y)
         fingX = x
         fingY = y
@@ -397,9 +400,10 @@ internal class KeyRackState(
         emit(KeyRackEvent.Lift, 1f)
     }
 
-    /** The finger holding a set moves to ([x], [y]). */
-    fun moveGrab(x: Float, y: Float) {
+    /** The finger holding a set moves to ([x], [y]); [scripted] says whose finger it is. */
+    fun moveGrab(x: Float, y: Float, scripted: Boolean = false) {
         val g = grab ?: return
+        if (g.scripted != scripted) return
         g.moved = max(g.moved, hypot(x - g.x0, y - g.y0))
         fingX = x
         fingY = y
@@ -409,17 +413,28 @@ internal class KeyRackState(
      * The finger lets go at ([x], [y]): a quick touch that hardly moved toggles the set; a drop
      * above the rack clips it to the card, anywhere on the rack hangs it on its own hook.
      */
-    fun endGrab(x: Float, y: Float) {
+    fun endGrab(x: Float, y: Float, scripted: Boolean = false) {
         val g = grab ?: return
-        val geo = geometry ?: return
+        if (g.scripted != scripted) return
+        release(g, x, y)
+    }
+
+    private fun release(g: Grab, x: Float, y: Float) {
         grab = null
         val r = g.ring
+        val geo = geometry
+        if (geo == null) {
+            r.mode = KeyRing.Mode.Rest
+            return
+        }
         if (g.moved < 8f * u && time - g.t0 < 400f) toggle(r)
         else if (y < geo.boardTop - 8f * u) take(r) else hang(r)
     }
 
     /** Lets go of the set in hand where the finger last was. */
-    fun letGo() = endGrab(fingX, fingY)
+    fun letGo() {
+        grab?.let { release(it, fingX, fingY) }
+    }
 
     /** Signs [r]'s holder in, or out if they are. */
     fun toggle(r: KeyRing) {
@@ -446,6 +461,10 @@ internal class KeyRackState(
         val d = hypot(toX - r.x, toY - r.y)
         if (reducedMotion) {
             r.mode = KeyRing.Mode.Rest
+            r.x = toX
+            r.y = toY
+            r.tx = toX
+            r.ty = toY
             land(r)
             return
         }
@@ -463,12 +482,15 @@ internal class KeyRackState(
         r.mode = KeyRing.Mode.Rest
         emit(KeyRackEvent.Clack, (speed / 900f).coerceIn(.25f, 1f))
         for (i in 0 until 3) {
-            later(time + 30f + i * (40f + random.nextFloat() * 50f), .5f + random.nextFloat() * .4f)
+            later(
+                time + 30.0 + i * (40.0 + random.nextFloat() * 50.0),
+                .5f + random.nextFloat() * .4f,
+            )
         }
         applySignedIn()
     }
 
-    private fun later(at: Float, k: Float) {
+    private fun later(at: Double, k: Float) {
         if (laterCount == MaxLater) return
         laterAt[laterCount] = at
         laterK[laterCount] = k
@@ -522,7 +544,7 @@ internal class KeyRackState(
     }
 
     private fun substep(h: Float) {
-        time += h * 1000f
+        time += h * 1000.0
         // The tinks after a landing, each on its time.
         var i = 0
         while (i < laterCount) {
