@@ -657,8 +657,10 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     }
 
     fun fillRect(x: Float, y: Float, w: Float, h: Float) {
-        val r = Path().apply { addRect(Rect(x, y, x + w, y + h)) }
-        shadowed(r, true)
+        // The rect is only made a path for a shadow: a zipper's hundreds of teeth cast none.
+        if (state.shadowBlur > 0f && state.shadowColor.alpha > 0f) {
+            shadowed(Path().apply { addRect(Rect(x, y, x + w, y + h)) }, true)
+        }
         val p = styled(state.fillStyle, true)
         transformed { canvas.drawRect(Rect(x, y, x + w, y + h), p) }
     }
