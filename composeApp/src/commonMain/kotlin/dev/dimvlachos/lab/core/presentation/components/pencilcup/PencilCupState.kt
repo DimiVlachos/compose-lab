@@ -479,6 +479,7 @@ internal class PencilCupState {
     private fun light(i: Int) {
         if (hover == i) return
         hover = i
+        wake++
         if (i >= 0) emit(CupEvent.Lift, 1f, i)
     }
 
@@ -534,21 +535,27 @@ internal class PencilCupState {
                 val t = tools[i]
                 when (t.mode) {
                     ToolMode.Away -> Unit
-                    ToolMode.Rest ->
-                        if (
-                            abs(t.x - restX(i)) > .02f ||
-                                abs(t.y - restY()) > .02f ||
-                                abs(t.a - restA(i)) > 1e-3f ||
-                                abs(t.vx) > .05f ||
-                                abs(t.vy) > .05f ||
-                                abs(t.va) > 1e-3f
-                        )
+                    ToolMode.Rest -> if (!still(t, restX(i), restY(), restA(i))) return false
+                    // Fanned out and arrived: the fan holds still until the next touch.
+                    ToolMode.Fan -> {
+                        val extra = if (hover == i) 10f else 0f
+                        if (!still(t, fanX(i, extra), fanY(i, extra), CupTools.specs[i].fanAngle)) {
                             return false
+                        }
+                    }
                     else -> return false
                 }
             }
             return true
         }
+
+    private fun still(t: CupTool, x: Float, y: Float, a: Float) =
+        abs(t.x - x) <= .02f &&
+            abs(t.y - y) <= .02f &&
+            abs(t.a - a) <= 1e-3f &&
+            abs(t.vx) <= .05f &&
+            abs(t.vy) <= .05f &&
+            abs(t.va) <= 1e-3f
 
     /** Advances the cup [dt] seconds: due timers first, then the springs in 1/240 s substeps. */
     fun step(dt: Float) {

@@ -58,6 +58,8 @@ class PencilCupStateTest {
         assertTrue(s.isOpen)
         s.run(300)
         assertTrue((0 until CupTools.count).all { s.labelShown(it) })
+        // Once the fan has arrived it holds still, so the frame loop can sleep.
+        assertTrue(s.run(3000) { s.settled })
     }
 
     @Test
