@@ -19,6 +19,9 @@ internal class ConchScreenColors(
     val rec: Color,
     val accent: Color,
 ) {
+    /** Maya's avatar, a warm peach to rose gradient in both themes. */
+    val avatar = listOf(Color(0xFFE08A5C), Color(0xFFC4566A))
+
     internal companion object {
         val Light =
             ConchScreenColors(

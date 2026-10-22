@@ -171,14 +171,14 @@ internal fun ConchDemo(
     val hintText = stringResource(Res.string.conch_hint)
     ConchEffects(conch, sounds) { event, note ->
         when (event) {
-            ConchEvent.Start -> status = recording
+            ConchEvent.Start -> status = fresh(status, recording)
             ConchEvent.Sent ->
                 if (note != null) {
                     extra += ChatItem.Voice(note)
-                    status = sentTemplate.replace(Slot, clockText(seconds(note.ms)))
+                    status = fresh(status, sentTemplate.replace(Slot, clockText(seconds(note.ms))))
                 }
-            ConchEvent.Canceled -> status = canceled
-            ConchEvent.Hint -> status = hintText
+            ConchEvent.Canceled -> status = fresh(status, canceled)
+            ConchEvent.Hint -> status = fresh(status, hintText)
             else -> Unit
         }
     }
@@ -214,7 +214,6 @@ internal fun ConchDemo(
         // Takes the sent note back out and puts everything as it began, so the clip loops.
         state.setFeedResetHandler {
             finger.hide()
-            if (conch.mode == ConchMode.Rec) conch.cancelRec()
             conch.reset()
             extra.clear()
             field.clearText()
@@ -266,6 +265,14 @@ internal fun ConchDemo(
 
 private const val Slot = "\u0000"
 
+/**
+ * [next], made to differ from [now] when it reads the same, so the live region says it again (the
+ * prototype clears its status before setting it): a zero-width space is added or dropped.
+ */
+private fun fresh(now: String, next: String): String =
+    if (now.removeSuffix("\u200B") != next) next
+    else if (now.endsWith("\u200B")) next else "$next\u200B"
+
 /** The chat's bar: back, Maya's avatar, her name and that she is online, and a call button. */
 @Composable
 private fun AppBar(colors: ConchScreenColors) {
@@ -282,9 +289,7 @@ private fun AppBar(colors: ConchScreenColors) {
         // The chat's own icons, drawn as the prototype's; the demo screen's bar goes back.
         BarIcon(BackPath, 2.1f, colors.ink)
         Box(
-            Modifier.size(36.dp)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFFE08A5C), Color(0xFFC4566A)))),
+            Modifier.size(36.dp).clip(CircleShape).background(Brush.linearGradient(colors.avatar)),
             contentAlignment = Alignment.Center,
         ) {
             Text("MT", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)

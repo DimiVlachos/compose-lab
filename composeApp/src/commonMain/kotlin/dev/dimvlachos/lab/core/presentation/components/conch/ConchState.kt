@@ -75,6 +75,11 @@ internal class VoiceNote(
         internal set
 
     internal var bounceV = 0f
+
+    /** Its shell is still wobbling. */
+    val moving: Boolean
+        get() = abs(bounce) > .001f || abs(bounceV) > .001f
+
     internal var t0 = 0f
 
     /** Its voice level [p] of the way through, between the stored samples. */
@@ -331,6 +336,8 @@ internal class ConchState(
         val l = FloatArray(40) { (simLevel(it * .11f + 3f) * .9f + .08f).coerceIn(0f, 1f) }
         notes += VoiceNote(l, 4400f, mine = false, at = "5:20 PM")
         mode = ConchMode.Idle
+        recSeconds = 0
+        level = 0f
         lift = 0f
         liftV = 0f
         off = 0f

@@ -660,8 +660,9 @@ def conch_hum(rng, rate, gain):
     sea = bandpass(noise(n + x, rng), 520, 1.4, rate)
     loop = sea[:n]
     for i in range(x):
-        w = i / x
-        loop[i] = sea[n + i] * (1 - w) + loop[i] * w
+        # Equal power, so the noise doesn't dip where the loop's ends meet.
+        w = math.sin(0.5 * math.pi * i / x)
+        loop[i] = sea[n + i] * math.cos(0.5 * math.pi * i / x) + loop[i] * w
     tone = [0.25 * math.sin(2 * math.pi * 196 * i / rate) for i in range(n)]
     hum = scale(mix(loop, tone), 0.18 * gain)
     # Louder than the one-shots, as in the prototype, but never clipped.

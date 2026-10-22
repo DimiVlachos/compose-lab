@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
@@ -216,28 +218,31 @@ internal fun ConchEffects(
             }
         }
     }
-    // Playback: the shell hums like the sea in it, its loudness following the recording.
-    LaunchedEffect(state, sounds) {
-        snapshotFlow { state.playing != null }
-            .collectLatest { on ->
-                if (!on) return@collectLatest
-                var volume = HumFloor
-                val loop = sounds.loop(Sound.ConchHum, volume)
-                try {
-                    var last = 0L
-                    while (true) {
-                        withFrameNanos { now ->
-                            val dt = if (last == 0L) 0f else (now - last) / 1e9f
-                            last = now
-                            val target = (.02f + state.humLevel * .16f) / .18f
-                            volume += (target - volume) * min(1f, dt / .05f)
-                            loop.setVolume(volume)
+    // Playback: the shell hums like the sea in it, its loudness following the recording. Only
+    // while the screen is resumed: in the background the clock stops, and the hum with it.
+    LaunchedEffect(state, sounds, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow { state.playing != null }
+                .collectLatest { on ->
+                    if (!on) return@collectLatest
+                    var volume = HumFloor
+                    val loop = sounds.loop(Sound.ConchHum, volume)
+                    try {
+                        var last = 0L
+                        while (true) {
+                            withFrameNanos { now ->
+                                val dt = if (last == 0L) 0f else (now - last) / 1e9f
+                                last = now
+                                val target = (.02f + state.humLevel * .16f) / .18f
+                                volume += (target - volume) * min(1f, dt / .05f)
+                                loop.setVolume(volume)
+                            }
                         }
+                    } finally {
+                        loop.stop()
                     }
-                } finally {
-                    loop.stop()
                 }
-            }
+        }
     }
 }
 
@@ -357,6 +362,8 @@ internal fun ConchButton(
                     else -> false
                 }
             }
+            // A key let go elsewhere would leave the latch set and swallow the next press.
+            .onFocusChanged { if (!it.isFocused) held[0] = false }
             .focusable(interactionSource = interaction)
             .semantics {
                 role = Role.Button
@@ -406,6 +413,7 @@ internal fun VoiceNoteBubble(
             bottomEnd = if (mine) 6.dp else 18.dp,
             bottomStart = if (mine) 18.dp else 6.dp,
         )
+    val interaction = remember { MutableInteractionSource() }
     // The bars' heights, from the recording, as the prototype lays out its 26.
     val bars =
         remember(note) {
@@ -424,14 +432,19 @@ internal fun VoiceNoteBubble(
             .clip(shape)
             .background(if (mine) colors.mine else colors.card)
             .border(1.dp, if (mine) Color.Transparent else colors.line, shape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                role = Role.Button,
-            ) {
-                state.togglePlay(note)
-            }
-            .semantics { contentDescription = label }
+            .then(
+                // Out of reach while its shell is still flying in.
+                if (note.hidden) Modifier.clearAndSetSemantics {}
+                else
+                    Modifier.clickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            role = Role.Button,
+                        ) {
+                            state.togglePlay(note)
+                        }
+                        .semantics { contentDescription = label },
+            )
             .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Canvas(
@@ -439,7 +452,8 @@ internal fun VoiceNoteBubble(
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .onGloballyPositioned { anchors.noteShell(note, it) },
         ) {
-            state.frame
+            // Redrawn every frame only while it plays or wobbles; at rest it stays as it is.
+            if (note.playing || note.hidden || note.moving) state.frame
             drawIntoCanvas { canvas ->
                 val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
                 c.scale(density, density)
@@ -452,7 +466,7 @@ internal fun VoiceNoteBubble(
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
         ) {
             Canvas(Modifier.fillMaxWidth().height(24.dp)) {
-                state.frame
+                if (note.playing) state.frame
                 val gap = 2.dp.toPx()
                 val w = ((size.width - gap * (Bars - 1)) / Bars).coerceIn(2.dp.toPx(), 4.dp.toPx())
                 val on = floor(note.pos * Bars).toInt()
