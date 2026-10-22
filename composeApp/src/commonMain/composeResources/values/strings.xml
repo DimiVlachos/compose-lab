@@ -443,4 +443,18 @@
     <string name="padlock_rule_mix">A symbol or capital</string>
     <string name="padlock_continue">Continue</string>
     <string name="padlock_show">Show password</string>
+    <string name="demo_zipper">Zipper scrollbar</string>
+    <string name="demo_zipper_description">The fast scroller on a long contacts list is a brass zipper pull, with a cotton tag for the letter</string>
+    <string name="zipper_title">Contacts</string>
+    <string name="zipper_add">Add contact</string>
+    <string name="zipper_search">Search %1$d contacts</string>
+    <string name="zipper_me">My card</string>
+    <string name="zipper_list">All contacts</string>
+    <string name="zipper_label">Fast scroll by letter</string>
+    <string name="zipper_next">Next letter</string>
+    <string name="zipper_previous">Previous letter</string>
+    <string name="zipper_tab_favorites">Favorites</string>
+    <string name="zipper_tab_recents">Recents</string>
+    <string name="zipper_tab_contacts">Contacts</string>
+    <string name="zipper_tab_keypad">Keypad</string>
 </resources>

@@ -253,17 +253,18 @@ internal class ZipperState {
         frame++
     }
 
-    /** Nothing would move on the next frame, so the frame loop can stop until [wake] changes. */
+    /**
+     * Nothing would move on the next frame, so the frame loop can stop until [wake] changes: a pull
+     * held still sleeps too, with its tab up and its tag out, until the finger moves.
+     */
     val settled: Boolean
         get() =
-            !held &&
-                drag == null &&
-                glide == null &&
+            glide == null &&
                 scrollRequest == null &&
-                flip == 0f &&
-                flipV == 0f &&
-                abs(tag) < Rest &&
-                abs(tagV) < Rest &&
+                (if (held) abs(flip - 1.2f) < .005f && abs(flipV) < .01f
+                else flip == 0f && flipV == 0f) &&
+                abs(tag - (if (held) 1f else 0f)) < .005f &&
+                abs(tagV) < .01f &&
                 abs(sway) < Rest &&
                 abs(swayV) < Rest &&
                 abs(syV) < .5f

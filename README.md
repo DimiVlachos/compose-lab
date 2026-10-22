@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper) | `zipper` | `zipper.scrollbar` | A long list's fast scroller as a brass zipper sewn down its edge: the list opens behind the pull as you go down, and a cotton tag on the pull shows the letter |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -66,6 +67,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -701,6 +703,28 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Zipper scrollbar (`core/presentation/components/zipper/`)
+
+A contacts list whose fast-scroll thumb is the brass pull of a zipper sewn down its right edge. At the top the list is zipped shut; as you go down it opens behind the pull, the teeth prised apart over a red flannel lining, so you can see how far you've come. Put a finger on the pull and its tab stands up off the tape while a cotton tag swings out with the letter you're on; drag it and the list races along with a rasp of teeth, the tag swaying with the speed and changing letter at each section. Let go and the tab drops flat with a clack and a small bounce. A tap on the tape glides the pull there; scrolling the list itself moves the pull without the tag, and a hard stop of a fling makes the tab hop.
+
+- **Drawn as the prototype draws it.** The zipper is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, over the list: the tape is one shape, closed below the pull and two prised-open halves above it, woven, stitched and edged in one pass; the teeth are plain rects; brass is one gradient lit from the top left; the warm glow round the pull flattens near the top so it never meets the list's edge.
+- **A real lazy list.** The 88 contacts are a `LazyColumn`; the zipper reads its place from the `LazyListState` (the first visible item and its offset over the list's height, each kind of row measured as it is laid out) and drives it with `requestScrollToItem`, so a drag lands in the same frame.
+- **Springs.** The tab's flip, the tag and its sway are the prototype's springs in fixed 1/240 s substeps; the frame loop sleeps once they are at rest.
+- **Feel and sound.** A confirm where the tab clacks down, a tick as it lifts and at each new letter while held; synthesized clack, tick, teeth rasp and lift.
+- **Screen readers and keys.** The strip is a range named Fast scroll by letter, with the letter as its state, Next and Previous letter actions, and arrow, Page, Home and End keys.
+- **Reduced motion.** The tab and tag snap, and glides jump.
+
+The demo, `zipper.scrollbar`, is an invented address book. Its script takes the pull, drags it to the middle, near the end and back up a third, lets go, flicks the list, and glides home.
+
+```kotlin
+val zipper = remember { ZipperState() }
+val track = remember(list) { ZipperTrack(list, kinds, estimates, sectionLetters) }
+Box {
+    LazyColumn(state = list) { /* rows */ }
+    Zipper(zipper, track, "Fast scroll by letter", "Next letter", "Previous letter", sounds, Modifier.fillMaxSize())
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -880,6 +904,8 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
+
+The zipper's tag letter is set in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; a static instance, at weight 700, of the variable font).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 

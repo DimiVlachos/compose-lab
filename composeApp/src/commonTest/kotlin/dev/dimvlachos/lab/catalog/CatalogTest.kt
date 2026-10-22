@@ -25,6 +25,7 @@ import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
 import dev.dimvlachos.lab.resources.demo_stickers
 import dev.dimvlachos.lab.resources.demo_typewriter
+import dev.dimvlachos.lab.resources.demo_zipper
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +60,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "zipper.scrollbar",
             ),
             Catalog.demos.map { it.id },
         )
@@ -83,6 +85,7 @@ class CatalogTest {
                 Res.string.demo_stickers,
                 Res.string.demo_mailbox,
                 Res.string.demo_padlock,
+                Res.string.demo_zipper,
             ),
             Catalog.demos.map { it.title },
         )
@@ -157,6 +160,7 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "zipper.scrollbar",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
