@@ -216,7 +216,6 @@ internal class ZipperState {
     /** Glides the pull to [p] by itself, as a key or a tap does. */
     fun glideTo(p: Float) {
         wake++
-        drag = null
         glide = p.coerceIn(0f, 1f)
         glideV = 0f
     }
@@ -261,6 +260,8 @@ internal class ZipperState {
         get() =
             glide == null &&
                 scrollRequest == null &&
+                // The list moved the pull since the springs last saw it: they must catch up.
+                abs(sy - sliderTopFor(pos)) < .01f &&
                 (if (held) abs(flip - 1.2f) < .005f && abs(flipV) < .01f
                 else flip == 0f && flipV == 0f) &&
                 abs(tag - (if (held) 1f else 0f)) < .005f &&

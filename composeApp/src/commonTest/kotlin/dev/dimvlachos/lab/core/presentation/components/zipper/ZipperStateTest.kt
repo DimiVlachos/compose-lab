@@ -186,6 +186,27 @@ class ZipperStateTest {
     }
 
     @Test
+    fun theListScrollingWakesTheSpringsUntilTheyCatchUp() {
+        val z = zipper()
+        z.follow(.5f)
+        z.step(0f)
+        assertFalse(z.settled)
+        // A jump that big is a hard stop: the tab hops and the tag sways before all is still.
+        z.run(4000)
+        assertTrue(z.settled, "flip ${z.flip} sway ${z.sway}")
+    }
+
+    @Test
+    fun aKeyGlideDuringADragKeepsTheFingersHold() {
+        val z = zipper()
+        val c = z.pullCenter()
+        z.down(c)
+        z.glideTo(.5f)
+        z.up(c)
+        assertFalse(z.held)
+    }
+
+    @Test
     fun resetGoesBackToTheTop() {
         val z = zipper()
         z.follow(.5f)

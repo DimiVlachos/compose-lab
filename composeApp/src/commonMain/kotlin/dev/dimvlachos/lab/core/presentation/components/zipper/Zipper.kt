@@ -111,7 +111,7 @@ internal fun Zipper(
             if (state.onEvent === listener) state.onEvent = null
         }
     }
-    LaunchedEffect(state, track) {
+    LaunchedEffect(state, track, density) {
         // The list scrolled by a finger or a fling: the pull follows, so the loop wakes.
         launch {
             snapshotFlow {
@@ -158,61 +158,87 @@ internal fun Zipper(
                 c.drawZipper(state, size.width / density, dark, weave, density / PixelRatio)
             }
         }
-        val percent = state.percent
-        Box(
-            Modifier.align(Alignment.TopEnd)
-                .width(ZipperStripWidth)
-                .fillMaxHeight()
-                .testTag("zipper")
-                .semantics {
-                    contentDescription = label
-                    stateDescription = state.letter
-                    progressBarRangeInfo = ProgressBarRangeInfo(percent / 100f, 0f..1f, 99)
-                    setProgress { p ->
-                        state.glideTo(p)
-                        true
-                    }
-                    customActions =
-                        listOf(
-                            CustomAccessibilityAction(nextLetter) {
-                                state.glideTo(track.letterStep(down = true))
-                                true
-                            },
-                            CustomAccessibilityAction(previousLetter) {
-                                state.glideTo(track.letterStep(down = false))
-                                true
-                            },
-                        )
-                }
-                .onKeyEvent { e ->
-                    if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    val to =
-                        when (e.key) {
-                            Key.DirectionDown,
-                            Key.PageDown -> track.letterStep(down = true)
-                            Key.DirectionUp,
-                            Key.PageUp -> track.letterStep(down = false)
-                            Key.MoveHome -> 0f
-                            Key.MoveEnd -> 1f
-                            else -> return@onKeyEvent false
-                        }
-                    state.glideTo(to)
+        ZipperStrip(
+            state,
+            track,
+            label,
+            nextLetter,
+            previousLetter,
+            density,
+            Modifier.align(Alignment.TopEnd),
+        )
+    }
+}
+
+/**
+ * The strip down the right that takes the zipper's touches and keys and speaks for it. It reads the
+ * pull's percent and letter, so only it recomposes as they change, a hundred times down the list.
+ */
+@Composable
+private fun ZipperStrip(
+    state: ZipperState,
+    track: ZipperTrack,
+    label: String,
+    nextLetter: String,
+    previousLetter: String,
+    density: Float,
+    modifier: Modifier,
+) {
+    val percent = state.percent
+    val letter = state.letter
+    Box(
+        modifier
+            .width(ZipperStripWidth)
+            .fillMaxHeight()
+            .testTag("zipper")
+            .semantics {
+                contentDescription = label
+                stateDescription = letter
+                progressBarRangeInfo = ProgressBarRangeInfo(percent / 100f, 0f..1f, 99)
+                setProgress { p ->
+                    state.glideTo(p)
                     true
                 }
-                .focusable()
-                .pointerInput(state) {
-                    awaitEachGesture {
-                        val first = awaitFirstDown()
-                        first.consume()
-                        state.down(first.position.y / density)
-                        val id = first.id
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(nextLetter) {
+                            state.glideTo(track.letterStep(down = true))
+                            true
+                        },
+                        CustomAccessibilityAction(previousLetter) {
+                            state.glideTo(track.letterStep(down = false))
+                            true
+                        },
+                    )
+            }
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                val to =
+                    when (e.key) {
+                        Key.DirectionDown,
+                        Key.PageDown -> track.letterStep(down = true)
+                        Key.DirectionUp,
+                        Key.PageUp -> track.letterStep(down = false)
+                        Key.MoveHome -> 0f
+                        Key.MoveEnd -> 1f
+                        else -> return@onKeyEvent false
+                    }
+                state.glideTo(to)
+                true
+            }
+            .focusable()
+            .pointerInput(state, density) {
+                awaitEachGesture {
+                    val first = awaitFirstDown()
+                    first.consume()
+                    state.down(first.position.y / density)
+                    val id = first.id
+                    // A gesture taken away, or the strip leaving mid-drag, lets go of the pull;
+                    // after a lift this does nothing.
+                    try {
                         while (true) {
                             val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == id }
-                            if (change == null) {
-                                state.cancel()
-                                break
-                            }
+                            val change = event.changes.firstOrNull { it.id == id } ?: break
                             if (!change.pressed) {
                                 state.up(change.position.y / density)
                                 break
@@ -220,10 +246,12 @@ internal fun Zipper(
                             change.consume()
                             state.move(change.position.y / density)
                         }
+                    } finally {
+                        state.cancel()
                     }
-                },
-        )
-    }
+                }
+            },
+    )
 }
 
 /** How far below the list's top the tag reads its letter, as the prototype's `scrollTop + 30`. */

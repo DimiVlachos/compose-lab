@@ -59,7 +59,13 @@ internal class ZipperTrack(
     }
 
     /** How far down the list is, 0 to 1. */
-    fun position(): Float = (scrolled() / maxScroll()).coerceIn(0f, 1f)
+    fun position(): Float =
+        when {
+            // At either end the list says so itself, whatever the estimate of its height.
+            !list.canScrollBackward -> 0f
+            !list.canScrollForward -> 1f
+            else -> (scrolled() / maxScroll()).coerceIn(0f, 1f)
+        }
 
     /** Puts the list [p] of the way down, on the next layout. */
     fun scrollTo(p: Float) = scrollToPx(p.coerceIn(0f, 1f) * maxScroll())
