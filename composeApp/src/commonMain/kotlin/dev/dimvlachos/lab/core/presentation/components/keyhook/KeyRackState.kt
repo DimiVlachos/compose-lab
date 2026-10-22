@@ -669,7 +669,15 @@ internal class KeyRackState(
 
     private fun sendTo(r: KeyRing, delay: Float = 0f) {
         wake++
-        if (geometry == null) return
+        if (geometry == null) {
+            // Not laid out yet: it simply belongs where it was sent, as layout() will place it.
+            r.mode = KeyRing.Mode.Rest
+            r.on = isCarried(r)
+            r.clip = 0f
+            r.passing = false
+            applySignedIn()
+            return
+        }
         if (reducedMotion) {
             val toX = destX(r)
             val toY = destY(r)

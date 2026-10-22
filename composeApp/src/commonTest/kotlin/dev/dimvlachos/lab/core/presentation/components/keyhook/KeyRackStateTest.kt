@@ -355,6 +355,25 @@ class KeyRackStateTest {
         assertSame(ava.holder, s.signedIn)
     }
 
+    @Test
+    fun aSetSentBeforeTheRackIsLaidOutBelongsWhereItWasSent() {
+        val s = KeyRackState(Household.people, random = Random(7))
+        s.toggle(s.rings[1])
+        assertSame(s.rings[1].holder, s.signedIn)
+        assertTrue(s.rings[1].on && !s.rings[0].on)
+        s.layout(W, H)
+        s.run(1f)
+        assertTrue(s.atCard(s.rings[1]) && s.atHook(s.rings[0]))
+        // Jordan's set, on its hook, comes off it rather than out of the clip.
+        val jordan = s.rings[0]
+        s.startGrab(jordan, s.ringPointX(jordan), s.ringPointY(jordan))
+        s.run(.3f)
+        assertTrue(
+            !jordan.on && jordan.y > s.geometry!!.boardTop,
+            "jordan ${jordan.x}, ${jordan.y}",
+        )
+    }
+
     private val KeyRackEvent.isClip
         get() = this == KeyRackEvent.ClipShut || this == KeyRackEvent.ClipShutEmpty
 
