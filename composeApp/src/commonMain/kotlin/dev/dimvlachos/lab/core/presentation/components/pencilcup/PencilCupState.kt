@@ -100,7 +100,7 @@ internal class CupTool {
     internal var fromX = 0f
     internal var fromY = 0f
     internal var fromA = 0f
-    // The arc's control point, from the pocket to just above the cup.
+    // The arc's control point, high over the cup and straight above where the tool rests.
     internal var arcCx = 0f
     internal var arcCy = 0f
 
@@ -438,7 +438,10 @@ internal class PencilCupState {
                 t.fromX = t.x
                 t.fromY = t.y
                 t.fromA = t.a
-                t.arcCx = lerp(t.x, restX(i), .4f)
+                // High over the cup and straight above its rest spot, so the arc ends falling
+                // straight down through the mouth. Coming in sideways, a tool overshot to the right
+                // and the scissors' blades crossed the wall.
+                t.arcCx = restX(i)
                 t.arcCy = min(t.y, restY(i) - 90 * k) - 100 * k
                 t.mode = ToolMode.Arc
                 t.flyAt = now
@@ -687,7 +690,10 @@ internal class PencilCupState {
                     t.vx = sv
                     t.a = spring(t.a, t.va, ra, 150f, .32f, dt)
                     t.va = sv
-                    if (t.y < ry - .5f || t.vy < 0f) {
+                    // Falling until it lands. A tool still moving down within half a pixel of the
+                    // bottom falls on and lands too; handed to the spring at speed, it would skip
+                    // the bounce and sink through the cup's floor.
+                    if (t.y < ry - .5f || t.vy < 0f || (t.y < ry && t.vy > 0f)) {
                         t.vy += Gravity * k * dt
                         t.y += t.vy * dt
                         if (t.y >= ry) {

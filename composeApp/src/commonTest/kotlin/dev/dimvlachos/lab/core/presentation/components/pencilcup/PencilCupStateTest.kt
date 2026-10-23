@@ -209,6 +209,68 @@ class PencilCupStateTest {
         assertTrue(worst <= .3f + 1e-4f, "$worst")
     }
 
+    // Uneven frames, so substeps end at every phase of a fall.
+    private val unevenFrames = floatArrayOf(1 / 60f, .0173f, 1 / 144f, .0211f, 1 / 50f, .0071f)
+
+    /**
+     * Steps uneven frames until every tool rests, failing if tool [i] sinks below where it rests,
+     * or if its foot below the rim, or its centre line below the front lip, leaves the mouth.
+     */
+    private fun PencilCupState.dropsInThroughTheMouth(i: Int, phase: Int) {
+        val t = tools[i]
+        var n = 0
+        while (n < 400 && !allRest()) {
+            step(unevenFrames[(phase + n) % unevenFrames.size])
+            n++
+            if (t.mode != ToolMode.Home && t.mode != ToolMode.Rest) continue
+            assertTrue(t.y <= restY(i) + 1f, "tool $i sank to ${t.y - restY(i)} below its rest")
+            val len = CupTools.specs[i].length * k
+            var d = 0f
+            while (d <= len) {
+                val x = t.x + sin(t.a) * d
+                val y = t.y - cos(t.a) * d
+                if (y <= rimY + if (d > 0f) rimDepth else 0f) break
+                val u = ((y - rimY) / (botY - rimY)).coerceIn(0f, 1f)
+                val half = (topWidth + (footWidth - topWidth) * u) / 2
+                assertTrue(
+                    abs(x - cupX) <= half - if (d > 0f) 6 * k else 0f,
+                    "tool $i at $d along it is ${abs(x - cupX) - half} past the wall",
+                )
+                d += 4 * k
+            }
+        }
+        assertTrue(allRest())
+    }
+
+    @Test
+    fun everyToolDropsBackInThroughTheMouth() {
+        for (phase in unevenFrames.indices) {
+            val s = cup()
+            s.tap()
+            s.run(1600) { s.fanned() }
+            s.tap()
+            s.dropsInThroughTheMouth(CupTools.Clip, phase)
+        }
+    }
+
+    @Test
+    fun aToolArcingBackFromItsSheetFallsStraightInAndNeverSinks() {
+        for (i in 0 until CupTools.count) {
+            for (phase in unevenFrames.indices) {
+                val s = cup()
+                s.tap()
+                s.run(1600) { s.fanned() }
+                s.pick(i)
+                s.run(1500) { s.tools[i].mode == ToolMode.Pocket && s.allRestBut(i) }
+                s.done()
+                s.dropsInThroughTheMouth(i, phase)
+            }
+        }
+    }
+
+    private fun PencilCupState.allRestBut(i: Int) =
+        tools.withIndex().all { (j, t) -> j == i || t.mode == ToolMode.Rest }
+
     @Test
     fun reducedMotionJumpsToEachPose() {
         val s = cup(reduced = true)
