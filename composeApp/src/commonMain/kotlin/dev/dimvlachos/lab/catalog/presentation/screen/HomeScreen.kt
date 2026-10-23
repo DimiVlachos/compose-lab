@@ -44,6 +44,8 @@ internal fun HomeScreen(
     onSearchFocused: () -> Unit,
     themeMode: ThemeMode,
     onCycleTheme: () -> Unit,
+    soundOn: Boolean,
+    onToggleSound: () -> Unit,
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     onOpenDemo: (Demo) -> Unit,
@@ -86,6 +88,8 @@ internal fun HomeScreen(
                 onSearchFocused = onSearchFocused,
                 themeMode = themeMode,
                 onCycleTheme = onCycleTheme,
+                soundOn = soundOn,
+                onToggleSound = onToggleSound,
                 onOpenSearch = onOpenSearch,
                 onCloseSearch = {
                     leaving()
@@ -157,6 +161,8 @@ private fun HomeScreenPreview() {
             onSearchFocused = {},
             themeMode = ThemeMode.System,
             onCycleTheme = {},
+            soundOn = false,
+            onToggleSound = {},
             onOpenSearch = {},
             onCloseSearch = {},
             onOpenDemo = {},

@@ -44,6 +44,8 @@ class CatalogSearchBarUiTest {
                         onSearchFocused = {},
                         themeMode = ThemeMode.System,
                         onCycleTheme = {},
+                        soundOn = false,
+                        onToggleSound = {},
                         onOpenSearch = { opened++ },
                         onCloseSearch = { closed++ },
                     )

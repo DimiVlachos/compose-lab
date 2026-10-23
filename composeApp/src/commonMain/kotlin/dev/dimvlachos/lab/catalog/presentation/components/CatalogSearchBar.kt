@@ -37,6 +37,7 @@ import dev.dimvlachos.lab.core.presentation.components.searchmorph.MorphSearchBu
 import dev.dimvlachos.lab.core.presentation.components.searchmorph.SearchMorphKeys
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
+import dev.dimvlachos.lab.core.presentation.components.topbar.SoundButton
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import dev.dimvlachos.lab.resources.Res
@@ -78,6 +79,8 @@ internal fun CatalogSearchBar(
     onSearchFocused: () -> Unit,
     themeMode: ThemeMode,
     onCycleTheme: () -> Unit,
+    soundOn: Boolean,
+    onToggleSound: () -> Unit,
     onOpenSearch: () -> Unit,
     onCloseSearch: () -> Unit,
     modifier: Modifier = Modifier,
@@ -113,6 +116,9 @@ internal fun CatalogSearchBar(
                         contentDescription = stringResource(Res.string.action_search),
                         modifier = Modifier.testTag(CatalogSearchButtonTag),
                     )
+                }
+                Slot(!searchOpen, ButtonSlotModifier, chromeFadeIn, chromeFadeOut) {
+                    SoundButton(on = soundOn, onToggle = onToggleSound)
                 }
                 Slot(!searchOpen, ButtonSlotModifier, chromeFadeIn, chromeFadeOut) {
                     ThemeModeButton(mode = themeMode, onCycle = onCycleTheme)
@@ -217,6 +223,8 @@ private fun CatalogSearchBarPreview(darkTheme: Boolean, open: Boolean) {
                 onSearchFocused = {},
                 themeMode = ThemeMode.System,
                 onCycleTheme = {},
+                soundOn = false,
+                onToggleSound = {},
                 onOpenSearch = {},
                 onCloseSearch = {},
             )

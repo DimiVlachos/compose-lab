@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.catalog
 
+import dev.dimvlachos.lab.birdcagedemo.BirdcageDemos
 import dev.dimvlachos.lab.bookdemo.BookDemos
 import dev.dimvlachos.lab.bookshelfdemo.BookshelfDemos
 import dev.dimvlachos.lab.cardfiledemo.CardFileDemos
@@ -7,11 +8,15 @@ import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
+import dev.dimvlachos.lab.keyhookdemo.KeyHookDemos
+import dev.dimvlachos.lab.locketdemo.LocketDemos
 import dev.dimvlachos.lab.magnetdemo.MagnetDemos
 import dev.dimvlachos.lab.mailboxdemo.MailboxDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
 import dev.dimvlachos.lab.padlockdemo.PadlockDemos
 import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
+import dev.dimvlachos.lab.paperfandemo.PaperFanDemos
+import dev.dimvlachos.lab.pencilcupdemo.PencilCupDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
@@ -24,6 +29,7 @@ import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
 import dev.dimvlachos.lab.stickynotedemo.StickyNoteDemos
 import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
+import dev.dimvlachos.lab.zipperdemo.ZipperDemos
 
 internal object Catalog {
     // The finished demo of each component, each one a clip; the fogged mirror in two versions.
@@ -51,6 +57,12 @@ internal object Catalog {
                     StickerDemos.all +
                     MailboxDemos.all +
                     PadlockDemos.all +
+                    PencilCupDemos.all +
+                    LocketDemos.all +
+                    BirdcageDemos.all +
+                    ZipperDemos.all +
+                    KeyHookDemos.all +
+                    PaperFanDemos.all +
                     StickyNoteDemos.all)
                 .map {
                     CatalogEntry.Single(it)
