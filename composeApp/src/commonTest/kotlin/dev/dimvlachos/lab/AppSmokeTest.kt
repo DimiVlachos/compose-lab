@@ -5,6 +5,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -15,11 +17,14 @@ import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import dev.dimvlachos.lab.core.platform.InMemorySoundSettingStore
 import dev.dimvlachos.lab.core.platform.InMemoryThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
 import dev.dimvlachos.lab.core.presentation.ui.ThemeMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
@@ -257,6 +262,40 @@ class AppSmokeTest {
         onNodeWithContentDescription("Theme: dark").performClick()
         onNodeWithContentDescription("Theme: follow system").assertExists()
         assertEquals(ThemeMode.System, store.load())
+    }
+
+    @Test
+    fun soundStartsOffAndTheHomeSwitchFlipsAndRemembersIt() = runComposeUiTest {
+        val store = InMemorySoundSettingStore()
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, soundStore = store)
+        }
+        onNodeWithContentDescription("Sound").assertIsOff()
+        onNodeWithContentDescription("Sound").performClick()
+        onNodeWithContentDescription("Sound").assertIsOn()
+        assertTrue(store.load())
+        onNodeWithContentDescription("Sound").performClick()
+        onNodeWithContentDescription("Sound").assertIsOff()
+        assertFalse(store.load())
+    }
+
+    @Test
+    fun aDemosSwitchStartsFromTheAppsAndLeavesItAsItWas() = runComposeUiTest {
+        val store = InMemorySoundSettingStore(on = true)
+        setContent {
+            LabApp(initialDemoId = null, record = false, label = false, soundStore = store)
+        }
+        onNodeWithText("Profile gallery").performClick()
+        onNodeWithText("compose-lab").assertDoesNotExist()
+        onNodeWithContentDescription("Sound").assertIsOn()
+        onNodeWithContentDescription("Sound").performClick()
+        onNodeWithContentDescription("Sound").assertIsOff()
+        assertTrue(store.load(), "the app's switch stays on")
+        onNodeWithContentDescription("Back").performClick()
+        onNodeWithText("compose-lab").assertExists()
+        onNodeWithContentDescription("Sound").assertIsOn()
+        onNodeWithText("Profile gallery").performClick()
+        onNodeWithContentDescription("Sound").assertIsOn()
     }
 
     @Test
