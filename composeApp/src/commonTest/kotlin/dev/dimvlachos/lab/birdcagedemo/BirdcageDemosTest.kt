@@ -20,7 +20,7 @@ class BirdcageDemosTest {
     }
 
     @Test
-    fun theClipSingsMutesStirsLiftsAndSingsAgainThenResets() = runTest {
+    fun theClipSingsMutesStirsLiftsSingsAgainTapsTwiceThenResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -30,6 +30,8 @@ class BirdcageDemosTest {
                 "tapControl(message)",
                 "tapControl(cover-up)",
                 "tapControl(message)",
+                "tapControl(tap)",
+                "tapControl(tap)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },
@@ -37,7 +39,7 @@ class BirdcageDemosTest {
     }
 
     @Test
-    fun theClipFitsInSixteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 16.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInNineteenSeconds() {
+        assertTrue(demo.script.nominalDuration <= 19.seconds, "${demo.script.nominalDuration}")
     }
 }

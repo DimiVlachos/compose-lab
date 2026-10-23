@@ -92,9 +92,13 @@ class LocketDemoUiTest {
         scope.launch { state.tapControl(LocketDemos.DragPhoto) }
         mainClock.advanceTimeBy(3_000)
         assertEquals(0, locket.photo, "the drag puts Folly Beach in")
-        scope.launch { state.tapControl(LocketDemos.CloseLid) }
-        mainClock.advanceTimeBy(1_500)
-        assertFalse(locket.isOpen, "the tap shuts it")
+        scope.launch { state.tapControl(LocketDemos.PushShut) }
+        mainClock.advanceTimeBy(2_000)
+        assertFalse(locket.isOpen, "the push shuts it")
+        scope.launch { state.tapControl(LocketDemos.Swing) }
+        mainClock.advanceTimeBy(2_000)
+        assertFalse(locket.isOpen, "the swing takes it by the body, not the catch")
+        assertEquals(0, locket.photo, "swinging it keeps the photo")
         scope.launch { state.resetFeed() }
         mainClock.advanceTimeBy(200)
         assertEquals(2, locket.photo)

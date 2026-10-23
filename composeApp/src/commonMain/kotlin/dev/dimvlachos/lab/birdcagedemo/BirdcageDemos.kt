@@ -16,18 +16,22 @@ internal object BirdcageDemos {
     const val Message = "message"
     const val CoverDown = "cover-down"
     const val CoverUp = "cover-up"
+    const val Tap = "tap"
 
-    // As the prototype plays it: a message comes in and the canary sings; the finger pulls the
-    // cover down over the cage and the chat is muted, so the next message only stirs the cloth and
-    // is counted; the finger pushes the cover back up, the canary wakes, and the next message is
-    // sung again. Then the first message is put back, so the clip loops.
+    // A message comes in and the canary sings; the finger pulls the cover down over the cage and
+    // the chat is muted, so the next message only stirs the cloth and is counted; the finger pushes
+    // the cover back up, the canary wakes, and the next message is sung again. Then a tap drops the
+    // cover and a second tap lifts it, as the switch does. The first message is put back at the
+    // end, so the clip loops.
     private val mute = demoScript {
         at(0.9.seconds) { tapControl(Message) }
         at(2.6.seconds, lasts = 2.1.seconds) { tapControl(CoverDown) }
         at(6.18.seconds, lasts = 600.milliseconds) { tapControl(Message) }
         at(8.18.seconds, lasts = 1.95.seconds) { tapControl(CoverUp) }
         at(11.21.seconds, lasts = 1.5.seconds) { tapControl(Message) }
-        at(13.2.seconds) { resetFeed() }
+        at(13.4.seconds, lasts = 1.2.seconds) { tapControl(Tap) }
+        at(15.6.seconds, lasts = 1.2.seconds) { tapControl(Tap) }
+        at(17.8.seconds) { resetFeed() }
     }
 
     val all =

@@ -130,6 +130,7 @@ internal fun ZipperDemo(
     DisposableEffect(state, zipper, list) {
         state.setControlTapHandler { control ->
             val drag = ZipperDemos.dragged(control)
+            val tap = ZipperDemos.tapped(control)
             val cx = area[0] - ZipperInset
             when {
                 control == ZipperDemos.Grab -> {
@@ -176,7 +177,18 @@ internal fun ZipperDemo(
                     delay(300)
                     finger.hide()
                 }
-                control == ZipperDemos.Home -> zipper.glideTo(0f)
+                tap != null -> {
+                    // A tap on the tape, away from the pull: the pull glides there.
+                    val y = zipper.sliderTopFor(tap) + ZipperState.SliderHeight / 2f
+                    finger.moveTo(Offset(cx, y), ZipperDemos.TapReachMs)
+                    finger.press(true)
+                    zipper.down(y)
+                    delay(ScriptedTouch.TapHoldMs)
+                    finger.press(false)
+                    zipper.up(y)
+                    delay(ZipperDemos.TapGlideMs.toLong())
+                    finger.hide()
+                }
             }
         }
         state.setFeedResetHandler {

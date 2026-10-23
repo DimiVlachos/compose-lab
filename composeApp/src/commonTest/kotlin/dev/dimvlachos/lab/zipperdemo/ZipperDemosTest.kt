@@ -21,7 +21,7 @@ class ZipperDemosTest {
     }
 
     @Test
-    fun theClipGrabsDragsThreeTimesLetsGoFlicksAndGoesHome() = runTest {
+    fun theClipGrabsDragsThreeTimesLetsGoFlicksAndTapsTheTapeTwice() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -32,7 +32,8 @@ class ZipperDemosTest {
                 "tapControl(drag:0.3:900)",
                 "tapControl(release)",
                 "tapControl(flick)",
-                "tapControl(home)",
+                "tapControl(tap:0.85)",
+                "tapControl(tap:0.0)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },
@@ -47,7 +48,14 @@ class ZipperDemosTest {
     }
 
     @Test
-    fun theClipFitsInSixteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 16.seconds, "${demo.script.nominalDuration}")
+    fun tapsRoundTrip() {
+        assertEquals(.85f, ZipperDemos.tapped(ZipperDemos.tap(.85f)))
+        assertNull(ZipperDemos.tapped(ZipperDemos.Grab))
+        assertNull(ZipperDemos.tapped(ZipperDemos.drag(.5f, 100)))
+    }
+
+    @Test
+    fun theClipFitsInEighteenSeconds() {
+        assertTrue(demo.script.nominalDuration <= 18.seconds, "${demo.script.nominalDuration}")
     }
 }

@@ -20,31 +20,38 @@ class PencilCupDemosTest {
     }
 
     @Test
-    fun theClipOpensClosesSlidesOntoThePencilTypesATitleTapsDoneAndResets() = runTest {
+    fun theClipTapsTheChecklistSlidesOntoThePencilTapsTheScanAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
             listOf(
                 "tapControl(tap-cup)",
-                "tapControl(tap-cup)",
+                "tapControl(tap-list)",
+                "tapControl(type-item)",
+                "tapControl(done)",
                 "tapControl(slide-to-note)",
                 "tapControl(type-title)",
+                "tapControl(done)",
+                "tapControl(tap-cup)",
+                "tapControl(tap-scan)",
                 "tapControl(done)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },
         )
-        // The prototype's timeline: the first tap after 0.9 s, the title typed from about 8 s in,
-        // a letter at a time, then Done.
-        assertEquals(
-            listOf(1500L, 3590L, 5480L, 8210L, 10311L, 12521L),
-            controller.calls.map { it.first },
-        )
     }
 
     @Test
-    fun theClipFitsInFourteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 14.seconds, "${demo.script.nominalDuration}")
+    fun theStepsDoNotOverlap() {
+        val steps = demo.script.steps.sortedBy { it.at }
+        for (i in 1 until steps.size) {
+            assertTrue(steps[i - 1].at + steps[i - 1].lasts <= steps[i].at, "step $i overlaps")
+        }
+    }
+
+    @Test
+    fun theClipFitsInTwentyTwoSeconds() {
+        assertTrue(demo.script.nominalDuration <= 22.seconds, "${demo.script.nominalDuration}")
     }
 
     @Test

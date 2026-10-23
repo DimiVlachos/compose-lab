@@ -237,8 +237,17 @@ class PencilCupDemoUiTest {
         val cup = PencilCupState()
         val state = DemoState()
         show(cup, state, play = true)
-        advanceUntil("the note's sheet", most = 9_000) { cup.sheetOpen }
+        // A tap picks the highlighter for a checklist.
+        advanceUntil("the checklist's sheet", most = 6_000) { cup.sheetOpen }
+        assertTrue(cup.sheetTool == CupTools.List)
+        advanceUntil("Done", most = 4_000) { !cup.sheetOpen }
+        // The slide picks the pencil for a note.
+        advanceUntil("the note's sheet", most = 6_000) { cup.sheetOpen }
         assertTrue(cup.sheetTool == CupTools.Note)
+        advanceUntil("Done", most = 5_000) { !cup.sheetOpen }
+        // A tap picks the loupe for a scan.
+        advanceUntil("the scan's sheet", most = 6_000) { cup.sheetOpen }
+        assertTrue(cup.sheetTool == CupTools.Scan)
         advanceUntil("Done", most = 4_000) { !cup.sheetOpen }
         mainClock.advanceTimeBy(4_000)
         onNodeWithText("Fieldbook · 6 notes").assertExists()

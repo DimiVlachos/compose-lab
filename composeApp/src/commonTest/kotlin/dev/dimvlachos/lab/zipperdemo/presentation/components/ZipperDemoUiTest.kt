@@ -81,10 +81,16 @@ class ZipperDemoUiTest {
         assertTrue(zipper.held)
         assertTrue(zipper.pos > .8f, "pos ${zipper.pos}")
         assertTrue(list.firstVisibleItemIndex > 60, "index ${list.firstVisibleItemIndex}")
+        // Let go, a tap at the top of the tape glides the pull home.
         scope.launch {
             state.tapControl(ZipperDemos.Release)
-            state.resetFeed()
+            state.tapControl(ZipperDemos.tap(0f))
         }
+        mainClock.advanceTimeBy(3_000)
+        waitForIdle()
+        assertFalse(zipper.held)
+        assertTrue(zipper.pos < .05f, "pos ${zipper.pos}")
+        scope.launch { state.resetFeed() }
         mainClock.advanceTimeBy(1_000)
         waitForIdle()
         assertEquals(0, list.firstVisibleItemIndex)
