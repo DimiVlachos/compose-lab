@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -632,40 +688,36 @@ def paper_sweep(rng, rate, f0, f1, q, dur, gain):
     return scale(mul(sweep_bandpass(noise(n, rng), f0, f1, q, dur, rate), swell(n, rate, dur)), gain)
 
 
-def paper_tick(rng, rate, freq, gain, dur=0.03):
-    """One of the prototype's tick()s: a burst of band-passed noise dying away exponentially."""
-    n = seconds(dur + 0.02, rate)
-    decay = [gain * 0.0001 ** min(1.0, i / (dur * rate)) for i in range(n)]
-    return mul(bandpass(noise(n, rng), freq, 5.0, rate), decay)
-
-
 def paperfan_fwap(rng, rate):
-    """The fan flicked open: a rising rush of paper through the air, and a brighter snap of the leaf going taut."""
-    track = [0.0] * seconds(0.28, rate)
-    place(track, paper_sweep(rng, rate, 700, 3600, 1.2, 0.16, 0.32), seconds(0.06, rate))
-    place(track, paper_sweep(rng, rate, 2400, 5200, 2.0, 0.1, 0.12), seconds(0.1, rate))
-    return fade(normalise(track, 0.72), rate, 0.001, 0.01)
+    """The fan flicked open: a soft rush of paper through the air, and the leaf filling out with a muffled pop."""
+    track = [0.0] * seconds(0.3, rate)
+    place(track, paper_sweep(rng, rate, 500, 1800, 0.9, 0.17, 0.32), seconds(0.06, rate))
+    n = seconds(0.08, rate)
+    pop = mul(bandpass(noise(n, rng), 900, 1.3, rate), soft_env(n, rate, 0.006, 0.018))
+    place(track, scale(pop, 0.12), seconds(0.11, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, SOFT_PEAK, 0.004, 0.04)
 
 
 def paperfan_click(rng, rate):
-    """The leading guard clicking home: a bright tick and a lower knock of lacquered wood."""
-    track = [0.0] * seconds(0.09, rate)
-    place(track, paper_tick(rng, rate, 2300, 0.28), 0)
-    place(track, paper_tick(rng, rate, 1200, 0.14, 0.05), seconds(0.012, rate))
-    return fade(normalise(track, 0.62), rate, 0.0003, 0.01)
+    """The leading guard settling home: a light knock of lacquered bamboo."""
+    n = seconds(0.1, rate)
+    knock = mix(soft_mode(rng, n, rate, 1400, 3.0, 0.008, attack=0.004), scale(soft_mode(rng, n, rate, 700, 2.5, 0.012, attack=0.005), 0.7))
+    return soft_finish(soft_room(soft_tilt(knock, rate, 2800), rate, 0.11), rate, 0.48, 0.004, 0.03)
 
 
 def paperfan_swish(rng, rate):
-    """The fan starting to fold: a falling swish of paper."""
-    return fade(normalise(paper_sweep(rng, rate, 3200, 900, 1.1, 0.2, 0.16), 0.36), rate, 0.001, 0.01)
+    """The fan starting to fold: a soft, falling swish of paper."""
+    swish = paper_sweep(rng, rate, 1600, 600, 0.9, 0.2, 0.16)
+    return soft_finish(soft_room(soft_tilt(swish, rate, 2600), rate, 0.1), rate, 0.28, 0.006, 0.04)
 
 
 def paperfan_clack(rng, rate):
-    """The guards clacking together as the fan shuts: two small knocks."""
-    track = [0.0] * seconds(0.1, rate)
-    place(track, paper_tick(rng, rate, 1500, 0.2, 0.04), 0)
-    place(track, paper_tick(rng, rate, 1800, 0.1), seconds(0.03, rate))
-    return fade(normalise(track, 0.45), rate, 0.0003, 0.01)
+    """The guards meeting as the fan shuts: two small, muffled knocks of bamboo."""
+    track = [0.0] * seconds(0.12, rate)
+    n = seconds(0.07, rate)
+    place(track, mix(soft_mode(rng, n, rate, 1100, 2.5, 0.01, attack=0.004), scale(soft_mode(rng, n, rate, 520, 2.0, 0.014, attack=0.005), 0.6)), 0)
+    place(track, scale(soft_mode(rng, n, rate, 1300, 2.5, 0.008, attack=0.004), 0.5), seconds(0.03, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.11), rate, 0.35, 0.004, 0.03)
 
 
 def main():

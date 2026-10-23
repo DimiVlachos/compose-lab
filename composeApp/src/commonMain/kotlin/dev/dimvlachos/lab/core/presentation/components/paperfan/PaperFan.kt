@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.PaperFanScreenColors
@@ -101,14 +102,14 @@ internal fun PaperFanFaq(
     LaunchedEffect(state, sounds, haptics) {
         val listener: (PaperFanEvent, Int) -> Unit = { event, _ ->
             when (event) {
-                PaperFanEvent.Fwap -> sounds.play(Sound.PaperFanFwap)
+                PaperFanEvent.Fwap -> sounds.playVaried(Sound.PaperFanFwap)
                 PaperFanEvent.Click -> {
-                    sounds.play(Sound.PaperFanClick)
+                    sounds.playVaried(Sound.PaperFanClick)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
-                PaperFanEvent.Swish -> sounds.play(Sound.PaperFanSwish)
+                PaperFanEvent.Swish -> sounds.playVaried(Sound.PaperFanSwish)
                 PaperFanEvent.Clack -> {
-                    sounds.play(Sound.PaperFanClack)
+                    sounds.playVaried(Sound.PaperFanClack)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
             }
