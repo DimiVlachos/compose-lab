@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -597,84 +653,56 @@ def padlock_swing(rng, rate):
 
 
 # ---------- Locket ----------
-
-def web_burst(rng, rate, freq, q, dur, gain):
-    """The prototype's WebAudio burst: band-passed noise whose gain ramps exponentially to 1e-4 over dur."""
-    n = seconds(dur, rate)
-    sig = bandpass(noise(n, rng), freq, q, rate)
-    k = math.log(1e-4 / gain)
-    return [x * gain * math.exp(k * i / n) for i, x in enumerate(sig)]
-
-
-def web_tone(rate, f0, f1, dur, gain, triangle=False):
-    """The prototype's WebAudio tone: a sine (or triangle) gliding exponentially from f0 to f1, its gain ramping to 1e-4."""
-    n = seconds(dur, rate)
-    k = math.log(1e-4 / gain)
-    out, phase = [], 0.0
-    for i in range(n):
-        t = i / n
-        phase += 2 * math.pi * f0 * (f1 / f0) ** t / rate
-        v = (2 / math.pi) * math.asin(math.sin(phase)) if triangle else math.sin(phase)
-        out.append(v * gain * math.exp(k * t))
-    return out
-
-
-def layered(rate, length, parts):
-    """Lays (start, signal) parts into one track of length seconds."""
-    track = [0.0] * seconds(length, rate)
-    for start, sig in parts:
-        place(track, sig, seconds(start, rate))
-    return track
-
-
-# The prototype's gains are kept as they are, all scaled by one factor, so the clips stay as loud as each other.
-LOCKET_GAIN = 5.5
+# Small gold heard close to the ear: the catch and the lid are soft knocks with a short, muffled ring of the gold,
+# the photo a quiet glassy note, the strip and the chain light brushes and ticks. Built with the soft toolkit.
 
 
 def locket_open(rng, rate):
-    """The catch letting go: a bright click and the lid's thin ring."""
-    track = layered(rate, 0.2, [
-        (0.0, web_burst(rng, rate, 4600, 7, 0.03, 0.2)),
-        (0.01, web_tone(rate, 2600, 2500, 0.18, 0.035)),
-        (0.01, web_tone(rate, 3900, 3850, 0.12, 0.02)),
-    ])
-    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+    """The catch letting go: a small muffled click and the lid's short ring of gold."""
+    n = seconds(0.22, rate)
+    click = mix(soft_mode(rng, n, rate, 2100, 3.0, 0.006, attack=0.006), scale(soft_mode(rng, n, rate, 700, 2.0, 0.012, attack=0.006), 0.6))
+    ring = mix(soft_mode(rng, n, rate, 2600, 24.0, 0.06, attack=0.006), scale(soft_mode(rng, n, rate, 3900, 22.0, 0.035, attack=0.006), 0.3))
+    return soft_finish(soft_room(soft_tilt(mix(click, scale(ring, 0.45)), rate, 3000), rate, 0.12), rate, 0.19, 0.004, 0.04)
 
 
 def locket_snap(rng, rate):
-    """The lid snapping shut: a hard click, a short knock and the gold ringing on."""
-    track = layered(rate, 0.31, [
-        (0.0, web_burst(rng, rate, 3200, 5, 0.035, 0.4)),
-        (0.0, web_tone(rate, 1900, 1500, 0.06, 0.08, triangle=True)),
-        (0.006, web_tone(rate, 3100, 3080, 0.3, 0.03)),
-    ])
-    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+    """The lid snapping shut: a soft knock of gold on gold, then the case ringing briefly."""
+    n = seconds(0.32, rate)
+    knock = mix(soft_mode(rng, n, rate, 1500, 2.5, 0.01, attack=0.006), scale(soft_mode(rng, n, rate, 420, 1.8, 0.02, attack=0.005), 0.8))
+    ring = mix(soft_mode(rng, n, rate, 3100, 26.0, 0.08, attack=0.006), scale(soft_mode(rng, n, rate, 1900, 18.0, 0.04, attack=0.006), 0.4))
+    return soft_finish(soft_room(soft_tilt(mix(knock, scale(ring, 0.5)), rate, 3000), rate, 0.13), rate, SOFT_PEAK, 0.004, 0.05)
 
 
 def locket_place(rng, rate):
-    """A photo settling behind the glass: a soft glassy chime and a breath of air."""
-    track = layered(rate, 0.4, [
-        (0.0, web_tone(rate, 3300, 3280, 0.4, 0.035)),
-        (0.0, web_tone(rate, 4950, 4930, 0.28, 0.02)),
-        (0.0, web_burst(rng, rate, 6000, 4, 0.03, 0.05)),
-    ])
-    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.01)
+    """A photo settling behind the glass: a soft glassy note and a breath of air."""
+    n = seconds(0.42, rate)
+    note = mix(soft_mode(rng, n, rate, 3300, 34.0, 0.12, attack=0.005), scale(soft_mode(rng, n, rate, 4950, 30.0, 0.07, attack=0.005), 0.3))
+    air = mul(bandpass(lowpass(noise(n, rng), 3000, rate), 1500, 0.8, rate), soft_env(n, rate, 0.015, 0.03))
+    return soft_finish(soft_room(soft_tilt(mix(note, scale(air, 0.25)), rate, 3500), rate, 0.14), rate, 0.2, 0.005, 0.06)
 
 
 def locket_lift(rng, rate):
-    """A photo lifted off the strip: a short soft brush."""
-    return fade(scale(web_burst(rng, rate, 2200, 2, 0.05, 0.05), LOCKET_GAIN), rate, 0.0005, 0.005)
+    """A photo lifted off the strip: a short, light brush."""
+    n = seconds(0.07, rate)
+    brush = mul(bandpass(noise(n, rng), 1500, 1.3, rate), soft_env(n, rate, 0.01, 0.018))
+    return soft_finish(soft_room(soft_tilt(brush, rate, 2800), rate, 0.1), rate, 0.045, 0.005, 0.02)
 
 
 def locket_back(rng, rate):
     """A photo sliding home: a lower, longer brush."""
-    return fade(scale(web_burst(rng, rate, 1600, 2, 0.06, 0.05), LOCKET_GAIN), rate, 0.0005, 0.005)
+    n = seconds(0.09, rate)
+    brush = mul(bandpass(noise(n, rng), 1100, 1.3, rate), soft_env(n, rate, 0.013, 0.028))
+    return soft_finish(soft_room(soft_tilt(brush, rate, 2600), rate, 0.1), rate, 0.045, 0.006, 0.025)
 
 
 def locket_chain(rng, rate):
-    """The chain let go: three tiny links ticking, each a little higher."""
-    track = layered(rate, 0.08, [(i * 0.03, web_burst(rng, rate, 6200 + i * 500, 9, 0.02, 0.05)) for i in range(3)])
-    return fade(scale(track, LOCKET_GAIN), rate, 0.0002, 0.005)
+    """The chain let go: three tiny links ticking, uneven and dying away."""
+    n = seconds(0.03, rate)
+    track = [0.0] * seconds(0.11, rate)
+    for start, freq, gain in ((0.0, 2400, 1.0), (0.026, 2650, 0.7), (0.059, 2900, 0.45)):
+        tick = mix(soft_mode(rng, n, rate, freq, 8.0, 0.006, attack=0.005), scale(soft_mode(rng, n, rate, 900, 2.0, 0.005, attack=0.005), 0.5))
+        place(track, scale(tick, gain), seconds(start, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.1), rate, 0.045, 0.003, 0.02)
 
 
 def main():

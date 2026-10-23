@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -109,23 +110,23 @@ internal fun Locket(
         val listener: (LocketEvent) -> Unit = { event ->
             when (event) {
                 LocketEvent.Open -> {
-                    sounds.play(Sound.LocketOpen)
+                    sounds.playVaried(Sound.LocketOpen)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
                 LocketEvent.Snap -> {
-                    sounds.play(Sound.LocketSnap)
+                    sounds.playVaried(Sound.LocketSnap)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
                 LocketEvent.Lift -> {
-                    sounds.play(Sound.LocketLift)
+                    sounds.playVaried(Sound.LocketLift)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                 }
                 LocketEvent.Place -> {
-                    sounds.play(Sound.LocketPlace)
+                    sounds.playVaried(Sound.LocketPlace)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
-                LocketEvent.Back -> sounds.play(Sound.LocketBack)
-                LocketEvent.Chain -> sounds.play(Sound.LocketChain)
+                LocketEvent.Back -> sounds.playVaried(Sound.LocketBack)
+                LocketEvent.Chain -> sounds.playVaried(Sound.LocketChain)
             }
         }
         state.onEvent = listener
