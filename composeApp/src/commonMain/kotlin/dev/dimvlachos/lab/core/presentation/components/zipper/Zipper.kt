@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -84,22 +85,23 @@ internal fun Zipper(
         val listener: (ZipperEvent, Float) -> Unit = { event, k ->
             when (event) {
                 ZipperEvent.Clack -> {
-                    sounds.play(Sound.ZipClack, .4f + .6f * k)
+                    sounds.playVaried(Sound.ZipClack, .4f + .6f * k)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
-                ZipperEvent.Tick -> sounds.play(Sound.ZipTick, (.3f + 2f * k).coerceAtMost(1f))
+                ZipperEvent.Tick ->
+                    sounds.playVaried(Sound.ZipTick, (.3f + 2f * k).coerceAtMost(1f))
                 ZipperEvent.Letter -> {
-                    sounds.play(Sound.ZipTick, .6f)
+                    sounds.playVaried(Sound.ZipTick, .6f)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
                 ZipperEvent.Teeth ->
-                    sounds.play(
+                    sounds.playVaried(
                         Sound.ZipTeeth,
                         .35f + .15f * k,
                         .85f + Random.nextFloat() * .4f,
                     )
                 ZipperEvent.Lift -> {
-                    sounds.play(Sound.ZipLift, .8f)
+                    sounds.playVaried(Sound.ZipLift, .8f)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
             }

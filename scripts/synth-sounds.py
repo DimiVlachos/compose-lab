@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -597,55 +653,49 @@ def padlock_swing(rng, rate):
 
 
 # ---------- Zipper ----------
-
-def ramp_down(n, rate, gain, dur):
-    """WebAudio's exponentialRampToValueAtTime from gain to 0.0001 over dur, then silence."""
-    m = seconds(dur, rate)
-    return [gain * (0.0001 / gain) ** (i / m) if i < m else 0.0 for i in range(n)]
-
-
-def burst(rng, n, rate, freq, q, dur, gain):
-    """The prototype's burst(): a slice of noise through a band-pass, dying away over dur."""
-    return mul(bandpass(noise(n, rng), freq, q, rate), ramp_down(n, rate, gain, dur))
-
-
-def glide_tone(n, rate, f0, f1, dur, gain):
-    """The prototype's tone(): a sine gliding from f0 to f1 over dur as it dies away."""
-    out, phase, m = [], 0.0, seconds(dur, rate)
-    for i in range(n):
-        f = f0 * (f1 / f0) ** min(1.0, i / m)
-        phase += 2 * math.pi * f / rate
-        out.append(math.sin(phase))
-    return mul(out, ramp_down(n, rate, gain, dur))
+# A fabric zipper heard close: the brass is small and wrapped in tape, so every sound is a muffled
+# tick with a cloth body under it, never a bright click.
 
 
 def zip_clack(rng, rate):
-    """The pull's tab falling flat on the tape: a bright brass click over a dull knock."""
-    n = seconds(0.08, rate)
-    track = mix(glide_tone(n, rate, 2600, 2450, 0.06, 0.08), burst(rng, n, rate, 3800, 5, 0.035, 0.23), burst(rng, n, rate, 900, 2, 0.05, 0.08))
-    return fade(normalise(track, 0.8), rate, 0.0003, 0.01)
+    """The pull's tab falling flat on the tape: a soft knock of brass on cloth."""
+    n = seconds(0.07, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 420, 2.2, 0.012, attack=0.006),
+        scale(soft_mode(rng, n, rate, 1150, 2.6, 0.008, attack=0.006), 0.6),
+        scale(soft_mode(rng, n, rate, 2300, 18, 0.035, attack=0.006), 0.4),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, SOFT_PEAK, 0.006, 0.03)
 
 
 def zip_tick(rng, rate):
-    """The tab bouncing on the tape, or the tag passing a letter: a tiny high tick."""
-    n = seconds(0.03, rate)
-    return fade(normalise(burst(rng, n, rate, 4200, 6, 0.02, 0.06), 0.5), rate, 0.0003, 0.005)
+    """The tab bouncing on the tape, or the tag passing a letter: a tiny, dull tick."""
+    n = seconds(0.04, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 1500, 2.8, 0.006, attack=0.007),
+        scale(soft_mode(rng, n, rate, 2500, 16, 0.016, attack=0.007), 0.3),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.1), rate, 0.36, 0.007, 0.02)
 
 
 def zip_teeth(rng, rate):
-    """Teeth passing the pull: a few grains of rasp, 7 ms apart, each at its own pitch."""
-    n = seconds(0.04, rate)
+    """Teeth passing the pull: a little run of soft grains over a breath of cloth."""
+    n = seconds(0.05, rate)
     track = [0.0] * n
-    for i in range(3):
-        place(track, burst(rng, n, rate, 2600 + rng.random() * 1600, 3, 0.012, 0.045), seconds(i * 0.007, rate))
-    return fade(normalise(track, 0.5), rate, 0.0003, 0.004)
+    for i in range(4):
+        grain = soft_mode(rng, seconds(0.02, rate), rate, 1500 + rng.random() * 800, 2.2, 0.004, attack=0.003)
+        place(track, scale(grain, 1.0 - i * 0.12), seconds(0.0015 + i * 0.006 + rng.random() * 0.0015, rate))
+    cloth = mul(bandpass(noise(n, rng), 900, 1.2, rate), soft_env(n, rate, 0.006, 0.014))
+    track = mix(track, scale(cloth, 0.5))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.1), rate, 0.36, 0.003, 0.02)
 
 
 def zip_lift(rng, rate):
-    """The pull taken: its tab lifting off the tape with a light metal tick."""
-    n = seconds(0.05, rate)
-    track = mix(burst(rng, n, rate, 3000, 4, 0.03, 0.07), glide_tone(n, rate, 1900, 2100, 0.04, 0.015))
-    return fade(normalise(track, 0.5), rate, 0.0003, 0.006)
+    """The pull taken: its tab lifting off the tape, a scuff of cloth and a light tick of brass."""
+    n = seconds(0.06, rate)
+    scuff = mul(bandpass(noise(n, rng), 1200, 1.3, rate), soft_env(n, rate, 0.01, 0.022))
+    track = mix(scuff, scale(soft_mode(rng, n, rate, 2000, 18, 0.025, attack=0.004), 0.3))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, 0.36, 0.004, 0.025)
 
 
 def main():
