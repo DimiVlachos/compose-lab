@@ -397,6 +397,27 @@ class Canvas2DTest {
     }
 
     @Test
+    fun textLaidOutAtAHigherResolutionKeepsItsUserUnits() = withMeasurer { m ->
+        val c = textCanvas(m, 200, 120)
+        c.font = "700 10px MONO"
+        val plain = c.measureText("HH HH")
+        c.textResolution = 4f
+        assertEquals(plain, c.measureText("HH HH"), plain * .1f)
+        // Drawn under the scale it was laid out for, it lands where the plain layout would.
+        c.fillStyle = "#000000"
+        c.textAlign = "center"
+        c.textBaseline = "middle"
+        c.scale(4f, 4f)
+        c.fillText("H", 25f, 15f)
+        val rows = inkRows(c)
+        val cols = inkColumns(c)
+        assertTrue(rows.min() < 60 && rows.max() > 60, "rows straddle 60: $rows")
+        assertTrue(cols.min() < 100 && cols.max() > 100, "columns straddle 100: $cols")
+        c.textResolution = 0f
+        assertEquals(1f, c.textResolution)
+    }
+
+    @Test
     fun anImageDrawsFromAFractionalSourceRectangle() {
         // Four rows, red green blue white; the source starts half way down the green row.
         val src = Canvas2D.create(1, 4)
@@ -508,5 +529,61 @@ class Canvas2DTest {
         val px = c.bitmap.toPixelMap()
         near(Color.Blue, px[16, 30])
         near(Color.Transparent, px[4, 36])
+    }
+
+    @Test
+    fun strokeShadowDrawsTheShadowAloneInAColourSetDirectly() {
+        val c = Canvas2D.create(40, 20)
+        c.setShadowColor(Color(0f, 0f, 1f, 1f))
+        c.shadowBlur = 1f
+        c.shadowOffsetX = 20f
+        c.lineWidth = 6f
+        c.beginPath()
+        c.moveTo(4f, 10f)
+        c.lineTo(14f, 10f)
+        c.strokeShadow()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Transparent, px[9, 10])
+        assertTrue(px[29, 10].blue > .6f, "the shadow, moved right: ${px[29, 10]}")
+    }
+
+    @Test
+    fun destinationInKeepsOnlyWhatItCovers() {
+        val c = Canvas2D.create(4, 4)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 4f)
+        c.globalCompositeOperation = "destination-in"
+        c.fillStyle = "rgba(0,0,0,0.5)"
+        c.fillRect(0f, 0f, 2f, 4f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red.copy(alpha = .5f), px[1, 2])
+        near(Color.Red, px[3, 2])
+    }
+
+    @Test
+    fun destinationOverPaintsBehind() {
+        val c = Canvas2D.create(4, 4)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 2f, 4f)
+        c.globalCompositeOperation = "destination-over"
+        c.fillStyle = "#0000ff"
+        c.fillRect(0f, 0f, 4f, 4f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 2])
+        near(Color.Blue, px[3, 2])
+    }
+
+    @Test
+    fun aLayerIsLaidDownAtItsAlpha() {
+        val c = Canvas2D.create(4, 4)
+        c.beginLayer(.5f)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.fillRect(0f, 0f, 4f, 4f)
+        c.endLayer()
+        val px = c.bitmap.toPixelMap()
+        // Two fills overlap in the layer, which is faded as one: still half, not three quarters.
+        near(Color.Red.copy(alpha = .5f), px[1, 1])
+        near(Color.Red.copy(alpha = .5f), px[1, 3])
     }
 }
