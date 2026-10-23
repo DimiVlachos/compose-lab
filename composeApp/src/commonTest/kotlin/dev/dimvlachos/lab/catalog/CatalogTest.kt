@@ -13,8 +13,8 @@ import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
-import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_keyhook
+import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_magnet_filter
 import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
