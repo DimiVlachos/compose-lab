@@ -43,6 +43,30 @@ class PencilCupStateTest {
     }
 
     @Test
+    fun theFannedLoupesHandleEndStandsClearOfTheCup() {
+        for ((w, h) in listOf(360f to 780f, 412f to 915f, 480f to 1000f)) {
+            val s = PencilCupState().apply { layout(w, h) }
+            val x = s.fanX(CupTools.Scan)
+            val y = s.fanY(CupTools.Scan)
+            val besideWall = x < s.cupX - s.topWidth / 2 - 4 * s.k
+            val aboveRim = y < s.rimY - s.rimDepth - 4 * s.k
+            assertTrue(besideWall || aboveRim, "at $w × $h the loupe's handle ends at ($x, $y)")
+        }
+    }
+
+    @Test
+    fun aLabelNeverHangsOffTheScreensLeftEdge() {
+        val s = PencilCupState().apply { layout(320f, 700f) }
+        for (i in 0 until CupTools.count) s.setLabelSize(i, 110f, 30f)
+        for (i in 0 until CupTools.count) {
+            assertTrue(
+                s.labelRight(i) - 110f >= 8f - 1e-3f,
+                "label $i starts at ${s.labelRight(i) - 110f}",
+            )
+        }
+    }
+
+    @Test
     fun startsClosedWithEveryToolInTheCup() {
         val s = cup()
         assertFalse(s.isOpen)

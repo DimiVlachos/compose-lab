@@ -12,6 +12,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
@@ -47,7 +48,7 @@ internal object CupTools {
     val specs =
         listOf(
             // The loupe stands up on the others, so its whole lens is above the rim.
-            CupToolSpec(108f, 40f, 134f, -1.28f, -4f, -.2f, 28f, restUp = 14f),
+            CupToolSpec(108f, 40f, 156f, -1.2f, -4f, -.2f, 28f, restUp = 14f),
             CupToolSpec(112f, 18f, 150f, -.86f, 5f, .28f, 16f, lean = .3f),
             CupToolSpec(116f, 17f, 166f, -.43f, 8f, .1f, 14f),
             CupToolSpec(128f, 11f, 196f, -.07f, 0f, .06f, 14f),
@@ -307,8 +308,11 @@ internal class PencilCupState {
 
     fun tipY(i: Int) = pivotY() - cos(CupTools.specs[i].fanAngle) * CupTools.specs[i].reach * k
 
-    /** The right edge of label [i], and its middle. */
-    fun labelRight(i: Int) = tipX(i) - CupTools.specs[i].gap * k
+    /**
+     * The right edge of label [i], and its middle. It hangs left of the tool's tip, but never
+     * closer than 8 dp to the screen's left edge.
+     */
+    fun labelRight(i: Int) = max(tipX(i) - CupTools.specs[i].gap * k, labelW[i] + LabelMargin)
 
     fun labelY(i: Int) = tipY(i)
 
@@ -783,6 +787,9 @@ internal class PencilCupState {
         const val Slop = 10f
 
         const val Gravity = 2600f
+
+        /** The least room between a label and the screen's left edge, in dp. */
+        const val LabelMargin = 8f
 
         /** The sheet: its slide, how high it stands, and how far below the screen it tucks. */
         const val SheetMs = 380f
