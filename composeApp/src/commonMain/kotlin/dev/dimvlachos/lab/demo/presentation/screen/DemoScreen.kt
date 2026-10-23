@@ -34,7 +34,6 @@ import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
-import dev.dimvlachos.lab.core.platform.LocalSoundCapturable
 import dev.dimvlachos.lab.core.platform.LockLandscape
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
@@ -89,7 +88,6 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
     val stage: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier.clipToBounds().takeOverOnTouch(playing && !record, stop)) {
             CompositionLocalProvider(
-                LocalSoundCapturable provides record,
                 LocalDemoOverlay provides overlay,
             ) {
                 key(runId) { demo.content(state) }
