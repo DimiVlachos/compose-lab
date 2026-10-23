@@ -5,6 +5,7 @@ package dev.dimvlachos.lab.catalog
 import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.FakeController
 import dev.dimvlachos.lab.resources.Res
+import dev.dimvlachos.lab.resources.demo_birdcage
 import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
@@ -12,6 +13,7 @@ import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_keyhook
 import dev.dimvlachos.lab.resources.demo_magnet_filter
 import dev.dimvlachos.lab.resources.demo_mailbox
@@ -20,12 +22,14 @@ import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
 import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
+import dev.dimvlachos.lab.resources.demo_pencilcup
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
 import dev.dimvlachos.lab.resources.demo_stickers
 import dev.dimvlachos.lab.resources.demo_typewriter
+import dev.dimvlachos.lab.resources.demo_zipper
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -60,6 +64,10 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "pencilcup.fab",
+                "locket.avatar",
+                "birdcage.mute",
+                "zipper.scrollbar",
                 "keyhook.signout",
             ),
             Catalog.demos.map { it.id },
@@ -85,6 +93,10 @@ class CatalogTest {
                 Res.string.demo_stickers,
                 Res.string.demo_mailbox,
                 Res.string.demo_padlock,
+                Res.string.demo_pencilcup,
+                Res.string.demo_locket,
+                Res.string.demo_birdcage,
+                Res.string.demo_zipper,
                 Res.string.demo_keyhook,
             ),
             Catalog.demos.map { it.title },
@@ -160,6 +172,10 @@ class CatalogTest {
                 "stickers.rating",
                 "mailbox.badge",
                 "padlock.password",
+                "pencilcup.fab",
+                "locket.avatar",
+                "birdcage.mute",
+                "zipper.scrollbar",
                 "keyhook.signout",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },

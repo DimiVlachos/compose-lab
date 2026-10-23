@@ -41,6 +41,10 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked rides in a pocket on its new sheet while the rest clatter back in |
+| [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
+| [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
+| [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper) | `zipper` | `zipper.scrollbar` | A long list's fast scroller as a brass zipper sewn down its edge: the list opens behind the pull as you go down, and a cotton tag on the pull shows the letter |
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -67,6 +71,10 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup)
+- [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
+- [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
+- [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper)
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -435,7 +443,7 @@ A chat composer that is a typewriter, typed on its own keys. Round, chrome-rimme
 - **Every letter is struck, not set.** Each letter is drawn a little off its place, a little turned and a little faint, seeded by its line, column and character, so the sheet, a recomposition and the slip in the thread all show it the same. The face is Special Elite, and each letter is drawn once into a small picture of its own and copied from there, so a frame of the machine shapes no text.
 - **A carriage on springs, in time with its sound.** The carriage is a spring stepped at a fixed 120 Hz: a stiff one with a little overshoot as the escapement steps it on, and, sent home, a loose one that aims past the stop and bangs into it. The return's sound is a zip of clicks and a bang 0.41 s in, so the lever is held over for as long as it takes for the carriage, let go, to bang home at that moment, however far it has to travel.
 - **Pull to send.** The pull is a rubber band that stiffens as the paper comes out, and a blank sheet barely moves. Let go past 62 units, or flung faster than 700 units a second once it has started to come out, it is sent; otherwise it springs back. Either way the paper goes on from the speed it was let go at: short, a critically damped spring settles it back into the roller without a bounce; sent, it zips on out speeding up, and its flight into the thread sets off at the speed it came free at, drawn into its place by another such spring. The ratchet clicks each 7 units the paper moves, as a line feeds or the sheet is pulled.
-- **Touch for everyone, sound in the lab.** A light tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the ratchet ticks under a pulling finger. The sounds, three strikes chosen by key, the bell, the carriage return, the tape, the ratchet and the sheet coming free, are the lab's own synthesized clips, played through its internal `SoundPlayer`, so they come with an internal overload of the composer, not its public one. Nothing plays while the phone is on silent, and neither sound nor haptics while the screen is in the background.
+- **Touch for everyone, sound in the lab.** A light tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the ratchet ticks under a pulling finger. The sounds, three strikes chosen by key, the bell, the carriage return, the tape, the ratchet and the sheet coming free, are the lab's own synthesized clips, played through its internal `SoundPlayer`, so they come with an internal overload of the composer, not its public one. Neither sound nor haptics play while the screen is in the background.
 - **For a screen reader.** Every key is a button named for what it types ("q", or "Q" after Shift, "Space", "Delete", "New line"), so the machine can be typed key by key; the keys are disabled while the composer is. The machine is "Typewriter", with what is on the sheet as its state and a Send action, so nobody needs the pull; Send and the lever's New line are not offered while the composer is disabled. Once the typing pauses, it hears what was typed or deleted, or that the sheet is full, never the whole sheet again, and the same words twice in a row are heard twice. Each slip is read as its text, and new messages are announced politely.
 
 Nothing recomposes as the machine moves: the carriage, the paper, the bars, the ribbon and the lever are read only while drawing, the paper's feed only in layout, and each letter's strike is worked out once, as it is laid out. A change of the hint's wording, the keys' page or Shift recomposes only those. The frame loop sleeps once the machine is still, and a key's dip is its own small animation. What is typed is saved, with Shift and the page of figures, so it outlives the screen being made again, as when a hardware keyboard is plugged in or the phone turns, and comes back without a sound.
@@ -703,6 +711,87 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Pencil cup FAB (`core/presentation/components/pencilcup/`)
+
+A notes app whose floating + button is a little cobalt-glazed pencil cup in the corner of the screen, under a warm lamp. Tap it and the four tools inside leap out one after another and fan up and to the left, each with its label: a pencil for a new note, a highlighter for a checklist, scissors to clip from the web, a loupe to scan a page. Pick one and it flies up and slips into a pocket at the top corner of a new sheet, riding there half out, while the others fall back into the cup, bounce and rattle; type a title (or a first item, or a link) and tap Done, and it joins the list under what you typed as the tool lifts out of its pocket and arcs back into the cup while the sheet slides away under it. Done with nothing typed cancels. While the keyboard is up, the sheet rides on it, frame by frame, with the tool in its pocket. Back, Escape or a tap outside the sheet cancels it: the tool goes home and nothing is added. Or in one move: press the cup, slide up onto a tool and let go.
+
+- **Drawn as the prototype draws it.** The cup and tools are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the dark inside and back rim first, then the tools, each a few paths in its own frame, then the glazed front wall with its drips, speckles and slip-painted plus, so whatever is below the rim is hidden. The tool on the sheet draws on its own layer above it, clipped at the sheet's top edge so its lower half is tucked behind it, with a soft shade where it goes in.
+- **Springs and gravity.** Fanning out is springs toward targets on an arc, staggered 45 ms apart, with the angle lagging so each tool rises before it leans. The cup also slides the sheet on its own clock, so the tool in its pocket rides with it, and on Done throws the tool on a parabola to just above the cup. Dropping back is gravity: each tool bounces off the bottom of the cup, an underdamped angle spring rattles it and the cup rocks; the landing speed sets the clink's volume. Fixed 1/240 s substeps; the frame loop sleeps once everything is at rest.
+- **The gesture.** One pointer handler on the cup: a tap toggles, a drag opens the fan and lights the tool nearest the finger, and the release point picks it, so even a fast swipe with few samples picks the right tool.
+- **Feel and sound.** A tick as the fan opens and as a drag lights each tool, a confirm on a pick; synthesized lift, pick and clink sounds, each tool's clink a little higher on the glaze.
+- **Screen readers and keys.** The cup is a Create new button that expands and collapses; the labels are buttons (Up and Down move between them, Escape and Back close the fan or the sheet), and what happens is announced in a polite live region.
+- **Reduced motion.** The tools jump straight to the fan and back, with no clatter.
+
+The demo, `pencilcup.fab`, is Fieldbook, an invented notes app. Its script taps the cup open and shut, presses it and slides onto the pencil to make a new note, types a title, taps Done, and puts the list back as it began.
+
+```kotlin
+val cup = remember { PencilCupState() }
+PencilCupFab(cup, labels, cupLabel = "Create new", colors, dark, sounds) {
+    // Slide the sheet by cup.sheetSlide (0 up, 1.05 below the screen), 64 % of the screen high.
+    MySheet(slide = { cup.sheetSlide }, tool = cup.sheetTool, onDone = { cup.done() })
+}
+```
+
+## Locket avatar (`core/presentation/components/locket/`)
+
+An edit-profile screen where the profile photo lives in a small gold locket hanging on a fine chain under a warm lamp. Outside, only an engraved script initial shows. Tap the catch and the lid springs open on its hinge, swings a little past and settles, showing the photo behind its glass and the inside of the lid engraved with the owner's initials and a date. Drag a photo up from Recent and, as you let go over the locket, it shrinks and trims itself from a rounded square to the oval, with a sweep of light across the glass. Tap the locket, or push the lid across with a finger, and it snaps shut with a glint, and the chain swings. Grab the closed locket to swing it on its chain.
+
+- **Drawn as the prototype draws it.** The locket is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: three ellipses for the rim, the cup and the bezel, and a lid drawn under `scale(cos angle, 1)` about its hinge, so it reads as a 3D turn, with its mirrored inside face past 90°. The four photos are drawn in code from fixed seeds, once.
+- **Springs and a pendulum.** The hinge is an underdamped spring opening and a stiff one closing, its overshoot stopped short of the screen's edge; the chain is a damped pendulum whose swing is walled in so the whole locket, lid included, stays on screen. The trim is a superellipse whose exponent goes from 7 to 2. The frame loop sleeps between the catch's glints.
+- **A drop that lands.** Only where a photo is let go counts, and the point is turned into the swinging locket's frame, so a quick swipe lands. A photo dropped on the shut locket opens it on the way in; let go anywhere else and it slides back to its slot.
+- **Feel and sound.** A tick as it opens and as a photo lands, a confirm on the snap, and synthesized sounds for the catch, the snap, the chime of the glass, the photo lifting and sliding home, and the chain.
+- **Screen readers and keys.** The locket is a button, Open or Close locket, with expand and collapse; each Recent photo is a button "Use photo: …", and Enter or Space works them. The photo's name is a polite live region, and the round chip under the locket shows what others see. Escape closes the locket.
+- **Reduced motion.** The lid opens and shuts at once, and the chain hangs still.
+
+The demo, `locket.avatar`, edits the profile of a gardener at an invented garden shop. Its script taps the catch, drags a beach photo up into the open locket, taps it shut, and puts the first photo back.
+
+```kotlin
+val locket = remember { LocketState() }
+val photos = remember { locketPhotos() }
+Locket(locket, photos, labels, muted = muted, accent = accent, sounds = sounds)
+```
+
+## Birdcage (`core/presentation/components/birdcage/`)
+
+A group chat's notification switch as a little brass birdcage with a canary inside, hanging in the window light. Each new message makes the canary hop on its perch and sing, with notes rising from its beak. To mute the chat, take the rolled hem of the linen cover on top of the cage and pull it down, the way you'd put a bird to bed: let go past halfway, or with a flick, and it falls like weighted linen, faster as it goes, lands softly on the base and its hem ripples once; let go early and it is drawn back up, easing into the top, where the linen gathers for a moment at the crown. Under the cover the canary tucks its head into its shoulder and sleeps, and new messages only stir the cloth while a grey count collects on the Latest row. Push the hem up and it blinks awake and lifts its head smoothly out of its shoulder. A tap on the cage toggles it too.
+
+- **Drawn as the prototype draws it.** The cage is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: dome ribs and rings stroked three times each (a dark edge, the brass and a highlight toward the window), the back half dimmed behind the bird; the cover is one path that follows the dome down to its scalloped hem, filled with a linen weave baked once from a fixed seed, with pleats drawn on their own layer and faded in at their tops, and a rolled hem stroked as a tube.
+- **Weighted cloth and a fling.** The hem follows the finger 1:1 past a 6 dp slop, with a little give past either end. On release its speed over the last 100 ms is projected forward to pick down or up, and the cover carries that speed on: gravity speeds it up going down, a steady pull draws it up, and near the end it brakes at the constant rate that stops it exactly there (a = v² / 2d), so it never passes its end and never stops dead. The braking sets off a hem ripple on landing and a gather of the crown's scallops at the top, and the hem swings as it slows. The canary's sleep follows how far down the cover is, so it tucks in only once it's dark.
+- **Feel and sound.** A confirm where the cover settles and mutes, a tick as it lifts; synthesized chirps, a cloth settle, a lift, a rustle for a muted message and a swish as the hem is taken.
+- **Screen readers.** The cage is a switch labelled Mute this chat that takes focus and Space or Enter; the state under it is a polite live region, so the drawing is never the only cue.
+- **Reduced motion.** The cover goes straight to where it is aimed and the hem doesn't sway.
+
+The demo, `birdcage.mute`, is the group info screen of an invented running club in Austin. Its script delivers a message (the canary sings), pulls the cover down, delivers another (it is silenced and counted), pushes the cover back up and delivers a third, then puts the first message back.
+
+```kotlin
+val cage = remember { BirdcageState() }
+LaunchedEffect(messages) { messages.collect { cage.deliver() } }
+Birdcage(cage, label = "Mute this chat", sounds = sounds)
+// cage.muted says whether the chat is muted.
+```
+
+## Zipper scrollbar (`core/presentation/components/zipper/`)
+
+A contacts list whose fast-scroll thumb is the brass pull of a zipper sewn down its right edge. At the top the list is zipped shut; as you go down it opens behind the pull, the teeth prised apart over a red flannel lining, so you can see how far you've come. Put a finger on the pull and its tab stands up off the tape while a cotton tag swings out with the letter you're on; drag it and the list races along with a rasp of teeth, the tag swaying with the speed and changing letter at each section. Let go and the tab drops flat with a clack and a small bounce. A tap on the tape glides the pull there; scrolling the list itself moves the pull without the tag, and a hard stop of a fling makes the tab hop.
+
+- **Drawn as the prototype draws it.** The zipper is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, over the list: the tape is one shape, closed below the pull and two prised-open halves above it, woven, stitched and edged in one pass; the teeth are plain rects; brass is one gradient lit from the top left; the warm glow round the pull flattens near the top so it never meets the list's edge.
+- **A real lazy list.** The 88 contacts are a `LazyColumn`; the zipper reads its place from the `LazyListState` (the first visible item and its offset over the list's height, each kind of row measured as it is laid out) and drives it with `requestScrollToItem`, so a drag lands in the same frame.
+- **Springs.** The tab's flip, the tag and its sway are the prototype's springs in fixed 1/240 s substeps; the frame loop sleeps once they are at rest.
+- **Feel and sound.** A confirm where the tab clacks down, a tick as it lifts and at each new letter while held; synthesized clack, tick, teeth rasp and lift.
+- **Screen readers and keys.** The strip is a range named Fast scroll by letter, with the letter as its state, Next and Previous letter actions, and arrow, Page, Home and End keys.
+- **Reduced motion.** The tab and tag snap, and glides jump.
+
+The demo, `zipper.scrollbar`, is an invented address book. Its script takes the pull, drags it to the middle, near the end and back up a third, lets go, flicks the list, and glides home.
+
+```kotlin
+val zipper = remember { ZipperState() }
+val track = remember(list) { ZipperTrack(list, kinds, estimates, sectionLetters) }
+Box {
+    LazyColumn(state = list) { /* rows */ }
+    Zipper(zipper, track, "Fast scroll by letter", "Next letter", "Previous letter", sounds, Modifier.fillMaxSize())
+}
+```
+
 ## Key hook sign-out (`core/presentation/components/keyhook/`)
 
 A family streaming app's account switcher as the key rack by the front door. Everyone's keys hang on their own brass hook on a walnut board under a name plate, and whoever is signed in has their set on a smaller brass hook under the account card. Pick that set up and drop it anywhere on the rack: it flies to its owner's hook, catches with a clack and swings, and the app asks who's home. Take someone else's set off its hook and carry it up toward the card: the keys stay right under your finger and swing as you move, and let go above the rack, the ring rises past the card hook's tip and drops into its curl, and that person's shows load below. Take a set while someone else's keys are on the card and the old set flies home to its own hook. A tap toggles a set without dragging.
@@ -769,6 +858,7 @@ The lab app around the demos:
 - **Search from the bar.** The search button turns the title into a field. It finds demos by title, description, id or tag, including the versions inside a folder, and back closes it.
 - **Tags.** A row of chips under home's bar filters the catalog by what each demo is about: Gesture, Physics, Motion, Canvas, 3D, Camera, Text, Navigation.
 - **A grid of cards.** Each card has an icon, the title and a one-line description. The grid adds columns as the screen widens.
+- **Sound off until you want it.** The app starts silent. A speaker in home's bar turns sound on for the whole app, and the choice is remembered across launches. Each demo's bar has its own speaker, which starts from the app's and changes sound on that screen only. Recordings always keep their sound.
 - **System, Light or Dark.** A button in home's bar cycles the theme, and the choice is remembered across launches. The system bars and the window follow it.
 - **Portrait and landscape, light and dark.** Every demo works both ways up and in both themes. A demo's surroundings follow the theme, while its art (the paper, the lamp, the book's pages, the photos) looks the same in both.
 
@@ -856,6 +946,11 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+The pencil cup holds four tools; its fan is laid out for a phone held upright, from the bottom-right corner, and is not mirrored for right-to-left. The cup draws over the screen it fills, so place it over the list it belongs to.
+
+The locket holds one of the four Recent photos it draws itself; a real app would pass its own pictures and crop the stored image to the oval. It is drawn in a 300 × 380 box scaled to its space, no more than 1.45 times, with the Recent strip never below its dp size, and is not mirrored for right-to-left. Which photo is in the locket is not saved.
+
+The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 times, standing on the bottom of it, and is not mirrored for right-to-left. The canary breathes and the cloth ripples all the time, so its frame loop runs while the screen is in front. How long a chat stays muted is the app's to decide.
 
 The key rack's hooks share one board, which suits about four people, each with two or three things on their ring: keys, a fob, a leather tag or a bobber. It fills its space, with the account card's 62 dp at its top, and its keys grow with the height it is given. Who is signed in is not saved, and the rack is not mirrored for right-to-left.
 
@@ -902,6 +997,9 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
+
+The locket's engraving is in [Great Vibes](https://github.com/googlefonts/great-vibes), Copyright 2015 The Great Vibes Pro Project Authors, and [Cormorant Garamond](https://github.com/CatharsisFonts/Cormorant), Copyright 2015 the Cormorant Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Cormorant Garamond Italic is a static instance, at weight 500, of the variable font).
+The zipper's tag letter is set in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; a static instance, at weight 700, of the variable font).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 

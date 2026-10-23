@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A zipper's two halves parted above its pull, the pull's tab hanging below with its hole. -->
+  <path
+      android:strokeColor="#FF000000"
+      android:strokeWidth="1.6"
+      android:strokeLineCap="round"
+      android:fillColor="#00000000"
+      android:pathData="M7.5,2.5L10,7M16.5,2.5L14,7" />
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M8.5,7h7l-1,4.5h-5zM10.2,11.5h3.6l0.6,8.5a1,1 0 0,1 -1,1h-2.8a1,1 0 0,1 -1,-1zM12,17.2a0.9,0.9 0 1,0 0.01,0z" />
+</vector>
