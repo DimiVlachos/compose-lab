@@ -203,6 +203,13 @@ internal fun PencilCupDemo(
         if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
     }
 
+    // Back and Escape cancel the sheet: the tool goes home, and only Done makes the item.
+    fun cancelSheet() {
+        if (cup.done() < 0) return
+        announcement = closed
+        if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
+    }
+
     // A sheet opened from the keyboard hands it Done, as the prototype's does, but not in the clip.
     LaunchedEffect(cup) {
         snapshotFlow { cup.sheetOpen }
@@ -288,7 +295,7 @@ internal fun PencilCupDemo(
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = cup.sheetOpen,
-        onBackCompleted = { finish() },
+        onBackCompleted = { cancelSheet() },
     )
 
     val touch = LabTheme.colors.touch
@@ -299,7 +306,7 @@ internal fun PencilCupDemo(
             .onGloballyPositioned { places.root = it }
             .onPreviewKeyEvent {
                 if (it.type == KeyEventType.KeyDown && it.key == Key.Escape && cup.sheetOpen) {
-                    finish()
+                    cancelSheet()
                     true
                 } else false
             },

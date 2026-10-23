@@ -7,13 +7,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -118,6 +123,48 @@ class PencilCupDemoUiTest {
         assertTrue(step < 4.dp, "the first card jumped ${step} on the first frame")
         mainClock.advanceTimeBy(800)
         assertTrue(first() - before > 40.dp, "the first card made room for the new note")
+    }
+
+    private fun ComposeUiTest.openListSheet(cup: PencilCupState) {
+        onNodeWithTag("pencil-cup").performTouchInput {
+            down(center)
+            up()
+        }
+        advanceUntil("the labels") { cup.labelShown(CupTools.List) }
+        mainClock.advanceTimeBy(300)
+        onNodeWithTag("pencil-label-${CupTools.List}").performTouchInput {
+            down(center)
+            up()
+        }
+        mainClock.advanceTimeBy(600)
+        assertTrue(cup.sheetOpen)
+    }
+
+    @Test
+    fun aTapOutsideTheSheetClosesItWithoutANewNote() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        openListSheet(cup)
+        onRoot().performTouchInput {
+            down(Offset(center.x, 40f))
+            up()
+        }
+        assertFalse(cup.sheetOpen)
+        advanceUntil("the checklist tool back in the cup") { cup.settled }
+        onNodeWithText("Fieldbook · 6 notes").assertExists()
+        onNodeWithText("Checklist").assertDoesNotExist()
+    }
+
+    @Test
+    fun escapeClosesTheSheetWithoutANewNote() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        openListSheet(cup)
+        onNodeWithTag("pencil-sheet").performKeyInput { pressKey(Key.Escape) }
+        assertFalse(cup.sheetOpen)
+        mainClock.advanceTimeBy(800)
+        onNodeWithText("Fieldbook · 6 notes").assertExists()
+        onNodeWithText("Checklist").assertDoesNotExist()
     }
 
     @Test

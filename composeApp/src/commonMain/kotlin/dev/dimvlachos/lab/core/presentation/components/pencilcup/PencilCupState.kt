@@ -536,8 +536,16 @@ internal class PencilCupState {
         wake++
     }
 
-    /** A tap on the dimmed page: a tool or label under it is picked, otherwise the fan closes. */
+    /**
+     * A tap on the dimmed page: with a sheet up, it closes the sheet as [done] does but makes
+     * nothing, so the host adds no item; otherwise a tool or label under it is picked, or the fan
+     * closes.
+     */
     fun tapScrim(x: Float, y: Float) {
+        if (sheetOpen) {
+            done()
+            return
+        }
         val i = itemAt(x, y, .8f)
         if (i >= 0) pick(i) else close()
     }
