@@ -54,7 +54,11 @@ internal enum class Sound(val file: String) {
     BirdcageSettle("birdcage_settle"),
     BirdcageLift("birdcage_lift"),
     BirdcageRustle("birdcage_rustle"),
-    BirdcageSwish("birdcage_swish");
+    BirdcageSwish("birdcage_swish"),
+    ZipClack("zip_clack"),
+    ZipTick("zip_tick"),
+    ZipTeeth("zip_teeth"),
+    ZipLift("zip_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

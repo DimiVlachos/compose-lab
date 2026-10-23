@@ -26,6 +26,7 @@ import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
 import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
+import dev.dimvlachos.lab.zipperdemo.ZipperDemos
 
 internal object Catalog {
     // The finished demo of each component, each one a clip; the fogged mirror in two versions.
@@ -55,7 +56,8 @@ internal object Catalog {
                     PadlockDemos.all +
                     PencilCupDemos.all +
                     LocketDemos.all +
-                    BirdcageDemos.all)
+                    BirdcageDemos.all +
+                    ZipperDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }

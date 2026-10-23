@@ -44,6 +44,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked rides in a pocket on its new sheet while the rest clatter back in |
 | [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
 | [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
+| [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper) | `zipper` | `zipper.scrollbar` | A long list's fast scroller as a brass zipper sewn down its edge: the list opens behind the pull as you go down, and a cotton tag on the pull shows the letter |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -72,6 +73,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup)
 - [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
 - [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
+- [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -766,6 +768,28 @@ Birdcage(cage, label = "Mute this chat", sounds = sounds)
 // cage.muted says whether the chat is muted.
 ```
 
+## Zipper scrollbar (`core/presentation/components/zipper/`)
+
+A contacts list whose fast-scroll thumb is the brass pull of a zipper sewn down its right edge. At the top the list is zipped shut; as you go down it opens behind the pull, the teeth prised apart over a red flannel lining, so you can see how far you've come. Put a finger on the pull and its tab stands up off the tape while a cotton tag swings out with the letter you're on; drag it and the list races along with a rasp of teeth, the tag swaying with the speed and changing letter at each section. Let go and the tab drops flat with a clack and a small bounce. A tap on the tape glides the pull there; scrolling the list itself moves the pull without the tag, and a hard stop of a fling makes the tab hop.
+
+- **Drawn as the prototype draws it.** The zipper is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, over the list: the tape is one shape, closed below the pull and two prised-open halves above it, woven, stitched and edged in one pass; the teeth are plain rects; brass is one gradient lit from the top left; the warm glow round the pull flattens near the top so it never meets the list's edge.
+- **A real lazy list.** The 88 contacts are a `LazyColumn`; the zipper reads its place from the `LazyListState` (the first visible item and its offset over the list's height, each kind of row measured as it is laid out) and drives it with `requestScrollToItem`, so a drag lands in the same frame.
+- **Springs.** The tab's flip, the tag and its sway are the prototype's springs in fixed 1/240 s substeps; the frame loop sleeps once they are at rest.
+- **Feel and sound.** A confirm where the tab clacks down, a tick as it lifts and at each new letter while held; synthesized clack, tick, teeth rasp and lift.
+- **Screen readers and keys.** The strip is a range named Fast scroll by letter, with the letter as its state, Next and Previous letter actions, and arrow, Page, Home and End keys.
+- **Reduced motion.** The tab and tag snap, and glides jump.
+
+The demo, `zipper.scrollbar`, is an invented address book. Its script takes the pull, drags it to the middle, near the end and back up a third, lets go, flicks the list, and glides home.
+
+```kotlin
+val zipper = remember { ZipperState() }
+val track = remember(list) { ZipperTrack(list, kinds, estimates, sectionLetters) }
+Box {
+    LazyColumn(state = list) { /* rows */ }
+    Zipper(zipper, track, "Fast scroll by letter", "Next letter", "Previous letter", sounds, Modifier.fillMaxSize())
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -953,6 +977,7 @@ The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instr
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 
 The locket's engraving is in [Great Vibes](https://github.com/googlefonts/great-vibes), Copyright 2015 The Great Vibes Pro Project Authors, and [Cormorant Garamond](https://github.com/CatharsisFonts/Cormorant), Copyright 2015 the Cormorant Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Cormorant Garamond Italic is a static instance, at weight 500, of the variable font).
+The zipper's tag letter is set in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; a static instance, at weight 700, of the variable font).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 

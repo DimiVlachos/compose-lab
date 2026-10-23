@@ -780,6 +780,52 @@ def birdcage_clips(rng, rate):
             for name, (c, peak, cut, wet) in peaks.items()}
 
 
+# ---------- Zipper ----------
+# A fabric zipper heard close: the brass is small and wrapped in tape, so every sound is a muffled
+# tick with a cloth body under it, never a bright click.
+
+
+def zip_clack(rng, rate):
+    """The pull's tab falling flat on the tape: a soft knock of brass on cloth."""
+    n = seconds(0.07, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 420, 2.2, 0.012, attack=0.006),
+        scale(soft_mode(rng, n, rate, 1150, 2.6, 0.008, attack=0.006), 0.6),
+        scale(soft_mode(rng, n, rate, 2300, 18, 0.035, attack=0.006), 0.4),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, SOFT_PEAK, 0.006, 0.03)
+
+
+def zip_tick(rng, rate):
+    """The tab bouncing on the tape, or the tag passing a letter: a tiny, dull tick."""
+    n = seconds(0.04, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 1500, 2.8, 0.006, attack=0.007),
+        scale(soft_mode(rng, n, rate, 2500, 16, 0.016, attack=0.007), 0.3),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.1), rate, 0.36, 0.007, 0.02)
+
+
+def zip_teeth(rng, rate):
+    """Teeth passing the pull: a little run of soft grains over a breath of cloth."""
+    n = seconds(0.05, rate)
+    track = [0.0] * n
+    for i in range(4):
+        grain = soft_mode(rng, seconds(0.02, rate), rate, 1500 + rng.random() * 800, 2.2, 0.004, attack=0.003)
+        place(track, scale(grain, 1.0 - i * 0.12), seconds(0.0015 + i * 0.006 + rng.random() * 0.0015, rate))
+    cloth = mul(bandpass(noise(n, rng), 900, 1.2, rate), soft_env(n, rate, 0.006, 0.014))
+    track = mix(track, scale(cloth, 0.5))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.1), rate, 0.36, 0.003, 0.02)
+
+
+def zip_lift(rng, rate):
+    """The pull taken: its tab lifting off the tape, a scuff of cloth and a light tick of brass."""
+    n = seconds(0.06, rate)
+    scuff = mul(bandpass(noise(n, rng), 1200, 1.3, rate), soft_env(n, rate, 0.01, 0.022))
+    track = mix(scuff, scale(soft_mode(rng, n, rate, 2000, 18, 0.025, attack=0.004), 0.3))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, 0.36, 0.004, 0.025)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -841,6 +887,11 @@ def main():
     write("locket_chain", locket_chain(locket, fast), fast)
     for name, clip in birdcage_clips(random.Random(1022), fast).items():
         write(name, clip, fast)
+    zipper = random.Random(1022)
+    write("zip_clack", zip_clack(zipper, fast), fast)
+    write("zip_tick", zip_tick(zipper, fast), fast)
+    write("zip_teeth", zip_teeth(zipper, fast), fast)
+    write("zip_lift", zip_lift(zipper, fast), fast)
 
 
 if __name__ == "__main__":
