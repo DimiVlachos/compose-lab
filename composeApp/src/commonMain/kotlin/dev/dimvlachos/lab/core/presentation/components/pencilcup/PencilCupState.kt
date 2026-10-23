@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.pencilcup
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -162,8 +163,34 @@ internal class PencilCupState {
             )
         }
 
-    /** The sheet's top edge, in dp from the top of the screen. */
-    fun sheetTop() = height * (1 - SheetHeight * (1 - sheetSlide))
+    /**
+     * How far the keyboard lifts the sheet, in dp: its foot rides on the keyboard's top edge, frame
+     * by frame as the keyboard moves, but never so far that the tool in its pocket would leave the
+     * top of the screen. Set through [keyboardOverlap].
+     */
+    var sheetLift by mutableFloatStateOf(0f)
+        private set
+
+    /**
+     * The keyboard covers the screen's foot by [dp]: the sheet rides up on it (see [sheetLift]),
+     * and the tool in its pocket with it.
+     */
+    fun keyboardOverlap(dp: Float) {
+        val tool = CupTools.specs[sheetTool]
+        val overhang = cos(PocketA) * tool.length * k * (1 - PocketIn) + 8 * k
+        val lift = dp.coerceIn(0f, max(0f, height * (1 - SheetHeight) - overhang))
+        if (lift == sheetLift) return
+        // A tool in the pocket moves with the sheet in this same frame; a frame loop waking from
+        // rest steps nothing on its first frame, so waiting for it would leave the tool behind.
+        val by = lift - sheetLift
+        for (t in tools) if (t.mode == ToolMode.Pocket) t.y -= by
+        sheetLift = lift
+        frame++
+        wake++
+    }
+
+    /** The sheet's top edge, in dp from the top of the screen, lifted by the keyboard. */
+    fun sheetTop() = height * (1 - SheetHeight * (1 - sheetSlide)) - sheetLift
 
     private fun turnSheet(open: Boolean) {
         sheetFrom = sheetSlide
@@ -740,7 +767,7 @@ internal class PencilCupState {
                     t.depth =
                         lerp(-6 * k, CupTools.specs[i].length * k * PocketIn, 1 - iq * iq * iq)
                     t.tuck = q > 0f
-                    val top = if (q > 0f) sheetTop() else height * (1 - SheetHeight)
+                    val top = if (q > 0f) sheetTop() else height * (1 - SheetHeight) - sheetLift
                     val e = ease(p)
                     t.x = lerp(t.fromX, pocketX(t.depth), e)
                     t.y = lerp(t.fromY, pocketY(t.depth, top), e) - sin(p * PI.toFloat()) * 30 * k

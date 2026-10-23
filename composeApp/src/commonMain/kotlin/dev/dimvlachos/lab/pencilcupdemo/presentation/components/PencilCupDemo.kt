@@ -20,19 +20,29 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +50,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,11 +65,13 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -74,8 +87,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -87,6 +104,9 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,7 +117,6 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.demo.DemoState
-import dev.dimvlachos.lab.core.demo.demoInsets
 import dev.dimvlachos.lab.core.platform.rememberReducedMotion
 import dev.dimvlachos.lab.core.platform.rememberSoundPlayer
 import dev.dimvlachos.lab.core.presentation.canvas2d.setBlur
@@ -123,10 +142,8 @@ import dev.dimvlachos.lab.resources.pencilcup_create
 import dev.dimvlachos.lab.resources.pencilcup_done
 import dev.dimvlachos.lab.resources.pencilcup_just_now
 import dev.dimvlachos.lab.resources.pencilcup_list
-import dev.dimvlachos.lab.resources.pencilcup_made_clip
-import dev.dimvlachos.lab.resources.pencilcup_made_list
+import dev.dimvlachos.lab.resources.pencilcup_made_clip_detail
 import dev.dimvlachos.lab.resources.pencilcup_made_list_detail
-import dev.dimvlachos.lab.resources.pencilcup_made_note
 import dev.dimvlachos.lab.resources.pencilcup_made_scan
 import dev.dimvlachos.lab.resources.pencilcup_made_scan_detail
 import dev.dimvlachos.lab.resources.pencilcup_note
@@ -148,7 +165,7 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The prototype's notes app, Fieldbook: a list of notes whose floating + button is a cobalt pencil
  * cup in the corner. Its tools fan out as the actions; the one picked opens its sheet, and Done
- * adds the new item to the top of the list.
+ * adds what was typed there to the top of the list, or cancels when nothing was.
  */
 @Composable
 internal fun PencilCupDemo(
@@ -179,23 +196,48 @@ internal fun PencilCupDemo(
             stringResource(Res.string.pencilcup_note),
         )
     val justNow = stringResource(Res.string.pencilcup_just_now)
-    val made =
+    val scanned = stringResource(Res.string.pencilcup_made_scan)
+    // Under each new item's title: the scan's page, and the others' kind, made just now.
+    val details =
         listOf(
-            stringResource(Res.string.pencilcup_made_scan) to
-                stringResource(Res.string.pencilcup_made_scan_detail),
-            stringResource(Res.string.pencilcup_made_clip) to justNow,
-            stringResource(Res.string.pencilcup_made_list) to
-                stringResource(Res.string.pencilcup_made_list_detail),
-            stringResource(Res.string.pencilcup_made_note) to justNow,
+            stringResource(Res.string.pencilcup_made_scan_detail),
+            stringResource(Res.string.pencilcup_made_clip_detail),
+            stringResource(Res.string.pencilcup_made_list_detail),
+            justNow,
         )
+    // What is typed on the sheet: the note's title, the checklist's first item or the link.
+    var draft by remember { mutableStateOf("") }
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val opened = stringResource(Res.string.pencilcup_opened)
     val closed = stringResource(Res.string.pencilcup_closed)
     val added = stringResource(Res.string.pencilcup_added, "%s")
 
+    // The keyboard goes with the sheet, so it slides away with it instead of staying up.
+    fun dropKeyboard() {
+        focus.clearFocus(force = true)
+        keyboard?.hide()
+    }
+
+    // Back and Escape cancel the sheet: the tool goes home, and only Done makes the item.
+    fun cancelSheet() {
+        dropKeyboard()
+        if (cup.done() < 0) return
+        announcement = closed
+        if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
+    }
+
+    // Done makes what was typed, as the item's title; with nothing typed it cancels. The scan has
+    // nothing to type, so its Done always makes the page.
     fun finish() {
+        if (!cup.sheetOpen) return
+        val tool = cup.sheetTool
+        val title = if (tool == CupTools.Scan) scanned else draft.trim()
+        if (title.isEmpty()) return cancelSheet()
+        dropKeyboard()
         val i = cup.done()
         if (i < 0) return
-        val note = FieldNote(nextId++, made[i].first, made[i].second)
+        val note = FieldNote(nextId++, title, details[i])
         notes.add(0, note)
         fresh = note.id
         announcement = added.replace("%s", note.title)
@@ -203,17 +245,12 @@ internal fun PencilCupDemo(
         if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
     }
 
-    // Back and Escape cancel the sheet: the tool goes home, and only Done makes the item.
-    fun cancelSheet() {
-        if (cup.done() < 0) return
-        announcement = closed
-        if (input.inputMode == InputMode.Keyboard) runCatching { cupFocus.requestFocus() }
-    }
-
-    // A sheet opened from the keyboard hands it Done, as the prototype's does, but not in the clip.
+    // A sheet opens blank. One opened from the keyboard hands it Done, as the prototype's does, but
+    // not in the clip.
     LaunchedEffect(cup) {
         snapshotFlow { cup.sheetOpen }
             .collect { open ->
+                if (open) draft = ""
                 if (open && !state.replay && input.inputMode == InputMode.Keyboard) {
                     delay(50)
                     runCatching { doneFocus.requestFocus() }
@@ -259,6 +296,13 @@ internal fun PencilCupDemo(
                         delay(350)
                         finger.lift { cup.up(it.x, it.y) }
                     }
+                    PencilCupDemos.TypeTitle -> {
+                        // A letter at a time, at a typing pace, as the prototype's tour types.
+                        for (ch in PencilCupDemos.Typed) {
+                            draft += ch
+                            delay(PencilCupDemos.keyMs(ch))
+                        }
+                    }
                     PencilCupDemos.Done -> {
                         val at = places.doneCentre()
                         if (at != null) finger.glide(at, 500)
@@ -281,6 +325,7 @@ internal fun PencilCupDemo(
             notes.addAll(StartingNotes)
             fresh = -1
             announcement = ""
+            draft = ""
             finger.hide()
         }
         onDispose {
@@ -298,12 +343,34 @@ internal fun PencilCupDemo(
         onBackCompleted = { cancelSheet() },
     )
 
+    // The keyboard, frame by frame as it slides: how far it covers this screen's foot, in dp. The
+    // sheet rides up on it, and the tool in its pocket with it; the list and the cup stay put.
+    val ime = WindowInsets.ime
+    val densityNow = LocalDensity.current
+    val windowHeight by rememberUpdatedState(LocalWindowInfo.current.containerSize.height)
+    var rootBottom by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(cup, ime, densityNow) {
+        snapshotFlow { ime.getBottom(densityNow) - (windowHeight - rootBottom) }
+            .collect { cup.keyboardOverlap(it / densityNow.density) }
+    }
+
     val touch = LabTheme.colors.touch
     Box(
         Modifier.fillMaxSize()
             .background(colors.background)
-            .windowInsetsPadding(demoInsets(state))
-            .onGloballyPositioned { places.root = it }
+            // The bars and the cutout, but not the keyboard: it only lifts the sheet (see
+            // keyboardOverlap), so the list and the cup stay put while it slides.
+            .windowInsetsPadding(
+                if (state.recording) WindowInsets(0)
+                else
+                    WindowInsets.systemBars
+                        .union(WindowInsets.displayCutout)
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            )
+            .onGloballyPositioned {
+                places.root = it
+                rootBottom = it.positionInWindow().y + it.size.height
+            }
             .onPreviewKeyEvent {
                 if (it.type == KeyEventType.KeyDown && it.key == Key.Escape && cup.sheetOpen) {
                     cancelSheet()
@@ -347,6 +414,8 @@ internal fun PencilCupDemo(
                 reducedMotion = reducedMotion,
                 places = places,
                 doneFocus = doneFocus,
+                draft = draft,
+                onDraft = { draft = it },
                 onDone = { finish() },
             )
         }
@@ -532,6 +601,8 @@ private fun BoxScope.Sheet(
     reducedMotion: Boolean,
     places: Places,
     doneFocus: FocusRequester,
+    draft: String,
+    onDraft: (String) -> Unit,
     onDone: () -> Unit,
 ) {
     val shadow = remember { Paint() }
@@ -542,7 +613,8 @@ private fun BoxScope.Sheet(
             .fillMaxHeight(.64f)
             .graphicsLayer {
                 cup.frame
-                translationY = cup.sheetSlide * size.height
+                // Slid by the cup's clock, and lifted by the keyboard, frame by frame.
+                translationY = cup.sheetSlide * size.height - cup.sheetLift * density
             }
             .drawBehind {
                 // box-shadow: 0 -12px 40px rgba(20,14,8,.22).
@@ -614,21 +686,33 @@ private fun BoxScope.Sheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (tool) {
-                CupTools.Note -> RuledNote(colors, blinking = open && !reducedMotion)
-                CupTools.List -> Checklist(colors)
-                CupTools.Clip -> WebClip(colors)
+                CupTools.Note -> RuledNote(colors, open && !reducedMotion, draft, onDraft, onDone)
+                CupTools.List -> Checklist(colors, draft, onDraft, onDone)
+                CupTools.Clip -> WebClip(colors, draft, onDraft, onDone)
                 else -> ScanFrame(colors)
             }
         }
     }
 }
 
-/** A ruled page with a blinking caret before its placeholder title. */
+/**
+ * A ruled page whose first line is the note's title: a field showing "Untitled note" until
+ * something is typed. Until the field takes focus, a drawn caret blinks before the placeholder, as
+ * the prototype's does; then the field's own caret takes over.
+ */
 @Composable
-private fun RuledNote(colors: PencilCupScreenColors, blinking: Boolean) {
-    // Only while the sheet is up: a caret blinking off screen would keep every frame busy.
+private fun RuledNote(
+    colors: PencilCupScreenColors,
+    blinking: Boolean,
+    draft: String,
+    onDraft: (String) -> Unit,
+    onDone: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val drawnCaret = !focused && draft.isEmpty()
+    // Only while it blinks on screen: a caret blinking off screen would keep every frame busy.
     val blink =
-        if (!blinking) null
+        if (!blinking || !drawnCaret) null
         else
             rememberInfiniteTransition(label = "caret")
                 .animateFloat(
@@ -637,6 +721,14 @@ private fun RuledNote(colors: PencilCupScreenColors, blinking: Boolean) {
                     infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
                     label = "blink",
                 )
+    val title =
+        TextStyle(
+            lineHeightStyle = CssLines,
+            color = colors.ink,
+            fontSize = 20.sp,
+            lineHeight = BodyLine,
+            fontWeight = FontWeight.Bold,
+        )
     Box(
         Modifier.fillMaxWidth().height(150.dp).drawBehind {
             // repeating-linear-gradient: a 1 px line at the foot of every 28 px.
@@ -652,32 +744,80 @@ private fun RuledNote(colors: PencilCupScreenColors, blinking: Boolean) {
             }
         },
     ) {
-        BasicText(
+        SheetField(
+            draft,
+            onDraft,
+            onDone,
             stringResource(Res.string.pencilcup_untitled),
-            Modifier.offset(4.dp, 2.dp).graphicsLayer { alpha = .35f },
-            style =
-                TextStyle(
-                    lineHeightStyle = CssLines,
-                    color = colors.ink,
-                    fontSize = 20.sp,
-                    lineHeight = BodyLine,
-                    fontWeight = FontWeight.Bold,
-                ),
+            title,
+            title.copy(color = colors.ink.copy(alpha = colors.ink.alpha * .35f)),
+            colors,
+            Modifier.offset(4.dp, 2.dp).fillMaxWidth().onFocusChanged { focused = it.isFocused },
         )
-        Box(
-            Modifier.offset(0.dp, 4.dp).size(2.dp, 24.dp).drawBehind {
-                // steps(1): on for the first half of each second, off for the second.
-                if (blink == null || blink.value < .5f) drawRect(colors.accent)
-            },
-        )
+        if (drawnCaret) {
+            Box(
+                Modifier.offset(0.dp, 4.dp).size(2.dp, 24.dp).drawBehind {
+                    // steps(1): on for the first half of each second, off for the second.
+                    if (blink == null || blink.value < .5f) drawRect(colors.accent)
+                },
+            )
+        }
     }
 }
 
+/**
+ * One line to type on the sheet, drawn as the prototype's plain text: [placeholder] in
+ * [placeholderStyle] until something is typed, then the text in [style]. The keyboard's Done is the
+ * sheet's Done. Labelled by its placeholder for a screen reader.
+ */
 @Composable
-private fun Checklist(colors: PencilCupScreenColors) {
+private fun SheetField(
+    value: String,
+    onValue: (String) -> Unit,
+    onDone: () -> Unit,
+    placeholder: String,
+    style: TextStyle,
+    placeholderStyle: TextStyle,
+    colors: PencilCupScreenColors,
+    modifier: Modifier = Modifier,
+    keyboardType: KeyboardType = KeyboardType.Text,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValue,
+        modifier = modifier.testTag("pencil-field").semantics { contentDescription = placeholder },
+        textStyle = style,
+        singleLine = true,
+        cursorBrush = SolidColor(colors.accent),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization =
+                    if (keyboardType == KeyboardType.Uri) KeyboardCapitalization.None
+                    else KeyboardCapitalization.Sentences,
+                keyboardType = keyboardType,
+                imeAction = ImeAction.Done,
+            ),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        decorationBox = { inner ->
+            Box {
+                if (value.isEmpty()) BasicText(placeholder, style = placeholderStyle, maxLines = 1)
+                inner()
+            }
+        },
+    )
+}
+
+@Composable
+private fun Checklist(
+    colors: PencilCupScreenColors,
+    draft: String,
+    onDraft: (String) -> Unit,
+    onDone: () -> Unit,
+) {
     val add = stringResource(Res.string.pencilcup_add_item)
     Column {
-        for (text in listOf(add, " ", " ")) {
+        // The first row takes the first item; the two below stay empty lines, as the prototype's.
+        for (row in 0 until 3) {
             Row(
                 Modifier.fillMaxWidth()
                     .drawBehind {
@@ -693,21 +833,47 @@ private fun Checklist(colors: PencilCupScreenColors) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(20.dp).border(1.8.dp, colors.line, CircleShape))
-                BasicText(text, style = bodyStyle(colors))
+                if (row == 0) {
+                    SheetField(
+                        draft,
+                        onDraft,
+                        onDone,
+                        add,
+                        bodyStyle(colors).copy(color = colors.ink),
+                        bodyStyle(colors),
+                        colors,
+                        Modifier.weight(1f),
+                    )
+                } else BasicText(" ", style = bodyStyle(colors))
             }
         }
     }
 }
 
 @Composable
-private fun WebClip(colors: PencilCupScreenColors) {
-    BasicText(
-        stringResource(Res.string.pencilcup_paste_link),
+private fun WebClip(
+    colors: PencilCupScreenColors,
+    draft: String,
+    onDraft: (String) -> Unit,
+    onDone: () -> Unit,
+) {
+    Box(
         Modifier.fillMaxWidth()
             .dashed(colors.line, 1.dp, 12.dp)
             .padding(horizontal = 14.dp, vertical = 12.dp),
-        style = bodyStyle(colors),
-    )
+    ) {
+        SheetField(
+            draft,
+            onDraft,
+            onDone,
+            stringResource(Res.string.pencilcup_paste_link),
+            bodyStyle(colors).copy(color = colors.ink),
+            bodyStyle(colors),
+            colors,
+            Modifier.fillMaxWidth(),
+            KeyboardType.Uri,
+        )
+    }
     BasicText(stringResource(Res.string.pencilcup_clip_about), style = bodyStyle(colors))
 }
 

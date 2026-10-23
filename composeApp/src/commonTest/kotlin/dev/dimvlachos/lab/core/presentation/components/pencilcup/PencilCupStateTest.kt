@@ -117,6 +117,39 @@ class PencilCupStateTest {
     }
 
     @Test
+    fun theKeyboardLiftsTheSheetAndTheToolInItsPocketTogether() {
+        val s = cup()
+        s.tap()
+        s.run(1600) { s.fanned() }
+        s.pick(CupTools.Note)
+        val t = s.tools[CupTools.Note]
+        assertTrue(s.run(3000) { s.settled })
+        val top = s.sheetTop()
+        val y = t.y
+        // A keyboard 120 dp high: the sheet rides up on it, and the pencil rides with the sheet.
+        s.keyboardOverlap(120f)
+        assertEquals(120f, s.sheetLift, 1e-3f)
+        // At once, before any step: a frame loop waking from rest steps nothing on its first frame.
+        assertEquals(top - 120f, s.sheetTop(), .01f)
+        assertEquals(y - 120f, t.y, .01f)
+        s.step(0f)
+        assertEquals(y - 120f, t.y, .01f)
+        s.step(1f / 60f)
+        assertEquals(y - 120f, t.y, .01f)
+        // A tall one lifts it only until the pencil's top would leave the screen.
+        s.keyboardOverlap(2000f)
+        s.step(1f / 60f)
+        val l = CupTools.specs[CupTools.Note].length * s.k
+        assertTrue(t.y - cos(t.a) * l >= 0f, "the pencil's tip is at ${t.y - cos(t.a) * l}")
+        assertTrue(s.sheetLift < 2000f)
+        // The keyboard going lets it back down.
+        s.keyboardOverlap(0f)
+        s.step(1f / 60f)
+        assertEquals(top, s.sheetTop(), .01f)
+        assertEquals(y, t.y, .01f)
+    }
+
+    @Test
     fun pickingTucksTheToolIntoAPocketOnTheSheetAndDoneArcsItIntoTheCup() {
         val s = cup()
         val events = mutableListOf<CupEvent>()

@@ -16,7 +16,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -88,11 +90,13 @@ class PencilCupDemoUiTest {
         assertTrue(cup.sheetOpen)
         mainClock.advanceTimeBy(600)
         onNodeWithText("Add an item").assertExists()
+        onNodeWithTag("pencil-field").performTextInput("  Pack the snacks ")
         onNodeWithTag("pencil-done").performClick()
         assertFalse(cup.sheetOpen)
         mainClock.advanceTimeBy(800)
         onNodeWithText("Fieldbook · 7 notes").assertExists()
-        onNodeWithText("Checklist").assertExists()
+        onNodeWithText("Pack the snacks").assertExists()
+        onNodeWithText("1 item · Just now").assertExists()
     }
 
     @Test
@@ -117,6 +121,7 @@ class PencilCupDemoUiTest {
         }
         val before = first()
         mainClock.autoAdvance = false
+        onNodeWithTag("pencil-field").performTextInput("Pack the snacks")
         onNodeWithTag("pencil-done").performClick()
         mainClock.advanceTimeByFrame()
         val step = first() - before
@@ -152,7 +157,7 @@ class PencilCupDemoUiTest {
         assertFalse(cup.sheetOpen)
         advanceUntil("the checklist tool back in the cup") { cup.settled }
         onNodeWithText("Fieldbook · 6 notes").assertExists()
-        onNodeWithText("Checklist").assertDoesNotExist()
+        onNodeWithText("1 item · Just now").assertDoesNotExist()
     }
 
     @Test
@@ -164,7 +169,67 @@ class PencilCupDemoUiTest {
         assertFalse(cup.sheetOpen)
         mainClock.advanceTimeBy(800)
         onNodeWithText("Fieldbook · 6 notes").assertExists()
-        onNodeWithText("Checklist").assertDoesNotExist()
+        onNodeWithText("1 item · Just now").assertDoesNotExist()
+    }
+
+    @Test
+    fun doneOnABlankSheetCancelsWithoutANewNote() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        openListSheet(cup)
+        onNodeWithTag("pencil-field").performTextInput("   ")
+        onNodeWithTag("pencil-done").performClick()
+        assertFalse(cup.sheetOpen)
+        mainClock.advanceTimeBy(800)
+        onNodeWithText("Fieldbook · 6 notes").assertExists()
+    }
+
+    @Test
+    fun theKeyboardsDoneAddsWhatWasTyped() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        openListSheet(cup)
+        onNodeWithTag("pencil-field").performTextInput("Call the vet")
+        onNodeWithTag("pencil-field").performImeAction()
+        assertFalse(cup.sheetOpen)
+        mainClock.advanceTimeBy(800)
+        onNodeWithText("Fieldbook · 7 notes").assertExists()
+        onNodeWithText("Call the vet").assertExists()
+    }
+
+    @Test
+    fun theScansDoneStillAddsThePage() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        onNodeWithTag("pencil-cup").performTouchInput {
+            down(center)
+            up()
+        }
+        advanceUntil("the labels") { cup.labelShown(CupTools.Scan) }
+        mainClock.advanceTimeBy(300)
+        onNodeWithTag("pencil-label-${CupTools.Scan}").performTouchInput {
+            down(center)
+            up()
+        }
+        mainClock.advanceTimeBy(600)
+        onNodeWithTag("pencil-field").assertDoesNotExist()
+        onNodeWithTag("pencil-done").performClick()
+        mainClock.advanceTimeBy(800)
+        onNodeWithText("Fieldbook · 7 notes").assertExists()
+        onNodeWithText("Scanned page").assertExists()
+    }
+
+    @Test
+    fun eachSheetOpensBlank() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        openListSheet(cup)
+        onNodeWithTag("pencil-field").performTextInput("Half typed")
+        onNodeWithTag("pencil-sheet").performKeyInput { pressKey(Key.Escape) }
+        advanceUntil("the cup at rest") { cup.settled }
+        openListSheet(cup)
+        onNodeWithText("Half typed").assertDoesNotExist()
+        onNodeWithText("Add an item").assertExists()
     }
 
     @Test

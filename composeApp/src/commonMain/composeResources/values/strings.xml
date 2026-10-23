@@ -461,10 +461,8 @@
     <string name="pencilcup_note">New note</string>
     <string name="pencilcup_made_scan">Scanned page</string>
     <string name="pencilcup_made_scan_detail">1 page · Just now</string>
-    <string name="pencilcup_made_clip">Web clip</string>
-    <string name="pencilcup_made_list">Checklist</string>
-    <string name="pencilcup_made_list_detail">0 of 0 done · Just now</string>
-    <string name="pencilcup_made_note">Untitled note</string>
+    <string name="pencilcup_made_clip_detail">Web clip · Just now</string>
+    <string name="pencilcup_made_list_detail">1 item · Just now</string>
     <string name="pencilcup_just_now">Just now</string>
     <string name="pencilcup_done">Done</string>
     <string name="pencilcup_untitled">Untitled note</string>

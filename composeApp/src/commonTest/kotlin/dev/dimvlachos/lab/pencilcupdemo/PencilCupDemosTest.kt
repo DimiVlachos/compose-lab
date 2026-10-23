@@ -20,7 +20,7 @@ class PencilCupDemosTest {
     }
 
     @Test
-    fun theClipOpensClosesSlidesOntoThePencilTapsDoneAndResets() = runTest {
+    fun theClipOpensClosesSlidesOntoThePencilTypesATitleTapsDoneAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -28,13 +28,18 @@ class PencilCupDemosTest {
                 "tapControl(tap-cup)",
                 "tapControl(tap-cup)",
                 "tapControl(slide-to-note)",
+                "tapControl(type-title)",
                 "tapControl(done)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },
         )
-        // The prototype's timeline: the first tap after 0.9 s, Done about 8 s in.
-        assertEquals(listOf(1500L, 3590L, 5480L, 8610L, 10820L), controller.calls.map { it.first })
+        // The prototype's timeline: the first tap after 0.9 s, the title typed from about 8 s in,
+        // a letter at a time, then Done.
+        assertEquals(
+            listOf(1500L, 3590L, 5480L, 8210L, 10311L, 12521L),
+            controller.calls.map { it.first },
+        )
     }
 
     @Test

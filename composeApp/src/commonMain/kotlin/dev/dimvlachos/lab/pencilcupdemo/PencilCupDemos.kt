@@ -15,17 +15,26 @@ internal object PencilCupDemos {
     // The script's moves, by name.
     const val TapCup = "tap-cup"
     const val SlideToNote = "slide-to-note"
+    const val TypeTitle = "type-title"
     const val Done = "done"
+
+    /**
+     * What the tour types as the new note's title, and how long each key takes, as the prototype's.
+     */
+    const val Typed = "Pick up dry cleaning"
+
+    fun keyMs(ch: Char): Long = if (ch == ' ') 120L else 55L + (ch.code * 37 % 50)
 
     // How long each move takes, as the prototype's demo moves its finger.
     val TapCupTakes = 590.milliseconds
     val SlideTakes = 1630.milliseconds
     val DoneTakes = 610.milliseconds
+    val TypeTakes = Typed.sumOf { keyMs(it) }.milliseconds
 
     // The prototype's runDemo(): the cup tapped open, and tapped shut so the tools clatter back;
     // then in one move the cup pressed, the finger slid up onto the pencil and let go, so it flies
-    // into a new note's sheet; then Done, and the pencil falls back into the cup from above. The
-    // list is put back to its six notes at the end, so the clip loops.
+    // into a new note's sheet; a title is typed, a letter at a time; then Done, and the pencil arcs
+    // back into the cup. The list is put back to its six notes at the end, so the clip loops.
     private val fab = demoScript {
         var t = .9.seconds
         at(t, lasts = TapCupTakes) { tapControl(TapCup) }
@@ -33,7 +42,9 @@ internal object PencilCupDemos {
         at(t, lasts = TapCupTakes) { tapControl(TapCup) }
         t += TapCupTakes + 1300.milliseconds
         at(t, lasts = SlideTakes) { tapControl(SlideToNote) }
-        t += SlideTakes + 1500.milliseconds
+        t += SlideTakes + 1100.milliseconds
+        at(t, lasts = TypeTakes) { tapControl(TypeTitle) }
+        t += TypeTakes + 400.milliseconds
         at(t, lasts = DoneTakes) { tapControl(Done) }
         t += DoneTakes + 1600.milliseconds
         at(t) { resetFeed() }
