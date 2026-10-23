@@ -65,7 +65,13 @@ internal enum class Sound(val file: String) {
     PaperFanFwap("paperfan_fwap"),
     PaperFanClick("paperfan_click"),
     PaperFanSwish("paperfan_swish"),
-    PaperFanClack("paperfan_clack");
+    PaperFanClack("paperfan_clack"),
+    NoteGrain("note_grain"),
+    NoteTick("note_tick"),
+    NoteRip("note_rip"),
+    NoteStick("note_stick"),
+    NotePat("note_pat"),
+    NoteLift("note_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

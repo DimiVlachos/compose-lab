@@ -924,6 +924,64 @@ def paperfan_clack(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.11), rate, 0.35, 0.004, 0.03)
 
 
+# ---------- Sticky notes ----------
+
+def note_grain(rng, rate):
+    """One crackle of paper coming away from its glue: a soft band of noise around 1.5 kHz and, now
+    and then, a quieter fibre giving way after it."""
+    n = seconds(0.05, rate)
+    grain = mul(bandpass(noise(n, rng), 1500, 1.3, rate), soft_env(n, rate, 0.005, 0.007))
+    fibre = [0.0] * n
+    m = seconds(0.03, rate)
+    place(fibre, scale(soft_mode(rng, m, rate, 2100, 2.0, 0.004, attack=0.004), 0.3), seconds(0.012, rate))
+    return soft_finish(soft_room(soft_tilt(mix(grain, fibre), rate, 2800), rate, 0.08), rate, 0.25, 0.005, 0.006)
+
+
+def note_tick(rng, rate):
+    """The pull crossing the line where letting go takes the note off: a small papery tick, a
+    fingernail on card rather than a beep."""
+    n = seconds(0.07, rate)
+    tick = mix(soft_mode(rng, n, rate, 1100, 6.0, 0.009, attack=0.004), scale(soft_mode(rng, n, rate, 620, 2.5, 0.007, attack=0.004), 0.6))
+    return soft_finish(soft_room(soft_tilt(tick, rate, 2600), rate, 0.10), rate, 0.063, 0.004, 0.01)
+
+
+def note_rip(rng, rate):
+    """The note coming off its glue: six soft grains of paper parting, about 18 ms apart."""
+    n = seconds(0.16, rate)
+    track = [0.0] * n
+    for i in range(6):
+        d = rng.uniform(0.015, 0.03)
+        m = seconds(d + 0.012, rate)
+        grain = mul(bandpass(noise(m, rng), rng.uniform(1200, 2200), 1.2, rate), soft_env(m, rate, 0.004, d / 3))
+        place(track, scale(grain, 1.0 - i * 0.08), seconds(i * 0.018 + rng.uniform(-0.003, 0.003) + 0.004, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.10), rate, 0.22, 0.005, 0.02)
+
+
+def note_stick(rng, rate):
+    """The note pressed onto a pad: a soft, close thump of paper on paper, felt more than heard."""
+    n = seconds(0.14, rate)
+    thud = mul(lowpass(noise(n, rng), 380, rate), soft_env(n, rate, 0.006, 0.03))
+    body = soft_mode(rng, n, rate, 120, 3.0, 0.035, attack=0.006)
+    paper = soft_mode(rng, n, rate, 900, 2.0, 0.01, attack=0.005)
+    return soft_finish(soft_room(soft_tilt(mix(scale(thud, 0.6), scale(body, 0.5), scale(paper, 0.15)), rate, 2600), rate, 0.10), rate, 0.56, 0.006, 0.02)
+
+
+def note_pat(rng, rate):
+    """A note pressed back flat onto the screen: a muffled pat of a fingertip on paper."""
+    n = seconds(0.14, rate)
+    pat = mul(lowpass(noise(n, rng), 600, rate), soft_env(n, rate, 0.006, 0.028))
+    body = soft_mode(rng, n, rate, 240, 2.0, 0.025, attack=0.006)
+    return soft_finish(soft_room(soft_tilt(mix(pat, scale(body, 0.4)), rate, 2600), rate, 0.10), rate, 0.35, 0.006, 0.02)
+
+
+def note_lift(rng, rate):
+    """A pad's top note lifting off to go back, or a tapped corner lifting: a light breath of paper."""
+    n = seconds(0.07, rate)
+    env = [math.sin(math.pi * i / n) ** 2 for i in range(n)]
+    flick = mul(bandpass(lowpass(noise(n, rng), 3000, rate), 1300, 1.0, rate), env)
+    return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -999,6 +1057,13 @@ def main():
     write("paperfan_click", paperfan_click(fan, fast), fast)
     write("paperfan_swish", paperfan_swish(fan, fast), fast)
     write("paperfan_clack", paperfan_clack(fan, fast), fast)
+    note = random.Random(1022)
+    write("note_grain", note_grain(note, fast), fast)
+    write("note_tick", note_tick(note, fast), fast)
+    write("note_rip", note_rip(note, fast), fast)
+    write("note_stick", note_stick(note, fast), fast)
+    write("note_pat", note_pat(note, fast), fast)
+    write("note_lift", note_lift(note, fast), fast)
 
 
 if __name__ == "__main__":

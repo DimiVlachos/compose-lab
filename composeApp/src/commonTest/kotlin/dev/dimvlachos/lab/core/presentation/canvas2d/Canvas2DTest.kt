@@ -599,4 +599,19 @@ class Canvas2DTest {
         near(Color.Red, px[8, 8])
         assertTrue(px[8, 24].green > .8f && px[8, 24].red < .2f, "shadow at ${px[8, 24]}")
     }
+
+    @Test
+    fun theTransformScaleFollowsScaleAndRotation() {
+        val c = Canvas2D.create(4, 4)
+        assertEquals(1f, c.transformScale, 1e-5f)
+        c.scale(2.5f, 2.5f)
+        c.save()
+        c.rotate(.7f)
+        c.scale(.4f, .4f)
+        assertEquals(1f, c.transformScale, 1e-5f)
+        c.restore()
+        assertEquals(2.5f, c.transformScale, 1e-5f)
+        c.setTransform(0f, 3f, -3f, 0f, 5f, 5f)
+        assertEquals(3f, c.transformScale, 1e-5f)
+    }
 }

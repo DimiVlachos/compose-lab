@@ -29,6 +29,7 @@ import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
 import dev.dimvlachos.lab.resources.demo_stickers
+import dev.dimvlachos.lab.resources.demo_stickynote
 import dev.dimvlachos.lab.resources.demo_typewriter
 import dev.dimvlachos.lab.resources.demo_zipper
 import kotlin.test.Test
@@ -71,6 +72,7 @@ class CatalogTest {
                 "zipper.scrollbar",
                 "keyhook.signout",
                 "paperfan.faq",
+                "stickynote.swipe",
             ),
             Catalog.demos.map { it.id },
         )
@@ -101,6 +103,7 @@ class CatalogTest {
                 Res.string.demo_zipper,
                 Res.string.demo_keyhook,
                 Res.string.demo_paperfan,
+                Res.string.demo_stickynote,
             ),
             Catalog.demos.map { it.title },
         )
@@ -181,6 +184,7 @@ class CatalogTest {
                 "zipper.scrollbar",
                 "keyhook.signout",
                 "paperfan.faq",
+                "stickynote.swipe",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

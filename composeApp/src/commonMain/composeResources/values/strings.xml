@@ -570,4 +570,46 @@
     <string name="paperfan_help_avatar">D</string>
     <string name="paperfan_help_title">Still stuck? Chat with Dana</string>
     <string name="paperfan_help_subtitle">Usually replies in 5 minutes</string>
+    <string name="demo_stickynote">Sticky note swipe</string>
+    <string name="demo_stickynote_description">Swipe a reminder and it peels off like a sticky note, onto a Done or Later pad</string>
+    <string name="stickynote_back">Lists</string>
+    <string name="stickynote_title">Today</string>
+    <string name="stickynote_subtitle">Reminders · Tue, Oct 21</string>
+    <string name="stickynote_left">%1$d left</string>
+    <string name="stickynote_item_1">Call Dr. Patel's office</string>
+    <string name="stickynote_item_1_meta">9:30 AM · Health</string>
+    <string name="stickynote_item_2">Pick up dry cleaning</string>
+    <string name="stickynote_item_2_meta">12:15 PM · Errands</string>
+    <string name="stickynote_item_3">Return library books</string>
+    <string name="stickynote_item_3_meta">Due 6:00 PM · Errands</string>
+    <string name="stickynote_item_4">Pay Jake back $24 for pizza</string>
+    <string name="stickynote_item_4_meta">Tonight · Money</string>
+    <string name="stickynote_item_5">Book flights to Denver</string>
+    <string name="stickynote_item_5_meta">Thanksgiving · Travel</string>
+    <string name="stickynote_item_6">Water the fiddle-leaf fig</string>
+    <string name="stickynote_item_6_meta">Evening · Home</string>
+    <string name="stickynote_archive">Archive</string>
+    <string name="stickynote_snooze">Snooze</string>
+    <string name="stickynote_tomorrow">Tomorrow 9 AM</string>
+    <string name="stickynote_done">Done</string>
+    <string name="stickynote_later">Later</string>
+    <string name="stickynote_swipe_left">Swipe left</string>
+    <string name="stickynote_swipe_right">Swipe right</string>
+    <string name="stickynote_list">Today's reminders. Left arrow archives, right arrow snoozes.</string>
+    <string name="stickynote_archived">Archived “%1$s”. The Done pad puts it back.</string>
+    <string name="stickynote_snoozed">Snoozed “%1$s” until tomorrow, 9 AM.</string>
+    <string name="stickynote_put_back">Put back “%1$s”.</string>
+    <string name="stickynote_all_clear">All clear</string>
+    <string name="stickynote_nothing_left">Nothing left for today</string>
+    <string name="stickynote_empty_said">All clear. Nothing left for today.</string>
+    <plurals name="stickynote_pad_done">
+        <item quantity="one">Done pad, %1$d note. Put the last one back</item>
+        <item quantity="other">Done pad, %1$d notes. Put the last one back</item>
+    </plurals>
+    <plurals name="stickynote_pad_later">
+        <item quantity="one">Later pad, %1$d note. Put the last one back</item>
+        <item quantity="other">Later pad, %1$d notes. Put the last one back</item>
+    </plurals>
+    <string name="stickynote_pad_done_empty">Done pad, 0 notes</string>
+    <string name="stickynote_pad_later_empty">Later pad, 0 notes</string>
 </resources>

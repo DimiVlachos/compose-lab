@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A sticky note with its bottom-right corner peeling up, two lines written on it. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M6,3h12a2,2 0 0,1 2,2v8.5h-4.5a2,2 0 0,0 -2,2V21H6a2,2 0 0,1 -2,-2V5a2,2 0 0,1 2,-2zM7.5,8.2v1.6h9v-1.6zM7.5,11.7v1.6h5v-1.6z" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M15.5,15h4.2l-6.2,6.2V17a2,2 0 0,1 2,-2z" />
+</vector>
