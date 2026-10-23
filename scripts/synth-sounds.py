@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -598,64 +654,60 @@ def padlock_swing(rng, rate):
 
 # ---------- Sticky notes ----------
 
-def web_ramp(n, rate, dur, attack=0.004):
-    """WebAudio's envelope: a linear rise over attack, then an exponential fall to 1e-4 at dur."""
-    a = max(1, seconds(attack, rate)) if attack > 0 else 0
-    d = max(a + 1, seconds(dur, rate))
-    k = math.log(1e-4) / (d - a)
-    return [(i / a) if i < a else (math.exp(k * (i - a)) if i < d else 0.0) for i in range(n)]
-
-
 def note_grain(rng, rate):
-    """One crackle of paper coming away from its glue: a short band of noise, and now and then a
-    tiny bright tick after it."""
-    n = seconds(0.03, rate)
-    grain = mul(bandpass(noise(n, rng), 3200, 1.4, rate), web_ramp(n, rate, 0.022))
-    tick = [0.0] * n
-    m = seconds(0.008, rate)
-    place(tick, scale(mul(highpass(noise(m, rng), 5000, rate), web_ramp(m, rate, 0.008, 0.001)), 0.35), seconds(0.01, rate))
-    return fade(normalise(mix(grain, tick), 0.36), rate, 0.0005, 0.004)
+    """One crackle of paper coming away from its glue: a soft band of noise around 1.5 kHz and, now
+    and then, a quieter fibre giving way after it."""
+    n = seconds(0.05, rate)
+    grain = mul(bandpass(noise(n, rng), 1500, 1.3, rate), soft_env(n, rate, 0.005, 0.007))
+    fibre = [0.0] * n
+    m = seconds(0.03, rate)
+    place(fibre, scale(soft_mode(rng, m, rate, 2100, 2.0, 0.004, attack=0.004), 0.3), seconds(0.012, rate))
+    return soft_finish(soft_room(soft_tilt(mix(grain, fibre), rate, 2800), rate, 0.08), rate, 0.25, 0.005, 0.006)
 
 
-def note_tick(rate):
-    """The pull crossing the line where letting go takes the note off: a small 1.9 kHz tick."""
-    n = seconds(0.04, rate)
-    tone = [math.sin(2 * math.pi * 1900 * i / rate) for i in range(n)]
-    return fade(normalise(mul(tone, web_ramp(n, rate, 0.03, 0)), 0.1), rate, 0.0005, 0.005)
+def note_tick(rng, rate):
+    """The pull crossing the line where letting go takes the note off: a small papery tick, a
+    fingernail on card rather than a beep."""
+    n = seconds(0.07, rate)
+    tick = mix(soft_mode(rng, n, rate, 1100, 6.0, 0.009, attack=0.004), scale(soft_mode(rng, n, rate, 620, 2.5, 0.007, attack=0.004), 0.6))
+    return soft_finish(soft_room(soft_tilt(tick, rate, 2600), rate, 0.10), rate, 0.063, 0.004, 0.01)
 
 
 def note_rip(rng, rate):
-    """The note coming off its glue: six quick grains of tearing paper, 18 ms apart."""
-    n = seconds(0.14, rate)
+    """The note coming off its glue: six soft grains of paper parting, about 18 ms apart."""
+    n = seconds(0.16, rate)
     track = [0.0] * n
     for i in range(6):
         d = rng.uniform(0.015, 0.03)
-        m = seconds(d + 0.002, rate)
-        grain = mul(bandpass(noise(m, rng), rng.uniform(2500, 5000), 1.2, rate), web_ramp(m, rate, d))
-        place(track, grain, seconds(i * 0.018, rate))
-    return fade(normalise(track, 0.32), rate, 0.0005, 0.01)
+        m = seconds(d + 0.012, rate)
+        grain = mul(bandpass(noise(m, rng), rng.uniform(1200, 2200), 1.2, rate), soft_env(m, rate, 0.004, d / 3))
+        place(track, scale(grain, 1.0 - i * 0.08), seconds(i * 0.018 + rng.uniform(-0.003, 0.003) + 0.004, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.10), rate, 0.22, 0.005, 0.02)
 
 
 def note_stick(rng, rate):
-    """The note pressed onto a pad: a soft low thud and a short drop from 150 to 70 Hz."""
-    n = seconds(0.12, rate)
-    thud = mul(lowpass(noise(n, rng), 420, rate), web_ramp(n, rate, 0.09))
-    body = mul(chirp(n, rate, 150, 70, 0.08, 10.0), web_ramp(n, rate, 0.1, 0))
-    return fade(normalise(mix(scale(thud, 0.35), scale(body, 0.12)), 0.8), rate, 0.0005, 0.01)
+    """The note pressed onto a pad: a soft, close thump of paper on paper, felt more than heard."""
+    n = seconds(0.14, rate)
+    thud = mul(lowpass(noise(n, rng), 380, rate), soft_env(n, rate, 0.006, 0.03))
+    body = soft_mode(rng, n, rate, 120, 3.0, 0.035, attack=0.006)
+    paper = soft_mode(rng, n, rate, 900, 2.0, 0.01, attack=0.005)
+    return soft_finish(soft_room(soft_tilt(mix(scale(thud, 0.6), scale(body, 0.5), scale(paper, 0.15)), rate, 2600), rate, 0.10), rate, 0.56, 0.006, 0.02)
 
 
 def note_pat(rng, rate):
-    """A note pressed back flat onto the screen: a muffled pat."""
-    n = seconds(0.13, rate)
-    pat = mul(lowpass(noise(n, rng), 700, rate), web_ramp(n, rate, 0.12))
-    return fade(normalise(pat, 0.5), rate, 0.0005, 0.01)
+    """A note pressed back flat onto the screen: a muffled pat of a fingertip on paper."""
+    n = seconds(0.14, rate)
+    pat = mul(lowpass(noise(n, rng), 600, rate), soft_env(n, rate, 0.006, 0.028))
+    body = soft_mode(rng, n, rate, 240, 2.0, 0.025, attack=0.006)
+    return soft_finish(soft_room(soft_tilt(mix(pat, scale(body, 0.4)), rate, 2600), rate, 0.10), rate, 0.35, 0.006, 0.02)
 
 
 def note_lift(rng, rate):
-    """A pad's top note lifting off to go back, or a tapped corner lifting: a light paper flick."""
-    n = seconds(0.055, rate)
-    flick = mul(bandpass(noise(n, rng), 2600, 1.0, rate), web_ramp(n, rate, 0.05))
-    return fade(normalise(flick, 0.24), rate, 0.0005, 0.005)
+    """A pad's top note lifting off to go back, or a tapped corner lifting: a light breath of paper."""
+    n = seconds(0.07, rate)
+    env = [math.sin(math.pi * i / n) ** 2 for i in range(n)]
+    flick = mul(bandpass(lowpass(noise(n, rng), 3000, rate), 1300, 1.0, rate), env)
+    return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
 
 
 def main():
@@ -708,7 +760,7 @@ def main():
     write("padlock_swing", padlock_swing(lock, fast), fast)
     note = random.Random(1022)
     write("note_grain", note_grain(note, fast), fast)
-    write("note_tick", note_tick(fast), fast)
+    write("note_tick", note_tick(note, fast), fast)
     write("note_rip", note_rip(note, fast), fast)
     write("note_stick", note_stick(note, fast), fast)
     write("note_pat", note_pat(note, fast), fast)

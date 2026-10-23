@@ -73,6 +73,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -141,20 +142,20 @@ internal fun StickyNoteList(
         val listener: (StickyNoteEvent, Reminder?, Float) -> Unit = { event, item, amount ->
             when (event) {
                 StickyNoteEvent.Grain ->
-                    sounds.play(Sound.NoteGrain, amount, .7f + Random.nextFloat() * .6f)
+                    sounds.playVaried(Sound.NoteGrain, amount, .7f + Random.nextFloat() * .6f)
                 StickyNoteEvent.Tick -> {
-                    sounds.play(Sound.NoteTick)
+                    sounds.playVaried(Sound.NoteTick)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
-                StickyNoteEvent.Rip -> sounds.play(Sound.NoteRip)
+                StickyNoteEvent.Rip -> sounds.playVaried(Sound.NoteRip)
                 StickyNoteEvent.Stick -> {
-                    sounds.play(Sound.NoteStick)
+                    sounds.playVaried(Sound.NoteStick)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
-                StickyNoteEvent.Pat -> sounds.play(Sound.NotePat)
-                StickyNoteEvent.Lift -> sounds.play(Sound.NoteLift)
+                StickyNoteEvent.Pat -> sounds.playVaried(Sound.NotePat)
+                StickyNoteEvent.Lift -> sounds.playVaried(Sound.NoteLift)
                 // The prototype's peek is the same flick, a little higher and softer.
-                StickyNoteEvent.Peek -> sounds.play(Sound.NoteLift, .8f, 1.23f)
+                StickyNoteEvent.Peek -> sounds.playVaried(Sound.NoteLift, .8f, 1.23f)
                 StickyNoteEvent.Archived ->
                     said = text.archived.replace(TitleSlot, item!!.title) + emptied(state, text)
                 StickyNoteEvent.Snoozed ->
