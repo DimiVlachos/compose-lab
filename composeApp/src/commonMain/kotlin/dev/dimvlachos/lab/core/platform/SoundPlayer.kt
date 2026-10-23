@@ -1,7 +1,6 @@
 package dev.dimvlachos.lab.core.platform
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
  * The short clips the demos play, synthesized by `scripts/synth-sounds.py` into
@@ -42,6 +41,27 @@ internal enum class Sound(val file: String) {
     PadlockPop("padlock_pop"),
     PadlockRattle("padlock_rattle"),
     PadlockSwing("padlock_swing"),
+    PencilClink("pencil_clink"),
+    PencilLift("pencil_lift"),
+    PencilPick("pencil_pick"),
+    LocketOpen("locket_open"),
+    LocketSnap("locket_snap"),
+    LocketPlace("locket_place"),
+    LocketLift("locket_lift"),
+    LocketBack("locket_back"),
+    LocketChain("locket_chain"),
+    BirdcageChirp("birdcage_chirp"),
+    BirdcageSettle("birdcage_settle"),
+    BirdcageLift("birdcage_lift"),
+    BirdcageRustle("birdcage_rustle"),
+    BirdcageSwish("birdcage_swish"),
+    ZipClack("zip_clack"),
+    ZipTick("zip_tick"),
+    ZipTeeth("zip_teeth"),
+    ZipLift("zip_lift"),
+    KeyTink("key_tink"),
+    KeyClack("key_clack"),
+    KeyLift("key_lift"),
     PaperFanFwap("paperfan_fwap"),
     PaperFanClick("paperfan_click"),
     PaperFanSwish("paperfan_swish"),
@@ -54,8 +74,9 @@ internal enum class Sound(val file: String) {
 
 /**
  * Plays [Sound]s. Clips load in the background, and one asked for before it has loaded is skipped,
- * not queued: a late click is worse than a missing one. Nothing plays while the phone is set to
- * silent or vibrate.
+ * not queued: a late click is worse than a missing one. On Android they play as media, at the media
+ * volume, whatever the ringer is set to; on iOS the ring/silent switch mutes them. Nothing is heard
+ * while the app's sound is off ([LocalSoundOn]).
  */
 internal interface SoundPlayer {
     /**
@@ -67,7 +88,7 @@ internal interface SoundPlayer {
 
     /**
      * Plays [sound] over and over until the returned loop is stopped. The loop is live at once: it
-     * starts sounding when [sound] has loaded, and keeps quiet while the phone is set to silent.
+     * starts sounding when [sound] has loaded.
      */
     fun loop(sound: Sound, volume: Float = 1f): SoundLoop
 }
@@ -91,13 +112,6 @@ internal object SilentSoundPlayer : SoundPlayer {
         override fun stop() = Unit
     }
 }
-
-/**
- * Whether a screen recorder may capture what the players under it play: true while a demo is
- * recorded as a clip. On Android, an app's own capture only takes media and game sounds, so a
- * recorded demo's clicks go out as a game's; otherwise they are the system's sonification.
- */
-internal val LocalSoundCapturable = staticCompositionLocalOf { false }
 
 /**
  * The platform's player, loading only [sounds], and letting them go when it leaves the composition.

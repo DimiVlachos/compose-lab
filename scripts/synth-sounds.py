@@ -652,6 +652,210 @@ def padlock_swing(rng, rate):
     return fade(normalise(track, 0.45), rate, 0.002, 0.02)
 
 
+# ---------- Pencil cup ----------
+
+def pencil_clink(rng, rate):
+    """A tool landing in the glazed cup: a dull wooden knock on stoneware and a short, muffled ceramic note."""
+    n = seconds(0.24, rate)
+    wood = mix(soft_mode(rng, n, rate, 900, 2.5, 0.012, attack=0.004), scale(soft_mode(rng, n, rate, 1700, 3.0, 0.008, attack=0.004), 0.5))
+    body = soft_mode(rng, n, rate, 320, 1.8, 0.02, attack=0.005)
+    glaze = mix(soft_mode(rng, n, rate, 1850, 22.0, 0.05, attack=0.004), scale(soft_mode(rng, n, rate, 2950, 20.0, 0.03, attack=0.004), 0.4))
+    hit = mix(scale(wood, 1.0), scale(body, 0.9), scale(glaze, 0.55))
+    return soft_finish(soft_room(soft_tilt(hit, rate, 3000), rate, 0.13), rate, SOFT_PEAK, 0.004, 0.04)
+
+
+def pencil_lift(rng, rate):
+    """A tool leaping out of the cup: a light wooden scuff on the rim, like a pencil drawn out of a mug."""
+    n = seconds(0.11, rate)
+    scuff = mul(bandpass(noise(n, rng), 1100, 1.4, rate), soft_env(n, rate, 0.012, 0.025))
+    tap = soft_mode(rng, n, rate, 650, 2.0, 0.012, attack=0.004)
+    return soft_finish(soft_room(soft_tilt(mix(scuff, scale(tap, 0.6)), rate, 2600), rate, 0.1), rate, 0.42, 0.005, 0.03)
+
+
+def pencil_pick(rng, rate):
+    """A tool picked: a soft breath of air as it flies up into its sheet."""
+    n = seconds(0.22, rate)
+    air = bandpass(lowpass(noise(n, rng), 3000, rate), 1400, 0.8, rate)
+    env = [math.sin(math.pi * min(1.0, i / (0.22 * rate))) ** 2 for i in range(n)]
+    return soft_finish(soft_room(soft_tilt(mul(air, env), rate, 2800), rate, 0.1), rate, 0.24, 0.02, 0.05)
+
+
+# ---------- Locket ----------
+# Small gold heard close to the ear: the catch and the lid are soft knocks with a short, muffled ring of the gold,
+# the photo a quiet glassy note, the strip and the chain light brushes and ticks. Built with the soft toolkit.
+
+
+def locket_open(rng, rate):
+    """The catch letting go: a small muffled click and the lid's short ring of gold."""
+    n = seconds(0.22, rate)
+    click = mix(soft_mode(rng, n, rate, 2100, 3.0, 0.006, attack=0.006), scale(soft_mode(rng, n, rate, 700, 2.0, 0.012, attack=0.006), 0.6))
+    ring = mix(soft_mode(rng, n, rate, 2600, 24.0, 0.06, attack=0.006), scale(soft_mode(rng, n, rate, 3900, 22.0, 0.035, attack=0.006), 0.3))
+    return soft_finish(soft_room(soft_tilt(mix(click, scale(ring, 0.45)), rate, 3000), rate, 0.12), rate, 0.19, 0.004, 0.04)
+
+
+def locket_snap(rng, rate):
+    """The lid snapping shut: a soft knock of gold on gold, then the case ringing briefly."""
+    n = seconds(0.32, rate)
+    knock = mix(soft_mode(rng, n, rate, 1500, 2.5, 0.01, attack=0.006), scale(soft_mode(rng, n, rate, 420, 1.8, 0.02, attack=0.005), 0.8))
+    ring = mix(soft_mode(rng, n, rate, 3100, 26.0, 0.08, attack=0.006), scale(soft_mode(rng, n, rate, 1900, 18.0, 0.04, attack=0.006), 0.4))
+    return soft_finish(soft_room(soft_tilt(mix(knock, scale(ring, 0.5)), rate, 3000), rate, 0.13), rate, SOFT_PEAK, 0.004, 0.05)
+
+
+def locket_place(rng, rate):
+    """A photo settling behind the glass: a soft glassy note and a breath of air."""
+    n = seconds(0.42, rate)
+    note = mix(soft_mode(rng, n, rate, 3300, 34.0, 0.12, attack=0.005), scale(soft_mode(rng, n, rate, 4950, 30.0, 0.07, attack=0.005), 0.3))
+    air = mul(bandpass(lowpass(noise(n, rng), 3000, rate), 1500, 0.8, rate), soft_env(n, rate, 0.015, 0.03))
+    return soft_finish(soft_room(soft_tilt(mix(note, scale(air, 0.25)), rate, 3500), rate, 0.14), rate, 0.2, 0.005, 0.06)
+
+
+def locket_lift(rng, rate):
+    """A photo lifted off the strip: a short, light brush."""
+    n = seconds(0.07, rate)
+    brush = mul(bandpass(noise(n, rng), 1500, 1.3, rate), soft_env(n, rate, 0.01, 0.018))
+    return soft_finish(soft_room(soft_tilt(brush, rate, 2800), rate, 0.1), rate, 0.045, 0.005, 0.02)
+
+
+def locket_back(rng, rate):
+    """A photo sliding home: a lower, longer brush."""
+    n = seconds(0.09, rate)
+    brush = mul(bandpass(noise(n, rng), 1100, 1.3, rate), soft_env(n, rate, 0.013, 0.028))
+    return soft_finish(soft_room(soft_tilt(brush, rate, 2600), rate, 0.1), rate, 0.045, 0.006, 0.025)
+
+
+def locket_chain(rng, rate):
+    """The chain let go: three tiny links ticking, uneven and dying away."""
+    n = seconds(0.03, rate)
+    track = [0.0] * seconds(0.11, rate)
+    for start, freq, gain in ((0.0, 2400, 1.0), (0.026, 2650, 0.7), (0.059, 2900, 0.45)):
+        tick = mix(soft_mode(rng, n, rate, freq, 8.0, 0.006, attack=0.005), scale(soft_mode(rng, n, rate, 900, 2.0, 0.005, attack=0.005), 0.5))
+        place(track, scale(tick, gain), seconds(start, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.1), rate, 0.045, 0.003, 0.02)
+
+
+# ---------- Birdcage ----------
+
+def canary_syllable(rng, rate, f0, f1, dur, trill=34, depth=0.06):
+    """One note of a canary: a pitch glide with a fast trill on it, a breath of air at its start, never a pure beep."""
+    n = seconds(dur, rate)
+    phase, tone = 0.0, []
+    for i in range(n):
+        t = i / n
+        f = f0 * (f1 / f0) ** t * (1 + depth * math.sin(2 * math.pi * trill * i / rate))
+        phase += 2 * math.pi * f / rate
+        # A little of the second harmonic, so it has a throat behind it.
+        tone.append(math.sin(phase) + 0.18 * math.sin(2 * phase + 0.4))
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.6 for i in range(n)]
+    breath = mul(bandpass(noise(n, rng), (f0 + f1) / 2, 1.4, rate), soft_env(n, rate, 0.004, dur * 0.25))
+    return mix(mul(tone, shape), scale(breath, 0.35))
+
+
+def birdcage_clips(rng, rate):
+    """The cage's five sounds: a small canary heard through the bars, linen and a muffled brass ring."""
+    chirp = [0.0] * seconds(0.56, rate)
+    for i, (f0, f1, start, dur) in enumerate([(1950, 2400, 0.0, 0.075), (2350, 1900, 0.085, 0.065),
+                                               (2000, 2450, 0.17, 0.07), (2400, 1950, 0.25, 0.06),
+                                               (2050, 2600, 0.34, 0.13)]):
+        place(chirp, scale(canary_syllable(rng, rate, f0, f1, dur), 0.85 if i < 4 else 1.0), seconds(start, rate))
+    # The cover settling over the cage: a soft fall of cloth, and the brass foot barely touched under it.
+    n = seconds(0.5, rate)
+    settle = mix(mul(bandpass(lowpass(noise(n, rng), 1400, rate), 420, 0.9, rate), soft_env(n, rate, 0.022, 0.11)),
+                 scale(soft_mode(rng, n, rate, 1500, 18, 0.05, attack=0.005), 0.12),
+                 scale(soft_mode(rng, n, rate, 320, 3, 0.03, attack=0.006), 0.5))
+    # Lifting it: linen drawn up, and the ring above the dome giving a small, dull chink.
+    n = seconds(0.4, rate)
+    lift = mix(mul(bandpass(lowpass(noise(n, rng), 1600, rate), 700, 1.0, rate), soft_env(n, rate, 0.03, 0.08)),
+               [0.0] * seconds(0.24, rate) + scale(soft_mode(rng, seconds(0.16, rate), rate, 1700, 20, 0.04, attack=0.004), 0.16))
+    # A message stirring the cloth while muted.
+    n = seconds(0.28, rate)
+    rustle = mul(bandpass(lowpass(noise(n, rng), 1500, rate), 650, 1.3, rate), soft_env(n, rate, 0.014, 0.045))
+    # The hem swinging past.
+    n = seconds(0.22, rate)
+    swish = mul(bandpass(lowpass(noise(n, rng), 2000, rate), 800, 0.8, rate),
+                [math.sin(math.pi * i / n) ** 2 for i in range(n)])
+    peaks = {"birdcage_chirp": (chirp, 0.36, 2400, 0.12), "birdcage_settle": (settle, SOFT_PEAK, 1800, 0.12),
+             "birdcage_lift": (lift, 0.42, 2200, 0.12), "birdcage_rustle": (rustle, 0.2, 2000, 0.1),
+             "birdcage_swish": (swish, 0.27, 2200, 0.1)}
+    return {name: soft_finish(soft_room(soft_tilt(c, rate, cut), rate, wet), rate, peak, 0.004, 0.03)
+            for name, (c, peak, cut, wet) in peaks.items()}
+
+
+# ---------- Zipper ----------
+# A fabric zipper heard close: the brass is small and wrapped in tape, so every sound is a muffled
+# tick with a cloth body under it, never a bright click.
+
+
+def zip_clack(rng, rate):
+    """The pull's tab falling flat on the tape: a soft knock of brass on cloth."""
+    n = seconds(0.07, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 420, 2.2, 0.012, attack=0.006),
+        scale(soft_mode(rng, n, rate, 1150, 2.6, 0.008, attack=0.006), 0.6),
+        scale(soft_mode(rng, n, rate, 2300, 18, 0.035, attack=0.006), 0.4),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, SOFT_PEAK, 0.006, 0.03)
+
+
+def zip_tick(rng, rate):
+    """The tab bouncing on the tape, or the tag passing a letter: a tiny, dull tick."""
+    n = seconds(0.04, rate)
+    track = mix(
+        soft_mode(rng, n, rate, 1500, 2.8, 0.006, attack=0.007),
+        scale(soft_mode(rng, n, rate, 2500, 16, 0.016, attack=0.007), 0.3),
+    )
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.1), rate, 0.36, 0.007, 0.02)
+
+
+def zip_teeth(rng, rate):
+    """Teeth passing the pull: a little run of soft grains over a breath of cloth."""
+    n = seconds(0.05, rate)
+    track = [0.0] * n
+    for i in range(4):
+        grain = soft_mode(rng, seconds(0.02, rate), rate, 1500 + rng.random() * 800, 2.2, 0.004, attack=0.003)
+        place(track, scale(grain, 1.0 - i * 0.12), seconds(0.0015 + i * 0.006 + rng.random() * 0.0015, rate))
+    cloth = mul(bandpass(noise(n, rng), 900, 1.2, rate), soft_env(n, rate, 0.006, 0.014))
+    track = mix(track, scale(cloth, 0.5))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.1), rate, 0.36, 0.003, 0.02)
+
+
+def zip_lift(rng, rate):
+    """The pull taken: its tab lifting off the tape, a scuff of cloth and a light tick of brass."""
+    n = seconds(0.06, rate)
+    scuff = mul(bandpass(noise(n, rng), 1200, 1.3, rate), soft_env(n, rate, 0.01, 0.022))
+    track = mix(scuff, scale(soft_mode(rng, n, rate, 2000, 18, 0.025, attack=0.004), 0.3))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, 0.36, 0.004, 0.025)
+
+
+# ---------- Key hook ----------
+
+def key_tink(rng, rate):
+    """Small keys touching on their ring: two muffled brass rings a moment apart, never a pure tone."""
+    n = seconds(0.2, rate)
+    track = [0.0] * n
+    place(track, mix(soft_mode(rng, n, rate, 2300, 24, 0.06, 0.004), scale(soft_mode(rng, n, rate, 3900, 20, 0.03, 0.004), 0.3)), 0)
+    place(track, scale(soft_mode(rng, n, rate, 2050, 24, 0.045, 0.004), 0.55), seconds(0.022, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.12), rate, 0.28, 0.004, 0.03)
+
+
+def key_clack(rng, rate):
+    """A set landing on its hook: a soft knock on the wooden board, the brass hook's short ring, a key after."""
+    n = seconds(0.14, rate)
+    track = [0.0] * n
+    place(track, soft_mode(rng, n, rate, 1100, 2.5, 0.01, 0.004), 0)
+    place(track, scale(soft_mode(rng, n, rate, 300, 2.0, 0.014, 0.005), 0.8), 0)
+    place(track, scale(soft_mode(rng, n, rate, 1800, 20, 0.04, 0.004), 0.45), 0)
+    place(track, scale(soft_mode(rng, n, rate, 2200, 24, 0.03, 0.004), 0.25), seconds(0.015, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.12), rate, 0.56, 0.004, 0.03)
+
+
+def key_lift(rng, rate):
+    """A set taken off its hook: the ring sliding off the brass, a soft scuff with a faint ring in it."""
+    n = seconds(0.08, rate)
+    scuff = mul(bandpass(noise(n, rng), 1400, 1.4, rate), soft_env(n, rate, 0.01, 0.025))
+    track = mix(scuff, scale(soft_mode(rng, n, rate, 2100, 20, 0.025, 0.004), 0.2))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.11), rate, 0.21, 0.004, 0.03)
+
+
 # ---------- Paper fan ----------
 
 def sweep_bandpass(signal, f0, f1, q, dur, rate):
@@ -768,6 +972,28 @@ def main():
     write("padlock_pop", padlock_pop(lock, fast), fast)
     write("padlock_rattle", padlock_rattle(lock, fast), fast)
     write("padlock_swing", padlock_swing(lock, fast), fast)
+    cup = random.Random(1022)
+    write("pencil_clink", pencil_clink(cup, fast), fast)
+    write("pencil_lift", pencil_lift(cup, fast), fast)
+    write("pencil_pick", pencil_pick(cup, fast), fast)
+    locket = random.Random(1022)
+    write("locket_open", locket_open(locket, fast), fast)
+    write("locket_snap", locket_snap(locket, fast), fast)
+    write("locket_place", locket_place(locket, fast), fast)
+    write("locket_lift", locket_lift(locket, fast), fast)
+    write("locket_back", locket_back(locket, fast), fast)
+    write("locket_chain", locket_chain(locket, fast), fast)
+    for name, clip in birdcage_clips(random.Random(1022), fast).items():
+        write(name, clip, fast)
+    zipper = random.Random(1022)
+    write("zip_clack", zip_clack(zipper, fast), fast)
+    write("zip_tick", zip_tick(zipper, fast), fast)
+    write("zip_teeth", zip_teeth(zipper, fast), fast)
+    write("zip_lift", zip_lift(zipper, fast), fast)
+    keys = random.Random(1022)
+    write("key_tink", key_tink(keys, fast), fast)
+    write("key_clack", key_clack(keys, fast), fast)
+    write("key_lift", key_lift(keys, fast), fast)
     fan = random.Random(1022)
     write("paperfan_fwap", paperfan_fwap(fan, fast), fast)
     write("paperfan_click", paperfan_click(fan, fast), fast)

@@ -34,11 +34,12 @@ import dev.dimvlachos.lab.core.demo.DemoTag
 import dev.dimvlachos.lab.core.demo.LocalDemoOverlay
 import dev.dimvlachos.lab.core.demo.RecordingLog
 import dev.dimvlachos.lab.core.demo.demoScript
-import dev.dimvlachos.lab.core.platform.LocalSoundCapturable
+import dev.dimvlachos.lab.core.platform.LocalSoundOn
 import dev.dimvlachos.lab.core.platform.LockLandscape
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabIconButton
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBar
 import dev.dimvlachos.lab.core.presentation.components.topbar.LabTopBarTitle
+import dev.dimvlachos.lab.core.presentation.components.topbar.SoundButton
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.action_back
@@ -53,8 +54,17 @@ import org.jetbrains.compose.resources.stringResource
 private val RecordPreRoll = 1_500.milliseconds
 
 @Composable
-internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (() -> Unit)?) {
+internal fun DemoScreen(
+    demo: Demo,
+    record: Boolean,
+    label: String?,
+    onBack: (() -> Unit)?,
+    soundOn: Boolean = false,
+) {
     var runId by remember { mutableIntStateOf(0) }
+    // This screen's own sound switch: it starts from the app's ([soundOn]) each time the demo
+    // opens, and flipping it leaves the app's as it was. A recording always has its sound.
+    var screenSound by remember(demo) { mutableStateOf(soundOn) }
     // On the phone a demo opens still, the user's to touch; its tour plays when asked for, once.
     // A recording plays it by itself.
     var playing by remember { mutableStateOf(record) }
@@ -89,7 +99,7 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
     val stage: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier.clipToBounds().takeOverOnTouch(playing && !record, stop)) {
             CompositionLocalProvider(
-                LocalSoundCapturable provides record,
+                LocalSoundOn provides (record || screenSound),
                 LocalDemoOverlay provides overlay,
             ) {
                 key(runId) { demo.content(state) }
@@ -134,6 +144,7 @@ internal fun DemoScreen(demo: Demo, record: Boolean, label: String?, onBack: (()
                             }
                         },
                     actions = {
+                        SoundButton(on = screenSound, onToggle = { screenSound = !screenSound })
                         WatchTourChip(
                             playing = playing,
                             onClick = {
