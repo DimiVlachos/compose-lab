@@ -586,4 +586,17 @@ class Canvas2DTest {
         near(Color.Red.copy(alpha = .5f), px[1, 1])
         near(Color.Red.copy(alpha = .5f), px[1, 3])
     }
+
+    @Test
+    fun aShadowTakesItsColourAsAColor() {
+        val c = Canvas2D.create(40, 40)
+        c.setShadowColor(Color(0f, 1f, 0f, 1f))
+        c.shadowBlur = 0.5f
+        c.shadowOffsetY = 14f
+        c.fillStyle = "#ff0000"
+        c.fillRect(4f, 4f, 10f, 10f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[8, 8])
+        assertTrue(px[8, 24].green > .8f && px[8, 24].red < .2f, "shadow at ${px[8, 24]}")
+    }
 }

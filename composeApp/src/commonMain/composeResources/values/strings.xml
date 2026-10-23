@@ -527,4 +527,26 @@
     <string name="zipper_tab_recents">Recents</string>
     <string name="zipper_tab_contacts">Contacts</string>
     <string name="zipper_tab_keypad">Keypad</string>
+    <string name="demo_keyhook">Key hook sign-out</string>
+    <string name="demo_keyhook_description">An account switcher that is the key rack by the door: hang your keys up to sign out, take someone's down to sign in</string>
+    <string name="keyhook_brand">Porchlight</string>
+    <string name="keyhook_search">Search</string>
+    <string name="keyhook_welcome">Welcome home, %1$s</string>
+    <string name="keyhook_whos_home">Who’s home?</string>
+    <string name="keyhook_household">Miller household · 4 people</string>
+    <string name="keyhook_signed_in_as">Signed in as</string>
+    <string name="keyhook_nobody">Nobody’s signed in</string>
+    <string name="keyhook_take_keys">Take your keys off the rack</string>
+    <string name="keyhook_hint_signed_in">Hang your keys on the rack to sign out</string>
+    <string name="keyhook_hint_signed_out">Carry a set of keys up here to sign in</string>
+    <string name="keyhook_continue_watching">Continue watching</string>
+    <string name="keyhook_empty">Your shows appear here once you take your keys.</string>
+    <string name="keyhook_status_in">Signed in as %1$s</string>
+    <string name="keyhook_status_out">Signed out</string>
+    <string name="keyhook_sign_in_as">Sign in as %1$s</string>
+    <string name="keyhook_sign_out">Sign out %1$s</string>
+    <string name="keyhook_tab_home">Home</string>
+    <string name="keyhook_tab_live">Live</string>
+    <string name="keyhook_tab_list">My List</string>
+    <string name="keyhook_tab_account">Account</string>
 </resources>

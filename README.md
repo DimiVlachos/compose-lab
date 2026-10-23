@@ -45,6 +45,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
 | [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
 | [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper) | `zipper` | `zipper.scrollbar` | A long list's fast scroller as a brass zipper sewn down its edge: the list opens behind the pull as you go down, and a cotton tag on the pull shows the letter |
+| [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -74,6 +75,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
 - [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
 - [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper)
+- [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -790,6 +792,24 @@ Box {
 }
 ```
 
+## Key hook sign-out (`core/presentation/components/keyhook/`)
+
+A family streaming app's account switcher as the key rack by the front door. Everyone's keys hang on their own brass hook on a walnut board under a name plate, and whoever is signed in has their set on a smaller brass hook under the account card. Pick that set up and drop it anywhere on the rack: it flies to its owner's hook, catches with a clack and swings, and the app asks who's home. Take someone else's set off its hook and carry it up toward the card: the keys stay right under your finger and swing as you move, and let go above the rack, the ring rises past the card hook's tip and drops into its curl, and that person's shows load below. Take a set while someone else's keys are on the card and the old set flies home to its own hook. A tap toggles a set without dragging.
+
+- **Drawn as the prototype draws it.** The rack is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: the walnut grain is baked once per size from a fixed seed; hooks, the card's among them, are each one path stroked in five passes so they read as round brass rod; the ring is drawn over the hook and the hook's front curl again over the ring, so the keys look threaded on.
+- **Pendulums, not animations.** Each set's anchor stays right under the finger, or flies an arc home on a stiff spring; the ring is a pendulum swung by its anchor's acceleration and each key a shorter pendulum loosely tied to it, stepped in fixed 1/240 s substeps. A set never drops when picked up, a dragged set stays inside the rack, and the frame loop sleeps once everything hangs still.
+- **Feel and sound.** A tick as a set is picked up and a confirm as it lands; synthesized key tinks whenever the keys knock together, a clack on landing and a small scrape on pickup.
+- **Screen readers and keys.** Each set is a button where it hangs ("Sign in as Ava Miller", "Sign out Jordan Miller"); a polite live region says who is signed in, and the greeting and account card say it in plain text, so the keys are never the only cue.
+- **Reduced motion.** Sets go home at once, every key resting at the angle the pendulums settle at.
+
+The demo, `keyhook.signout`, is the home screen of an invented streaming app for the Miller household. Its script hangs Jordan's keys on his hook, carries Ava's up to the card so she is signed in, and puts the rack back as it began.
+
+```kotlin
+val rack = remember { KeyRackState(household) }
+KeyRack(rack, labels, sounds, Modifier.fillMaxSize())
+// rack.signedIn changes once a set lands on the card, or the one there lands back on its hook.
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -931,6 +951,8 @@ The pencil cup holds four tools; its fan is laid out for a phone held upright, f
 The locket holds one of the four Recent photos it draws itself; a real app would pass its own pictures and crop the stored image to the oval. It is drawn in a 300 × 380 box scaled to its space, no more than 1.45 times, with the Recent strip never below its dp size, and is not mirrored for right-to-left. Which photo is in the locket is not saved.
 
 The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 times, standing on the bottom of it, and is not mirrored for right-to-left. The canary breathes and the cloth ripples all the time, so its frame loop runs while the screen is in front. How long a chat stays muted is the app's to decide.
+
+The key rack's hooks share one board, which suits about four people, each with two or three things on their ring: keys, a fob, a leather tag or a bobber. It fills its space, with the account card's 62 dp at its top, and its keys grow with the height it is given. Who is signed in is not saved, and the rack is not mirrored for right-to-left.
 
 ## Contributing
 

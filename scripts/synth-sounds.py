@@ -826,6 +826,36 @@ def zip_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, 0.36, 0.004, 0.025)
 
 
+# ---------- Key hook ----------
+
+def key_tink(rng, rate):
+    """Small keys touching on their ring: two muffled brass rings a moment apart, never a pure tone."""
+    n = seconds(0.2, rate)
+    track = [0.0] * n
+    place(track, mix(soft_mode(rng, n, rate, 2300, 24, 0.06, 0.004), scale(soft_mode(rng, n, rate, 3900, 20, 0.03, 0.004), 0.3)), 0)
+    place(track, scale(soft_mode(rng, n, rate, 2050, 24, 0.045, 0.004), 0.55), seconds(0.022, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.12), rate, 0.28, 0.004, 0.03)
+
+
+def key_clack(rng, rate):
+    """A set landing on its hook: a soft knock on the wooden board, the brass hook's short ring, a key after."""
+    n = seconds(0.14, rate)
+    track = [0.0] * n
+    place(track, soft_mode(rng, n, rate, 1100, 2.5, 0.01, 0.004), 0)
+    place(track, scale(soft_mode(rng, n, rate, 300, 2.0, 0.014, 0.005), 0.8), 0)
+    place(track, scale(soft_mode(rng, n, rate, 1800, 20, 0.04, 0.004), 0.45), 0)
+    place(track, scale(soft_mode(rng, n, rate, 2200, 24, 0.03, 0.004), 0.25), seconds(0.015, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.12), rate, 0.56, 0.004, 0.03)
+
+
+def key_lift(rng, rate):
+    """A set taken off its hook: the ring sliding off the brass, a soft scuff with a faint ring in it."""
+    n = seconds(0.08, rate)
+    scuff = mul(bandpass(noise(n, rng), 1400, 1.4, rate), soft_env(n, rate, 0.01, 0.025))
+    track = mix(scuff, scale(soft_mode(rng, n, rate, 2100, 20, 0.025, 0.004), 0.2))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.11), rate, 0.21, 0.004, 0.03)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -892,6 +922,10 @@ def main():
     write("zip_tick", zip_tick(zipper, fast), fast)
     write("zip_teeth", zip_teeth(zipper, fast), fast)
     write("zip_lift", zip_lift(zipper, fast), fast)
+    keys = random.Random(1022)
+    write("key_tink", key_tink(keys, fast), fast)
+    write("key_clack", key_clack(keys, fast), fast)
+    write("key_lift", key_lift(keys, fast), fast)
 
 
 if __name__ == "__main__":

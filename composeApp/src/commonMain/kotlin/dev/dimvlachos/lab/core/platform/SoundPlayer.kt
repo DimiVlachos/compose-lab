@@ -58,7 +58,10 @@ internal enum class Sound(val file: String) {
     ZipClack("zip_clack"),
     ZipTick("zip_tick"),
     ZipTeeth("zip_teeth"),
-    ZipLift("zip_lift");
+    ZipLift("zip_lift"),
+    KeyTink("key_tink"),
+    KeyClack("key_clack"),
+    KeyLift("key_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
