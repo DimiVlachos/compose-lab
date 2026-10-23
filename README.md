@@ -43,6 +43,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
 | [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked rides in a pocket on its new sheet while the rest clatter back in |
 | [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
+| [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -70,6 +71,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Padlock](#padlock-corepresentationcomponentspadlock)
 - [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup)
 - [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
+- [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -745,6 +747,25 @@ val photos = remember { locketPhotos() }
 Locket(locket, photos, labels, muted = muted, accent = accent, sounds = sounds)
 ```
 
+## Birdcage (`core/presentation/components/birdcage/`)
+
+A group chat's notification switch as a little brass birdcage with a canary inside, hanging in the window light. Each new message makes the canary hop on its perch and sing, with notes rising from its beak. To mute the chat, take the rolled hem of the linen cover on top of the cage and pull it down, the way you'd put a bird to bed: let go past halfway, or with a flick, and it falls like weighted linen, faster as it goes, lands softly on the base and its hem ripples once; let go early and it is drawn back up, easing into the top, where the linen gathers for a moment at the crown. Under the cover the canary tucks its head into its shoulder and sleeps, and new messages only stir the cloth while a grey count collects on the Latest row. Push the hem up and it blinks awake and lifts its head smoothly out of its shoulder. A tap on the cage toggles it too.
+
+- **Drawn as the prototype draws it.** The cage is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: dome ribs and rings stroked three times each (a dark edge, the brass and a highlight toward the window), the back half dimmed behind the bird; the cover is one path that follows the dome down to its scalloped hem, filled with a linen weave baked once from a fixed seed, with pleats drawn on their own layer and faded in at their tops, and a rolled hem stroked as a tube.
+- **Weighted cloth and a fling.** The hem follows the finger 1:1 past a 6 dp slop, with a little give past either end. On release its speed over the last 100 ms is projected forward to pick down or up, and the cover carries that speed on: gravity speeds it up going down, a steady pull draws it up, and near the end it brakes at the constant rate that stops it exactly there (a = v² / 2d), so it never passes its end and never stops dead. The braking sets off a hem ripple on landing and a gather of the crown's scallops at the top, and the hem swings as it slows. The canary's sleep follows how far down the cover is, so it tucks in only once it's dark.
+- **Feel and sound.** A confirm where the cover settles and mutes, a tick as it lifts; synthesized chirps, a cloth settle, a lift, a rustle for a muted message and a swish as the hem is taken.
+- **Screen readers.** The cage is a switch labelled Mute this chat that takes focus and Space or Enter; the state under it is a polite live region, so the drawing is never the only cue.
+- **Reduced motion.** The cover goes straight to where it is aimed and the hem doesn't sway.
+
+The demo, `birdcage.mute`, is the group info screen of an invented running club in Austin. Its script delivers a message (the canary sings), pulls the cover down, delivers another (it is silenced and counted), pushes the cover back up and delivers a third, then puts the first message back.
+
+```kotlin
+val cage = remember { BirdcageState() }
+LaunchedEffect(messages) { messages.collect { cage.deliver() } }
+Birdcage(cage, label = "Mute this chat", sounds = sounds)
+// cage.muted says whether the chat is muted.
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -884,6 +905,8 @@ The padlock's strength scoring is a placeholder: length, the kinds of character 
 The pencil cup holds four tools; its fan is laid out for a phone held upright, from the bottom-right corner, and is not mirrored for right-to-left. The cup draws over the screen it fills, so place it over the list it belongs to.
 
 The locket holds one of the four Recent photos it draws itself; a real app would pass its own pictures and crop the stored image to the oval. It is drawn in a 300 × 380 box scaled to its space, no more than 1.45 times, with the Recent strip never below its dp size, and is not mirrored for right-to-left. Which photo is in the locket is not saved.
+
+The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 times, standing on the bottom of it, and is not mirrored for right-to-left. The canary breathes and the cloth ripples all the time, so its frame loop runs while the screen is in front. How long a chat stays muted is the app's to decide.
 
 ## Contributing
 

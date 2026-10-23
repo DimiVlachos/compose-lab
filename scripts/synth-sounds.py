@@ -733,6 +733,53 @@ def locket_chain(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.1), rate, 0.045, 0.003, 0.02)
 
 
+# ---------- Birdcage ----------
+
+def canary_syllable(rng, rate, f0, f1, dur, trill=34, depth=0.06):
+    """One note of a canary: a pitch glide with a fast trill on it, a breath of air at its start, never a pure beep."""
+    n = seconds(dur, rate)
+    phase, tone = 0.0, []
+    for i in range(n):
+        t = i / n
+        f = f0 * (f1 / f0) ** t * (1 + depth * math.sin(2 * math.pi * trill * i / rate))
+        phase += 2 * math.pi * f / rate
+        # A little of the second harmonic, so it has a throat behind it.
+        tone.append(math.sin(phase) + 0.18 * math.sin(2 * phase + 0.4))
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.6 for i in range(n)]
+    breath = mul(bandpass(noise(n, rng), (f0 + f1) / 2, 1.4, rate), soft_env(n, rate, 0.004, dur * 0.25))
+    return mix(mul(tone, shape), scale(breath, 0.35))
+
+
+def birdcage_clips(rng, rate):
+    """The cage's five sounds: a small canary heard through the bars, linen and a muffled brass ring."""
+    chirp = [0.0] * seconds(0.56, rate)
+    for i, (f0, f1, start, dur) in enumerate([(1950, 2400, 0.0, 0.075), (2350, 1900, 0.085, 0.065),
+                                               (2000, 2450, 0.17, 0.07), (2400, 1950, 0.25, 0.06),
+                                               (2050, 2600, 0.34, 0.13)]):
+        place(chirp, scale(canary_syllable(rng, rate, f0, f1, dur), 0.85 if i < 4 else 1.0), seconds(start, rate))
+    # The cover settling over the cage: a soft fall of cloth, and the brass foot barely touched under it.
+    n = seconds(0.5, rate)
+    settle = mix(mul(bandpass(lowpass(noise(n, rng), 1400, rate), 420, 0.9, rate), soft_env(n, rate, 0.022, 0.11)),
+                 scale(soft_mode(rng, n, rate, 1500, 18, 0.05, attack=0.005), 0.12),
+                 scale(soft_mode(rng, n, rate, 320, 3, 0.03, attack=0.006), 0.5))
+    # Lifting it: linen drawn up, and the ring above the dome giving a small, dull chink.
+    n = seconds(0.4, rate)
+    lift = mix(mul(bandpass(lowpass(noise(n, rng), 1600, rate), 700, 1.0, rate), soft_env(n, rate, 0.03, 0.08)),
+               [0.0] * seconds(0.24, rate) + scale(soft_mode(rng, seconds(0.16, rate), rate, 1700, 20, 0.04, attack=0.004), 0.16))
+    # A message stirring the cloth while muted.
+    n = seconds(0.28, rate)
+    rustle = mul(bandpass(lowpass(noise(n, rng), 1500, rate), 650, 1.3, rate), soft_env(n, rate, 0.014, 0.045))
+    # The hem swinging past.
+    n = seconds(0.22, rate)
+    swish = mul(bandpass(lowpass(noise(n, rng), 2000, rate), 800, 0.8, rate),
+                [math.sin(math.pi * i / n) ** 2 for i in range(n)])
+    peaks = {"birdcage_chirp": (chirp, 0.36, 2400, 0.12), "birdcage_settle": (settle, SOFT_PEAK, 1800, 0.12),
+             "birdcage_lift": (lift, 0.42, 2200, 0.12), "birdcage_rustle": (rustle, 0.2, 2000, 0.1),
+             "birdcage_swish": (swish, 0.27, 2200, 0.1)}
+    return {name: soft_finish(soft_room(soft_tilt(c, rate, cut), rate, wet), rate, peak, 0.004, 0.03)
+            for name, (c, peak, cut, wet) in peaks.items()}
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -792,6 +839,8 @@ def main():
     write("locket_lift", locket_lift(locket, fast), fast)
     write("locket_back", locket_back(locket, fast), fast)
     write("locket_chain", locket_chain(locket, fast), fast)
+    for name, clip in birdcage_clips(random.Random(1022), fast).items():
+        write(name, clip, fast)
 
 
 if __name__ == "__main__":

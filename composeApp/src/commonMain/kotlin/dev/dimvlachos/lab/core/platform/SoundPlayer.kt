@@ -49,7 +49,12 @@ internal enum class Sound(val file: String) {
     LocketPlace("locket_place"),
     LocketLift("locket_lift"),
     LocketBack("locket_back"),
-    LocketChain("locket_chain");
+    LocketChain("locket_chain"),
+    BirdcageChirp("birdcage_chirp"),
+    BirdcageSettle("birdcage_settle"),
+    BirdcageLift("birdcage_lift"),
+    BirdcageRustle("birdcage_rustle"),
+    BirdcageSwish("birdcage_swish");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

@@ -546,4 +546,44 @@ class Canvas2DTest {
         near(Color.Transparent, px[9, 10])
         assertTrue(px[29, 10].blue > .6f, "the shadow, moved right: ${px[29, 10]}")
     }
+
+    @Test
+    fun destinationInKeepsOnlyWhatItCovers() {
+        val c = Canvas2D.create(4, 4)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 4f)
+        c.globalCompositeOperation = "destination-in"
+        c.fillStyle = "rgba(0,0,0,0.5)"
+        c.fillRect(0f, 0f, 2f, 4f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red.copy(alpha = .5f), px[1, 2])
+        near(Color.Red, px[3, 2])
+    }
+
+    @Test
+    fun destinationOverPaintsBehind() {
+        val c = Canvas2D.create(4, 4)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 2f, 4f)
+        c.globalCompositeOperation = "destination-over"
+        c.fillStyle = "#0000ff"
+        c.fillRect(0f, 0f, 4f, 4f)
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[1, 2])
+        near(Color.Blue, px[3, 2])
+    }
+
+    @Test
+    fun aLayerIsLaidDownAtItsAlpha() {
+        val c = Canvas2D.create(4, 4)
+        c.beginLayer(.5f)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.fillRect(0f, 0f, 4f, 4f)
+        c.endLayer()
+        val px = c.bitmap.toPixelMap()
+        // Two fills overlap in the layer, which is faded as one: still half, not three quarters.
+        near(Color.Red.copy(alpha = .5f), px[1, 1])
+        near(Color.Red.copy(alpha = .5f), px[1, 3])
+    }
 }
