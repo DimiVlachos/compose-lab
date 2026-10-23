@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.Pattern2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -85,16 +86,16 @@ internal fun Birdcage(
         val listener: (BirdcageEvent) -> Unit = { event ->
             when (event) {
                 BirdcageEvent.Settle -> {
-                    sounds.play(Sound.BirdcageSettle)
+                    sounds.playVaried(Sound.BirdcageSettle)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
                 BirdcageEvent.Lift -> {
-                    sounds.play(Sound.BirdcageLift)
+                    sounds.playVaried(Sound.BirdcageLift)
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 }
-                BirdcageEvent.Chirp -> sounds.play(Sound.BirdcageChirp)
-                BirdcageEvent.Rustle -> sounds.play(Sound.BirdcageRustle)
-                BirdcageEvent.Swish -> sounds.play(Sound.BirdcageSwish)
+                BirdcageEvent.Chirp -> sounds.playVaried(Sound.BirdcageChirp)
+                BirdcageEvent.Rustle -> sounds.playVaried(Sound.BirdcageRustle)
+                BirdcageEvent.Swish -> sounds.playVaried(Sound.BirdcageSwish)
             }
         }
         state.onEvent = listener

@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -598,74 +654,49 @@ def padlock_swing(rng, rate):
 
 # ---------- Birdcage ----------
 
-def biquad_lowpass(signal, cutoff, q_db, rate):
-    """The browser's BiquadFilterNode low-pass: RBJ, with its Q given in dB as WebAudio takes it."""
-    q = 10 ** (q_db / 20)
-    w = 2 * math.pi * cutoff / rate
-    alpha = math.sin(w) / (2 * q)
-    cw = math.cos(w)
-    b0, b1, b2 = (1 - cw) / 2, 1 - cw, (1 - cw) / 2
-    a0, a1, a2 = 1 + alpha, -2 * cw, 1 - alpha
-    out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
-    for x in signal:
-        y = (b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0
-        x2, x1, y2, y1 = x1, x, y1, y
-        out.append(y)
-    return out
-
-
-def exp_ramps(n, rate, peak, attack, dur):
-    """A WebAudio gain: .0001, an exponential ramp up to peak by attack, and down to .0001 by dur."""
-    out = []
-    for i in range(n):
-        t = i / rate
-        if t < attack:
-            out.append(0.0001 * (peak / 0.0001) ** (t / attack))
-        elif t < dur:
-            out.append(peak * (0.0001 / peak) ** ((t - attack) / (dur - attack)))
-        else:
-            out.append(0.0)
-    return out
-
-
-def web_tone(track, rate, start, f0, f1, dur, gain):
-    """The prototype's tone(): a sine swept exponentially from f0 to f1, in and out in exponential ramps."""
+def canary_syllable(rng, rate, f0, f1, dur, trill=34, depth=0.06):
+    """One note of a canary: a pitch glide with a fast trill on it, a breath of air at its start, never a pure beep."""
     n = seconds(dur, rate)
-    phase, wave_ = 0.0, []
+    phase, tone = 0.0, []
     for i in range(n):
-        phase += 2 * math.pi * f0 * (f1 / f0) ** (i / n) / rate
-        wave_.append(math.sin(phase))
-    place(track, mul(wave_, exp_ramps(n, rate, gain, 0.01, dur)), seconds(start, rate))
-
-
-def web_burst(track, rng, rate, start, freq, q_db, dur, gain):
-    """The prototype's burst(): white noise through a low-pass, swelling in and dying away."""
-    n = seconds(dur, rate)
-    sound = mul(biquad_lowpass(noise(n, rng), freq, q_db, rate), exp_ramps(n, rate, gain, min(0.05, dur * 0.3), dur))
-    place(track, sound, seconds(start, rate))
+        t = i / n
+        f = f0 * (f1 / f0) ** t * (1 + depth * math.sin(2 * math.pi * trill * i / rate))
+        phase += 2 * math.pi * f / rate
+        # A little of the second harmonic, so it has a throat behind it.
+        tone.append(math.sin(phase) + 0.18 * math.sin(2 * phase + 0.4))
+    shape = [math.sin(math.pi * min(1.0, i / n)) ** 1.6 for i in range(n)]
+    breath = mul(bandpass(noise(n, rng), (f0 + f1) / 2, 1.4, rate), soft_env(n, rate, 0.004, dur * 0.25))
+    return mix(mul(tone, shape), scale(breath, 0.35))
 
 
 def birdcage_clips(rng, rate):
-    """The cage's five sounds at the prototype's own gains, so they keep their loudness to each other."""
-    chirp = [0.0] * seconds(0.5, rate)
-    for i in range(2):
-        web_tone(chirp, rate, i * 0.16, 3100, 4300, 0.07, 0.07)
-        web_tone(chirp, rate, i * 0.16 + 0.075, 4200, 3300, 0.06, 0.05)
-    web_tone(chirp, rate, 0.36, 3600, 4700, 0.12, 0.05)
-    settle = [0.0] * seconds(0.47, rate)
-    web_burst(settle, rng, rate, 0, 900, 0.7, 0.45, 0.12)
-    lift = [0.0] * seconds(0.35, rate)
-    web_burst(lift, rng, rate, 0, 1400, 0.8, 0.3, 0.09)
-    web_tone(lift, rate, 0.25, 3800, 4400, 0.08, 0.04)
-    rustle = [0.0] * seconds(0.27, rate)
-    web_burst(rustle, rng, rate, 0, 1100, 0.6, 0.25, 0.05)
-    swish = [0.0] * seconds(0.22, rate)
-    web_burst(swish, rng, rate, 0, 1600, 0.7, 0.2, 0.05)
-    clips = {"birdcage_chirp": chirp, "birdcage_settle": settle, "birdcage_lift": lift,
-             "birdcage_rustle": rustle, "birdcage_swish": swish}
-    # One gain for all five, so the loudest peaks where the others' clips do.
-    loudest = max(max(abs(x) for x in c) for c in clips.values())
-    return {name: fade(scale(c, 0.89 / loudest), rate, 0.0005, 0.01) for name, c in clips.items()}
+    """The cage's five sounds: a small canary heard through the bars, linen and a muffled brass ring."""
+    chirp = [0.0] * seconds(0.56, rate)
+    for i, (f0, f1, start, dur) in enumerate([(1950, 2400, 0.0, 0.075), (2350, 1900, 0.085, 0.065),
+                                               (2000, 2450, 0.17, 0.07), (2400, 1950, 0.25, 0.06),
+                                               (2050, 2600, 0.34, 0.13)]):
+        place(chirp, scale(canary_syllable(rng, rate, f0, f1, dur), 0.85 if i < 4 else 1.0), seconds(start, rate))
+    # The cover settling over the cage: a soft fall of cloth, and the brass foot barely touched under it.
+    n = seconds(0.5, rate)
+    settle = mix(mul(bandpass(lowpass(noise(n, rng), 1400, rate), 420, 0.9, rate), soft_env(n, rate, 0.022, 0.11)),
+                 scale(soft_mode(rng, n, rate, 1500, 18, 0.05, attack=0.005), 0.12),
+                 scale(soft_mode(rng, n, rate, 320, 3, 0.03, attack=0.006), 0.5))
+    # Lifting it: linen drawn up, and the ring above the dome giving a small, dull chink.
+    n = seconds(0.4, rate)
+    lift = mix(mul(bandpass(lowpass(noise(n, rng), 1600, rate), 700, 1.0, rate), soft_env(n, rate, 0.03, 0.08)),
+               [0.0] * seconds(0.24, rate) + scale(soft_mode(rng, seconds(0.16, rate), rate, 1700, 20, 0.04, attack=0.004), 0.16))
+    # A message stirring the cloth while muted.
+    n = seconds(0.28, rate)
+    rustle = mul(bandpass(lowpass(noise(n, rng), 1500, rate), 650, 1.3, rate), soft_env(n, rate, 0.014, 0.045))
+    # The hem swinging past.
+    n = seconds(0.22, rate)
+    swish = mul(bandpass(lowpass(noise(n, rng), 2000, rate), 800, 0.8, rate),
+                [math.sin(math.pi * i / n) ** 2 for i in range(n)])
+    peaks = {"birdcage_chirp": (chirp, 0.36, 2400, 0.12), "birdcage_settle": (settle, SOFT_PEAK, 1800, 0.12),
+             "birdcage_lift": (lift, 0.42, 2200, 0.12), "birdcage_rustle": (rustle, 0.2, 2000, 0.1),
+             "birdcage_swish": (swish, 0.27, 2200, 0.1)}
+    return {name: soft_finish(soft_room(soft_tilt(c, rate, cut), rate, wet), rate, peak, 0.004, 0.03)
+            for name, (c, peak, cut, wet) in peaks.items()}
 
 
 def main():
