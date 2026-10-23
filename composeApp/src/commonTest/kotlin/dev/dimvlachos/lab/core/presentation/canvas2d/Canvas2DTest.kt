@@ -397,6 +397,27 @@ class Canvas2DTest {
     }
 
     @Test
+    fun textLaidOutAtAHigherResolutionKeepsItsUserUnits() = withMeasurer { m ->
+        val c = textCanvas(m, 200, 120)
+        c.font = "700 10px MONO"
+        val plain = c.measureText("HH HH")
+        c.textResolution = 4f
+        assertEquals(plain, c.measureText("HH HH"), plain * .1f)
+        // Drawn under the scale it was laid out for, it lands where the plain layout would.
+        c.fillStyle = "#000000"
+        c.textAlign = "center"
+        c.textBaseline = "middle"
+        c.scale(4f, 4f)
+        c.fillText("H", 25f, 15f)
+        val rows = inkRows(c)
+        val cols = inkColumns(c)
+        assertTrue(rows.min() < 60 && rows.max() > 60, "rows straddle 60: $rows")
+        assertTrue(cols.min() < 100 && cols.max() > 100, "columns straddle 100: $cols")
+        c.textResolution = 0f
+        assertEquals(1f, c.textResolution)
+    }
+
+    @Test
     fun anImageDrawsFromAFractionalSourceRectangle() {
         // Four rows, red green blue white; the source starts half way down the green row.
         val src = Canvas2D.create(1, 4)
