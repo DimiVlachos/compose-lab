@@ -21,7 +21,7 @@ internal actual fun rememberSoundPlayer(sounds: Set<Sound>): SoundPlayer {
     val player = remember(context) { SoundPoolPlayer(context) }
     LaunchedEffect(player, sounds) { player.load(sounds) }
     DisposableEffect(player) { onDispose { player.release() } }
-    return player
+    return gate(player)
 }
 
 /**

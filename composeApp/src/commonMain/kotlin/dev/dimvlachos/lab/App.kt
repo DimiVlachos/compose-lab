@@ -22,8 +22,11 @@ import dev.dimvlachos.lab.catalog.presentation.rememberCatalogFilterState
 import dev.dimvlachos.lab.catalog.presentation.screen.FolderScreen
 import dev.dimvlachos.lab.catalog.presentation.screen.HomeScreen
 import dev.dimvlachos.lab.core.demo.RecordingLog
+import dev.dimvlachos.lab.core.platform.SoundSetting
+import dev.dimvlachos.lab.core.platform.SoundSettingStore
 import dev.dimvlachos.lab.core.platform.ThemeModeStore
 import dev.dimvlachos.lab.core.platform.platformLabel
+import dev.dimvlachos.lab.core.platform.rememberSoundSettingStore
 import dev.dimvlachos.lab.core.platform.rememberThemeModeStore
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.LocalSystemBarRequests
@@ -60,9 +63,12 @@ internal fun LabApp(
     record: Boolean,
     label: Boolean,
     themeStore: ThemeModeStore = rememberThemeModeStore(),
+    soundStore: SoundSettingStore = rememberSoundSettingStore(),
     reveal: ThemeRevealState = remember { ThemeRevealState() },
 ) {
     val theme = remember(themeStore) { ThemeController(themeStore) }
+    // The app's sound switch, off until it is turned on; each demo starts its own from it.
+    val sound = remember(soundStore) { SoundSetting(soundStore) }
     val systemDark = isSystemInDarkTheme()
     val dark = useDarkTheme(theme.mode, systemDark, record)
     val scope = rememberCoroutineScope()
@@ -141,6 +147,7 @@ internal fun LabApp(
                     DemoScreen(
                         demo = shown.demo,
                         record = record && shown.demo === initialDemo,
+                        soundOn = sound.on,
                         label = if (label) stringResource(platformLabel) else null,
                         // Decided by the screen itself, not where the app is: sliding off as it is
                         // left, it keeps the Back it was left by.
@@ -166,6 +173,8 @@ internal fun LabApp(
                             onSearchFocused = navigation::searchFocused,
                             themeMode = theme.mode,
                             onCycleTheme = cycleTheme,
+                            soundOn = sound.on,
+                            onToggleSound = sound::toggle,
                             onOpenSearch = navigation::openSearch,
                             onCloseSearch = navigation::back,
                             onOpenDemo = navigation::openDemo,
