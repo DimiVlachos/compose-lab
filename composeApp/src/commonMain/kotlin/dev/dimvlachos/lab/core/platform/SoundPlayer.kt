@@ -61,7 +61,11 @@ internal enum class Sound(val file: String) {
     ZipLift("zip_lift"),
     KeyTink("key_tink"),
     KeyClack("key_clack"),
-    KeyLift("key_lift");
+    KeyLift("key_lift"),
+    PaperFanFwap("paperfan_fwap"),
+    PaperFanClick("paperfan_click"),
+    PaperFanSwish("paperfan_swish"),
+    PaperFanClack("paperfan_clack");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

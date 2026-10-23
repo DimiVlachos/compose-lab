@@ -856,6 +856,74 @@ def key_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.11), rate, 0.21, 0.004, 0.03)
 
 
+# ---------- Paper fan ----------
+
+def sweep_bandpass(signal, f0, f1, q, dur, rate):
+    """RBJ band-pass whose centre glides exponentially from f0 to f1 over dur seconds, as WebAudio's ramp."""
+    out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
+    for i, x in enumerate(signal):
+        t = min(1.0, i / (dur * rate))
+        w = 2 * math.pi * f0 * (f1 / f0) ** t / rate
+        alpha = math.sin(w) / (2 * q)
+        a0, a1, a2 = 1 + alpha, -2 * math.cos(w), 1 - alpha
+        y = (alpha * x - alpha * x2 - a1 * y1 - a2 * y2) / a0
+        x2, x1, y2, y1 = x1, x, y1, y
+        out.append(y)
+    return out
+
+
+def swell(n, rate, dur):
+    """The prototype's sweep envelope: up from silence over a quarter of dur, exponentially, and back down by dur."""
+    out, up = [], dur * 0.25
+    for i in range(n):
+        t = i / rate
+        if t < up:
+            out.append(0.0001 * (1 / 0.0001) ** (t / up))
+        elif t < dur:
+            out.append(0.0001 ** ((t - up) / (dur - up)))
+        else:
+            out.append(0.0)
+    return out
+
+
+def paper_sweep(rng, rate, f0, f1, q, dur, gain):
+    """One of the prototype's sweep()s: noise through a gliding band-pass, swelled in and out."""
+    n = seconds(dur + 0.02, rate)
+    return scale(mul(sweep_bandpass(noise(n, rng), f0, f1, q, dur, rate), swell(n, rate, dur)), gain)
+
+
+def paperfan_fwap(rng, rate):
+    """The fan flicked open: a soft rush of paper through the air, and the leaf filling out with a muffled pop."""
+    track = [0.0] * seconds(0.3, rate)
+    place(track, paper_sweep(rng, rate, 500, 1800, 0.9, 0.17, 0.32), seconds(0.06, rate))
+    n = seconds(0.08, rate)
+    pop = mul(bandpass(noise(n, rng), 900, 1.3, rate), soft_env(n, rate, 0.006, 0.018))
+    place(track, scale(pop, 0.12), seconds(0.11, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2800), rate, 0.11), rate, SOFT_PEAK, 0.004, 0.04)
+
+
+def paperfan_click(rng, rate):
+    """The leading guard settling home: a light knock of lacquered bamboo."""
+    n = seconds(0.1, rate)
+    knock = mix(soft_mode(rng, n, rate, 1400, 3.0, 0.008, attack=0.004), scale(soft_mode(rng, n, rate, 700, 2.5, 0.012, attack=0.005), 0.7))
+    return soft_finish(soft_room(soft_tilt(knock, rate, 2800), rate, 0.11), rate, 0.48, 0.004, 0.03)
+
+
+def paperfan_swish(rng, rate):
+    """The fan starting to fold: a soft, falling swish of paper."""
+    swish = paper_sweep(rng, rate, 1600, 600, 0.9, 0.2, 0.16)
+    return soft_finish(soft_room(soft_tilt(swish, rate, 2600), rate, 0.1), rate, 0.28, 0.006, 0.04)
+
+
+def paperfan_clack(rng, rate):
+    """The guards meeting as the fan shuts: two small, muffled knocks of bamboo."""
+    track = [0.0] * seconds(0.12, rate)
+    n = seconds(0.07, rate)
+    place(track, mix(soft_mode(rng, n, rate, 1100, 2.5, 0.01, attack=0.004), scale(soft_mode(rng, n, rate, 520, 2.0, 0.014, attack=0.005), 0.6)), 0)
+    place(track, scale(soft_mode(rng, n, rate, 1300, 2.5, 0.008, attack=0.004), 0.5), seconds(0.03, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 2700), rate, 0.11), rate, 0.35, 0.004, 0.03)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -926,6 +994,11 @@ def main():
     write("key_tink", key_tink(keys, fast), fast)
     write("key_clack", key_clack(keys, fast), fast)
     write("key_lift", key_lift(keys, fast), fast)
+    fan = random.Random(1022)
+    write("paperfan_fwap", paperfan_fwap(fan, fast), fast)
+    write("paperfan_click", paperfan_click(fan, fast), fast)
+    write("paperfan_swish", paperfan_swish(fan, fast), fast)
+    write("paperfan_clack", paperfan_clack(fan, fast), fast)
 
 
 if __name__ == "__main__":

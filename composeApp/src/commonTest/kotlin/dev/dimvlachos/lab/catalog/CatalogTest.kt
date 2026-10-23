@@ -22,6 +22,7 @@ import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
 import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
+import dev.dimvlachos.lab.resources.demo_paperfan
 import dev.dimvlachos.lab.resources.demo_pencilcup
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
@@ -69,6 +70,7 @@ class CatalogTest {
                 "birdcage.mute",
                 "zipper.scrollbar",
                 "keyhook.signout",
+                "paperfan.faq",
             ),
             Catalog.demos.map { it.id },
         )
@@ -98,6 +100,7 @@ class CatalogTest {
                 Res.string.demo_birdcage,
                 Res.string.demo_zipper,
                 Res.string.demo_keyhook,
+                Res.string.demo_paperfan,
             ),
             Catalog.demos.map { it.title },
         )
@@ -177,6 +180,7 @@ class CatalogTest {
                 "birdcage.mute",
                 "zipper.scrollbar",
                 "keyhook.signout",
+                "paperfan.faq",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

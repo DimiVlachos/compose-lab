@@ -46,6 +46,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Birdcage](#birdcage-corepresentationcomponentsbirdcage) | `birdcage` | `birdcage.mute` | A chat's mute switch as a brass birdcage: messages make the canary sing, and pulling a linen cover over the cage mutes the chat and puts the canary to sleep |
 | [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper) | `zipper` | `zipper.scrollbar` | A long list's fast scroller as a brass zipper sewn down its edge: the list opens behind the pull as you go down, and a cotton tag on the pull shows the letter |
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
+| [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -76,6 +77,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Birdcage](#birdcage-corepresentationcomponentsbirdcage)
 - [Zipper scrollbar](#zipper-scrollbar-corepresentationcomponentszipper)
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
+- [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -810,6 +812,24 @@ KeyRack(rack, labels, sounds, Modifier.fillMaxSize())
 // rack.signedIn changes once a set lands on the card, or the one there lands back on its hook.
 ```
 
+## Paper fan (`core/presentation/components/paperfan/`)
+
+A store's help page where the expand arrow on each question is a little folded paper fan resting in the row. Tap a question and the fan drops out of the row, slides over, turns and grows, then flicks open across the card with a fwap; the leading guard clicks home and the inner ribs flutter as the paper catches up. The answer is printed on its pleats in a serif, with an indigo band along the rim, a pine sprig and the shop's red seal, so you watch it unfold as the paper spreads. Tap another question and the open fan folds itself away first, then the new one lifts, so only one answer is out at a time; tap again, or sweep the open fan shut with a finger, and it folds back into the row.
+
+- **Drawn as the prototype draws it.** Ported call by call from its HTML prototype onto the shared `canvas2d` adapter. Each fan's print is baked once in its open pose, and every pleat draws its slice of it through a rotate-and-squeeze transform, so the print compresses as the fan folds; pleats alternate lit and shaded, more so as they steepen, and the lacquered guards, bamboo ribs, brass rivet, the fan's soft shadow and the lamp's pool of light on the card are drawn over and under it.
+- **Springs.** One spring lifts each fan out of its row and one per rib spreads it, softer further from the leading guard, stepped in fixed 1/240 s substeps. The answer area's height follows the lift, set as the list is laid out, and the panels trade height so they never hold more than one open answer between them. The frame loop sleeps once everything is at rest.
+- **By hand.** Put a finger on the open fan and sweep it from right to left: the leading guard stays under the finger and the inner ribs are pulled along. Let go before halfway and it springs back open.
+- **Feel and sound.** A tick as the guard clicks home and as a fan clacks shut; synthesized fwap, click, swish and clack.
+- **Screen readers.** Each question is a button that says whether it is expanded or collapsed, with expand and collapse actions, and the open answer is real text in the semantics tree; the fans are only its picture.
+- **Reduced motion.** Fans open and fold at once; folding by hand still works.
+
+The demo, `paperfan.faq`, is the help page of an invented outdoor outfitter. Its script opens the returns answer, then the Trail Rewards one, so the first folds away as the second opens, and sweeps the open fan shut by hand.
+
+```kotlin
+val fans = remember { PaperFanState(entries.size) }
+PaperFanFaq(entries, fans, sounds, colors, expanded = "Expanded", collapsed = "Collapsed")
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -954,6 +974,8 @@ The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 
 
 The key rack's hooks share one board, which suits about four people, each with two or three things on their ring: keys, a fob, a leather tag or a bobber. It fills its space, with the account card's 62 dp at its top, and its keys grow with the height it is given. Who is signed in is not saved, and the rack is not mirrored for right-to-left.
 
+The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
@@ -1000,6 +1022,7 @@ The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBr
 
 The locket's engraving is in [Great Vibes](https://github.com/googlefonts/great-vibes), Copyright 2015 The Great Vibes Pro Project Authors, and [Cormorant Garamond](https://github.com/CatharsisFonts/Cormorant), Copyright 2015 the Cormorant Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`; Cormorant Garamond Italic is a static instance, at weight 500, of the variable font).
 The zipper's tag letter is set in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; a static instance, at weight 700, of the variable font).
+The paper fans' answers are printed in [Gelasio](https://github.com/SorkinType/Gelasio), Copyright 2022 The Gelasio Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Gelasio-OFL.txt`; static instances, at weights 400 and 700, of the variable font).
 
 The Moodboard's display face is [Instrument Serif](https://github.com/Instrument/instrument-serif) (SIL Open Font License 1.1, licence bundled at `moodboard/shared/src/commonMain/composeResources/files/licenses/`).
 
