@@ -110,6 +110,62 @@ def write(name, signal, rate):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
+# ---------- Soft toolkit (shared by the demos' clips; keep this block identical in every branch) ----------
+# Real objects heard close by have no instant clicks, little energy up high and a small room around
+# them. These helpers give a clip those three things and a quieter peak than normalise's.
+
+SOFT_PEAK = 0.56
+
+
+def soft_env(n, rate, attack, decay):
+    """A raised-cosine rise over attack seconds, then an exponential fall (decay = time to fall by e)."""
+    a = max(1, seconds(attack, rate))
+    return [0.5 - 0.5 * math.cos(math.pi * i / a) if i < a else math.exp(-(i - a) / (decay * rate)) for i in range(n)]
+
+
+def soft_attack(signal, rate, attack=0.004):
+    """Eases the first attack seconds in on a raised cosine, so the clip never starts with a click."""
+    a, out = max(1, seconds(attack, rate)), list(signal)
+    for i in range(min(a, len(out))):
+        out[i] *= 0.5 - 0.5 * math.cos(math.pi * i / a)
+    return out
+
+
+def soft_tilt(signal, rate, cutoff=3200):
+    """A gentle high cut: two one-pole low-passes, so the highs fall away smoothly, as through a hand."""
+    return lowpass(lowpass(signal, cutoff, rate), cutoff, rate)
+
+
+def soft_mode(rng, n, rate, freq, q, decay, attack=0.002):
+    """A resonance excited by a short noise burst: a wood or ceramic mode that rings a little, never a pure sine."""
+    return mul(bandpass(noise(n, rng), freq, q, rate), soft_env(n, rate, attack, decay))
+
+
+def soft_room(signal, rate, wet=0.12, length=0.09, decay=0.028, seed=7):
+    """A tiny room: sparse velvet-noise reflections over length seconds, darkened, mixed in at wet."""
+    taps, room = [], random.Random(seed)
+    step = length / 48
+    for k in range(48):
+        t = k * step + room.uniform(0, step)
+        taps.append((seconds(0.004 + t, rate), room.choice((-1.0, 1.0)) * math.exp(-t / decay)))
+    norm = math.sqrt(sum(g * g for _, g in taps))
+    tail = [0.0] * (len(signal) + seconds(length + 0.006, rate))
+    for d, g in taps:
+        g /= norm
+        for i, x in enumerate(signal):
+            tail[d + i] += x * g
+    tail = lowpass(lowpass(tail, 2400, rate), 2400, rate)
+    return [(signal[i] if i < len(signal) else 0.0) + wet * tail[i] for i in range(len(tail))]
+
+
+def soft_finish(signal, rate, peak=SOFT_PEAK, attack=0.004, release=0.03):
+    """The last step for every soft clip: a level of [peak], a raised-cosine start and a faded tail."""
+    return fade(soft_attack(normalise(signal, peak), rate, attack), rate, 0.0, release)
+
+
+# ---------- End of the soft toolkit ----------
+
+
 # ---------- Typewriter ----------
 
 def strike(rng, rate, body_freq, ring_freq):
@@ -619,27 +675,29 @@ def glide(n, rate, f0, f1, dur, gain, shape="sine"):
 
 
 def pencil_clink(rng, rate):
-    """A tool landing in the glazed cup: a wooden tick on stoneware with a short ceramic ring."""
-    n = seconds(0.26, rate)
-    tick = mul(bandpass(noise(n, rng), 2400, 5.0, rate), ramp(n, rate, 0.28, 0.035))
-    knock = mul(lowpass(lowpass(noise(n, rng), 900, rate), 900, rate), ramp(n, rate, 0.2, 0.05))
-    ring = mix(glide(n, rate, 1850, 1830, 0.22, 0.05), glide(n, rate, 3120, 3100, 0.14, 0.025))
-    return fade(normalise(mix(scale(tick, 3.0), scale(knock, 2.0), ring), 0.8), rate, 0.0003, 0.02)
+    """A tool landing in the glazed cup: a dull wooden knock on stoneware and a short, muffled ceramic note."""
+    n = seconds(0.24, rate)
+    wood = mix(soft_mode(rng, n, rate, 900, 2.5, 0.012, attack=0.004), scale(soft_mode(rng, n, rate, 1700, 3.0, 0.008, attack=0.004), 0.5))
+    body = soft_mode(rng, n, rate, 320, 1.8, 0.02, attack=0.005)
+    glaze = mix(soft_mode(rng, n, rate, 1850, 22.0, 0.05, attack=0.004), scale(soft_mode(rng, n, rate, 2950, 20.0, 0.03, attack=0.004), 0.4))
+    hit = mix(scale(wood, 1.0), scale(body, 0.9), scale(glaze, 0.55))
+    return soft_finish(soft_room(soft_tilt(hit, rate, 3000), rate, 0.13), rate, SOFT_PEAK, 0.004, 0.04)
 
 
 def pencil_lift(rng, rate):
-    """A tool leaping out of the cup: a light papery tick and a small rising triangle chirp."""
-    n = seconds(0.09, rate)
-    tick = mul(bandpass(noise(n, rng), 1500, 3.0, rate), ramp(n, rate, 0.1, 0.05))
-    chirp_ = glide(n, rate, 520, 640, 0.07, 0.02, "triangle")
-    return fade(normalise(mix(scale(tick, 3.0), chirp_), 0.5), rate, 0.0003, 0.01)
+    """A tool leaping out of the cup: a light wooden scuff on the rim, like a pencil drawn out of a mug."""
+    n = seconds(0.11, rate)
+    scuff = mul(bandpass(noise(n, rng), 1100, 1.4, rate), soft_env(n, rate, 0.012, 0.025))
+    tap = soft_mode(rng, n, rate, 650, 2.0, 0.012, attack=0.004)
+    return soft_finish(soft_room(soft_tilt(mix(scuff, scale(tap, 0.6)), rate, 2600), rate, 0.1), rate, 0.42, 0.005, 0.03)
 
 
 def pencil_pick(rng, rate):
-    """A tool picked: a quick bright swish as it flies up into its sheet."""
-    n = seconds(0.18, rate)
-    swish = mul(highpass(highpass(noise(n, rng), 3800, rate), 3800, rate), ramp(n, rate, 0.07, 0.16))
-    return fade(normalise(swish, 0.45), rate, 0.002, 0.02)
+    """A tool picked: a soft breath of air as it flies up into its sheet."""
+    n = seconds(0.22, rate)
+    air = bandpass(lowpass(noise(n, rng), 3000, rate), 1400, 0.8, rate)
+    env = [math.sin(math.pi * min(1.0, i / (0.22 * rate))) ** 2 for i in range(n)]
+    return soft_finish(soft_room(soft_tilt(mul(air, env), rate, 2800), rate, 0.1), rate, 0.24, 0.02, 0.05)
 
 
 def main():

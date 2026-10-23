@@ -76,6 +76,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.setBlur
 import dev.dimvlachos.lab.core.presentation.ui.PencilCupScreenColors
@@ -125,14 +126,14 @@ internal fun PencilCupFab(
         val listener: (CupEvent, Float, Int) -> Unit = { event, strength, tool ->
             when (event) {
                 // The prototype's lift sits higher for each tool further forward.
-                CupEvent.Lift -> sounds.play(Sound.PencilLift, .7f, 1f + tool * .12f)
+                CupEvent.Lift -> sounds.playVaried(Sound.PencilLift, .7f, 1f + tool * .12f)
                 CupEvent.Pick -> {
-                    sounds.play(Sound.PencilPick, .8f)
+                    sounds.playVaried(Sound.PencilPick, .8f)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
                 CupEvent.Clink -> {
                     // Each tool rings a little higher on the glaze, as the prototype's + i·300 Hz.
-                    sounds.play(Sound.PencilClink, strength, 1f + tool * .125f)
+                    sounds.playVaried(Sound.PencilClink, strength, 1f + tool * .125f)
                     if (strength > .3f) {
                         haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                     }
