@@ -165,7 +165,7 @@ public fun TypewriterComposer(
 /**
  * The [TypewriterComposer], heard through [sound]: the lab's own hook for its synthesized clips,
  * three strikes, the bell, the carriage return, the tape, the ratchet and the sheet coming free.
- * Nothing plays while the phone is on silent, nor while the screen is in the background.
+ * Nothing plays while the screen is in the background.
  */
 @Composable
 internal fun TypewriterComposer(
