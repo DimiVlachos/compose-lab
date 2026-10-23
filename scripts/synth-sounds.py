@@ -654,26 +654,6 @@ def padlock_swing(rng, rate):
 
 # ---------- Pencil cup ----------
 
-def ramp(n, rate, gain, dur):
-    """WebAudio's exponentialRampToValueAtTime from gain down to 0.0001 over dur, then silence."""
-    m = seconds(dur, rate)
-    return [gain * (0.0001 / gain) ** (i / m) if i < m else 0.0 for i in range(n)]
-
-
-def glide(n, rate, f0, f1, dur, gain, shape="sine"):
-    """WebAudio's oscillator gliding exponentially from f0 to f1 over dur, under a ramp of gain."""
-    out, phase = [], 0.0
-    env = ramp(n, rate, gain, dur)
-    for i in range(n):
-        t = i / rate
-        f = f1 if t >= dur else f0 * (f1 / f0) ** (t / dur)
-        phase += f / rate
-        p = phase % 1.0
-        wave_ = math.sin(2 * math.pi * p) if shape == "sine" else (4 * p - 1 if p < 0.5 else 3 - 4 * p)
-        out.append(wave_ * env[i])
-    return out
-
-
 def pencil_clink(rng, rate):
     """A tool landing in the glazed cup: a dull wooden knock on stoneware and a short, muffled ceramic note."""
     n = seconds(0.24, rate)
