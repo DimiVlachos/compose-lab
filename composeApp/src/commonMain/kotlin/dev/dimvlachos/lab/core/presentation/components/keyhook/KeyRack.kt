@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
+import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.resources.Res
@@ -88,15 +89,14 @@ internal fun KeyRack(
         val listener: (KeyRackEvent, Float) -> Unit = { event, k ->
             when (event) {
                 KeyRackEvent.Tink -> {
-                    val rate = TinkRates[Random.nextInt(4)] * (.97f + Random.nextFloat() * .06f)
-                    sounds.play(Sound.KeyTink, k, rate)
+                    sounds.playVaried(Sound.KeyTink, k, TinkRates[Random.nextInt(4)])
                 }
                 KeyRackEvent.Clack -> {
-                    sounds.play(Sound.KeyClack, k)
+                    sounds.playVaried(Sound.KeyClack, k)
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 }
                 KeyRackEvent.Lift -> {
-                    sounds.play(Sound.KeyLift, .8f)
+                    sounds.playVaried(Sound.KeyLift, .8f)
                     haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                 }
             }
