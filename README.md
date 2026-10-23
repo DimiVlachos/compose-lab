@@ -749,6 +749,7 @@ The lab app around the demos:
 - **Search from the bar.** The search button turns the title into a field. It finds demos by title, description, id or tag, including the versions inside a folder, and back closes it.
 - **Tags.** A row of chips under home's bar filters the catalog by what each demo is about: Gesture, Physics, Motion, Canvas, 3D, Camera, Text, Navigation.
 - **A grid of cards.** Each card has an icon, the title and a one-line description. The grid adds columns as the screen widens.
+- **Sound off until you want it.** The app starts silent. A speaker in home's bar turns sound on for the whole app, and the choice is remembered across launches. Each demo's bar has its own speaker, which starts from the app's and changes sound on that screen only. Recordings always keep their sound.
 - **System, Light or Dark.** A button in home's bar cycles the theme, and the choice is remembered across launches. The system bars and the window follow it.
 - **Portrait and landscape, light and dark.** Every demo works both ways up and in both themes. A demo's surroundings follow the theme, while its art (the paper, the lamp, the book's pages, the photos) looks the same in both.
 
