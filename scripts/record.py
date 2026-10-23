@@ -12,8 +12,8 @@ booted simulator with the app installed (scripts/install-ios.sh).
 
 With --sound (Android only) the clip keeps the phone's sound: scrcpy records the screen and
 the audio the app plays instead of screenrecord, which has none, and the sound is raised until
-its loudest moment peaks at PEAK_DB. The phone must not be on silent or vibrate, or the lab's
-sound player stays quiet.
+its loudest moment peaks at PEAK_DB. The ringer setting doesn't matter: the lab's sounds play as
+media, even on silent or vibrate, and record mode always has sound on.
 """
 import argparse
 import re

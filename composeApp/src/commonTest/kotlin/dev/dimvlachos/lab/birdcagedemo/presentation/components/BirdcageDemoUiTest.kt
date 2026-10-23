@@ -108,6 +108,12 @@ class BirdcageDemoUiTest {
         scope.launch { state.tapControl(BirdcageDemos.CoverUp) }
         mainClock.advanceTimeBy(3_000)
         assertFalse(cage.muted, "cover ${cage.cover}")
+        scope.launch { state.tapControl(BirdcageDemos.Tap) }
+        mainClock.advanceTimeBy(2_000)
+        assertTrue(cage.muted, "a tap drops the cover")
+        scope.launch { state.tapControl(BirdcageDemos.Tap) }
+        mainClock.advanceTimeBy(2_000)
+        assertFalse(cage.muted, "a second tap lifts it")
         scope.launch { state.resetFeed() }
         mainClock.advanceTimeBy(300)
         onNodeWithTag("latest").assertTextEquals("Maya: Saturday long run starts at 7:00 AM.")

@@ -20,14 +20,15 @@ class LocketDemosTest {
     }
 
     @Test
-    fun theClipOpensTheLocketDragsAPhotoInClosesItAndPutsItBack() = runTest {
+    fun theClipOpensTheLocketDragsAPhotoInPushesItShutSwingsItAndPutsItBack() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
             listOf(
                 "tapControl(open-catch)",
                 "tapControl(drag-photo)",
-                "tapControl(close-lid)",
+                "tapControl(push-shut)",
+                "tapControl(swing)",
                 "tapControl(leave)",
                 "resetFeed()",
             ),
@@ -41,6 +42,6 @@ class LocketDemosTest {
         for (i in 1 until steps.size) {
             assertTrue(steps[i - 1].at + steps[i - 1].lasts <= steps[i].at, "step $i overlaps")
         }
-        assertTrue(demo.script.nominalDuration <= 12.seconds, "${demo.script.nominalDuration}")
+        assertTrue(demo.script.nominalDuration <= 14.seconds, "${demo.script.nominalDuration}")
     }
 }

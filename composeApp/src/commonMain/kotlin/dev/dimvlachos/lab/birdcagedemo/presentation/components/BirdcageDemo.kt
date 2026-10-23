@@ -74,6 +74,7 @@ import dev.dimvlachos.lab.core.presentation.components.birdcage.BirdcageState
 import dev.dimvlachos.lab.core.presentation.components.birdcage.CX
 import dev.dimvlachos.lab.core.presentation.components.birdcage.HemDown
 import dev.dimvlachos.lab.core.presentation.components.birdcage.HemUp
+import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
 import dev.dimvlachos.lab.core.presentation.components.touch.drawTouch
 import dev.dimvlachos.lab.core.presentation.ui.BirdcageScreenColors
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
@@ -156,6 +157,20 @@ internal fun BirdcageDemo(
                 }
                 BirdcageDemos.CoverUp -> {
                     finger.dragHem(root, hero, cage, -(HemDown - HemUp) * .8f, UpMs, density, slop)
+                    delay(400)
+                    finger.hide()
+                }
+                BirdcageDemos.Tap -> {
+                    // Taken and let go without moving: a tap, which toggles the cover.
+                    finger.dragHem(
+                        root,
+                        hero,
+                        cage,
+                        0f,
+                        ScriptedTouch.TapHoldMs.toInt(),
+                        density,
+                        slop,
+                    )
                     delay(400)
                     finger.hide()
                 }

@@ -14,7 +14,10 @@ import kotlin.time.Duration.Companion.seconds
 internal object PencilCupDemos {
     // The script's moves, by name.
     const val TapCup = "tap-cup"
+    const val TapList = "tap-list"
     const val SlideToNote = "slide-to-note"
+    const val TapScan = "tap-scan"
+    const val TypeItem = "type-item"
     const val TypeTitle = "type-title"
     const val Done = "done"
 
@@ -23,28 +26,45 @@ internal object PencilCupDemos {
      */
     const val Typed = "Pick up dry cleaning"
 
+    /** What the tour types as the new checklist's first item. */
+    const val ItemTyped = "Tent stakes"
+
     fun keyMs(ch: Char): Long = if (ch == ' ') 120L else 55L + (ch.code * 37 % 50)
 
     // How long each move takes, as the prototype's demo moves its finger.
     val TapCupTakes = 590.milliseconds
+    val TapToolTakes = 700.milliseconds
     val SlideTakes = 1630.milliseconds
     val DoneTakes = 610.milliseconds
     val TypeTakes = Typed.sumOf { keyMs(it) }.milliseconds
+    val ItemTakes = ItemTyped.sumOf { keyMs(it) }.milliseconds
 
-    // The prototype's runDemo(): the cup tapped open, and tapped shut so the tools clatter back;
-    // then in one move the cup pressed, the finger slid up onto the pencil and let go, so it flies
-    // into a new note's sheet; a title is typed, a letter at a time; then Done, and the pencil arcs
-    // back into the cup. The list is put back to its six notes at the end, so the clip loops.
+    // Each way in and three of the tools, each to its own sheet: the cup tapped open and the
+    // highlighter tapped, so a checklist takes its first item; then in one move the cup pressed,
+    // the finger slid up onto the pencil and let go, so a note is titled a letter at a time; then
+    // the cup tapped open again and the loupe tapped, whose scan needs nothing typed. Each Done
+    // sends its tool arcing back into the cup. The list is put back to its six notes at the end,
+    // so the clip loops.
     private val fab = demoScript {
         var t = .9.seconds
         at(t, lasts = TapCupTakes) { tapControl(TapCup) }
-        t += TapCupTakes + 1500.milliseconds
-        at(t, lasts = TapCupTakes) { tapControl(TapCup) }
-        t += TapCupTakes + 1300.milliseconds
+        t += TapCupTakes + 1100.milliseconds
+        at(t, lasts = TapToolTakes) { tapControl(TapList) }
+        t += TapToolTakes + 900.milliseconds
+        at(t, lasts = ItemTakes) { tapControl(TypeItem) }
+        t += ItemTakes + 400.milliseconds
+        at(t, lasts = DoneTakes) { tapControl(Done) }
+        t += DoneTakes + 1300.milliseconds
         at(t, lasts = SlideTakes) { tapControl(SlideToNote) }
-        t += SlideTakes + 1100.milliseconds
+        t += SlideTakes + 900.milliseconds
         at(t, lasts = TypeTakes) { tapControl(TypeTitle) }
         t += TypeTakes + 400.milliseconds
+        at(t, lasts = DoneTakes) { tapControl(Done) }
+        t += DoneTakes + 1300.milliseconds
+        at(t, lasts = TapCupTakes) { tapControl(TapCup) }
+        t += TapCupTakes + 900.milliseconds
+        at(t, lasts = TapToolTakes) { tapControl(TapScan) }
+        t += TapToolTakes + 1100.milliseconds
         at(t, lasts = DoneTakes) { tapControl(Done) }
         t += DoneTakes + 1600.milliseconds
         at(t) { resetFeed() }

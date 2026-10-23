@@ -17,18 +17,21 @@ import kotlin.time.Duration.Companion.seconds
 internal object LocketDemos {
     const val OpenCatch = "open-catch"
     const val DragPhoto = "drag-photo"
-    const val CloseLid = "close-lid"
+    const val PushShut = "push-shut"
+    const val Swing = "swing"
     const val Leave = "leave"
 
-    // The prototype's clip: the finger taps the catch and the locket springs open, drags the Folly
-    // Beach photo up from Recent into it, waits while it trims to the oval, taps the locket shut
-    // and leaves. Then the Blue Ridge photo goes back in, so the clip ends where it began.
+    // The finger taps the catch and the locket springs open, drags the Folly Beach photo up from
+    // Recent into it, waits while it trims to the oval, and pushes the lid shut by hand. Then it
+    // takes the shut locket and swings it on its chain, lets go and leaves it swinging. The Blue
+    // Ridge photo goes back in at the end, so the clip ends where it began.
     private val avatar = demoScript {
         at(.64.seconds, lasts = 1.1.seconds) { tapControl(OpenCatch) }
         at(2.6.seconds, lasts = 1.9.seconds) { tapControl(DragPhoto) }
-        at(5.7.seconds, lasts = 900.milliseconds) { tapControl(CloseLid) }
-        at(7.0.seconds, lasts = 300.milliseconds) { tapControl(Leave) }
-        at(9.0.seconds, lasts = 100.milliseconds) { resetFeed() }
+        at(5.7.seconds, lasts = 1.3.seconds) { tapControl(PushShut) }
+        at(7.9.seconds, lasts = 1.6.seconds) { tapControl(Swing) }
+        at(10.6.seconds, lasts = 300.milliseconds) { tapControl(Leave) }
+        at(12.6.seconds, lasts = 100.milliseconds) { resetFeed() }
     }
 
     val all =
@@ -71,8 +74,25 @@ internal suspend fun LocketHand.play(control: String, locket: LocketState) {
                 260f,
             )
         }
-        LocketDemos.CloseLid ->
-            tapAt(s.toWorldX(-8f, Locket.BC + 14f), s.toWorldY(-8f, Locket.BC + 14f))
+        LocketDemos.PushShut -> {
+            // From near the open lid's free edge, across past the hinge, so it lets go short of
+            // open and the lid snaps shut.
+            val from = s.freeEdge() + 22f
+            dragAlong(
+                listOf(
+                    s.toWorldX(from, Locket.BC) to s.toWorldY(from, Locket.BC),
+                    s.toWorldX(40f, Locket.BC) to s.toWorldY(40f, Locket.BC),
+                ),
+                420f,
+            )
+        }
+        LocketDemos.Swing -> {
+            // The shut locket taken by its body and swung out to one side, then the other, and let
+            // go there, so it swings on its chain under gravity.
+            val y = s.toWorldY(0f, Locket.BC + 10f)
+            val x = s.toWorldX(0f, Locket.BC + 10f)
+            dragAlong(listOf(x to y, x + 55f to y - 8f, x - 50f to y - 8f), 320f)
+        }
         LocketDemos.Leave -> hide()
     }
 }

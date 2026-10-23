@@ -296,9 +296,23 @@ internal fun PencilCupDemo(
                         delay(350)
                         finger.lift { cup.up(it.x, it.y) }
                     }
+                    PencilCupDemos.TapList,
+                    PencilCupDemos.TapScan -> {
+                        // A tap on a fanned tool, as a finger on the dimmed page picks it.
+                        val tool =
+                            if (control == PencilCupDemos.TapList) CupTools.List else CupTools.Scan
+                        finger.glide(cup.alongTool(tool, .72f), 480)
+                        finger.press {}
+                        delay(ScriptedTouch.TapHoldMs)
+                        finger.lift { cup.tapScrim(it.x, it.y) }
+                    }
+                    PencilCupDemos.TypeItem,
                     PencilCupDemos.TypeTitle -> {
                         // A letter at a time, at a typing pace, as the prototype's tour types.
-                        for (ch in PencilCupDemos.Typed) {
+                        val typed =
+                            if (control == PencilCupDemos.TypeItem) PencilCupDemos.ItemTyped
+                            else PencilCupDemos.Typed
+                        for (ch in typed) {
                             draft += ch
                             delay(PencilCupDemos.keyMs(ch))
                         }
