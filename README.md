@@ -41,6 +41,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Star stickers](#star-stickers-corepresentationcomponentsstickers) | `stickers` | `stickers.rating` | A star rating on a teacher's sheet of gold foil stickers: drag across and each star peels off, flies up and is pressed into its slot |
 | [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox) | `mailbox` | `mailbox.badge` | An inbox button that is a tin rural mailbox: mail slips in through the door, the red flag swings up with the count painted on it, and comes down once everything is read |
 | [Padlock](#padlock-corepresentationcomponentspadlock) | `padlock` | `padlock.password` | A password's strength meter and show/hide switch as a brass padlock: the shackle lowers and turns to steel as the password gets stronger, and drops home with a clunk at strong |
+| [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup) | `pencilcup` | `pencilcup.fab` | A speed-dial + button that is a cobalt-glazed pencil cup: its tools leap out in a fan as the actions, and the one picked rides in a pocket on its new sheet while the rest clatter back in |
 | [Locket avatar](#locket-avatar-corepresentationcomponentslocket) | `locket` | `locket.avatar` | A profile photo picker as a gold locket on a fine chain: tap the catch and it springs open, drag a photo in and it trims itself to the oval, and it snaps shut with a swing of the chain |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -67,6 +68,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Star stickers](#star-stickers-corepresentationcomponentsstickers)
 - [Mailbox badge](#mailbox-badge-corepresentationcomponentsmailbox)
 - [Padlock](#padlock-corepresentationcomponentspadlock)
+- [Pencil cup FAB](#pencil-cup-fab-corepresentationcomponentspencilcup)
 - [Locket avatar](#locket-avatar-corepresentationcomponentslocket)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -435,7 +437,7 @@ A chat composer that is a typewriter, typed on its own keys. Round, chrome-rimme
 - **Every letter is struck, not set.** Each letter is drawn a little off its place, a little turned and a little faint, seeded by its line, column and character, so the sheet, a recomposition and the slip in the thread all show it the same. The face is Special Elite, and each letter is drawn once into a small picture of its own and copied from there, so a frame of the machine shapes no text.
 - **A carriage on springs, in time with its sound.** The carriage is a spring stepped at a fixed 120 Hz: a stiff one with a little overshoot as the escapement steps it on, and, sent home, a loose one that aims past the stop and bangs into it. The return's sound is a zip of clicks and a bang 0.41 s in, so the lever is held over for as long as it takes for the carriage, let go, to bang home at that moment, however far it has to travel.
 - **Pull to send.** The pull is a rubber band that stiffens as the paper comes out, and a blank sheet barely moves. Let go past 62 units, or flung faster than 700 units a second once it has started to come out, it is sent; otherwise it springs back. Either way the paper goes on from the speed it was let go at: short, a critically damped spring settles it back into the roller without a bounce; sent, it zips on out speeding up, and its flight into the thread sets off at the speed it came free at, drawn into its place by another such spring. The ratchet clicks each 7 units the paper moves, as a line feeds or the sheet is pulled.
-- **Touch for everyone, sound in the lab.** A light tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the ratchet ticks under a pulling finger. The sounds, three strikes chosen by key, the bell, the carriage return, the tape, the ratchet and the sheet coming free, are the lab's own synthesized clips, played through its internal `SoundPlayer`, so they come with an internal overload of the composer, not its public one. Nothing plays while the phone is on silent, and neither sound nor haptics while the screen is in the background.
+- **Touch for everyone, sound in the lab.** A light tick of haptics goes with each strike, a firmer one with the bell and the carriage's bang, and the ratchet ticks under a pulling finger. The sounds, three strikes chosen by key, the bell, the carriage return, the tape, the ratchet and the sheet coming free, are the lab's own synthesized clips, played through its internal `SoundPlayer`, so they come with an internal overload of the composer, not its public one. Neither sound nor haptics play while the screen is in the background.
 - **For a screen reader.** Every key is a button named for what it types ("q", or "Q" after Shift, "Space", "Delete", "New line"), so the machine can be typed key by key; the keys are disabled while the composer is. The machine is "Typewriter", with what is on the sheet as its state and a Send action, so nobody needs the pull; Send and the lever's New line are not offered while the composer is disabled. Once the typing pauses, it hears what was typed or deleted, or that the sheet is full, never the whole sheet again, and the same words twice in a row are heard twice. Each slip is read as its text, and new messages are announced politely.
 
 Nothing recomposes as the machine moves: the carriage, the paper, the bars, the ribbon and the lever are read only while drawing, the paper's feed only in layout, and each letter's strike is worked out once, as it is laid out. A change of the hint's wording, the keys' page or Shift recomposes only those. The frame loop sleeps once the machine is still, and a key's dip is its own small animation. What is typed is saved, with Shift and the page of figures, so it outlives the screen being made again, as when a hardware keyboard is plugged in or the phone turns, and comes back without a sound.
@@ -703,6 +705,27 @@ LaunchedEffect(password) { lock.onText(checkPassword(password).level) }
 Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sounds = sounds)
 ```
 
+## Pencil cup FAB (`core/presentation/components/pencilcup/`)
+
+A notes app whose floating + button is a little cobalt-glazed pencil cup in the corner of the screen, under a warm lamp. Tap it and the four tools inside leap out one after another and fan up and to the left, each with its label: a pencil for a new note, a highlighter for a checklist, scissors to clip from the web, a loupe to scan a page. Pick one and it flies up and slips into a pocket at the top corner of a new sheet, riding there half out, while the others fall back into the cup, bounce and rattle; type a title (or a first item, or a link) and tap Done, and it joins the list under what you typed as the tool lifts out of its pocket and arcs back into the cup while the sheet slides away under it. Done with nothing typed cancels. While the keyboard is up, the sheet rides on it, frame by frame, with the tool in its pocket. Back, Escape or a tap outside the sheet cancels it: the tool goes home and nothing is added. Or in one move: press the cup, slide up onto a tool and let go.
+
+- **Drawn as the prototype draws it.** The cup and tools are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the dark inside and back rim first, then the tools, each a few paths in its own frame, then the glazed front wall with its drips, speckles and slip-painted plus, so whatever is below the rim is hidden. The tool on the sheet draws on its own layer above it, clipped at the sheet's top edge so its lower half is tucked behind it, with a soft shade where it goes in.
+- **Springs and gravity.** Fanning out is springs toward targets on an arc, staggered 45 ms apart, with the angle lagging so each tool rises before it leans. The cup also slides the sheet on its own clock, so the tool in its pocket rides with it, and on Done throws the tool on a parabola to just above the cup. Dropping back is gravity: each tool bounces off the bottom of the cup, an underdamped angle spring rattles it and the cup rocks; the landing speed sets the clink's volume. Fixed 1/240 s substeps; the frame loop sleeps once everything is at rest.
+- **The gesture.** One pointer handler on the cup: a tap toggles, a drag opens the fan and lights the tool nearest the finger, and the release point picks it, so even a fast swipe with few samples picks the right tool.
+- **Feel and sound.** A tick as the fan opens and as a drag lights each tool, a confirm on a pick; synthesized lift, pick and clink sounds, each tool's clink a little higher on the glaze.
+- **Screen readers and keys.** The cup is a Create new button that expands and collapses; the labels are buttons (Up and Down move between them, Escape and Back close the fan or the sheet), and what happens is announced in a polite live region.
+- **Reduced motion.** The tools jump straight to the fan and back, with no clatter.
+
+The demo, `pencilcup.fab`, is Fieldbook, an invented notes app. Its script taps the cup open and shut, presses it and slides onto the pencil to make a new note, types a title, taps Done, and puts the list back as it began.
+
+```kotlin
+val cup = remember { PencilCupState() }
+PencilCupFab(cup, labels, cupLabel = "Create new", colors, dark, sounds) {
+    // Slide the sheet by cup.sheetSlide (0 up, 1.05 below the screen), 64 % of the screen high.
+    MySheet(slide = { cup.sheetSlide }, tool = cup.sheetTool, onDone = { cup.done() })
+}
+```
+
 ## Locket avatar (`core/presentation/components/locket/`)
 
 An edit-profile screen where the profile photo lives in a small gold locket hanging on a fine chain under a warm lamp. Outside, only an engraved script initial shows. Tap the catch and the lid springs open on its hinge, swings a little past and settles, showing the photo behind its glass and the inside of the lid engraved with the owner's initials and a date. Drag a photo up from Recent and, as you let go over the locket, it shrinks and trims itself from a rounded square to the oval, with a sweep of light across the glass. Tap the locket, or push the lid across with a finger, and it snaps shut with a glint, and the chain swings. Grab the closed locket to swing it on its chain.
@@ -770,6 +793,7 @@ The lab app around the demos:
 - **Search from the bar.** The search button turns the title into a field. It finds demos by title, description, id or tag, including the versions inside a folder, and back closes it.
 - **Tags.** A row of chips under home's bar filters the catalog by what each demo is about: Gesture, Physics, Motion, Canvas, 3D, Camera, Text, Navigation.
 - **A grid of cards.** Each card has an icon, the title and a one-line description. The grid adds columns as the screen widens.
+- **Sound off until you want it.** The app starts silent. A speaker in home's bar turns sound on for the whole app, and the choice is remembered across launches. Each demo's bar has its own speaker, which starts from the app's and changes sound on that screen only. Recordings always keep their sound.
 - **System, Light or Dark.** A button in home's bar cycles the theme, and the choice is remembered across launches. The system bars and the window follow it.
 - **Portrait and landscape, light and dark.** Every demo works both ways up and in both themes. A demo's surroundings follow the theme, while its art (the paper, the lamp, the book's pages, the photos) looks the same in both.
 
@@ -857,6 +881,7 @@ The bookshelf's ring takes as many books as you like and draws those within reac
 
 The star stickers rate from 0 to 5 in whole stars. The rating lays itself out for its width: its height is fixed, 196 dp, and a star flies up to about 26 dp above it, so leave room over the row. `rememberStarStickerState()` keeps the score when the screen is made again, its stars already pressed in.
 The padlock's strength scoring is a placeholder: length, the kinds of character and a short list of common passwords, in five levels. A real app would score as zxcvbn does and map it onto the same levels. The lock is drawn in a 300 × 250 box scaled to its space, no more than 1.35 times, and is not mirrored for right-to-left.
+The pencil cup holds four tools; its fan is laid out for a phone held upright, from the bottom-right corner, and is not mirrored for right-to-left. The cup draws over the screen it fills, so place it over the list it belongs to.
 
 The locket holds one of the four Recent photos it draws itself; a real app would pass its own pictures and crop the stored image to the oval. It is drawn in a 300 × 380 box scaled to its space, no more than 1.45 times, with the Recent strip never below its dp size, and is not mirrored for right-to-left. Which photo is in the locket is not saved.
 

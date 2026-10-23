@@ -261,6 +261,14 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             state.shadowColor = cssColor(value)
         }
 
+    /**
+     * Not the canvas's own: sets the shadow colour from a [Color], so a colour that changes every
+     * frame needn't be written out and parsed as CSS.
+     */
+    fun setShadowColor(color: Color) {
+        state.shadowColor = color
+    }
+
     var shadowBlur: Float
         get() = state.shadowBlur
         set(value) {
@@ -645,6 +653,12 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         val p = styled(state.fillStyle, true)
         drawStyled(path, p, state.fillStyle)
     }
+
+    /**
+     * Not the canvas's own: strokes only the shadow the current path casts, as the browser's trick
+     * of stroking a shape far off the canvas with a shadow offset to bring it back does.
+     */
+    fun strokeShadow() = shadowed(path, false)
 
     fun stroke() {
         shadowed(path, false)
