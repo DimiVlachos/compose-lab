@@ -91,6 +91,36 @@ class PencilCupDemoUiTest {
     }
 
     @Test
+    fun theCardsUnderANewNoteGlideDownRatherThanJump() = runComposeUiTest {
+        val cup = PencilCupState()
+        show(cup)
+        onNodeWithTag("pencil-cup").performTouchInput {
+            down(center)
+            up()
+        }
+        advanceUntil("the labels") { cup.labelShown(CupTools.List) }
+        mainClock.advanceTimeBy(300)
+        onNodeWithTag("pencil-label-${CupTools.List}").performTouchInput {
+            down(center)
+            up()
+        }
+        mainClock.advanceTimeBy(600)
+        val first = {
+            onNodeWithText("Saturday soccer carpool", useUnmergedTree = true)
+                .getUnclippedBoundsInRoot()
+                .top
+        }
+        val before = first()
+        mainClock.autoAdvance = false
+        onNodeWithTag("pencil-done").performClick()
+        mainClock.advanceTimeByFrame()
+        val step = first() - before
+        assertTrue(step < 4.dp, "the first card jumped ${step} on the first frame")
+        mainClock.advanceTimeBy(800)
+        assertTrue(first() - before > 40.dp, "the first card made room for the new note")
+    }
+
+    @Test
     fun theScriptEndsAsItBegan() = runComposeUiTest {
         val cup = PencilCupState()
         val state = DemoState()

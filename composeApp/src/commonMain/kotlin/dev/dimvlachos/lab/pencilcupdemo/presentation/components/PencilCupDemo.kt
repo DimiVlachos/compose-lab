@@ -72,6 +72,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -136,8 +137,10 @@ import dev.dimvlachos.lab.resources.pencilcup_scan_hint
 import dev.dimvlachos.lab.resources.pencilcup_search
 import dev.dimvlachos.lab.resources.pencilcup_title
 import dev.dimvlachos.lab.resources.pencilcup_untitled
+import kotlin.math.roundToInt
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -307,9 +310,10 @@ internal fun PencilCupDemo(
         ) {
             AppBar(notes.size, colors)
             Search(colors)
+            // No spacedBy: each card carries the 8 dp gap below it, so a new card's gap grows with
+            // it.
             Column(
                 Modifier.weight(1f).fillMaxWidth().clipToBounds().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 for (note in notes) key(note.id) {
                     NoteCard(note, note.id == fresh, colors, reducedMotion)
@@ -441,7 +445,10 @@ private fun Search(colors: PencilCupScreenColors) {
     }
 }
 
-/** A note card; the one just made slides down into place as it fades in. */
+/**
+ * A note card, with the 8 dp gap below it. The one just made opens its slot from nothing, so the
+ * cards under it glide down rather than jump, and fades in as it settles.
+ */
 @Composable
 private fun NoteCard(
     note: FieldNote,
@@ -450,11 +457,20 @@ private fun NoteCard(
     reducedMotion: Boolean,
 ) {
     val arrive = remember { Animatable(if (fresh && !reducedMotion) 0f else 1f) }
+    val open = remember { Animatable(if (fresh && !reducedMotion) 0f else 1f) }
     LaunchedEffect(fresh) {
-        if (fresh && !reducedMotion) arrive.animateTo(1f, tween(600, easing = EaseOut))
+        if (fresh && !reducedMotion) {
+            launch { open.animateTo(1f, tween(OpenMs, easing = SlotEasing)) }
+            arrive.animateTo(1f, tween(600, easing = EaseOut))
+        }
     }
     Column(
         Modifier.fillMaxWidth()
+            .layout { measurable, constraints ->
+                val card = measurable.measure(constraints)
+                val slot = card.height + NoteGap.roundToPx()
+                layout(card.width, (slot * open.value).roundToInt()) { card.place(0, 0) }
+            }
             .graphicsLayer {
                 alpha = arrive.value
                 translationY = (1f - arrive.value) * -8.dp.toPx()
@@ -807,6 +823,11 @@ private val PrototypeEase = Easing { PencilCupState.ease(it) }
 
 /** CSS `ease-out`. */
 private val EaseOut = CubicBezierEasing(0f, 0f, .58f, 1f)
+
+/** The prototype's sheet curve, so a new note's slot opens as the sheet moves. */
+private val SlotEasing = CubicBezierEasing(.2f, .9f, .25f, 1f)
+private const val OpenMs = 420
+private val NoteGap = 8.dp
 
 /** The prototype's body line height, which every line on the screen inherits. */
 private val BodyLine = 1.55.em
