@@ -50,7 +50,8 @@ internal enum class Sound(val file: String) {
 /**
  * Plays [Sound]s. Clips load in the background, and one asked for before it has loaded is skipped,
  * not queued: a late click is worse than a missing one. On Android they play as media, at the media
- * volume, whatever the ringer is set to; on iOS the ring/silent switch mutes them.
+ * volume, whatever the ringer is set to; on iOS the ring/silent switch mutes them. Nothing is heard
+ * while the app's sound is off ([LocalSoundOn]).
  */
 internal interface SoundPlayer {
     /**
