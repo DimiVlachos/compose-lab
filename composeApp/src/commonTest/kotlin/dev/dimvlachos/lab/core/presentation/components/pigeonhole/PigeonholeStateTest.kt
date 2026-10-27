@@ -424,4 +424,58 @@ class PigeonholeStateTest {
         val (_, y) = s.row("m2")
         assertEquals(140f + s.rowH + PigeonholeState.RowGap + s.rowH / 2, y, .01f)
     }
+
+    @Test
+    fun aLetterLandingInARowTheRackCoversWaitsOnTopUntilTheRackHasGone() {
+        val s =
+            PigeonholeState(
+                    LarkspurFolders.map { Cubby(it, it.replaceFirstChar(Char::uppercase)) },
+                    LarkspurMail,
+                )
+                .apply { layout(412f, 600f, 140f, 460f) }
+        s.toggleRack()
+        s.run(600)
+        s.cubTap(1)
+        var waited = false
+        var n = 0
+        while ((s.busy() || s.letters.isNotEmpty()) && n++ < 400) {
+            s.tick(.016f)
+            val last = s.rows.last().id
+            val landed = s.letters.firstOrNull { it.mail.id == last }?.takeIf { it.f == 0f }
+            if (landed != null && s.rackUp) {
+                // Landed, its row still under the rack: the letter stays drawn, the row hidden.
+                assertTrue(s.isHidden(last))
+                waited = true
+            }
+        }
+        assertTrue(waited, "the last row's letter waited for the rack")
+        assertTrue(s.letters.isEmpty())
+        assertTrue(s.rows.none { s.isHidden(it.id) })
+        assertFalse(s.rackUp)
+    }
+
+    @Test
+    fun backLiftsTheRowsTheRackWillCoverBeforeItComesUp() {
+        val s =
+            PigeonholeState(
+                    LarkspurFolders.map { Cubby(it, it.replaceFirstChar(Char::uppercase)) },
+                    LarkspurMail,
+                )
+                .apply { layout(412f, 600f, 140f, 460f) }
+        s.toggleRack()
+        s.run(600)
+        s.cubTap(1)
+        s.idle()
+        val last = s.rows.last().id
+        s.back()
+        s.tick(.016f)
+        // Its letter is there at once, before the rack is up to cover its row.
+        assertTrue(s.letters.any { it.mail.id == last })
+        assertTrue(s.isHidden(last))
+        s.idle()
+        assertEquals(PigeonholeState.Inbox, s.view)
+        assertTrue(s.letters.isEmpty())
+    }
+
+    private fun PigeonholeState.busy() = !idle
 }
