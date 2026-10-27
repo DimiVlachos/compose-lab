@@ -345,4 +345,44 @@ class CrtPipStateTest {
         assertEquals(232f, s.slotH)
         assertFalse(s.toastOn)
     }
+
+    @Test
+    fun aKeyThatMinimizesUnderAFingerEndsThatFingersDrag() {
+        val s = pip()
+        s.playerDown(200f, 150f, 0.0)
+        s.playerMove(200f, 260f, 100.0)
+        s.minimize(keyboard = true)
+        assertFalse(s.dragging)
+        // The finger's cancel then lands on nothing: no second commit, no squeeze left behind.
+        s.playerCancel(200.0)
+        assertTrue(s.run(2000) { s.mode == PipMode.Mini })
+        s.expand()
+        assertTrue(s.run(2000) { s.mode == PipMode.Full })
+        assertEquals(0f, s.pre)
+    }
+
+    @Test
+    fun aKeyThatStopsUnderAFingerKeepsTheCornerUndoReturnsTo() {
+        val s = pip()
+        s.toMini()
+        s.setDown(s.setX, s.setY, 0.0)
+        s.setMove(s.setX - 200, s.setY - 400, 100.0)
+        s.stopFromKeys()
+        val corner = s.corner
+        s.setCancel(200.0)
+        assertEquals(corner, s.corner)
+        assertFalse(s.spring)
+    }
+
+    @Test
+    fun theToastStaysAsLongAsItIsAskedTo() {
+        val s = pip()
+        s.toastMs = 10_000f
+        s.toMini()
+        s.stopFromKeys()
+        assertTrue(s.run(1500) { s.toastOn })
+        s.run(6000)
+        assertTrue(s.toastOn)
+        assertTrue(s.run(4500) { !s.toastOn })
+    }
 }

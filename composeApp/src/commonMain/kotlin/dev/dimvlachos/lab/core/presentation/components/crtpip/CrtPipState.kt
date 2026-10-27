@@ -144,6 +144,9 @@ internal class PipPose {
 internal class CrtPipState {
     var reducedMotion = false
 
+    /** How long the toast stays: the prototype's 4 s, or the accessibility timeout. */
+    var toastMs = ToastMs
+
     /** Hears what the set does, and how strongly. */
     var onEvent: ((PipEvent, Float) -> Unit)? = null
 
@@ -189,10 +192,6 @@ internal class CrtPipState {
         private set
 
     var announcement by mutableStateOf(PipAnnouncement.None)
-        private set
-
-    /** Bumped with each announcement, so the same words said twice are heard twice. */
-    var announced by mutableIntStateOf(0)
         private set
 
     var focusRequest by mutableStateOf(PipFocus.None)
@@ -326,10 +325,6 @@ internal class CrtPipState {
     val dragging
         get() = drag != null
 
-    /** A finger (or the script) is on the set and has moved it. */
-    val draggingSet
-        get() = setDrag?.moved == true
-
     /** The player's middle, in dp. */
     val playerX
         get() = width / 2
@@ -367,6 +362,8 @@ internal class CrtPipState {
             posY = c.second
             spring = false
         }
+        // Mid flick-off, it still settles with its screen on that edge of the new width.
+        if (mode == PipMode.ToOff) offX1 = if (offX1 < 0) -cabW / 2 else width - cabW / 2
         place()
         slotH =
             when (mode) {
@@ -691,6 +688,8 @@ internal class CrtPipState {
     /** Switches the full player off into the set, as the prototype's `minimize()`. */
     fun minimize(keyboard: Boolean = false) {
         if (mode != PipMode.Full) return
+        // A key or a screen reader can change it under a finger: that finger's drag is over.
+        drag = null
         focusTo = if (keyboard) PipFocus.Set else PipFocus.None
         sy0 = 1 - .55f * pre
         ty0 = preY
@@ -722,6 +721,7 @@ internal class CrtPipState {
     /** Switches the set off and back into the full player, as the prototype's `expand()`. */
     fun expand(keyboard: Boolean = false) {
         if (mode != PipMode.Mini) return
+        setDrag = null
         spring = false
         velX = 0f
         velY = 0f
@@ -749,6 +749,7 @@ internal class CrtPipState {
      */
     fun stopPlayback(dir: Int, keyboard: Boolean = false) {
         if (mode != PipMode.Mini) return
+        setDrag = null
         val cx = posX + cabW / 2
         // Undo brings it back to the corner on the side it left from, at the height it left.
         val mid = (cornerY("tl") + cornerY("bl")) / 2
@@ -790,7 +791,7 @@ internal class CrtPipState {
             focusRequest = PipFocus.Undo
             focusTo = PipFocus.None
         }
-        later(ToastMs) { if (tok == toastTok) hideToast(false) }
+        later(toastMs) { if (tok == toastTok) hideToast(false) }
     }
 
     private fun hideToast(instant: Boolean) {
@@ -839,7 +840,6 @@ internal class CrtPipState {
 
     private fun announce(a: PipAnnouncement) {
         announcement = a
-        announced++
     }
 
     /**
@@ -888,6 +888,7 @@ internal class CrtPipState {
     }
 
     fun playerMove(x: Float, y: Float, t: Double) {
+        if (mode != PipMode.Full) return
         val d = drag ?: return
         val dt = max(1.0, t - d.t).toFloat()
         d.v = lerp(d.v, (y - d.y) / dt, .6f)
@@ -907,6 +908,10 @@ internal class CrtPipState {
     /** The finger lifts: decided from the release alone, how far down it ended or how fast. */
     fun playerUp(x: Float, y: Float, t: Double) {
         if (drag == null) return
+        if (mode != PipMode.Full) {
+            drag = null
+            return
+        }
         playerMove(x, y, t)
         val d = drag ?: return
         drag = null
@@ -945,7 +950,6 @@ internal class CrtPipState {
 
     fun setDown(x: Float, y: Float, t: Double, scripted: Boolean = false) {
         if (mode != PipMode.Mini) return
-        if (setDrag?.scripted == true && !scripted) setDrag = null
         setDrag = SetDrag(x, y, x, y, t, t, posX, posY).also { it.scripted = scripted }
         spring = false
         velX = 0f
@@ -954,6 +958,7 @@ internal class CrtPipState {
     }
 
     fun setMove(x: Float, y: Float, t: Double) {
+        if (mode != PipMode.Mini) return
         val d = setDrag ?: return
         val dt = max(1.0, t - d.t).toFloat()
         // A long gap between samples means the finger rested, so that sample counts fully and a
@@ -987,6 +992,10 @@ internal class CrtPipState {
      */
     fun setUp(x: Float, y: Float, t: Double) {
         if (setDrag == null) return
+        if (mode != PipMode.Mini) {
+            setDrag = null
+            return
+        }
         setMove(x, y, t)
         val d = setDrag ?: return
         setDrag = null

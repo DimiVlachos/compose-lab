@@ -887,6 +887,7 @@ CrtPictureInPicture(
     page = { WatchPage() },
     navBar = { NavBar() },
 )
+CrtPipAnnouncer(pip, labels) // the polite live region for each change
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

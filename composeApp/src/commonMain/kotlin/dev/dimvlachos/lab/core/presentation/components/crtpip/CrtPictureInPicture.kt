@@ -63,6 +63,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -120,8 +121,6 @@ internal class CrtPipLabels(
     val undo: String,
     val nowMini: String,
     val nowFull: String,
-    /** The video's length, after the time code's slash. */
-    val length: String,
 )
 
 /**
@@ -149,7 +148,21 @@ internal fun CrtPictureInPicture(
     page: @Composable () -> Unit,
     navBar: @Composable () -> Unit,
 ) {
-    SideEffect { state.reducedMotion = reducedMotion }
+    // Long enough to reach Undo with a screen reader, or however long the person has asked for.
+    val accessibility = LocalAccessibilityManager.current
+    val toastMs =
+        accessibility
+            ?.calculateRecommendedTimeoutMillis(
+                CrtPipState.ToastMs.toLong(),
+                containsIcons = false,
+                containsText = true,
+                containsControls = true,
+            )
+            ?.toFloat() ?: CrtPipState.ToastMs
+    SideEffect {
+        state.reducedMotion = reducedMotion
+        state.toastMs = toastMs
+    }
     val haptics = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(state, sounds, haptics) {
@@ -193,7 +206,6 @@ internal fun CrtPictureInPicture(
     }
 
     val playerFocus = remember { FocusRequester() }
-    val chevronFocus = remember { FocusRequester() }
     val setFocus = remember { FocusRequester() }
     val undoFocus = remember { FocusRequester() }
     // Keyboard focus follows the video: chevron to the set, the set back to the player, Delete
@@ -261,7 +273,7 @@ internal fun CrtPictureInPicture(
                     c.drawCrtFx(state, dark, paints)
                 }
             }
-            Player(state, labels, playerFocus, chevronFocus, onTouch)
+            Player(state, labels, playerFocus, onTouch)
             SetButton(state, labels, colors, setFocus, onTouch)
             Toast(state, labels, colors, reducedMotion, undoFocus, onTouch)
         },
@@ -303,7 +315,6 @@ private fun Player(
     state: CrtPipState,
     labels: CrtPipLabels,
     focus: FocusRequester,
-    chevronFocus: FocusRequester,
     onTouch: () -> Unit,
 ) {
     val full = state.mode == PipMode.Full
@@ -312,7 +323,14 @@ private fun Player(
     val playerFocused by playerFocusSource.collectIsFocusedAsState()
     val chevronFocusSource = remember { MutableInteractionSource() }
     val chevronFocused by chevronFocusSource.collectIsFocusedAsState()
-    val shown by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(250), label = "ctl")
+    // The controls also show while the chevron has the keys' focus, so it and its ring are seen.
+    val keyOnChevron = chevronFocused && input.inputMode == InputMode.Keyboard
+    val shown by
+        animateFloatAsState(
+            if (state.controlsOn || keyOnChevron) 1f else 0f,
+            tween(250),
+            label = "ctl",
+        )
     val dot by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(200), label = "knob")
     Box(
         Modifier.layout { measurable, constraints ->
@@ -369,11 +387,8 @@ private fun Player(
                     .drawWithContent {
                         drawContent()
                         // #minBtn:focus-visible: 2 px white, 4 px in.
-                        if (chevronFocused && input.inputMode == InputMode.Keyboard) {
-                            focusRing(4.dp.toPx(), round = true)
-                        }
+                        if (keyOnChevron) focusRing(4.dp.toPx(), round = true)
                     }
-                    .focusRequester(chevronFocus)
                     .clip(RoundedCornerShape(22.dp))
                     .then(
                         // Touchable only while the controls show, as the prototype's; a screen
@@ -428,7 +443,6 @@ private fun Player(
         )
         TimeCode(
             state,
-            labels,
             Modifier.align(Alignment.BottomStart).graphicsLayer { alpha = shown },
         )
         // The progress track, on the full player at rest; its knob only with the controls.
@@ -452,9 +466,8 @@ private fun Player(
 }
 
 @Composable
-private fun TimeCode(state: CrtPipState, labels: CrtPipLabels, modifier: Modifier) {
-    val s = state.second
-    val text = "${s / 60}:${(s % 60).toString().padStart(2, '0')} / ${labels.length}"
+private fun TimeCode(state: CrtPipState, modifier: Modifier) {
+    val text = "${clock(state.second)} / $Length"
     BasicText(
         text,
         modifier.padding(start = 12.dp, bottom = 10.dp).clearAndSetSemantics {},
@@ -772,7 +785,6 @@ internal fun CrtPipAnnouncer(state: CrtPipState, labels: CrtPipLabels) {
             PipAnnouncement.Full -> labels.nowFull
             PipAnnouncement.Stopped -> labels.stopped
         }
-    state.announced
     Box(
         Modifier.size(1.dp).semantics {
             liveRegion = LiveRegionMode.Polite
@@ -811,3 +823,9 @@ private val TimeStyle =
 private val ToastStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight(600))
 private val UndoStyle =
     TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = .02.em)
+
+/** m:ss. */
+private fun clock(s: Int) = "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
+
+/** The video's length, after the time code's slash. */
+private val Length = clock(CrtPipState.Duration.toInt())

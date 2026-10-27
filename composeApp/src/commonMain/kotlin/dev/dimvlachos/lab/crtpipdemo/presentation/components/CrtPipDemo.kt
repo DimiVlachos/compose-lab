@@ -22,8 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,15 +84,15 @@ import dev.dimvlachos.lab.crtpipdemo.CrtPipDemos
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.crtpip_app
 import dev.dimvlachos.lab.resources.crtpip_channel
-import dev.dimvlachos.lab.resources.crtpip_comment_1
-import dev.dimvlachos.lab.resources.crtpip_comment_2
-import dev.dimvlachos.lab.resources.crtpip_comment_3
 import dev.dimvlachos.lab.resources.crtpip_chip_clip
 import dev.dimvlachos.lab.resources.crtpip_chip_download
 import dev.dimvlachos.lab.resources.crtpip_chip_likes
 import dev.dimvlachos.lab.resources.crtpip_chip_likes_said
 import dev.dimvlachos.lab.resources.crtpip_chip_save
 import dev.dimvlachos.lab.resources.crtpip_chip_share
+import dev.dimvlachos.lab.resources.crtpip_comment_1
+import dev.dimvlachos.lab.resources.crtpip_comment_2
+import dev.dimvlachos.lab.resources.crtpip_comment_3
 import dev.dimvlachos.lab.resources.crtpip_comments
 import dev.dimvlachos.lab.resources.crtpip_expand
 import dev.dimvlachos.lab.resources.crtpip_explore
@@ -128,6 +128,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -148,6 +150,9 @@ internal fun CrtPipDemo(
     val sounds = rememberSoundPlayer(CrtPipSounds)
     val scroll = rememberScrollState()
     val finger = remember { PipFinger() }
+    // The moves take turns: one that runs long on a busy phone holds the next back instead of
+    // both steering the fingertip at once.
+    val turn = remember { Mutex() }
     val density = LocalDensity.current.density
     SideEffect { finger.density = density }
     val labels =
@@ -161,26 +166,33 @@ internal fun CrtPipDemo(
             undo = stringResource(Res.string.crtpip_undo),
             nowMini = stringResource(Res.string.crtpip_now_mini),
             nowFull = stringResource(Res.string.crtpip_now_full),
-            length = "18:40",
         )
 
     DisposableEffect(state, pip) {
         state.setControlTapHandler { control ->
-            // Taken over by a key or a screen reader: the rest of the tour stays off the screen.
-            if (!state.replay && !state.recording) return@setControlTapHandler
-            try {
-                script(control, pip, finger, scroll)
-            } finally {
-                // A move cut short lets go of the picture or the set.
-                if (finger.pressed) withContext(NonCancellable) { pip.releaseScripted() }
-                finger.pressed = false
+            turn.withLock {
+                // Taken over by a key or a screen reader: the rest of the tour stays off the
+                // screen.
+                if (!state.replay && !state.recording) return@withLock
+                try {
+                    script(control, pip, finger, scroll)
+                } finally {
+                    // A move cut short lets go of the picture or the set.
+                    if (finger.pressed) withContext(NonCancellable) { pip.releaseScripted() }
+                    finger.pressed = false
+                }
             }
         }
         state.setFeedResetHandler {
-            // Ends as it began: the full player at the top, and the next mini in the usual corner.
-            finger.fadeOut()
-            pip.reset()
-            scroll.scrollTo(0)
+            // Taken over, the user's screen stays as they left it.
+            turn.withLock {
+                if (!state.replay && !state.recording) return@withLock
+                // Ends as it began: the full player at the top, and the next mini in the usual
+                // corner.
+                finger.fadeOut()
+                pip.reset()
+                scroll.scrollTo(0)
+            }
         }
         onDispose {
             state.setControlTapHandler(null)
