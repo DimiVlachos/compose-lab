@@ -216,7 +216,7 @@ class FrenchPressStateTest {
         val x = s.knobX
         val y = s.knobScreenY
         s.pressDown(x, y, scripted = true)
-        s.pressMove(x, y + s.travel * .3f)
+        s.pressMove(x, y + s.travel * .3f, scripted = true)
         s.run(300)
         s.takeOver()
         assertEquals(PressMode.Cancel, s.mode)
@@ -224,6 +224,18 @@ class FrenchPressStateTest {
         // A real finger can press again at once.
         s.tapAt(s.knobX, s.knobScreenY)
         assertEquals(PressMode.Forward, s.mode)
+    }
+
+    @Test
+    fun aScriptedMoveDoesNotSteerAFingersDrag() {
+        val s = press()
+        val x = s.knobX
+        val y = s.knobScreenY
+        s.pressDown(x, y)
+        s.pressMove(x, y + s.travel * .9f, scripted = true)
+        assertEquals(PressMode.Idle, s.mode)
+        s.pressUp(x, y)
+        assertEquals(PressMode.Forward, s.mode, "the finger's own tap still counts")
     }
 
     @Test

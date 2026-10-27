@@ -817,8 +817,10 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
     val heldByFinger: Boolean
         get() = drag?.scripted == false
 
-    fun pressMove(x: Float, y: Float) {
+    /** The finger (or, [scripted], the demo's) that holds the press moves; another is ignored. */
+    fun pressMove(x: Float, y: Float, scripted: Boolean = false) {
         val d = drag ?: return
+        if (d.scripted != scripted) return
         d.x = x
         d.y = y
         if (!d.moved && hypot(x - d.x0, y - d.y0) > SLOP) d.moved = true
@@ -832,8 +834,9 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
         changed()
     }
 
-    fun pressUp(x: Float, y: Float) {
+    fun pressUp(x: Float, y: Float, scripted: Boolean = false) {
         val d = drag ?: return
+        if (d.scripted != scripted) return
         drag = null
         // Decided from where the finger lets go, so a flick with no move events still works.
         if (hypot(x - d.x0, y - d.y0) <= SLOP) {
@@ -861,7 +864,7 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
     /** A touch cancelled lets go where the finger last was, as the prototype's pointercancel. */
     fun pressCancel() {
         val d = drag ?: return
-        pressUp(d.x, d.y)
+        pressUp(d.x, d.y, d.scripted)
     }
 
     /**
@@ -877,7 +880,7 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
     fun releaseScripted() {
         val d = drag ?: return
         if (!d.scripted) return
-        if (d.moved) pressUp(d.x, d.y) else drag = null
+        if (d.moved) pressUp(d.x, d.y, scripted = true) else drag = null
     }
 
     /** The prototype's `reset()`: the full article, the press empty, nothing pending. */

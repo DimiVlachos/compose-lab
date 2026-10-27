@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -63,6 +64,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -264,8 +267,9 @@ internal fun FrenchPressStory(
     }
     LaunchedEffect(state, lifecycle, sounds) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // The plunger's hiss runs all the time at zero and swells with how fast the mesh moves.
-            val hiss = sounds.loop(Sound.PressHiss, 0f)
+            // The plunger's hiss swells with how fast the mesh moves; it is stopped while nothing
+            // moves, so a silent loop doesn't keep the audio awake.
+            var hiss = sounds.loop(Sound.PressHiss, 0f)
             var volume = 0f
             var last = 0L
             try {
@@ -273,9 +277,10 @@ internal fun FrenchPressStory(
                     // At rest the loop sleeps, until a touch, a key or the script moves something.
                     if (state.settled) {
                         volume = 0f
-                        hiss.setVolume(0f)
+                        hiss.stop()
                         val seen = state.frame
                         snapshotFlow { state.frame }.first { it != seen }
+                        hiss = sounds.loop(Sound.PressHiss, 0f)
                         last = 0L
                     }
                     withFrameNanos { now ->
@@ -298,112 +303,107 @@ internal fun FrenchPressStory(
     val serif = rememberPressSerif()
     val mono = rememberPressMono()
     val measurer = rememberTextMeasurer(cacheSize = 0)
-    var boxW by remember { mutableStateOf(0) }
-    var boxH by remember { mutableStateOf(0) }
     val placer = remember(state) { Placer(state) }
     placer.density = d
-    val bodyStyle =
-        TextStyle(
-            textMotion = TextMotion.Animated,
-            fontFamily = serif,
-            fontSize = 15.5.sp,
-            lineHeight = 1.56.em,
-        )
-    val pointStyle =
-        TextStyle(
-            textMotion = TextMotion.Animated,
-            fontFamily = FontFamily.Default,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.5.sp,
-            lineHeight = 1.4.em,
-        )
-    // The article has 20 a side; the card's points sit inside its 1 border, 14 padding and 18
-    // for the bullets.
-    val widthDp = boxW / d
-    val laid =
-        remember(measurer, density, serif, widthDp, paragraphs, points) {
-            if (widthDp <= 0f) null
-            else
-                PressText(
-                        measurer,
-                        density,
-                        paragraphs,
-                        points,
-                        bodyStyle,
-                        pointStyle,
-                        bodyWidth = widthDp - 40,
-                        pointWidth = widthDp - 40 - 2 - 28 - 18,
-                        paragraphGap = 10f,
-                        pointGap = 6f,
-                    )
-                    .also { t ->
-                        for (i in state.words.indices) state.setWord(i, t.wordCx[i], t.wordCy(i))
-                        state.setWordHeight(t.wordBoxHeight)
-                        for (i in state.letters.indices) state.setLetter(
-                            i,
-                            18 + t.letterCx[i],
-                            t.letterCy(i),
+    BoxWithConstraints(modifier) {
+        val bodyStyle =
+            TextStyle(
+                textMotion = TextMotion.Animated,
+                fontFamily = serif,
+                fontSize = 15.5.sp,
+                lineHeight = 1.56.em,
+            )
+        val pointStyle =
+            TextStyle(
+                textMotion = TextMotion.Animated,
+                fontFamily = FontFamily.Default,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.5.sp,
+                lineHeight = 1.4.em,
+            )
+        // The article has 20 a side; the card's points sit inside its 1 border, 14 padding and 18
+        // for the bullets.
+        // Measured in the same frame the width is known, so the story is laid out from the first.
+        val widthDp = maxWidth.value
+        val laid =
+            remember(measurer, density, serif, widthDp, paragraphs, points) {
+                if (widthDp <= 0f) null
+                else
+                    PressText(
+                            measurer,
+                            density,
+                            paragraphs,
+                            points,
+                            bodyStyle,
+                            pointStyle,
+                            bodyWidth = widthDp - 40,
+                            pointWidth = widthDp - 40 - 2 - 28 - 18,
+                            paragraphGap = 10f,
+                            pointGap = 6f,
                         )
-                    }
-        }
-    val painter = remember { FrenchPressPainter() }
-    val ink =
-        remember(colors.ink) {
-            Rgb(colors.ink.red * 255, colors.ink.green * 255, colors.ink.blue * 255)
-        }
+                        .also { t ->
+                            for (i in state.words.indices) state.setWord(
+                                i,
+                                t.wordCx[i],
+                                t.wordCy(i),
+                            )
+                            state.setWordHeight(t.wordBoxHeight)
+                            for (i in state.letters.indices) state.setLetter(
+                                i,
+                                18 + t.letterCx[i],
+                                t.letterCy(i),
+                            )
+                        }
+            }
+        val painter = remember { FrenchPressPainter() }
+        val ink =
+            remember(colors.ink) {
+                Rgb(colors.ink.red * 255, colors.ink.green * 255, colors.ink.blue * 255)
+            }
 
-    Box(
-        modifier
-            .background(colors.background)
-            .onSizeChanged {
-                boxW = it.width
-                boxH = it.height
-                state.layout(it.width / d, it.height / d)
-            }
-            .onGloballyPositioned {
-                placer.root = it
-                placer.push()
-            },
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            topBar()
-            Column(
-                Modifier.weight(1f)
-                    .fillMaxWidth()
-                    .clipToBounds()
-                    .onGloballyPositioned {
-                        placer.article = it
-                        placer.push()
-                    }
-                    .padding(start = 20.dp, end = 20.dp, top = 14.dp),
-            ) {
-                header()
-                if (laid != null) {
-                    SummaryCard(state, laid, text, colors, mono, serif, placer, ink)
-                    Body(state, laid, paragraphs, colors, placer)
-                }
-            }
-        }
-        if (laid != null) {
-            Canvas(Modifier.fillMaxSize()) {
-                state.frame
-                drawIntoCanvas { canvas ->
-                    val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
-                    c.scale(d, d)
-                    painter.draw(c, state, laid, dark, ink, d)
-                }
-            }
-        }
-        PressButton(state, text, colors.amber)
-        PressTag(state, text, colors, mono)
-        val said = text.said(state.said)
         Box(
-            Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                if (said.isNotEmpty()) contentDescription = said
-            },
-        )
-        Canvas(Modifier.fillMaxSize()) { overlay() }
+            Modifier.fillMaxSize()
+                .background(colors.background)
+                .onSizeChanged { state.layout(it.width / d, it.height / d) }
+                .onGloballyPositioned {
+                    placer.root = it
+                    placer.push()
+                },
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                topBar()
+                Column(
+                    Modifier.weight(1f)
+                        .fillMaxWidth()
+                        .clipToBounds()
+                        .onGloballyPositioned {
+                            placer.article = it
+                            placer.push()
+                        }
+                        .padding(start = 20.dp, end = 20.dp, top = 14.dp),
+                ) {
+                    header()
+                    if (laid != null) {
+                        SummaryCard(state, laid, text, colors, mono, serif, placer, ink)
+                        Body(state, laid, paragraphs, colors, placer)
+                    }
+                }
+            }
+            if (laid != null) {
+                Canvas(Modifier.fillMaxSize()) {
+                    state.frame
+                    drawIntoCanvas { canvas ->
+                        val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
+                        c.scale(d, d)
+                        painter.draw(c, state, laid, dark, ink, d)
+                    }
+                }
+            }
+            PressButton(state, text, colors.amber)
+            PressTag(state, text, colors, mono)
+            Announcer(state, text)
+            Canvas(Modifier.fillMaxSize()) { overlay() }
+        }
     }
 }
 
@@ -565,7 +565,7 @@ private fun SummaryCard(
                 val p = m.measure(c.copy(maxHeight = Constraints.Infinity))
                 val f = state.cardOpen
                 val h = if (f >= 1f) p.height else (f * p.height).roundToInt()
-                layout(p.width, h) { p.place(0, 0) }
+                layout(p.width, h.coerceAtMost(c.maxHeight)) { p.place(0, 0) }
             }
             .then(
                 if (open) Modifier.semantics { paneTitle = text.summary }
@@ -669,9 +669,12 @@ private fun Points(
 ) {
     val amber = colors.amber
     val ink = colors.ink
+    // Read whole, as the prototype's list items are; the card hides it while it is shut.
+    val read = remember(laid) { laid.pointLayouts.joinToString("\n") { it.layoutInput.text.text } }
     Spacer(
         // The list's 8 above; its 4 below collapses into the footer's 8, as CSS margins do.
         Modifier.padding(top = 8.dp)
+            .semantics { text = AnnotatedString(read) }
             .fillMaxWidth()
             .height(laid.pointsHeight.dp)
             .drawBehind {
@@ -706,8 +709,8 @@ private fun Points(
                             for (i in c until c + n) {
                                 if (!state.shown[i] || state.letters[i] == ' ') continue
                                 canvas.save()
-                                canvas.translate(laid.letterCx[i], laid.letterBaseline[i])
-                                laid.paintLetter(canvas, i, ink, 0f)
+                                canvas.translate(0f, laid.letterBaseline[i])
+                                laid.paintLetterInPlace(canvas, i, ink)
                                 canvas.restore()
                             }
                         }
@@ -723,7 +726,8 @@ private fun Points(
     )
 }
 
-// Chrome's disc marker for 14.5 px text: a dot about a third of the x-height round, sitting just
+// The browser's disc marker for 14.5 px text: a dot about a third of the x-height round, sitting
+// just
 // above the middle of the x-height, its centre 12 left of the text.
 private const val BulletRadius = 2.45f
 private const val BulletRise = 4.6f
@@ -854,6 +858,10 @@ private suspend fun PointerInputScope.pressGesture(state: FrenchPressState) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         if (state.heldByFinger) return@awaitEachGesture
+        // Only a left click drags, as the prototype ignores the other buttons.
+        if (down.type == PointerType.Mouse && !currentEvent.buttons.isPrimaryPressed) {
+            return@awaitEachGesture
+        }
         state.takeOver()
         val ox = state.hitX
         val oy = state.hitY
@@ -931,3 +939,15 @@ private fun PressTag(
 
 // CSS's line box: the half-leading on both sides, nothing trimmed.
 private val CssLine = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
+
+/** The polite live region: on its own, so an announcement recomposes only it. */
+@Composable
+private fun Announcer(state: FrenchPressState, text: FrenchPressText) {
+    val said = text.said(state.said)
+    Box(
+        Modifier.size(1.dp).semantics {
+            liveRegion = LiveRegionMode.Polite
+            if (said.isNotEmpty()) contentDescription = said
+        },
+    )
+}

@@ -133,7 +133,10 @@ internal fun FrenchPressDemo(state: DemoState, reducedMotion: Boolean = remember
         state.setControlTapHandler { control -> step { hand.play(control) } }
         // Puts the story back as it began if a stopped run left it pressed, so the clip loops.
         state.setFeedResetHandler {
-            step { hand.hide() }
+            step {
+                hand.hide()
+                hand.settle(2000)
+            }
             if (!press.asBegun) press.reset()
         }
         onDispose {

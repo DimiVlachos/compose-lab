@@ -89,6 +89,9 @@ internal class PressText(
     val pointsHeight: Float
     private val letterCount = points.sumOf { it.length }
     val letterCx = FloatArray(letterCount)
+
+    /** Each letter's left edge, where the point's own layout draws it. */
+    val letterLeft = FloatArray(letterCount)
     val letterBaseline = FloatArray(letterCount)
     val letterLayouts: Array<TextLayoutResult?>
     private val letterOffX = FloatArray(letterCount)
@@ -164,6 +167,7 @@ internal class PressText(
                 val box = l.getBoundingBox(i)
                 val line = l.getLineForOffset(i)
                 letterCx[c] = (box.left + box.right) / 2 / d
+                letterLeft[c] = box.left / d
                 letterBaseline[c] = py + l.getLineBaseline(line) / d
                 if (s[i] != ' ') {
                     val one = alone(s[i].toString(), pointStyle)
@@ -193,6 +197,17 @@ internal class PressText(
         canvas.translate(wordOffX[i], base - wordAscent)
         canvas.scale(1 / d, 1 / d)
         wordLayouts[i].multiParagraph.paint(canvas, color)
+    }
+
+    /**
+     * Draws letter [i] in [color] where the point's own layout puts it, its baseline at 0 after the
+     * caller has moved there, so nothing shifts when the whole point takes over.
+     */
+    fun paintLetterInPlace(canvas: Canvas, i: Int, color: Color) {
+        val l = letterLayouts[i] ?: return
+        canvas.translate(letterLeft[i], -letterAscent)
+        canvas.scale(1 / d, 1 / d)
+        l.multiParagraph.paint(canvas, color)
     }
 
     fun paintLetter(canvas: Canvas, i: Int, color: Color, base: Float) {

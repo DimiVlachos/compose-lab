@@ -19,11 +19,11 @@ internal object FrenchPressDemos {
     // The prototype's clip: a second in, the finger pushes the knob down, riding it while the
     // words pour in, and lets go at the bottom; 2.2 s after the summary is ready it taps Full
     // article and the story pours back. Then, so the clip ends where it began, the story is made
-    // whole if anything stopped it short.
+    // whole if anything stopped it short, once the words still flying home have landed.
     private val summary = demoScript {
         at(1.seconds, lasts = 3500.milliseconds) { tapControl(Push) }
-        at(4.6.seconds, lasts = 8000.milliseconds) { tapControl(Full) }
-        at(12.8.seconds, lasts = 300.milliseconds) { resetFeed() }
+        at(4.6.seconds, lasts = 9600.milliseconds) { tapControl(Full) }
+        at(14.2.seconds, lasts = 300.milliseconds) { resetFeed() }
     }
 
     val all =

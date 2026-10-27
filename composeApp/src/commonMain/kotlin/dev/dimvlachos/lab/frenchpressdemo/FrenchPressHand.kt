@@ -32,12 +32,13 @@ internal class FrenchPressHand(private val press: FrenchPressState) {
 
     private var turn = 0
 
-    // Whether a real touch has taken over since this step began.
+    // Whether a real touch, a key or the button has taken over since this run's push began: the
+    // prototype's demoStop() ends the whole run, so the later tap on Full article never comes.
     private fun ok() = press.takenOver == turn
 
     /** Plays the scripted step [control], one of [FrenchPressDemos]'. */
     suspend fun play(control: String) {
-        turn = press.takenOver
+        if (control == FrenchPressDemos.Push) turn = press.takenOver
         when (control) {
             FrenchPressDemos.Push -> push()
             FrenchPressDemos.Full -> full()
@@ -72,7 +73,7 @@ internal class FrenchPressHand(private val press: FrenchPressState) {
         wait(160)
         if (!ok()) return
         down = false
-        press.pressUp(kx, ky + t)
+        press.pressUp(kx, ky + t, scripted = true)
         wait(250)
         fade(0f)
     }
@@ -97,7 +98,7 @@ internal class FrenchPressHand(private val press: FrenchPressState) {
     // The demo finger rides the knob: while the plunger is held back it stays on the knob
     // instead of sliding off below it.
     private fun pushTo(kx: Float, y: Float) {
-        press.pressMove(kx, y)
+        press.pressMove(kx, y, scripted = true)
         at = Offset(kx, min(y, press.knobScreenY))
     }
 
@@ -118,6 +119,15 @@ internal class FrenchPressHand(private val press: FrenchPressState) {
             press.releaseScripted()
         }
         fade(0f)
+    }
+
+    /** Waits, up to [ms], for the story to be back in full, as the end of the prototype's demo. */
+    suspend fun settle(ms: Int) {
+        var left = ms
+        while (left > 0 && press.mode != PressMode.Idle) {
+            frame()
+            left -= 16
+        }
     }
 
     /** Lets go and vanishes at once, when the script is stopped or a finger takes over. */
