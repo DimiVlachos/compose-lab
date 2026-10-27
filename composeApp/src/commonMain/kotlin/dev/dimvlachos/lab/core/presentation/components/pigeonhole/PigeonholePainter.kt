@@ -506,7 +506,7 @@ internal class PigeonholePainter(
         if (carried != null) drawFlying(c, carried, inks)
     }
 
-    // A letter passing behind the rack's top edge shows only above it.
+    // A letter still behind its cubby's rail shows only above it.
     private fun drawFlying(c: Canvas2D, l: Letter, inks: LetterInks) {
         if (l.below.isNaN()) return drawLetter(c, l, inks)
         c.save()
