@@ -53,6 +53,8 @@ import dev.dimvlachos.lab.resources.pigeonhole_not_moved
 import dev.dimvlachos.lab.resources.pigeonhole_opened
 import dev.dimvlachos.lab.resources.pigeonhole_search
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -84,10 +86,13 @@ internal fun PigeonholeDemo(
     val sounds = rememberSoundPlayer(PigeonholeSounds)
     SideEffect { mail.reducedMotion = reducedMotion }
     val hand = remember(mail) { PigeonholeHand(mail) }
+    // The script's steps take turns, as the prototype awaits each: on a slow device a step that
+    // runs late holds the next back rather than steering the same fingertip at once.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
-                block()
+                turn.withLock { block() }
             } catch (e: CancellationException) {
                 hand.stop()
                 throw e
@@ -96,8 +101,10 @@ internal fun PigeonholeDemo(
         state.setControlTapHandler { control -> step { hand.play(control) } }
         // Puts every message back as it began if a stopped run left one moved, so the clip loops.
         state.setFeedResetHandler {
-            step { hand.hide() }
-            if (!mail.asBegun) mail.reset()
+            step {
+                hand.hide()
+                if (!mail.asBegun) mail.reset()
+            }
         }
         onDispose {
             state.setControlTapHandler(null)

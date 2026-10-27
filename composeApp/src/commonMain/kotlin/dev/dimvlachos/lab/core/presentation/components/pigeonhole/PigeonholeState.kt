@@ -1319,6 +1319,21 @@ internal class PigeonholeState(
     }
 
     /** Whether everything is where [reset] puts it: nothing moved, the inbox open, at rest. */
+    /**
+     * Nothing under way: no flow, carry or press, no timer or animation, nothing in the air, and
+     * the rack at rest. The script waits for it before each step, so a slow device runs late rather
+     * than tapping into a flow that would ignore it.
+     */
+    val idle: Boolean
+        get() =
+            busy == 0 &&
+                carry == null &&
+                ptr == null &&
+                timers.isEmpty() &&
+                anims.isEmpty() &&
+                letters.isEmpty() &&
+                (reducedMotion || simNow - rackAt >= RackMs)
+
     val asBegun: Boolean
         get() =
             view == Inbox &&

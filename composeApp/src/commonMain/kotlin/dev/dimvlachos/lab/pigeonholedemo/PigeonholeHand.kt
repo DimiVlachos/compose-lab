@@ -35,6 +35,7 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
 
     /** Plays the scripted step [control], one of [PigeonholeDemos]'. */
     suspend fun play(control: String) {
+        settle()
         when (control) {
             // 1. Carry the Corner Market receipt down to the Receipts cubby.
             PigeonholeDemos.Post -> {
@@ -138,6 +139,13 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
 
     private suspend fun wait(ms: Int) = animate(ms) {}
 
+    // Waits, for at most a few seconds, until what the last step set going has finished.
+    private suspend fun settle() {
+        val start = withFrameNanos { it }
+        var now = start
+        while (!mail.idle && now - start < SettleCapNs) now = withFrameNanos { it }
+    }
+
     private suspend fun animate(ms: Int, frame: (Float) -> Unit) {
         val start = withFrameNanos { it }
         var p = 0f
@@ -147,3 +155,5 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
         }
     }
 }
+
+private const val SettleCapNs = 4_000_000_000L
