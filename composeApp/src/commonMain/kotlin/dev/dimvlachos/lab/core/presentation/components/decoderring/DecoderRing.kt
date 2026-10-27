@@ -6,7 +6,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -140,21 +139,13 @@ internal fun DecoderMessage(
     ink: Color,
     dark: Boolean,
     modifier: Modifier = Modifier,
+    bubble: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val scale = density.fontScale
     val measurer = rememberTextMeasurer()
     val glyphs = remember(density) { GlyphCache() }
-    BoxWithConstraints(
-        modifier
-            .semantics { contentDescription = if (state.english) english else spanish }
-            .layout { m, c ->
-                // As tall as the state says, which only lays this out again, never recomposes.
-                val h = (state.height + Border * 2).dp.roundToPx()
-                val p = m.measure(Constraints.fixed(c.maxWidth, h))
-                layout(p.width, p.height) { p.place(0, 0) }
-            },
-    ) {
+    BoxWithConstraints(modifier) {
         val inner = maxWidth.value - Border * 2 - PadX * 2
         val lines =
             remember(inner, density, spanish, english, measurer) {
@@ -175,7 +166,18 @@ internal fun DecoderMessage(
                 state.layout(lines.first, lines.second, DecoderRingState.LineHeight * scale)
             }
         }
-        Canvas(Modifier.fillMaxSize().padding(Border.dp)) {
+        // As tall as the state says, which only lays it out again, never recomposes. Measured
+        // after the lines above are laid out, so it is never a frame behind them.
+        Canvas(
+            bubble
+                .semantics { contentDescription = if (state.english) english else spanish }
+                .layout { m, c ->
+                    val h = (state.height + Border * 2).dp.roundToPx()
+                    val p = m.measure(Constraints.fixed(c.maxWidth, h))
+                    layout(p.width, p.height) { p.place(0, 0) }
+                }
+                .padding(Border.dp),
+        ) {
             state.frame
             drawIntoCanvas { canvas ->
                 val c = Canvas2D(canvas, size.width.roundToInt(), size.height.roundToInt())

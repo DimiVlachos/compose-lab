@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -94,6 +96,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
 import org.jetbrains.compose.resources.stringResource
 
@@ -239,8 +242,8 @@ private fun Translated(
         stringResource(Res.string.decoderring_english),
         colors.ink,
         dark,
-        Modifier.fillMaxWidth(.86f)
-            .testTag("message")
+        Modifier.fillMaxWidth(.86f),
+        Modifier.testTag("message")
             .clip(shape)
             .background(colors.card)
             .border(1.dp, colors.line, shape),
@@ -456,21 +459,27 @@ private fun Bubble(text: String, colors: DecoderRingScreenColors) {
     }
 }
 
-/** Your own bubble, on the right. */
+/**
+ * Your own bubble, on the right, placed as the prototype's grid places it: its column is as wide as
+ * the text on one line (up to the thread's width) and stands at the right, and the bubble, at most
+ * 86 % of that column, sits at the column's left.
+ */
 @Composable
 private fun MyBubble(text: String, colors: DecoderRingScreenColors) {
     val shape = RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        Box(Modifier.fillMaxWidth(.86f), contentAlignment = Alignment.CenterEnd) {
-            BasicText(
-                text,
-                Modifier.clip(shape)
-                    .background(colors.mine)
-                    .padding(start = 13.dp, end = 13.dp, top = 9.dp, bottom = 10.dp),
-                style = css(15f, lines = 21f / 15f).copy(color = Color.White),
-            )
-        }
-    }
+    BasicText(
+        text,
+        Modifier.fillMaxWidth()
+            .layout { m, c ->
+                val column = min(m.maxIntrinsicWidth(Constraints.Infinity), c.maxWidth)
+                val p = m.measure(Constraints(maxWidth = (column * .86f).toInt()))
+                layout(c.maxWidth, p.height) { p.place(c.maxWidth - column, 0) }
+            }
+            .clip(shape)
+            .background(colors.mine)
+            .padding(start = 13.dp, end = 13.dp, top = 9.dp, bottom = 10.dp),
+        style = css(15f, lines = 21f / 15f).copy(color = Color.White),
+    )
 }
 
 /** The composer: a field to type in and the send button, both only drawn. */

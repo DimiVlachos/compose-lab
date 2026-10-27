@@ -878,7 +878,7 @@ The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script
 ```kotlin
 val ring = remember { DecoderRingState() }
 DecoderRingEffects(ring, sounds)
-DecoderMessage(ring, spanish, english, ink, dark, Modifier.fillMaxWidth(.86f).background(card, shape))
+DecoderMessage(ring, spanish, english, ink, dark, Modifier.fillMaxWidth(.86f), Modifier.background(card, shape))
 DecoderRingButton(ring, label = "Translate to English", description = "Spanish", focusRing = accent)
 ```
 
