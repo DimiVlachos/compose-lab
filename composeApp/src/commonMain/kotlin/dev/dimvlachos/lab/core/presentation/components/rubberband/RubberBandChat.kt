@@ -78,6 +78,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -179,9 +180,10 @@ internal fun RubberBandChat(
     places.density = density
     val painter = remember { RubberBandPainter() }
     val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     var said by remember { mutableStateOf("") }
 
-    LaunchedEffect(state, sounds, haptics, field) {
+    LaunchedEffect(state, sounds, haptics, field, keyboard) {
         state.glyphs = places
         state.onEvent = { event, v ->
             when (event) {
@@ -216,7 +218,10 @@ internal fun RubberBandChat(
         }
         state.onRestore = { message, byHand ->
             field.setTextAndPlaceCursorAtEnd(message)
-            if (byHand) runCatching { focus.requestFocus() }
+            if (byHand) {
+                runCatching { focus.requestFocus() }
+                keyboard?.show()
+            }
         }
         try {
             awaitCancellation()
@@ -251,9 +256,14 @@ internal fun RubberBandChat(
         onTouch()
         if (state.send(field.text.toString())) field.clearText()
     }
-    val caption = remember(text, colors) { captionText(text, colors.pull, colors.muted) }
+    val caption =
+        remember(text.captionPull, text.captionRest, colors) {
+            captionText(text, colors.pull, colors.muted)
+        }
     val captionHalo =
-        remember(text, colors) { captionText(text, colors.background, colors.background) }
+        remember(text.captionPull, text.captionRest, colors) {
+            captionText(text, colors.background, colors.background)
+        }
     val captionFill =
         remember(caption, measurer, density) {
             measurer.measure(caption, CaptionStyle, density = density)
@@ -321,6 +331,7 @@ private class Places : GlyphPlaces {
     var eye: LayoutCoordinates? = null
     var fieldBox: LayoutCoordinates? = null
     var fieldText: LayoutCoordinates? = null
+    var send: LayoutCoordinates? = null
     var thread: LayoutCoordinates? = null
     var bubbleId = -1L
     var bubble: LayoutCoordinates? = null
@@ -353,6 +364,8 @@ private class Places : GlyphPlaces {
         val box = rect(fieldBox)
         val inner = rect(fieldText)
         if (box != null && inner != null) state.fieldAt(inner.left, box.right - 14f, box.center.y)
+        val button = rect(send)
+        if (box != null && button != null) state.boxesAt(box, button)
         rect(thread)?.let { state.threadAt(it.top) }
         rect(bubble)?.let { state.bubbleAt(bubbleId, it) }
         rect(caption)?.let { state.captionAt(captionId, it.topLeft) }
@@ -757,6 +770,7 @@ private fun Composer(
                 .graphicsLayer { this.alpha = alpha }
                 .clip(CircleShape)
                 .background(colors.me)
+                .onGloballyPositioned { places.send = it }
                 .clickable(enabled = enabled, role = Role.Button) { send() }
                 .semantics { contentDescription = text.send }
                 .testTag("send"),
@@ -789,7 +803,7 @@ private fun fieldStyle(colors: RubberBandScreenColors) =
 
 private fun captionText(text: RubberBandText, pull: Color, rest: Color) = buildAnnotatedString {
     withStyle(SpanStyle(color = pull, fontWeight = FontWeight(650))) { append(text.captionPull) }
-    withStyle(SpanStyle(color = rest)) { append(text.captionRest) }
+    withStyle(SpanStyle(color = rest)) { append(" " + text.captionRest) }
 }
 
 private fun transparent(s: AnnotatedString) = buildAnnotatedString {

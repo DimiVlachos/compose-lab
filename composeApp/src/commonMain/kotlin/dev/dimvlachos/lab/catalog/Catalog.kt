@@ -24,6 +24,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_description
 import dev.dimvlachos.lab.resources.ic_demo_fog
+import dev.dimvlachos.lab.rubberbanddemo.RubberBandDemos
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
@@ -63,7 +64,8 @@ internal object Catalog {
                     ZipperDemos.all +
                     KeyHookDemos.all +
                     PaperFanDemos.all +
-                    StickyNoteDemos.all)
+                    StickyNoteDemos.all +
+                    RubberBandDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }

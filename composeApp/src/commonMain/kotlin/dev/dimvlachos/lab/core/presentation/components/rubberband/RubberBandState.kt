@@ -335,7 +335,30 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         reset()
     }
 
+    /**
+     * The screen's size without the keyboard, and where the field and the send button are, for a
+     * script.
+     */
+    var width = 0f
+        private set
+
+    var height = 0f
+        private set
+
+    var fieldBox = Rect.Zero
+        private set
+
+    var sendBox = Rect.Zero
+        private set
+
+    fun boxesAt(field: Rect, send: Rect) {
+        fieldBox = field
+        sendBox = send
+    }
+
     fun size(width: Float, height: Float) {
+        this.width = width
+        this.height = height
         val kk = (min(width / 360f, height / 740f)).coerceIn(.85f, 1.25f)
         if (kk != k) {
             k = kk
@@ -755,6 +778,11 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     /** The script's hold lets go from where it is. */
     fun releaseScripted() {
         if (drag?.scripted == true) letGo()
+    }
+
+    /** The script was stopped: its hold lets go where it is, unsending nothing. */
+    fun dropScripted() {
+        if (drag?.scripted == true) release()
     }
 
     private fun release() {

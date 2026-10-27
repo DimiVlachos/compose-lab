@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband) | `rubberband` | `rubberband.unsend` | A chat composer where the message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field to edit |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -859,6 +861,24 @@ StickyNoteList(
 }
 ```
 
+## Rubber band unsend (`core/presentation/components/rubberband/`)
+
+A chat thread and its composer where, for nine seconds after a message lands, it is still tied back to the text box by a tan rubber band hooked to a little brass eye. Grab the bubble or the band and pull: the band stretches thinner, the bubble leans toward the finger, and past 36 dp of travel from where you grabbed, in any direction, the band turns a darker tan. Let go there and it yanks the bubble back down to the field, where it bursts into its letters and they drop into place, the cursor at the end, ready to fix. Let go short of it and the band twangs back and wobbles. Leave it and the band thins, necks in the middle over its last three seconds and snaps with a twang; the message says Delivered and stays sent. Sending again snaps the last band at once.
+
+- **Drawn as the prototype draws it.** The band, its knot, the brass eye, the snapped halves curling home and the burst bubble's shell are ported call by call from the HTML prototype onto the shared `canvas2d` adapter. The band is the rest curve split at the grabbed point, each half bending with the pull, filled as a ribbon whose width follows its stretch and the time left.
+- **Over the composer.** While it is tied, the bubble is drawn on the screen's canvas, so it rises out of the field and is yanked back into it over the composer. The caption under it is drawn above the band with a halo in the thread's colour, and the "Message" placeholder fades while a band is tied.
+- **Real letters, real field.** The composer is a `BasicTextField`: the soft keyboard types into it and its Send action sends. Each letter of a message coming back starts at its glyph's place in the bubble's own layout and lands on its place in the field's style, measured with a `TextMeasurer`, so the hand-off to the field is exact. The screen pads itself for the keyboard (`imePadding`), so the thread and composer sit above it and drop back when it closes.
+- **Feel and sound.** A tick as the band is grabbed, a click as it goes taut, a confirm on the yank; synthesized send, grab, taut, boing, yank, burst, letter ticks and twang.
+- **Screen readers and keys.** The caption is a button, "Unsend message"; sending, the snap and the unsend are announced politely.
+- **Reduced motion.** The bubble lands at once, an unsend puts the text back at once, and nothing curls or glides.
+
+The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, then leaves the band to snap before Jess replies.
+
+```kotlin
+val chat = remember { RubberBandState(opening) }
+RubberBandChat(chat, rememberTextFieldState(), text, colors, dark, sounds, appBar = { AppBar() })
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -1006,6 +1026,8 @@ The key rack's hooks share one board, which suits about four people, each with t
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
+
+The rubber band ties only the newest message, from a composer on one line; a long message comes back scrolled to its end. The window is nine seconds of the screen's own clock, paused while the band is held and not saved, and the thread is a plain column, not a lazy list, and is not mirrored for right-to-left.
 
 ## Contributing
 
