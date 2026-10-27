@@ -575,12 +575,11 @@ internal class PigeonholePainter(
         val ft = ease(((f - .64f) / .36f).coerceIn(0f, 1f))
         val cb = cos(fb * PI.toFloat())
         val ct = cos(ft * PI.toFloat())
-        // The face turns over on its own short clock, and the ink switches at the half-way point so
-        // the text never sinks into the face.
+        // The face turns with the fold, and the ink with it, so nothing changes in one step.
         val pm = if (!pm0.isNaN()) smooth(pm0) else smooth((f / .16f).coerceIn(0f, 1f))
         val face = mix(inks.card, Paper, pm)
-        val ink = if (pm < .5f) inks.ink else PInk
-        val mut = if (pm < .5f) inks.mut else PMut
+        val ink = mix(inks.ink, PInk, pm)
+        val mut = mix(inks.mut, PMut, pm)
         val pad = lerp(14f, 6 * k, m)
         val rad = lerp(14f, 2 * k, m)
         val topY = if (ct >= 0) -ph / 2 - ph * ct else -ph / 2

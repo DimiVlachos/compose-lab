@@ -168,21 +168,20 @@ class PigeonholeStateTest {
     }
 
     @Test
-    fun theCardTurnsToPaperOnItsOwnClockWithHysteresis() {
+    fun theCardTurnsToPaperWithTheFold() {
         val s = state()
         val l = Letter(s.rows.first())
         s.letters += l
         s.tick(.001f)
         assertEquals(0f, l.pm)
-        val half = PigeonholeState.PaperMs / 2000f
-        l.f = .2f
-        s.tick(half)
-        assertTrue(l.pm > .4f && l.pm < .6f, "half way after half its time: ${l.pm}")
-        l.f = .1f
-        s.tick(half)
-        assertEquals(1f, l.pm, "between .08 and .16 it keeps turning toward paper")
-        l.f = .05f
-        s.tick(2 * half)
+        l.f = .17f
+        s.tick(.001f)
+        assertTrue(l.pm > .4f && l.pm < .6f, "half way through the narrowing: ${l.pm}")
+        l.f = .4f
+        s.tick(.001f)
+        assertEquals(1f, l.pm)
+        l.f = 0f
+        s.tick(.001f)
         assertEquals(0f, l.pm)
     }
 

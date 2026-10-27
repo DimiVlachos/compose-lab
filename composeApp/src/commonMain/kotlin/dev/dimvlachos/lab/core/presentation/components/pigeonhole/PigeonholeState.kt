@@ -67,9 +67,10 @@ internal class Letter(val mail: Mail) {
     var inCubby = false
     var cub = -1
 
-    /** The card-to-paper turn, on its own clock ([PigeonholeState]'s `paper()`); NaN until set. */
+    /**
+     * The card-to-paper turn, following the fold ([PigeonholeState]'s `paper()`); NaN until set.
+     */
     var pm = Float.NaN
-    internal var pt = -1
 
     // Where it stood in its cubby when its folder opened: its place, offset, tilt and dim.
     internal var je = 0
@@ -670,27 +671,32 @@ internal class PigeonholeState(
         val aS = l.s
         val aa = l.a
         snd(PigeonholeSound.Slide)
-        animate(d(250.0)) { p ->
-            val e = ease(p)
+        var myInc = Double.NaN
+        val mouth = hypot(slotX(c) - ax, slotY(c, 0f, rackTop()) - 28 * k - ay)
+        twoLegs(d(440.0), mouth / (mouth + 28 * k)) { leg, q ->
             val tx = slotX(c)
             val ty = slotY(c, 0f, rackTop())
-            l.x = lerp(ax, tx, e)
-            l.y = lerp(ay, ty - 28 * k, e)
-            l.f = lerp(af, 1f, e)
-            l.s = lerp(aS, .93f, e)
-            l.a = lerp(aa, 0f, e)
-            l.lift = lerp(1f, .2f, e)
-        }
-        l.inCubby = true
-        l.cub = c
-        val myInc = simNow
-        inc[c] = myInc
-        animate(d(190.0)) { p ->
-            val ty = slotY(c, 0f, rackTop())
-            l.x = slotX(c)
-            l.y = lerp(ty - 28 * k, ty, ease(p))
-            l.s = lerp(.93f, .86f, p)
-            l.lift = .2f * (1 - p)
+            if (leg == 0) {
+                l.x = lerp(ax, tx, q)
+                l.y = lerp(ay, ty - 28 * k, q)
+                l.f = lerp(af, 1f, ease(q))
+                l.s = lerp(aS, .93f, q)
+                l.a = lerp(aa, 0f, q)
+                l.lift = lerp(1f, .2f, q)
+            } else {
+                if (!l.inCubby) {
+                    l.inCubby = true
+                    l.cub = c
+                    l.f = 1f
+                    l.a = 0f
+                    myInc = simNow
+                    inc[c] = myInc
+                }
+                l.x = tx
+                l.y = lerp(ty - 28 * k, ty, q)
+                l.s = lerp(.93f, .86f, q)
+                l.lift = .2f * (1 - q)
+            }
         }
         drop(l)
         box.getValue(cid).add(0, m)
@@ -847,20 +853,26 @@ internal class PigeonholeState(
                     val ty = if (under) min(ry, edge()) else ry
                     val ax = l.x
                     val ay = l.y
-                    animate(d(440.0)) { p ->
-                        val e = ease(p)
-                        val arc = sin(p * PI.toFloat())
-                        l.x = lerp(ax, rx, e)
-                        l.y = lerp(ay, ty, e) - arc * 26 * k
-                        l.f = 1 - ease((p * 1.15f).coerceIn(0f, 1f))
-                        l.s = lerp(.95f, 1f, e)
-                        l.lift = arc * .7f
-                        l.a = arc * -.05f
-                    }
-                    if (under) {
-                        animate(d(UnderMs)) { p ->
+                    val air = hypot(rx - ax, ty - ay)
+                    twoLegs(d(if (under) 440.0 + UnderMs else 440.0), air / (air + (ry - ty))) {
+                        leg,
+                        q ->
+                        if (leg == 0) {
+                            val arc = sin(q * PI.toFloat())
+                            l.x = lerp(ax, rx, q)
+                            l.y = lerp(ay, ty, q) - arc * 26 * k
+                            l.f = 1 - ease((q * 1.15f).coerceIn(0f, 1f))
+                            l.s = lerp(.95f, 1f, q)
+                            l.lift = arc * .7f
+                            l.a = arc * -.05f
+                        } else {
+                            l.x = rx
+                            l.f = 0f
+                            l.s = 1f
+                            l.lift = 0f
+                            l.a = 0f
                             l.below = rackTop()
-                            l.y = lerp(ty, ry, ease(p))
+                            l.y = lerp(ty, ry, q)
                         }
                     }
                     drop(l)
@@ -918,33 +930,51 @@ internal class PigeonholeState(
                             hidden += m.id
                             letters += l
                             changed()
+                            // Up from behind the rack's edge (where it is now: the rack may still
+                            // be
+                            // rising), through the air to the cubby's mouth, and in: one move.
+                            val rise = if (under) max(0f, ry - edge()) else 0f
+                            val air =
+                                max(1f, hypot(slotX(c) - rx, slotY(c, 0f, rackTop()) - 28 * k - ry))
+                            val total = rise + air + 28 * k
+                            val ms = (if (under) UnderMs else 0.0) + 420.0 + 170.0
+                            var myInc = Double.NaN
                             var sy = ry
-                            if (under) {
-                                // Toward the edge where it is now: the rack may still be rising.
-                                animate(d(UnderMs)) { p ->
-                                    l.below = rackTop()
-                                    l.y = lerp(ry, edge(), ease(p))
+                            animate(d(ms)) { p ->
+                                val u = ease(p) * total
+                                val ty = slotY(c, 0f, rackTop())
+                                when {
+                                    u < rise -> {
+                                        l.below = rackTop()
+                                        l.y = lerp(ry, edge(), u / rise)
+                                        sy = l.y
+                                    }
+                                    u < rise + air -> {
+                                        l.below = Float.NaN
+                                        val q = (u - rise) / air
+                                        val arc = sin(q * PI.toFloat())
+                                        l.x = lerp(rx, slotX(c), q)
+                                        l.y = lerp(sy, ty - 28 * k, q) - arc * 22 * k
+                                        l.f = ease((q * 1.25f).coerceIn(0f, 1f))
+                                        l.s = lerp(1f, .93f, q)
+                                        l.lift = arc * .7f
+                                    }
+                                    else -> {
+                                        if (!l.inCubby) {
+                                            l.below = Float.NaN
+                                            l.inCubby = true
+                                            l.cub = c
+                                            l.x = slotX(c)
+                                            l.f = 1f
+                                            l.lift = 0f
+                                            myInc = simNow
+                                            inc[c] = myInc
+                                        }
+                                        val q = ((u - rise - air) / (28 * k)).coerceIn(0f, 1f)
+                                        l.y = lerp(ty - 28 * k, ty, q)
+                                        l.s = lerp(.93f, .86f, q)
+                                    }
                                 }
-                                sy = l.y
-                                l.below = Float.NaN
-                            }
-                            animate(d(420.0)) { p ->
-                                val e = ease(p)
-                                val ty = slotY(c, 0f, rackTop())
-                                l.x = lerp(rx, slotX(c), e)
-                                l.y = lerp(sy, ty - 28 * k, e) - sin(p * PI.toFloat()) * 22 * k
-                                l.f = ease((p * 1.25f).coerceIn(0f, 1f))
-                                l.s = lerp(1f, .93f, e)
-                                l.lift = sin(p * PI.toFloat()) * .7f
-                            }
-                            l.inCubby = true
-                            l.cub = c
-                            val myInc = simNow
-                            inc[c] = myInc
-                            animate(d(170.0)) { p ->
-                                val ty = slotY(c, 0f, rackTop())
-                                l.y = lerp(ty - 28 * k, ty, ease(p))
-                                l.s = lerp(.93f, .86f, p)
                             }
                             drop(l)
                             landed += m.id
@@ -1103,22 +1133,11 @@ internal class PigeonholeState(
                 1 - l.lift < 1e-3f
     }
 
-    // Card or paper: it follows the fold with a little hysteresis, but turns over on its own 70 ms
-    // clock, so it never rests half way (in dark mode a grey card with grey text).
-    private fun paper(dt: Float) {
-        for (l in letters) {
-            l.pt =
-                when {
-                    l.f > .16f -> 1
-                    l.f < .08f -> 0
-                    l.pt >= 0 -> l.pt
-                    l.f > .12f -> 1
-                    else -> 0
-                }
-            l.pm =
-                if (l.pm.isNaN() || reducedMotion) l.pt.toFloat()
-                else (l.pm + (if (l.pt == 1) 1 else -1) * dt * 1000 / PaperMs).coerceIn(0f, 1f)
-        }
+    // Card or paper: the face turns with the fold itself, early in the narrowing, so a letter
+    // landing in dark mode has darkened into its card on the way rather than arriving bright and
+    // blinking dark.
+    private fun paper() {
+        for (l in letters) l.pm = ((l.f - .02f) / .3f).coerceIn(0f, 1f)
     }
 
     // ---- Input ----
@@ -1323,6 +1342,21 @@ internal class PigeonholeState(
         timers += Timer(simNow + ms) { ready += { c.resume(Unit) } }
     }
 
+    /**
+     * One move over two legs, eased as a whole so it never comes to rest at the joint: [fn] hears
+     * the leg (0 or 1) and how far along it is. [share] is leg one's part of the way, so the speed
+     * carries across the joint.
+     */
+    private suspend fun twoLegs(ms: Double, share: Float, fn: (Int, Float) -> Unit) =
+        animate(ms) { p ->
+            val u = ease(p)
+            when {
+                share >= 1f -> fn(0, u)
+                u < share -> fn(0, u / share)
+                else -> fn(1, ((u - share) / (1 - share)).coerceIn(0f, 1f))
+            }
+        }
+
     private suspend fun animate(ms: Double, fn: (Float) -> Unit) = suspendCoroutine { c ->
         anims += Anim(simNow, ms, fn) { ready += { c.resume(Unit) } }
     }
@@ -1366,7 +1400,7 @@ internal class PigeonholeState(
             step(h)
             left -= h
         }
-        paper(dt)
+        paper()
         while (ready.isNotEmpty()) ready.removeFirst()()
         clearRails()
         if (
@@ -1465,14 +1499,12 @@ internal class PigeonholeState(
         const val ListFoot = 40f
         const val EmptyH = 101.7f
 
-        // The prototype's timings, softened: its moves a third slower, and the card turning to
-        // paper slow enough that in dark mode it reads as a turn rather than a blink.
+        // The prototype's timings, softened: its moves a third slower.
         private const val Soft = 1.3
         const val RackMs = 380.0 * Soft
         const val FlipMs = 380.0 * Soft
         const val FreshMs = 450.0 * Soft
         const val FadeMs = 160.0 * Soft
-        const val PaperMs = 240f
         const val Slop = 10f
         const val HoldMs = 280.0
         private const val SettleMs = 1200.0
