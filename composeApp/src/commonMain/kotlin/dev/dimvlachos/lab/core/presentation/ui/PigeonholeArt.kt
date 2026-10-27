@@ -39,3 +39,14 @@ internal class PigeonholeScreenColors(
             )
     }
 }
+
+/**
+ * The rack's own text, the same by day and night as the oak is: its cream title, the Done button's
+ * warmer cream, the dark shadow both are pressed into the wood with, and the cubbies' focus ring.
+ */
+internal object PigeonholeRackInks {
+    val title = Color(0xFFFFF3E1)
+    val done = Color(0xFFFFE3B8)
+    val shadow = Color(0x8C3C1C08)
+    val ring = Color(0xFFFFD58A)
+}

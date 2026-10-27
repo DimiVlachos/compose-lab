@@ -110,6 +110,7 @@ import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeStat
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.ListPad
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.RowH
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.core.presentation.ui.PigeonholeRackInks
 import dev.dimvlachos.lab.core.presentation.ui.PigeonholeScreenColors
 import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.caveat_semibold
@@ -791,7 +792,7 @@ private fun RackUi(
     val up = state.rackUp
     val k = state.k
     if (state.width <= 0f) return
-    val shadow = Shadow(Color(60, 28, 8, 140), Offset(0f, 1f * density), 0f)
+    val shadow = Shadow(PigeonholeRackInks.shadow, Offset(0f, 1f * density), 0f)
     Box(
         Modifier.fillMaxWidth()
             .height(state.rackH.dp)
@@ -815,7 +816,7 @@ private fun RackUi(
                 Text(
                     if (from == null) text.folders else text.moveTo,
                     Modifier.alignByBaseline(),
-                    color = Color(0xFFFFF3E1),
+                    color = PigeonholeRackInks.title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight(650),
                     letterSpacing = .01.em,
@@ -828,7 +829,7 @@ private fun RackUi(
                         Modifier.alignByBaseline().padding(start = 6.dp).graphicsLayer {
                             alpha = .72f
                         },
-                        color = Color(0xFFFFF3E1),
+                        color = PigeonholeRackInks.title,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = .01.em,
@@ -858,7 +859,7 @@ private fun RackUi(
             ) {
                 Text(
                     text.done,
-                    color = Color(0xFFFFE3B8),
+                    color = PigeonholeRackInks.done,
                     fontSize = 15.sp,
                     fontWeight = FontWeight(650),
                     maxLines = 1,
@@ -911,7 +912,8 @@ private fun RackUi(
                     .focusRequester(cubFocus[i])
                     .focusable(enabled = up)
                     .drawBehind {
-                        if (focused) ring(6.dp.toPx(), inset = true, color = Color(0xFFFFD58A))
+                        if (focused)
+                            ring(6.dp.toPx(), inset = true, color = PigeonholeRackInks.ring)
                     },
             )
         }
@@ -960,7 +962,7 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.cubGestu
 
 // The prototype's focus outline: 2 wide, drawn just inside the box, its corners rounded by
 // [radius].
-private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = Color(0xFFFFD58A)) {
+private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = PigeonholeRackInks.ring) {
     val w = 2.dp.toPx()
     val o = if (inset) w / 2 else -w / 2
     drawRoundRect(
