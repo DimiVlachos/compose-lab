@@ -616,7 +616,6 @@
     <string name="demo_paintroller_description">Dip a paint roller in a new accent color and roll it over the settings screen</string>
     <string name="paintroller_back">Settings</string>
     <string name="paintroller_title">Appearance</string>
-    <string name="paintroller_preview">Preview</string>
     <string name="paintroller_run">Saturday long run</string>
     <string name="paintroller_route">Greenway Loop · 8.2 mi</string>
     <string name="paintroller_easy">Easy</string>

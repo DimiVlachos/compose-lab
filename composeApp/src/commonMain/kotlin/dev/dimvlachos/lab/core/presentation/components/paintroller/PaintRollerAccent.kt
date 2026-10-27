@@ -6,10 +6,10 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -24,13 +24,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -38,7 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -95,6 +100,7 @@ import dev.dimvlachos.lab.core.presentation.ui.RollerPaints
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.max
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 /** The clips the paint roller plays. */
@@ -111,9 +117,10 @@ internal class Geometry(val state: PaintRollerState) {
     fun update() {
         val r = root?.takeIf { it.isAttached } ?: return
         val s = section?.takeIf { it.isAttached } ?: return
+        // As drawn: a screen scaled down to fit a short phone puts its parts smaller.
         fun rect(c: LayoutCoordinates): Rect {
-            val o = r.localPositionOf(c, Offset.Zero) / density
-            return Rect(o.x, o.y, o.x + c.size.width / density, o.y + c.size.height / density)
+            val b = r.localBoundingBoxOf(c, clipBounds = false)
+            return Rect(b.left / density, b.top / density, b.right / density, b.bottom / density)
         }
         val trayRects = trays.map { c -> rect(c?.takeIf { it.isAttached } ?: return) }
         val centres = wet.map { c -> rect(c?.takeIf { it.isAttached } ?: return).center }
@@ -186,15 +193,29 @@ internal constructor(
         names: List<String>,
         height: Dp,
         modifier: Modifier = Modifier,
-        onTouch: () -> Unit = {},
     ) {
         Row(
             modifier.fillMaxWidth().then(if (isCoat) Modifier else Modifier.selectableGroup()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             val focus = remember { List(names.size) { FocusRequester() } }
+            // The tray the arrow keys last moved to, while its colour is still going on: with the
+            // checked tray, the only one Tab stops on, as the prototype's roving tab stop.
+            var keyed by remember { mutableIntStateOf(-1) }
             for (i in names.indices) {
-                TrayButton(i, names[i], height, focus, onTouch, Modifier.weight(1f))
+                TrayButton(
+                    i,
+                    names[i],
+                    height,
+                    tabStop = { i == state.current || i == keyed },
+                    onKeyed = { j ->
+                        keyed = j
+                        runCatching { focus[j].requestFocus() }
+                    },
+                    onBlur = { if (keyed == i) keyed = -1 },
+                    focus = focus[i],
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -204,8 +225,10 @@ internal constructor(
         i: Int,
         name: String,
         height: Dp,
-        focus: List<FocusRequester>,
-        onTouch: () -> Unit,
+        tabStop: () -> Boolean,
+        onKeyed: (Int) -> Unit,
+        onBlur: () -> Unit,
+        focus: FocusRequester,
         modifier: Modifier,
     ) {
         val checked = state.current == i
@@ -232,7 +255,10 @@ internal constructor(
                     g.trays[i] = it
                     g.update()
                 }
-                .focusRequester(focus[i])
+                .focusRequester(focus)
+                // Focused, it stays focusable even once another colour is checked.
+                .focusProperties { canFocus = focused || tabStop() }
+                .onFocusChanged { if (!it.isFocused) onBlur() }
                 .onKeyEvent {
                     if (it.type != KeyEventType.KeyDown) return@onKeyEvent false
                     val j =
@@ -247,8 +273,7 @@ internal constructor(
                             Key.Spacebar -> i
                             else -> return@onKeyEvent false
                         }
-                    onTouch()
-                    if (state.pickTray(j)) runCatching { focus[j].requestFocus() }
+                    if (state.pickTray(j)) onKeyed(j)
                     true
                 }
                 .focusable(interactionSource = interaction)
@@ -273,7 +298,6 @@ internal constructor(
                     selected = checked
                     contentDescription = name
                     onClick {
-                        onTouch()
                         state.pickTray(i)
                         true
                     }
@@ -282,10 +306,10 @@ internal constructor(
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         down.consume()
-                        onTouch()
                         val origin = state.trayRects.getOrNull(i) ?: return@awaitEachGesture
-                        fun x(o: Offset) = origin.left + o.x / density
-                        fun y(o: Offset) = origin.top + o.y / density
+                        // From the tray's own px to the screen's dp, through any scale it has.
+                        fun x(o: Offset) = origin.left + o.x * origin.width / size.width
+                        fun y(o: Offset) = origin.top + o.y * origin.height / size.height
                         // A press the roller ignored (it is busy) is no drag of this finger's.
                         if (!state.trayDown(i, x(down.position), y(down.position))) {
                             return@awaitEachGesture
@@ -313,7 +337,14 @@ internal constructor(
                 },
             contentAlignment = Alignment.BottomCenter,
         ) {
-            BasicText(name, Modifier.clearAndSetSemantics {}, style = label, maxLines = 1)
+            BasicText(
+                name,
+                Modifier.clearAndSetSemantics {},
+                style = label,
+                maxLines = 1,
+                // A large font still fits the name under its tray.
+                autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = 11.sp),
+            )
         }
     }
 }
@@ -324,7 +355,7 @@ internal constructor(
  * up) and roll it over the screen: every accent fill it passes takes the new paint, glossy and wet,
  * then dries flat. Let go early and it finishes the wall itself and goes home; a snackbar offers
  * [undoLabel]. [names] name the paints, [snackText] and [said] word the snackbar and the
- * announcement for a paint's name. [onTouch] hears a real finger or key on the trays or Undo.
+ * announcement for a paint's name.
  *
  * Layers, bottom to top: the base coat, the new coat clipped to the paint, the trays and roller,
  * the snackbar and the live region.
@@ -341,8 +372,6 @@ internal fun PaintRollerAccent(
     undoLabel: String,
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = false,
-    snackPadding: Dp = 0.dp,
-    onTouch: () -> Unit = {},
     content: @Composable PaintRollerScope.() -> Unit,
 ) {
     SideEffect { state.reducedMotion = reducedMotion }
@@ -403,6 +432,13 @@ internal fun PaintRollerAccent(
         }
     }
 
+    // The snackbar's five seconds, kept even when the roller's clock has gone to sleep under it.
+    val shown = state.snackShown
+    LaunchedEffect(state, shown) {
+        if (!state.snackOn) return@LaunchedEffect
+        delay(SnackMs)
+        state.timeOutSnack(shown)
+    }
     val base =
         remember(state, colors, dark) { PaintRollerScope(state, false, geometry, dark, colors) }
     val coat = remember(state, colors, dark) { PaintRollerScope(state, true, null, dark, colors) }
@@ -449,8 +485,7 @@ internal fun PaintRollerAccent(
             undoLabel = undoLabel,
             undoColor = shade(cssColor(RollerPaints[state.current].css(dark)), .45f),
             reducedMotion = reducedMotion,
-            bottom = state.snackBottom.dp + snackPadding,
-            onTouch = onTouch,
+            bottom = state.snackBottom.dp,
             rootOf = { geometry.root ?: it },
         )
         // What changed, for a screen reader.
@@ -475,6 +510,8 @@ private class PaintedClip {
 
 private val SnackShadow = Paint().apply { color = Color(0f, 0f, 0f, .3f) }
 
+private const val SnackMs = 5000L
+
 private val SnackEase = CubicBezierEasing(.2f, .9f, .25f, 1f)
 
 /** The prototype's snackbar: it slides up from under the screen's foot, and Undo rolls back. */
@@ -486,7 +523,6 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
     undoColor: Color,
     reducedMotion: Boolean,
     bottom: Dp,
-    onTouch: () -> Unit,
     rootOf: (LayoutCoordinates) -> LayoutCoordinates,
 ) {
     val density = LocalDensity.current.density
@@ -545,6 +581,9 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
                     lineHeight = 1.55.em,
                 ),
         )
+        val press = remember { MutableInteractionSource() }
+        val focused by press.collectIsFocusedAsState()
+        val input = LocalInputModeManager.current
         Box(
             Modifier.heightIn(min = 40.dp)
                 .onGloballyPositioned { c ->
@@ -554,22 +593,26 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
                     state.undoCentre =
                         Offset((o.x + c.size.width / 2f) / d, (o.y + c.size.height / 2f) / d)
                 }
-                .pointerInput(state, on) {
-                    if (!on) return@pointerInput
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        down.consume()
-                        onTouch()
-                        val up = waitForUpOrCancellation()
-                        if (up != null) state.undo()
-                    }
+                // A button while the bar is up: tapped, or reached with Tab and pressed.
+                .clickable(
+                    enabled = on,
+                    interactionSource = press,
+                    indication = null,
+                    role = Role.Button,
+                ) {
+                    state.undo()
                 }
-                .semantics(mergeDescendants = true) {
-                    role = Role.Button
-                    onClick {
-                        onTouch()
-                        state.undo()
-                        true
+                .drawBehind {
+                    // The keyboard's focus ring: outline 2px #fff.
+                    if (focused && input.inputMode == InputMode.Keyboard) {
+                        val o = 1.dp.toPx()
+                        drawRoundRect(
+                            Color.White,
+                            Offset(-o, -o),
+                            Size(size.width + 2 * o, size.height + 2 * o),
+                            CornerRadius(10.dp.toPx() + o),
+                            style = Stroke(2.dp.toPx()),
+                        )
                     }
                 }
                 .padding(horizontal = 12.dp),
