@@ -517,7 +517,8 @@ internal class PigeonholeState(
 
     private fun say(s: PigeonholeSay) = onSay?.invoke(s)
 
-    private fun d(ms: Double) = if (reducedMotion) 1.0 else ms
+    // Every timed move, a third slower than the prototype's, so nothing snaps.
+    private fun d(ms: Double) = if (reducedMotion) 1.0 else ms * Soft
 
     private fun drop(l: Letter) {
         letters.remove(l)
@@ -687,7 +688,7 @@ internal class PigeonholeState(
         animate(d(190.0)) { p ->
             val ty = slotY(c, 0f, rackTop())
             l.x = slotX(c)
-            l.y = lerp(ty - 28 * k, ty, p * p)
+            l.y = lerp(ty - 28 * k, ty, ease(p))
             l.s = lerp(.93f, .86f, p)
             l.lift = .2f * (1 - p)
         }
@@ -859,7 +860,7 @@ internal class PigeonholeState(
                     if (under) {
                         animate(d(UnderMs)) { p ->
                             l.below = rackTop()
-                            l.y = lerp(ty, ry, p * p)
+                            l.y = lerp(ty, ry, ease(p))
                         }
                     }
                     drop(l)
@@ -919,11 +920,12 @@ internal class PigeonholeState(
                             changed()
                             var sy = ry
                             if (under) {
-                                sy = edge()
+                                // Toward the edge where it is now: the rack may still be rising.
                                 animate(d(UnderMs)) { p ->
                                     l.below = rackTop()
-                                    l.y = lerp(ry, sy, ease(p))
+                                    l.y = lerp(ry, edge(), ease(p))
                                 }
+                                sy = l.y
                                 l.below = Float.NaN
                             }
                             animate(d(420.0)) { p ->
@@ -941,7 +943,7 @@ internal class PigeonholeState(
                             inc[c] = myInc
                             animate(d(170.0)) { p ->
                                 val ty = slotY(c, 0f, rackTop())
-                                l.y = lerp(ty - 28 * k, ty, p * p)
+                                l.y = lerp(ty - 28 * k, ty, ease(p))
                                 l.s = lerp(.93f, .86f, p)
                             }
                             drop(l)
@@ -1463,11 +1465,14 @@ internal class PigeonholeState(
         const val ListFoot = 40f
         const val EmptyH = 101.7f
 
-        const val RackMs = 380.0
-        const val FlipMs = 380.0
-        const val FreshMs = 450.0
-        const val FadeMs = 160.0
-        const val PaperMs = 70f
+        // The prototype's timings, softened: its moves a third slower, and the card turning to
+        // paper slow enough that in dark mode it reads as a turn rather than a blink.
+        private const val Soft = 1.3
+        const val RackMs = 380.0 * Soft
+        const val FlipMs = 380.0 * Soft
+        const val FreshMs = 450.0 * Soft
+        const val FadeMs = 160.0 * Soft
+        const val PaperMs = 240f
         const val Slop = 10f
         const val HoldMs = 280.0
         private const val SettleMs = 1200.0
@@ -1506,7 +1511,8 @@ internal class PigeonholeState(
             }
         }
 
-        val RackEase = cubicBezier(.2f, .9f, .25f, 1f)
+        // Starts gently and settles, where the prototype's leapt off at full speed.
+        val RackEase = cubicBezier(.4f, 0f, .2f, 1f)
         val FlipEase = RackEase
         val FreshEase = cubicBezier(0f, 0f, .58f, 1f)
         val CssEase = cubicBezier(.25f, .1f, .25f, 1f)

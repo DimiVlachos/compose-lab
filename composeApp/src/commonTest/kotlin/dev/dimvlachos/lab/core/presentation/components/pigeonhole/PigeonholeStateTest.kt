@@ -174,14 +174,15 @@ class PigeonholeStateTest {
         s.letters += l
         s.tick(.001f)
         assertEquals(0f, l.pm)
+        val half = PigeonholeState.PaperMs / 2000f
         l.f = .2f
-        s.tick(.035f)
-        assertTrue(l.pm > .4f && l.pm < .6f, "half way after 35 ms: ${l.pm}")
+        s.tick(half)
+        assertTrue(l.pm > .4f && l.pm < .6f, "half way after half its time: ${l.pm}")
         l.f = .1f
-        s.tick(.035f)
+        s.tick(half)
         assertEquals(1f, l.pm, "between .08 and .16 it keeps turning toward paper")
         l.f = .05f
-        s.tick(.07f)
+        s.tick(2 * half)
         assertEquals(0f, l.pm)
     }
 
