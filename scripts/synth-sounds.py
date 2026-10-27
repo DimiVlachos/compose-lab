@@ -982,6 +982,144 @@ def note_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
 
 
+# ---------- Photocopier ----------
+
+def ramp_down(n, rate, gain, dur):
+    """WebAudio's exponentialRampToValueAtTime(.0001, dur) from gain: the prototype's every burst and tone."""
+    k = math.log(0.0001 / gain)
+    m = max(1, seconds(dur, rate))
+    return [gain * math.exp(k * min(1.0, i / m)) if i < m else 0.0 for i in range(n)]
+
+
+def burst(rng, rate, n, freq, q, dur, gain, kind="bandpass"):
+    """The prototype's burst(): noise through a filter, ramped down over dur."""
+    raw = noise(n, rng)
+    if kind == "lowpass":
+        sig = lowpass(lowpass(raw, freq, rate), freq, rate)
+    elif kind == "highpass":
+        sig = highpass(raw, freq, rate)
+    else:
+        sig = bandpass(raw, freq, q, rate)
+    return mul(sig, ramp_down(n, rate, gain, dur))
+
+
+def glide_tone(rate, n, f0, f1, dur, gain, saw=False):
+    """The prototype's tone(): a sine (or a soft triangle) gliding exponentially from f0 to f1, ramped down."""
+    out, ph = [], 0.0
+    m = max(1, seconds(dur, rate))
+    env = ramp_down(n, rate, gain, dur)
+    for i in range(n):
+        f = f0 * (f1 / f0) ** min(1.0, i / m)
+        ph += 2 * math.pi * f / rate
+        v = (2 / math.pi) * math.asin(math.sin(ph)) if saw else math.sin(ph)
+        out.append(v * env[i])
+    return out
+
+
+def motor(rng, rate, n, dur, gain):
+    """The copier's motor: a low filtered rumble with a faint 96 Hz buzz under it, in and out on short ramps."""
+    def env(v):
+        e = []
+        for i in range(n):
+            t = i / rate
+            if t < 0.08:
+                e.append(0.0001 * (v / 0.0001) ** (t / 0.08))
+            elif t < max(0.1, dur - 0.14):
+                e.append(v)
+            elif t < dur:
+                u = (t - max(0.1, dur - 0.14)) / (dur - max(0.1, dur - 0.14))
+                e.append(v * (0.0001 / v) ** u)
+            else:
+                e.append(0.0)
+        return e
+    rumble = mul(lowpass(lowpass(noise(n, rng), 260, rate), 260, rate), env(gain))
+    buzz = []
+    for i in range(n):
+        x = (i * 96 / rate) % 1.0
+        buzz.append(2 * x - 1)
+    buzz = mul(lowpass(lowpass(buzz, 340, rate), 340, rate), env(gain * 0.22))
+    return mix(scale(rumble, 3.0), buzz)
+
+
+def copier_clip(signal, rate, peak):
+    return soft_finish(soft_room(soft_tilt(signal, rate, 3400), rate, 0.08), rate, peak, 0.003, 0.02)
+
+
+def copier_rise(rng, rate):
+    """The copier rising into view: a low, soft push of air."""
+    n = seconds(0.32, rate)
+    return copier_clip(burst(rng, rate, n, 320, 0.8, 0.28, 0.05, "lowpass"), rate, 0.22)
+
+
+def copier_lidup(rng, rate):
+    """The lid lifting on its hinge: a small plastic scuff and a short rising creak."""
+    n = seconds(0.18, rate)
+    return copier_clip(mix(burst(rng, rate, n, 900, 2, 0.12, 0.05), glide_tone(rate, n, 170, 230, 0.14, 0.02, saw=True)), rate, 0.16)
+
+
+def copier_thunk(rng, rate):
+    """The lid shutting on the glass: a dull plastic thunk, a knock and a faint click of the latch."""
+    n = seconds(0.2, rate)
+    body = glide_tone(rate, n, 110, 68, 0.15, 0.22)
+    knock = burst(rng, rate, n, 520, 0.9, 0.09, 0.24, "lowpass")
+    click = burst(rng, rate, n, 2300, 3, 0.03, 0.06)
+    return copier_clip(mix(body, knock, click), rate, 0.56)
+
+
+def copier_slap(rng, rate):
+    """The card landing face down on the glass: a light slap of card stock."""
+    n = seconds(0.09, rate)
+    return copier_clip(mix(burst(rng, rate, n, 1500, 1.4, 0.06, 0.12), burst(rng, rate, n, 420, 1, 0.05, 0.08, "lowpass")), rate, 0.3)
+
+
+def copier_beep(rng, rate):
+    """Start pressed: one short, quiet beep at G6."""
+    n = seconds(0.11, rate)
+    return copier_clip(glide_tone(rate, n, 1568, 1568, 0.09, 0.06), rate, 0.12)
+
+
+def copier_hum(rng, rate):
+    """The scan: the motor running for 1.2 s, with the lamp's faint hiss over it."""
+    n = seconds(1.26, rate)
+    hiss = [0.0] * n
+    place(hiss, burst(rng, rate, n, 2600, 0.7, 1.08, 0.018), seconds(0.05, rate))
+    return copier_clip(mix(motor(rng, rate, n, 1.2, 0.12), hiss), rate, 0.3)
+
+
+def copier_paper(rng, rate):
+    """The copy sliding out of the slot: a dry paper hiss, a brighter one after it."""
+    n = seconds(0.48, rate)
+    second = [0.0] * n
+    place(second, burst(rng, rate, n, 5200, 0.8, 0.3, 0.03, "highpass"), seconds(0.12, rate))
+    return copier_clip(mix(burst(rng, rate, n, 2800, 0.6, 0.45, 0.06, "highpass"), second), rate, 0.18)
+
+
+def copier_feed(rng, rate):
+    """The rollers taking a copy back in: the motor for .9 s and the paper hissing through."""
+    n = seconds(0.96, rate)
+    hiss = [0.0] * n
+    place(hiss, burst(rng, rate, n, 2600, 0.6, 0.7, 0.05, "highpass"), seconds(0.1, rate))
+    return copier_clip(mix(motor(rng, rate, n, 0.9, 0.09), hiss), rate, 0.28)
+
+
+def copier_lift(rng, rate):
+    """A card lifted off the list or the glass: a tiny brush of air."""
+    n = seconds(0.12, rate)
+    return copier_clip(burst(rng, rate, n, 3200, 1, 0.1, 0.03, "highpass"), rate, 0.09)
+
+
+def copier_settle(rng, rate):
+    """A card settling into its place: a small, soft tap."""
+    n = seconds(0.08, rate)
+    return copier_clip(mix(burst(rng, rate, n, 1800, 1.2, 0.05, 0.07), burst(rng, rate, n, 600, 1, 0.04, 0.05, "lowpass")), rate, 0.22)
+
+
+def copier_tick(rng, rate):
+    """The menu opening: a tiny tick."""
+    n = seconds(0.04, rate)
+    return copier_clip(burst(rng, rate, n, 3200, 4, 0.02, 0.06), rate, 0.1)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1064,6 +1202,18 @@ def main():
     write("note_stick", note_stick(note, fast), fast)
     write("note_pat", note_pat(note, fast), fast)
     write("note_lift", note_lift(note, fast), fast)
+    copier = random.Random(1027)
+    write("copier_rise", copier_rise(copier, fast), fast)
+    write("copier_lidup", copier_lidup(copier, fast), fast)
+    write("copier_thunk", copier_thunk(copier, fast), fast)
+    write("copier_slap", copier_slap(copier, fast), fast)
+    write("copier_beep", copier_beep(copier, fast), fast)
+    write("copier_hum", copier_hum(copier, fast), fast)
+    write("copier_paper", copier_paper(copier, fast), fast)
+    write("copier_feed", copier_feed(copier, fast), fast)
+    write("copier_lift", copier_lift(copier, fast), fast)
+    write("copier_settle", copier_settle(copier, fast), fast)
+    write("copier_tick", copier_tick(copier, fast), fast)
 
 
 if __name__ == "__main__":

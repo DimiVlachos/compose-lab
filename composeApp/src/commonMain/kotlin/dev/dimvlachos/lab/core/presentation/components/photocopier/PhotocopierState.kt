@@ -968,6 +968,25 @@ internal class PhotocopierState(
 
     private fun nearSlot(y: Float) = y > slotY - 70
 
+    /** ([x], [y]) on the screen is on the open menu. */
+    fun onMenu(x: Float, y: Float) =
+        menuFor != 0 && x in menuX..(menuX + MenuW) && y in menuY..(menuY + MenuH)
+
+    /** ([x], [y]) on the screen is on a card's ⋯: 40 dp, 5 dp in from its top-right corner. */
+    fun onMore(x: Float, y: Float): Boolean {
+        if (y < listTop || y > listTop + listHeight) return false
+        val i =
+            cards.indices.firstOrNull { i ->
+                val top = listTop + cardTop(i) - scroll
+                y in top..(top + cardH)
+            } ?: return false
+        return onMoreOf(cards[i].item.id, x - rectX(), y - (listTop + cardTop(i) - scroll))
+    }
+
+    /** ([x], [y]) inside card [id] is on its ⋯. */
+    @Suppress("UNUSED_PARAMETER")
+    fun onMoreOf(id: Int, x: Float, y: Float) = x in (cardW - 45)..(cardW - 5) && y in 5f..45f
+
     /** Something on the screen other than the menu or a ⋯ was pressed: the menu closes first. */
     fun pressElsewhere() = closeMenu()
 
