@@ -418,6 +418,24 @@ class Canvas2DTest {
     }
 
     @Test
+    fun aLayoutMadeOnceDrawsAsItsTextDoes() = withMeasurer { m ->
+        val once = textCanvas(m, 100, 60)
+        val each = textCanvas(m, 100, 60)
+        for (c in listOf(once, each)) {
+            c.font = "700 20px MONO"
+            c.fillStyle = "#000000"
+            c.textResolution = 2f
+            c.scale(2f, 2f)
+        }
+        val l = once.layoutText("HE")
+        once.fillText(l, 4f, 22f)
+        each.fillText("HE", 4f, 22f)
+        assertEquals(inkRows(each), inkRows(once))
+        assertEquals(inkColumns(each), inkColumns(once))
+        assertTrue(inkRows(once).isNotEmpty(), "the text is drawn")
+    }
+
+    @Test
     fun anImageDrawsFromAFractionalSourceRectangle() {
         // Four rows, red green blue white; the source starts half way down the green row.
         val src = Canvas2D.create(1, 4)
