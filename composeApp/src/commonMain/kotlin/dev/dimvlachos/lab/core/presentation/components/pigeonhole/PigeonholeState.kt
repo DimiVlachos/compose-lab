@@ -220,7 +220,7 @@ internal class PigeonholeState(
         rackH = (Head + 2 * CubH + Gap + Foot) * k
         scrollTop = scrollTop.coerceIn(0f, maxScroll())
         layoutVersion++
-        kick()
+        changed()
     }
 
     fun upTop() = height - rackH

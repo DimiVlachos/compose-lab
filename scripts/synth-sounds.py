@@ -982,6 +982,69 @@ def note_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
 
 
+# ---------- Pigeonhole rack ----------
+
+def swept_bandpass(signal, f0, f1, q, rate):
+    """An RBJ band-pass whose centre glides exponentially from f0 to f1 over the signal."""
+    out, x1, x2, y1, y2, n = [], 0.0, 0.0, 0.0, 0.0, max(1, len(signal) - 1)
+    for i, x in enumerate(signal):
+        w = 2 * math.pi * f0 * (f1 / f0) ** (i / n) / rate
+        alpha = math.sin(w) / (2 * q)
+        a0, a1, a2 = 1 + alpha, -2 * math.cos(w), 1 - alpha
+        y = (alpha * x - alpha * x2 - a1 * y1 - a2 * y2) / a0
+        x2, x1, y2, y1 = x1, x, y1, y
+        out.append(y)
+    return out
+
+
+def pigeonhole_lift(rng, rate):
+    """A message lifted off the list: a short breath of air off the paper."""
+    n = seconds(0.08, rate)
+    env = [math.sin(math.pi * i / n) ** 2 for i in range(n)]
+    air = mul(bandpass(highpass(noise(n, rng), 1800, rate), 3000, 0.9, rate), env)
+    return soft_finish(soft_room(soft_tilt(air, rate, 3600), rate, 0.10), rate, 0.14, 0.006, 0.01)
+
+
+def pigeonhole_fold(rng, rate):
+    """The letter folding in thirds: two soft paper creases, the second a little lower."""
+    track = [0.0] * seconds(0.12, rate)
+    n = seconds(0.05, rate)
+    place(track, soft_mode(rng, n, rate, 2300, 2.2, 0.008, attack=0.003), 0)
+    place(track, scale(soft_mode(rng, n, rate, 1600, 2.2, 0.01, attack=0.003), 0.8), seconds(0.045, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.10), rate, 0.22, 0.003, 0.02)
+
+
+def pigeonhole_slide(rng, rate):
+    """A letter sliding into a cubby over oak: paper on wood, its band falling as it goes in."""
+    n = seconds(0.24, rate)
+    env = soft_env(n, rate, 0.02, 0.08)
+    hiss = mul(swept_bandpass(lowpass(noise(n, rng), 4000, rate), 2200, 900, 0.9, rate), env)
+    return soft_finish(soft_room(soft_tilt(hiss, rate, 3000), rate, 0.10), rate, 0.24, 0.01, 0.04)
+
+
+def pigeonhole_tock(rng, rate):
+    """The letter coming to rest in its cubby: a muffled knock on oak and its low wooden note."""
+    n = seconds(0.16, rate)
+    knock = mul(lowpass(noise(n, rng), 650, rate), soft_env(n, rate, 0.003, 0.018))
+    body = soft_mode(rng, n, rate, 210, 4.0, 0.04, attack=0.004)
+    return soft_finish(soft_room(soft_tilt(mix(knock, scale(body, 0.7)), rate, 2400), rate, 0.12), rate, 0.5, 0.004, 0.03)
+
+
+def pigeonhole_rack(rng, rate):
+    """The rack sliding up from below: a low rumble of a wooden cabinet on its runners."""
+    n = seconds(0.32, rate)
+    rumble = mul(lowpass(lowpass(noise(n, rng), 320, rate), 260, rate), soft_env(n, rate, 0.04, 0.12))
+    hum = mul(chirp(n, rate, 95, 72, 0.28, 0.12), soft_env(n, rate, 0.03, 0.12))
+    return soft_finish(soft_room(mix(rumble, scale(hum, 0.2)), rate, 0.12), rate, 0.36, 0.02, 0.06)
+
+
+def pigeonhole_tick(rng, rate):
+    """A cubby lighting up under the letter: a tiny bright tick, a fingernail on the brass plate."""
+    n = seconds(0.04, rate)
+    tick = soft_mode(rng, n, rate, 3400, 5.0, 0.004, attack=0.002)
+    return soft_finish(soft_room(soft_tilt(tick, rate, 4200), rate, 0.08), rate, 0.07, 0.002, 0.008)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1064,6 +1127,13 @@ def main():
     write("note_stick", note_stick(note, fast), fast)
     write("note_pat", note_pat(note, fast), fast)
     write("note_lift", note_lift(note, fast), fast)
+    rack = random.Random(1027)
+    write("pigeonhole_lift", pigeonhole_lift(rack, fast), fast)
+    write("pigeonhole_fold", pigeonhole_fold(rack, fast), fast)
+    write("pigeonhole_slide", pigeonhole_slide(rack, fast), fast)
+    write("pigeonhole_tock", pigeonhole_tock(rack, fast), fast)
+    write("pigeonhole_rack", pigeonhole_rack(rack, fast), fast)
+    write("pigeonhole_tick", pigeonhole_tick(rack, fast), fast)
 
 
 if __name__ == "__main__":

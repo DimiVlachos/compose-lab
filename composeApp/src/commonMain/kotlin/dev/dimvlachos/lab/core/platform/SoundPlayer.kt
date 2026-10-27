@@ -71,7 +71,13 @@ internal enum class Sound(val file: String) {
     NoteRip("note_rip"),
     NoteStick("note_stick"),
     NotePat("note_pat"),
-    NoteLift("note_lift");
+    NoteLift("note_lift"),
+    PigeonholeLift("pigeonhole_lift"),
+    PigeonholeFold("pigeonhole_fold"),
+    PigeonholeSlide("pigeonhole_slide"),
+    PigeonholeTock("pigeonhole_tock"),
+    PigeonholeRack("pigeonhole_rack"),
+    PigeonholeTick("pigeonhole_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
