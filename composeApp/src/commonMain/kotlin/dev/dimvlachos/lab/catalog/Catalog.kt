@@ -17,6 +17,7 @@ import dev.dimvlachos.lab.padlockdemo.PadlockDemos
 import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
 import dev.dimvlachos.lab.paperfandemo.PaperFanDemos
 import dev.dimvlachos.lab.pencilcupdemo.PencilCupDemos
+import dev.dimvlachos.lab.pigeonholedemo.PigeonholeDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
@@ -63,7 +64,8 @@ internal object Catalog {
                     ZipperDemos.all +
                     KeyHookDemos.all +
                     PaperFanDemos.all +
-                    StickyNoteDemos.all)
+                    StickyNoteDemos.all +
+                    PigeonholeDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
