@@ -46,3 +46,16 @@ internal class CoinSorterScreenColors(
             )
     }
 }
+
+/** Each result's icon tile and glyph ink, as the prototype's, in its best-match order. */
+internal val CoinSorterTints =
+    listOf(
+        Color(0xFFE6F0E1) to Color(0xFF3F6B3A),
+        Color(0xFFF6E6D8) to Color(0xFF9A5426),
+        Color(0xFFFDF0C8) to Color(0xFFA07612),
+        Color(0xFFE2EBF5) to Color(0xFF2F5785),
+        Color(0xFFFBECDC) to Color(0xFFB0641C),
+        Color(0xFFECE5DD) to Color(0xFF5A4636),
+        Color(0xFFE2F2EE) to Color(0xFF2D7266),
+        Color(0xFFF1E3ED) to Color(0xFF8A3B6E),
+    )

@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +63,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
@@ -74,10 +74,14 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CollectionInfo
+import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.collectionInfo
+import androidx.compose.ui.semantics.collectionItemInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.expand
@@ -97,6 +101,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.platform.playVaried
@@ -222,6 +229,11 @@ internal fun CoinSorterResults(
         }
     }
 
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = state.menuOpen,
+        onBackCompleted = { state.closeMenu() },
+    )
     val density = LocalDensity.current.density
     val measurer = rememberTextMeasurer(cacheSize = 16)
     val painter = remember(density) { CoinSorterPainter(density) }
@@ -234,7 +246,7 @@ internal fun CoinSorterResults(
     var root by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     fun DrawScope.tray(front: Boolean) {
-        state.listVersion
+        state.layoutVersion
         if (state.width <= 0f) return
         drawIntoCanvas { canvas ->
             val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
@@ -250,7 +262,16 @@ internal fun CoinSorterResults(
                 boxH = it.height.toFloat()
                 relayout()
             }
-            .onPlaced { root = it },
+            .onPlaced { root = it }
+            // Escape closes the menu wherever focus is, as the prototype's document listener.
+            .onPreviewKeyEvent { e ->
+                if (e.key != Key.Escape || e.type != KeyEventType.KeyDown || !state.menuOpen) {
+                    return@onPreviewKeyEvent false
+                }
+                state.closeMenu()
+                state.refocusChip?.invoke()
+                true
+            },
     ) {
         Box(
             Modifier.fillMaxWidth().onSizeChanged {
@@ -260,22 +281,22 @@ internal fun CoinSorterResults(
         ) {
             header()
         }
-        Canvas(Modifier.fillMaxSize()) { tray(front = false) }
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = false) }
         // The tray is a second, bigger way into the menu, under the toolbar so the chip keeps
         // its whole area; screen readers have the chip.
         TrayTarget(state)
         Toolbar(state, text, colors, root)
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             with(painter) { drawWells(state, colors.line) }
         }
-        Rows(state, colors, text, rowLabel, row)
-        Canvas(Modifier.fillMaxSize()) {
+        Rows(state, colors, rowLabel, row)
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             with(painter) { drawCoins(state, measurer, fly = false) }
         }
-        Canvas(Modifier.fillMaxSize()) { tray(front = true) }
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = true) }
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             with(painter) { drawCoins(state, measurer, fly = true) }
         }
@@ -334,7 +355,7 @@ private suspend fun PointerInputScope.press(state: CoinSorterState, origin: () -
 
 @Composable
 private fun TrayTarget(state: CoinSorterState) {
-    state.listVersion
+    state.layoutVersion
     if (state.width <= 0f) return
     Box(
         Modifier.offset(state.trayX0.dp, state.hopTop.dp)
@@ -352,6 +373,8 @@ private fun Toolbar(
     colors: CoinSorterScreenColors,
     root: LayoutCoordinates?,
 ) {
+    state.layoutVersion
+    if (state.width <= 0f) return
     val density = LocalDensity.current.density
     var chipAt by remember { mutableStateOf(Offset.Zero) }
     val chipFocus = remember { FocusRequester() }
@@ -365,8 +388,13 @@ private fun Toolbar(
     LaunchedEffect(state) { state.refocusChip = { chipFocus.requestFocus() } }
     val label = if (state.running) text.sorting else text.labels[state.sort.ordinal]
     val name = text.chipLabel.replace(SortSlot, text.labels[state.sort.ordinal])
+    var focused by remember { mutableStateOf(false) }
+    val ring = colors.accent
     Row(
-        Modifier.offset(y = state.toolbarTop.dp)
+        Modifier.offset {
+                state.layoutVersion
+                IntOffset(0, (state.toolbarTop * density).roundToInt())
+            }
             .fillMaxWidth()
             .height(CoinSorterState.ToolbarH.dp)
             .padding(start = 16.dp, end = 16.dp, top = 2.dp),
@@ -417,6 +445,8 @@ private fun Toolbar(
                     else if (state.openMenu()) state.focusOnOpen = true
                     true
                 }
+                .onFocusChanged { focused = it.isFocused }
+                .drawBehind { if (focused) chipRing(ring) }
                 .focusRequester(chipFocus)
                 .focusable()
                 .pointerInput(state) {
@@ -439,6 +469,19 @@ private fun Toolbar(
             }
         }
     }
+}
+
+// The prototype's focus outline: 2 wide, 2 out from the pill.
+private fun DrawScope.chipRing(color: Color) {
+    val w = 2 * density
+    val out = 2 * density + w / 2
+    drawRoundRect(
+        color,
+        Offset(-out, -out),
+        Size(size.width + 2 * out, size.height + 2 * out),
+        CornerRadius(size.height / 2 + out),
+        style = Stroke(w),
+    )
 }
 
 // M7 10l5 5 5-5 in a 24 box, 2.2 wide, round.
@@ -473,18 +516,18 @@ private fun DrawScope.check(color: Color) {
 private fun Rows(
     state: CoinSorterState,
     colors: CoinSorterScreenColors,
-    text: CoinSorterText,
     rowLabel: (Int) -> String,
     row: @Composable (Int) -> Unit,
 ) {
     state.listVersion
     if (state.width <= 0f) return
+    val density = LocalDensity.current.density
     val shape = RoundedCornerShape(14.dp)
     val order = state.order
     Box(
         Modifier.fillMaxSize().semantics {
             isTraversalGroup = true
-            contentDescription = text.list
+            collectionInfo = CollectionInfo(state.n, 1)
         },
     ) {
         for (i in 0 until state.n) {
@@ -492,10 +535,13 @@ private fun Rows(
                 val pose = remember { FloatArray(3) }
                 val h = remember { FloatArray(9) }
                 val m = remember { Matrix() }
-                val shadow = remember {
-                    Paint().apply { color = Color(30, 24, 14).copy(alpha = .2f) }
-                }
-                var blurred by remember { mutableStateOf(0f) }
+                val shadow =
+                    remember(density) {
+                        Paint().apply {
+                            color = Color(30, 24, 14).copy(alpha = .2f)
+                            setBlur(12 * density)
+                        }
+                    }
                 val label = rowLabel(i)
                 Box(
                     Modifier.offset {
@@ -508,7 +554,9 @@ private fun Rows(
                         .size(state.rowW().dp, state.rowH.dp)
                         .testTag("row:$i")
                         .semantics {
-                            traversalIndex = order.indexOf(i).toFloat()
+                            val at = order.indexOf(i)
+                            traversalIndex = at.toFloat()
+                            collectionItemInfo = CollectionItemInfo(at, 1, 0, 1)
                             contentDescription = label
                         }
                         .drawWithContent {
@@ -546,10 +594,6 @@ private fun Rows(
                             Homography.toMatrix(h, m)
                             withTransform({ transform(m) }) {
                                 // .row.moving: 0 10px 24px at 20 %.
-                                if (blurred != density) {
-                                    shadow.setBlur(12 * density)
-                                    blurred = density
-                                }
                                 drawIntoCanvas {
                                     val r = 14 * density
                                     it.drawRoundRect(
@@ -565,6 +609,9 @@ private fun Rows(
                                 this@drawWithContent.drawContent()
                             }
                         }
+                        // The card on a layer of its own, recorded once and replayed under the
+                        // tilt, so a frame redraws only the tilt.
+                        .graphicsLayer()
                         .background(colors.card, shape)
                         .border(1.dp, colors.line, shape)
                         .padding(start = 8.dp, end = 14.dp),
@@ -581,11 +628,14 @@ private fun Rows(
 @Composable
 private fun Menu(state: CoinSorterState, text: CoinSorterText, colors: CoinSorterScreenColors) {
     val open = state.menuOpen
-    val pop = remember { Animatable(0f) }
+    val pop = remember { Animatable(if (state.reducedMotion) 1f else 0f) }
     LaunchedEffect(open) {
         if (open) {
+            if (!state.reducedMotion) {
+                pop.animateTo(1f, tween(160, easing = CubicBezierEasing(0f, 0f, .58f, 1f)))
+            }
+        } else {
             pop.snapTo(if (state.reducedMotion) 1f else 0f)
-            pop.animateTo(1f, tween(160, easing = CubicBezierEasing(0f, 0f, .58f, 1f)))
         }
     }
     if (!open) return
@@ -616,6 +666,27 @@ private fun Menu(state: CoinSorterState, text: CoinSorterText, colors: CoinSorte
                 scaleY = sc
                 translationY = -4 * density * (1 - p)
                 transformOrigin = TransformOrigin(1f, 0f)
+            }
+            // The menu swallows its own touches, and a finger picks the option it is let go over,
+            // as the prototype's menu does.
+            .pointerInput(state) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false).consume()
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull() ?: break
+                        c.consume()
+                        if (!c.pressed) {
+                            val i =
+                                state.optAt(
+                                    state.menuX + c.position.x / density,
+                                    state.menuY + c.position.y / density,
+                                )
+                            if (i >= 0) state.pick(i)
+                            break
+                        }
+                    }
+                }
             }
             .drawBehind { menuShadow(colors, shadow) }
             .background(colors.card, shape)
@@ -684,17 +755,6 @@ private fun Menu(state: CoinSorterState, text: CoinSorterText, colors: CoinSorte
                     }
                     .focusRequester(requesters[i])
                     .focusable()
-                    .pointerInput(state, i) {
-                        // A finger picks on release over the option.
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false).consume()
-                            val up = waitForUpOrCancellation()
-                            if (up != null) {
-                                up.consume()
-                                state.pick(i)
-                            }
-                        }
-                    }
                     .padding(start = 8.dp, end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

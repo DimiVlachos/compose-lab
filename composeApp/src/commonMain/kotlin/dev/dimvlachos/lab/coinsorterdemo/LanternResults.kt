@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.coinsorterdemo
 import androidx.compose.ui.graphics.Color
 import dev.dimvlachos.lab.core.presentation.components.coinsorter.CoinItem
 import dev.dimvlachos.lab.core.presentation.components.coinsorter.Metal
+import dev.dimvlachos.lab.core.presentation.ui.CoinSorterTints
 
 /** What a result's icon shows. */
 internal enum class Glyph {
@@ -41,8 +42,8 @@ internal val LanternResults =
             4.7,
             "2,140",
             Glyph.Lantern,
-            Color(0xFFE6F0E1),
-            Color(0xFF3F6B3A),
+            CoinSorterTints[0].first,
+            CoinSorterTints[0].second,
             Metal.Nickel,
         ),
         Lantern(
@@ -51,8 +52,8 @@ internal val LanternResults =
             4.8,
             "612",
             Glyph.Oil,
-            Color(0xFFF6E6D8),
-            Color(0xFF9A5426),
+            CoinSorterTints[1].first,
+            CoinSorterTints[1].second,
             Metal.Copper,
         ),
         Lantern(
@@ -61,8 +62,8 @@ internal val LanternResults =
             4.4,
             "3,305",
             Glyph.Lantern,
-            Color(0xFFFDF0C8),
-            Color(0xFFA07612),
+            CoinSorterTints[2].first,
+            CoinSorterTints[2].second,
             Metal.Brass,
         ),
         Lantern(
@@ -71,8 +72,8 @@ internal val LanternResults =
             4.6,
             "988",
             Glyph.Lantern,
-            Color(0xFFE2EBF5),
-            Color(0xFF2F5785),
+            CoinSorterTints[3].first,
+            CoinSorterTints[3].second,
             Metal.Nickel,
         ),
         Lantern(
@@ -81,8 +82,8 @@ internal val LanternResults =
             4.5,
             "1,472",
             Glyph.String,
-            Color(0xFFFBECDC),
-            Color(0xFFB0641C),
+            CoinSorterTints[4].first,
+            CoinSorterTints[4].second,
             Metal.Brass,
         ),
         Lantern(
@@ -91,8 +92,8 @@ internal val LanternResults =
             4.9,
             "356",
             Glyph.Oil,
-            Color(0xFFECE5DD),
-            Color(0xFF5A4636),
+            CoinSorterTints[5].first,
+            CoinSorterTints[5].second,
             Metal.Copper,
         ),
         Lantern(
@@ -101,8 +102,8 @@ internal val LanternResults =
             4.2,
             "801",
             Glyph.Puck,
-            Color(0xFFE2F2EE),
-            Color(0xFF2D7266),
+            CoinSorterTints[6].first,
+            CoinSorterTints[6].second,
             Metal.Nickel,
         ),
         Lantern(
@@ -111,8 +112,8 @@ internal val LanternResults =
             4.3,
             "214",
             Glyph.Head,
-            Color(0xFFF1E3ED),
-            Color(0xFF8A3B6E),
+            CoinSorterTints[7].first,
+            CoinSorterTints[7].second,
             Metal.Brass,
         ),
     )

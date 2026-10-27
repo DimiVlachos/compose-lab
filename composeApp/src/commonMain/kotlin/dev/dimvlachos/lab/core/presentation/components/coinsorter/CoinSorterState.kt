@@ -128,7 +128,8 @@ internal class CoinRow(val index: Int) {
  * own clock), and the chip's press, slide and release onto the menu. Units are dp.
  *
  * [frame] is bumped by every step and change, so a drawing that reads it is drawn again;
- * [listVersion] by every committed order, menu change and layout.
+ * [listVersion] by every committed order, a row landing on its new line and layout; [layoutVersion]
+ * by layout alone, so the tray is drawn again only when it moves.
  */
 @Stable
 internal class CoinSorterState(val items: List<CoinItem>) {
@@ -139,6 +140,9 @@ internal class CoinSorterState(val items: List<CoinItem>) {
         private set
 
     var listVersion by mutableIntStateOf(0)
+        private set
+
+    var layoutVersion by mutableIntStateOf(0)
         private set
 
     var reducedMotion = false
@@ -286,6 +290,7 @@ internal class CoinSorterState(val items: List<CoinItem>) {
         rowGap = if (fit < 50) 4f else 6f
         rowH = (fit - rowGap).coerceIn(38f, 64f)
         for (s in rows) if (s.slot >= 0) setCoin(s)
+        layoutVersion++
         listVersion++
         frame++
     }
@@ -540,7 +545,7 @@ internal class CoinSorterState(val items: List<CoinItem>) {
                     }
                 }
                 CoinMode.Hopper -> {
-                    val q = queue.indexOf(i)
+                    val q = queue.indexOf(i).coerceAtLeast(0)
                     springX(s, pileX(q), dt)
                     springY(s, pileY(q, r), dt)
                     s.ax = 0f
@@ -718,7 +723,6 @@ internal class CoinSorterState(val items: List<CoinItem>) {
     fun openMenu(): Boolean {
         if (running || menuOpen) return false
         menuOpen = true
-        listVersion++
         emit(CoinEvent.MenuTick, .5f, 3)
         emit(CoinEvent.MenuOpen, 1f, 0)
         return true
@@ -728,7 +732,6 @@ internal class CoinSorterState(val items: List<CoinItem>) {
         if (!menuOpen) return
         menuOpen = false
         hot = -1
-        listVersion++
         emit(CoinEvent.MenuClose, 1f, 0)
     }
 

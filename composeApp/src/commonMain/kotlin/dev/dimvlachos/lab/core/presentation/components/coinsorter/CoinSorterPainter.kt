@@ -379,6 +379,10 @@ internal class CoinSorterPainter(private val density: Float) {
     private val h = FloatArray(9)
     private val m = Matrix()
     private val textDensity = Density(density, 1f)
+    private val ring36 = Stroke(3.6f * density)
+    private val ring26 = Stroke(2.6f * density)
+    private val ring12 = Stroke(1.2f * density)
+    private val rimRing = Stroke(2.4f * density)
 
     /**
      * The coins: those in flight over the tray when [fly], every other one when not, as the
@@ -430,9 +434,9 @@ internal class CoinSorterPainter(private val density: Float) {
             drawIntoCanvas { it.drawCircle(Offset(rad, rad + 1.5f * dp), rad, shadow) }
             drawCircle(look.disc!!, rad, c)
             // The inset rings, the last of the box-shadows first.
-            drawCircle(RingDark, rad - 1.8f * dp, c, style = Stroke(3.6f * dp))
-            drawCircle(RingLight, rad - 1.3f * dp, c, style = Stroke(2.6f * dp))
-            drawCircle(RingEdge, rad - .6f * dp, c, style = Stroke(1.2f * dp))
+            drawCircle(RingDark, rad - 1.8f * dp, c, style = ring36)
+            drawCircle(RingLight, rad - 1.3f * dp, c, style = ring26)
+            drawCircle(RingEdge, rad - .6f * dp, c, style = ring12)
             // The face, upright, with its 0.8 px text shadow.
             val ink = Inks[metal.ordinal]
             val lift = Lifts[metal.ordinal]
@@ -451,9 +455,8 @@ internal class CoinSorterPainter(private val density: Float) {
             }
             // The milled edge turns with the roll; the sheen stays still.
             rotate(r.ang * 180 / PI.toFloat(), c) {
-                val ring = Stroke(2.4f * dp)
-                drawCircle(look.bands!!, rad - 1.2f * dp, c, style = ring)
-                drawCircle(look.reeds!!, rad - 1.2f * dp, c, style = ring)
+                drawCircle(look.bands!!, rad - 1.2f * dp, c, style = rimRing)
+                drawCircle(look.reeds!!, rad - 1.2f * dp, c, style = rimRing)
             }
             drawCircle(look.sheenB!!, rad, c)
             drawCircle(look.sheenA!!, rad, c)

@@ -5,11 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
 import dev.dimvlachos.lab.core.presentation.components.coinsorter.CoinSort
 import dev.dimvlachos.lab.core.presentation.components.coinsorter.CoinSorterState
 import dev.dimvlachos.lab.core.presentation.components.touch.ScriptedTouch
+import kotlinx.coroutines.flow.first
 
 /**
  * The script's hand on the screen, as the prototype's demo moves its finger: it taps the chip
@@ -36,6 +38,8 @@ internal class CoinSorterHand(private val sorter: CoinSorterState) {
                 CoinSorterDemos.SortTop -> CoinSort.Top
                 else -> CoinSort.Best
             }
+        // As the prototype's demo awaits idle(): a sort still landing finishes first.
+        idle()
         // From the lower middle of the screen, fading in as it moves to the chip.
         at = Offset(sorter.width * .62f, sorter.height * .7f)
         val chip =
@@ -64,6 +68,10 @@ internal class CoinSorterHand(private val sorter: CoinSorterState) {
         sorter.pick(i)
         // Off the screen while it sorts: anywhere on the list it would cover the prices.
         hide()
+    }
+
+    private suspend fun idle() {
+        snapshotFlow { sorter.running }.first { !it }
     }
 
     /** Fades the fingertip out. */
