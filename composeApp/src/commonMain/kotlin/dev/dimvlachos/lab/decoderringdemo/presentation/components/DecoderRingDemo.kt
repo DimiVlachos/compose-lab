@@ -1,5 +1,8 @@
 package dev.dimvlachos.lab.decoderringdemo.presentation.components
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.EaseInOutQuad
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -292,18 +295,27 @@ private fun Translated(
             onInteract = onInteract,
             modifier = Modifier.onGloballyPositioned(onRing),
         )
+        // The two lines crossfade when the language lands, rather than snapping to the new words.
+        val fade =
+            tween<Float>(if (ring.reducedMotion) 0 else CaptionFadeMs, easing = EaseInOutQuad)
         Column(Modifier.clearAndSetSemantics {}) {
-            BasicText(
-                stringResource(
-                    if (english) Res.string.decoderring_twist_back
-                    else Res.string.decoderring_twist,
-                ),
-                style = css(13f, FontWeight(650), 1.2f).copy(color = colors.ink),
-            )
-            BasicText(
-                sub,
-                style = css(11.5f, FontWeight.Medium, 1.2f).copy(color = colors.muted),
-            )
+            Crossfade(english, animationSpec = fade, label = "hint") { en ->
+                BasicText(
+                    stringResource(
+                        if (en) Res.string.decoderring_twist_back else Res.string.decoderring_twist,
+                    ),
+                    style = css(13f, FontWeight(650), 1.2f).copy(color = colors.ink),
+                )
+            }
+            Crossfade(english, animationSpec = fade, label = "sub") { en ->
+                BasicText(
+                    stringResource(
+                        if (en) Res.string.decoderring_translated
+                        else Res.string.decoderring_from_spanish,
+                    ),
+                    style = css(11.5f, FontWeight.Medium, 1.2f).copy(color = colors.muted),
+                )
+            }
         }
     }
     // A polite live region says which language landed.
@@ -575,3 +587,6 @@ private fun css(size: Float, weight: FontWeight = FontWeight.Normal, lines: Floa
         lineHeight = (size * lines).sp,
         lineHeightStyle = CssLines,
     )
+
+/** How long the hint and the language line under the ring take to crossfade. */
+private const val CaptionFadeMs = 300
