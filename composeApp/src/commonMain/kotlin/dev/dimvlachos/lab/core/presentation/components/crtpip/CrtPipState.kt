@@ -1098,6 +1098,8 @@ internal class CrtPipState {
 
         fun easeIn3(t: Float) = t * t * t
 
+        fun clamp01(t: Float) = t.coerceIn(0f, 1f)
+
         fun easeOut3(t: Float) = 1 - (1 - t).pow(3)
 
         fun easeOutBack(t: Float): Float {
