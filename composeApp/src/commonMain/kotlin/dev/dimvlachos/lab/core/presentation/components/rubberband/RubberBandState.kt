@@ -134,7 +134,12 @@ internal class FlyingLetter(
  * Casteljau), that point moved by the pull, each half bending with half of it and straightening as
  * it stretches.
  */
-internal class Band {
+/** A curve the band is drawn along, from 0 at the bubble to 1 at the eye. */
+internal fun interface Curve {
+    fun at(t: Float): Offset
+}
+
+internal class Band : Curve {
     var a = Offset.Zero
     var b = Offset.Zero
     var r = Offset.Zero
@@ -146,7 +151,8 @@ internal class Band {
     var rest = 0f
     var stretch = 0f
 
-    fun at(t: Float): Offset = if (t <= u) q(a, c1, p, t / u) else q(p, c2, b, (t - u) / (1 - u))
+    override fun at(t: Float): Offset =
+        if (t <= u) q(a, c1, p, t / u) else q(p, c2, b, (t - u) / (1 - u))
 
     fun copy(): Band =
         Band().also {
@@ -199,7 +205,7 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     /** The thread's opacity, for the tour's fade back to the opening thread. */
     var threadAlpha by mutableFloatStateOf(1f)
 
-    /** Bumped every step, and when the layout moves, for the canvas to draw again. */
+    /** Bumped every step, for the canvas to draw again. */
     var frame by mutableIntStateOf(0)
         private set
 
@@ -333,14 +339,12 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         val kk = (min(width / 360f, height / 740f)).coerceIn(.85f, 1.25f)
         if (kk != k) {
             k = kk
-            frame++
         }
     }
 
     fun eyeAt(center: Offset) {
         if (center != eye) {
             eye = center
-            frame++
         }
     }
 
@@ -350,14 +354,12 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
             fieldX = x
             fieldRight = right
             fieldCy = cy
-            frame++
         }
     }
 
     fun threadAt(top: Float) {
         if (top != threadTop) {
             threadTop = top
-            frame++
         }
     }
 
@@ -371,14 +373,12 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
             t.rise = Offset(fieldX - 4 * k - rect.left, fieldCy - (rect.top + rect.height / 2))
             t.off = t.rise!!
         }
-        frame++
     }
 
     fun captionAt(id: Long, at: Offset) {
         val t = tether ?: return
         if (t.row.id != id || at == captionAt) return
         captionAt = at
-        frame++
     }
 
     /**
