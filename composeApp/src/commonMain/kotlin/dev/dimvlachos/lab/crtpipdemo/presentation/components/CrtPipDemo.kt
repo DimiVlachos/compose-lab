@@ -158,6 +158,8 @@ internal fun CrtPipDemo(
 
     DisposableEffect(state, pip) {
         state.setControlTapHandler { control ->
+            // Taken over by a key or a screen reader: the rest of the tour stays off the screen.
+            if (!state.replay && !state.recording) return@setControlTapHandler
             try {
                 script(control, pip, finger, scroll)
             } finally {
@@ -205,6 +207,7 @@ internal fun CrtPipDemo(
             sounds = sounds,
             modifier = Modifier.fillMaxSize(),
             reducedMotion = reducedMotion,
+            onTouch = { if (state.replay) state.endReplay() },
             appBar = { AppBar(colors) },
             page = { WatchPage(colors, scroll) },
             navBar = { NavBar(colors) },
@@ -328,8 +331,8 @@ private fun DrawScope.drawSkilletMark() {
     )
 }
 
-private val LogoIron = Color(0xFF2B2724)
-private val LogoSauce = Color(0xFFE8402A)
+private val LogoIron = CrtPipScreenColors.LogoIron
+private val LogoSauce = CrtPipScreenColors.LogoSauce
 
 @Composable
 private fun Avatar(initials: String, color: Color, size: Dp, fontSize: TextUnit) {
@@ -460,9 +463,24 @@ private val Next =
 
 private val Comments =
     listOf(
-        Comment("BK", Color(0xFF7A5BB0), "@bethanyk", Res.string.crtpip_comment_1),
-        Comment("JR", Color(0xFF3D7F8F), "@jroddallas", Res.string.crtpip_comment_2),
-        Comment("MO", Color(0xFFB0663B), "@mike.in.ohio", Res.string.crtpip_comment_3),
+        Comment(
+            "BK",
+            CrtPipScreenColors.CommentAvatars[0],
+            "@bethanyk",
+            Res.string.crtpip_comment_1,
+        ),
+        Comment(
+            "JR",
+            CrtPipScreenColors.CommentAvatars[1],
+            "@jroddallas",
+            Res.string.crtpip_comment_2,
+        ),
+        Comment(
+            "MO",
+            CrtPipScreenColors.CommentAvatars[2],
+            "@mike.in.ohio",
+            Res.string.crtpip_comment_3,
+        ),
     )
 
 /**

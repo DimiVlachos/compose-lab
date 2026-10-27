@@ -488,7 +488,7 @@ internal class CrtPipState {
         val pcy = playerY
         val mcx = setX
         val mcy = setY
-        var ph = mode.name.lowercase()
+        var ph = phase
         when (mode) {
             PipMode.Full -> {
                 p.picture = true
@@ -635,6 +635,7 @@ internal class CrtPipState {
             }
         }
         // A slow frame can jump a short phase; every phase it passed is kept, in order.
+        if (mode != PipMode.ToMini && mode != PipMode.ToFull) ph = ModeNames[mode.ordinal]
         if (ph != phase) {
             val i0 = Phases.indexOf(phase)
             val i1 = Phases.indexOf(ph)
@@ -757,7 +758,8 @@ internal class CrtPipState {
         offX0 = posX
         offX1 = posX + if (dir < 0) -cx else width - cx
         spring = false
-        if (keyboard) focusRequest = PipFocus.Undo
+        // Undo takes focus once the toast is up to take it.
+        focusTo = if (keyboard) PipFocus.Undo else PipFocus.None
         emit(PipEvent.Stop)
         wake++
         if (reducedMotion) {
@@ -784,6 +786,10 @@ internal class CrtPipState {
         val tok = ++toastTok
         toastInstant = false
         toastOn = true
+        if (focusTo == PipFocus.Undo) {
+            focusRequest = PipFocus.Undo
+            focusTo = PipFocus.None
+        }
         later(ToastMs) { if (tok == toastTok) hideToast(false) }
     }
 
@@ -819,7 +825,7 @@ internal class CrtPipState {
             for (i in Phases.indexOf(phase) + 1 until Phases.size) seen += Phases[i]
         }
         mode = m
-        phase = m.name.lowercase()
+        phase = ModeNames[m.ordinal]
         if (m == PipMode.Mini) {
             slotH = 0f
             announce(PipAnnouncement.Mini)
@@ -867,16 +873,16 @@ internal class CrtPipState {
         frame++
     }
 
-    /** The next minimize goes to the usual corner again, as the demo leaves it. */
-    fun resetCorner() {
-        if (mode == PipMode.Full) corner = "br"
-    }
-
     // ---- The player's gesture ----
 
     /** A finger down on the player at ([x], [y]) dp, at [t] ms. */
     fun playerDown(x: Float, y: Float, t: Double, scripted: Boolean = false) {
         if (mode != PipMode.Full) return
+        // A finger taking over the script's drag starts from a picture at rest.
+        if (drag?.scripted == true && !scripted) {
+            drag = null
+            springBack()
+        }
         drag = Drag(x, y, x, y, t).also { it.scripted = scripted }
         wake++
     }
@@ -907,6 +913,7 @@ internal class CrtPipState {
         val dy = y - d.y0
         if (!d.moved) {
             ctlUntil = now + 2600
+            if (pre > 0f) springBack()
             return
         }
         if (dy > Commit || (d.v > .6f && dy > 24)) {
@@ -938,6 +945,7 @@ internal class CrtPipState {
 
     fun setDown(x: Float, y: Float, t: Double, scripted: Boolean = false) {
         if (mode != PipMode.Mini) return
+        if (setDrag?.scripted == true && !scripted) setDrag = null
         setDrag = SetDrag(x, y, x, y, t, t, posX, posY).also { it.scripted = scripted }
         spring = false
         velX = 0f
@@ -1091,6 +1099,7 @@ internal class CrtPipState {
         const val SpringK = 420f
         val SpringC = 2 * .72f * sqrt(420f)
         val Phases = listOf("squeeze", "line", "dot", "warm", "open")
+        private val ModeNames = PipMode.entries.map { it.name.lowercase() }
 
         fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 

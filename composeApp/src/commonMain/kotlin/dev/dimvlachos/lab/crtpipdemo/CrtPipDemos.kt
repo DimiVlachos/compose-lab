@@ -20,11 +20,11 @@ internal object CrtPipDemos {
     const val TapSet = "tap-set"
 
     // How long each move takes, as the prototype's demo moves its finger.
-    val SwipeTakes = 1260.milliseconds
-    val BrowseDownTakes = 2290.milliseconds
-    val BrowseUpTakes = 1040.milliseconds
-    val SlideTakes = 1510.milliseconds
-    val TapTakes = 650.milliseconds
+    val SwipeTakes = 1580.milliseconds
+    val BrowseDownTakes = 2400.milliseconds
+    val BrowseUpTakes = 1150.milliseconds
+    val SlideTakes = 1620.milliseconds
+    val TapTakes = 760.milliseconds
 
     // The prototype's tour: swipe the video down so it switches off into the set; browse the page
     // while the show plays in the corner, then come back to the top; slide the set over to the

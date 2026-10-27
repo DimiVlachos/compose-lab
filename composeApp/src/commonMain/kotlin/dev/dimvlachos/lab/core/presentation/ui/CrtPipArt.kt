@@ -29,6 +29,13 @@ internal class CrtPipScreenColors(
         val Avatar = Color(0xFF4F7A5A)
         val ChannelAvatar = Color(0xFF8A4B2A)
 
+        /** The Skillet mark: a cast-iron pan of tomato sauce. */
+        val LogoIron = Color(0xFF2B2724)
+        val LogoSauce = Color(0xFFE8402A)
+
+        /** The commenters' avatars, in the order they comment. */
+        val CommentAvatars = listOf(Color(0xFF7A5BB0), Color(0xFF3D7F8F), Color(0xFFB0663B))
+
         /** The progress track's red. */
         val Progress = Color(0xFFE8402A)
 

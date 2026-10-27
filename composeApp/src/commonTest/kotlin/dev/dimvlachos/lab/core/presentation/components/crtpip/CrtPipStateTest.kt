@@ -278,8 +278,10 @@ class CrtPipStateTest {
         val s = pip()
         s.toMini()
         s.stopFromKeys()
-        assertEquals(PipFocus.Undo, s.focusRequest)
+        // Focus goes to Undo once the toast is up to take it.
+        assertEquals(PipFocus.None, s.focusRequest)
         assertTrue(s.run(1500) { s.toastOn })
+        assertEquals(PipFocus.Undo, s.focusRequest)
         assertTrue(s.run(4800) { !s.toastOn })
         assertEquals(PipMode.Stopped, s.mode)
         assertTrue(s.settled)
@@ -305,6 +307,18 @@ class CrtPipStateTest {
         s.releaseScripted()
         assertFalse(s.dragging)
         assertTrue(s.run(600) { s.pre == 0f })
+        assertEquals(PipMode.Full, s.mode)
+    }
+
+    @Test
+    fun aTapThatTakesOverTheScriptsDragLeavesThePictureAtRest() {
+        val s = pip()
+        s.playerDown(200f, 150f, s.now, scripted = true)
+        s.playerMove(200f, 220f, s.now + 100)
+        s.step(.016f)
+        s.playerDown(200f, 150f, s.now)
+        s.playerUp(200f, 150f, s.now + 40)
+        assertTrue(s.run(600) { s.pre == 0f && abs(s.preY) < .5f })
         assertEquals(PipMode.Full, s.mode)
     }
 

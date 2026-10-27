@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
@@ -131,7 +132,8 @@ internal class CrtPipLabels(
  * It lays out a column of [appBar], the player's slot (16:9, collapsing to nothing as the video
  * leaves it), the [page] filling what is left, and the [navBar]; over them the set, the picture,
  * line and dot, the player's controls, the set's button and the "Playback stopped" toast, in the
- * prototype's order. [onTouch] hears a real finger come down on the player or the set.
+ * prototype's order. [onTouch] hears the user take over: a real finger on the player or the set, or
+ * a key or screen reader action on the chevron, the set or Undo.
  */
 @Composable
 internal fun CrtPictureInPicture(
@@ -229,8 +231,12 @@ internal fun CrtPictureInPicture(
             Canvas(
                 Modifier.graphicsLayer {
                     state.frame
-                    alpha = if (state.pose.cab) state.pose.cabAlpha else 0f
-                    compositingStrategy = CompositingStrategy.Offscreen
+                    val a = if (state.pose.cab) state.pose.cabAlpha else 0f
+                    alpha = a
+                    // Faded, it is drawn whole offscreen and laid down once at its alpha; at full
+                    // alpha there is nothing to composite.
+                    compositingStrategy =
+                        if (a < 1f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
                 },
             ) {
                 state.frame
@@ -257,7 +263,7 @@ internal fun CrtPictureInPicture(
             }
             Player(state, labels, playerFocus, chevronFocus, onTouch)
             SetButton(state, labels, colors, setFocus, onTouch)
-            Toast(state, labels, colors, reducedMotion, undoFocus)
+            Toast(state, labels, colors, reducedMotion, undoFocus, onTouch)
         },
     ) { measurables, constraints ->
         val w = constraints.maxWidth
@@ -302,6 +308,10 @@ private fun Player(
 ) {
     val full = state.mode == PipMode.Full
     val input = LocalInputModeManager.current
+    val playerFocusSource = remember { MutableInteractionSource() }
+    val playerFocused by playerFocusSource.collectIsFocusedAsState()
+    val chevronFocusSource = remember { MutableInteractionSource() }
+    val chevronFocused by chevronFocusSource.collectIsFocusedAsState()
     val shown by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(250), label = "ctl")
     val dot by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(200), label = "knob")
     Box(
@@ -314,7 +324,12 @@ private fun Player(
             .clipToBounds()
             .testTag("crt-player")
             .focusRequester(focus)
-            .focusable(enabled = full)
+            .focusable(enabled = full, interactionSource = playerFocusSource)
+            .drawWithContent {
+                drawContent()
+                // #player:focus-visible: 2 px white, 3 px in.
+                if (playerFocused && input.inputMode == InputMode.Keyboard) focusRing(3.dp.toPx())
+            }
             .then(
                 if (full) {
                     Modifier.semantics { contentDescription = labels.player }
@@ -351,19 +366,32 @@ private fun Player(
                 Modifier.padding(start = 6.dp, top = 4.dp)
                     .size(44.dp)
                     .graphicsLayer { alpha = shown }
+                    .drawWithContent {
+                        drawContent()
+                        // #minBtn:focus-visible: 2 px white, 4 px in.
+                        if (chevronFocused && input.inputMode == InputMode.Keyboard) {
+                            focusRing(4.dp.toPx(), round = true)
+                        }
+                    }
                     .focusRequester(chevronFocus)
                     .clip(RoundedCornerShape(22.dp))
                     .then(
                         // Touchable only while the controls show, as the prototype's; a screen
                         // reader and keys reach it always.
                         if (state.controlsOn) {
-                            Modifier.clickable(role = Role.Button) {
+                            Modifier.clickable(
+                                role = Role.Button,
+                                interactionSource = chevronFocusSource,
+                                indication = null,
+                            ) {
+                                onTouch()
                                 state.minimize(keyboard = input.inputMode == InputMode.Keyboard)
                             }
                         } else {
                             Modifier.semantics {
                                     role = Role.Button
                                     onClick {
+                                        onTouch()
                                         state.minimize()
                                         true
                                     }
@@ -374,11 +402,12 @@ private fun Player(
                                             it.key == Key.NumPadEnter ||
                                             it.key == Key.Spacebar
                                     if (it.type == KeyEventType.KeyDown && enter) {
+                                        onTouch()
                                         state.minimize(keyboard = true)
                                         true
                                     } else false
                                 }
-                                .focusable()
+                                .focusable(interactionSource = chevronFocusSource)
                         },
                     )
                     .semantics { contentDescription = labels.minimize }
@@ -513,11 +542,13 @@ private fun SetButton(
                     Key.Enter,
                     Key.NumPadEnter,
                     Key.Spacebar -> {
+                        onTouch()
                         state.expand(keyboard = true)
                         true
                     }
                     Key.Delete,
                     Key.Backspace -> {
+                        onTouch()
                         state.stopFromKeys()
                         true
                     }
@@ -531,12 +562,14 @@ private fun SetButton(
                             contentDescription = labels.expand
                             role = Role.Button
                             onClick {
+                                onTouch()
                                 state.expand()
                                 true
                             }
                             customActions =
                                 listOf(
                                     CustomAccessibilityAction(labels.stop) {
+                                        onTouch()
                                         state.stopFromKeys()
                                         true
                                     },
@@ -564,6 +597,22 @@ private fun SetButton(
                         }
                 } else Modifier.clearAndSetSemantics {},
             ),
+    )
+}
+
+/** A focus-visible outline: 2 dp of white, [inset] inside the edge. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.focusRing(
+    inset: Float,
+    round: Boolean = false,
+) {
+    val w = 2.dp.toPx()
+    val o = inset + w / 2
+    drawRoundRect(
+        Color.White,
+        Offset(o, o),
+        Size(size.width - 2 * o, size.height - 2 * o),
+        CornerRadius(if (round) (size.minDimension / 2 - o) else 0f),
+        style = Stroke(w),
     )
 }
 
@@ -614,6 +663,7 @@ private fun Toast(
     colors: CrtPipScreenColors,
     reducedMotion: Boolean,
     undoFocus: FocusRequester,
+    onTouch: () -> Unit,
 ) {
     val on = state.toastOn
     val show = remember { Animatable(0f) }
@@ -699,6 +749,7 @@ private fun Toast(
                         interactionSource = interaction,
                         indication = null,
                     ) {
+                        onTouch()
                         state.undo(keyboard = input.inputMode == InputMode.Keyboard)
                     }
                     .padding(horizontal = 12.dp)
