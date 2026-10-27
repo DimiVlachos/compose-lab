@@ -122,10 +122,20 @@ internal class RubberBandHand(
         down = false
     }
 
+    // Each key is due at its time from the start, read off the frame clock, so slow frames type
+    // several keys at once rather than falling behind the script's next step.
     private suspend fun type(text: String) {
-        for (ch in text) {
-            field.edit { append(ch) }
-            delay(RubberBandDemos.keyMs(ch))
+        val start = withFrameNanos { it }
+        var due = 0L
+        var i = 0
+        while (i < text.length) {
+            val ms = withFrameNanos { (it - start) / 1_000_000L }
+            while (i < text.length && ms >= due) {
+                val ch = text[i]
+                field.edit { append(ch) }
+                due += RubberBandDemos.keyMs(ch)
+                i++
+            }
         }
     }
 

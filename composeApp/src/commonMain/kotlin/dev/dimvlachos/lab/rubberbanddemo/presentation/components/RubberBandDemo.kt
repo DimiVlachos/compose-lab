@@ -77,6 +77,8 @@ import dev.dimvlachos.lab.resources.rubberband_unsend
 import dev.dimvlachos.lab.resources.rubberband_unsent_said
 import dev.dimvlachos.lab.rubberbanddemo.RubberBandHand
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
 
 /** The prototype's opening thread with Jess. */
@@ -106,6 +108,9 @@ internal fun RubberBandDemo(
 ) {
     val sounds = rememberSoundPlayer(RubberBandSounds)
     val hand = remember(chat, field) { RubberBandHand(chat, field) }
+    // The script's moves take turns: on a slow device one can run past its slot, and the next
+    // waits for it rather than steering the hand at the same time.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
@@ -115,8 +120,8 @@ internal fun RubberBandDemo(
                 throw e
             }
         }
-        state.setControlTapHandler { control -> step { hand.play(control) } }
-        state.setFeedResetHandler { step { hand.fadeBack() } }
+        state.setControlTapHandler { control -> turn.withLock { step { hand.play(control) } } }
+        state.setFeedResetHandler { turn.withLock { step { hand.fadeBack() } } }
         onDispose {
             state.setControlTapHandler(null)
             state.setFeedResetHandler(null)
