@@ -456,20 +456,33 @@ private fun Message(
     }
 }
 
-/** A plain bubble, as wide as its text up to 86 % of the column. */
+/**
+ * A plain bubble, CSS's `width: fit-content; max-width: 86%`: as wide as its text on one line, or
+ * 86 % of the column once it wraps (not shrunk to its longest wrapped line). Its 1 dp border sits
+ * outside its 12/8/9 dp padding, as the prototype's does.
+ */
 @Composable
 private fun Bubble(text: String, colors: DecoderRingScreenColors) {
     val shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
-    Box(Modifier.fillMaxWidth(.86f)) {
-        BasicText(
-            text,
-            Modifier.clip(shape)
-                .background(colors.card)
-                .border(1.dp, colors.line, shape)
-                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 9.dp),
-            style = css(15f, lines = 21f / 15f).copy(color = colors.ink),
-        )
-    }
+    BasicText(
+        text,
+        Modifier.fitContent(.86f)
+            .clip(shape)
+            .background(colors.card)
+            .border(1.dp, colors.line, shape)
+            .padding(start = 13.dp, end = 13.dp, top = 9.dp, bottom = 10.dp),
+        style = css(15f, lines = 21f / 15f).copy(color = colors.ink),
+    )
+}
+
+/**
+ * CSS's `width: fit-content` under `max-width: [max]` of the available width: the content's
+ * one-line width, capped; a capped box keeps the cap's width however its lines wrap.
+ */
+private fun Modifier.fitContent(max: Float) = layout { m, c ->
+    val w = min(m.maxIntrinsicWidth(Constraints.Infinity), (c.maxWidth * max).toInt())
+    val p = m.measure(Constraints.fixedWidth(w))
+    layout(p.width, p.height) { p.place(0, 0) }
 }
 
 /**
@@ -485,7 +498,8 @@ private fun MyBubble(text: String, colors: DecoderRingScreenColors) {
         Modifier.fillMaxWidth()
             .layout { m, c ->
                 val column = min(m.maxIntrinsicWidth(Constraints.Infinity), c.maxWidth)
-                val p = m.measure(Constraints(maxWidth = (column * .86f).toInt()))
+                // fit-content in a column no wider than the text is 86 % of it, however it wraps.
+                val p = m.measure(Constraints.fixedWidth((column * .86f).toInt()))
                 layout(c.maxWidth, p.height) { p.place(c.maxWidth - column, 0) }
             }
             .clip(shape)
