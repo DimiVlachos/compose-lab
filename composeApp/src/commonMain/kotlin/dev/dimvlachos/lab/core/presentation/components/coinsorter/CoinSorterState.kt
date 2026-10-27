@@ -259,6 +259,8 @@ internal class CoinSorterState(val items: List<CoinItem>) {
      */
     fun layout(w: Float, h: Float, toolbarTop: Float) {
         if (w <= 0f || h <= 0f) return
+        // Called on every measure; only a change of size moves anything.
+        if (w == width && h == height && toolbarTop == this.toolbarTop) return
         width = w
         height = h
         this.toolbarTop = toolbarTop

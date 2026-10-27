@@ -29,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,8 +68,8 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -95,6 +94,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -128,6 +128,9 @@ internal val CoinSorterSounds =
         Sound.CoinOut,
         Sound.CoinThunk,
     )
+
+private const val HeadSlot = "head"
+private const val BodySlot = "body"
 
 /** Stands in for a sort's name in [CoinSorterText]'s lines. */
 internal const val SortSlot = "\u0001"
@@ -237,12 +240,6 @@ internal fun CoinSorterResults(
     val density = LocalDensity.current.density
     val measurer = rememberTextMeasurer(cacheSize = 16)
     val painter = remember(density) { CoinSorterPainter(density) }
-    var boxW by remember { mutableFloatStateOf(0f) }
-    var boxH by remember { mutableFloatStateOf(0f) }
-    var headH by remember { mutableFloatStateOf(0f) }
-    fun relayout() {
-        if (boxW > 0f && headH > 0f) state.layout(boxW / density, boxH / density, headH / density)
-    }
     var root by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     fun DrawScope.tray(front: Boolean) {
@@ -255,13 +252,10 @@ internal fun CoinSorterResults(
         }
     }
 
-    Box(
+    // The header is measured first and the tray laid out under it in the same pass, so the
+    // toolbar, the rows and the tray are composed already in place: never a frame without them.
+    SubcomposeLayout(
         modifier
-            .onSizeChanged {
-                boxW = it.width.toFloat()
-                boxH = it.height.toFloat()
-                relayout()
-            }
             .onPlaced { root = it }
             // Escape closes the menu wherever focus is, as the prototype's document listener.
             .onPreviewKeyEvent { e ->
@@ -272,52 +266,61 @@ internal fun CoinSorterResults(
                 state.refocusChip?.invoke()
                 true
             },
-    ) {
-        Box(
-            Modifier.fillMaxWidth().onSizeChanged {
-                headH = it.height.toFloat()
-                relayout()
-            },
-        ) {
-            header()
-        }
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = false) }
-        // The tray is a second, bigger way into the menu, under the toolbar so the chip keeps
-        // its whole area; screen readers have the chip.
-        TrayTarget(state)
-        Toolbar(state, text, colors, root)
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-            state.frame
-            with(painter) { drawWells(state, colors.line) }
-        }
-        Rows(state, text, colors, rowLabel, row)
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-            state.frame
-            with(painter) { drawCoins(state, measurer, fly = false) }
-        }
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = true) }
-        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-            state.frame
-            with(painter) { drawCoins(state, measurer, fly = true) }
-        }
-        if (state.menuOpen) {
-            // A tap anywhere off the menu closes it.
-            Box(
-                Modifier.fillMaxSize().testTag("catcher").pointerInput(state) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false).consume()
-                        state.closeMenu()
+    ) { c ->
+        val w = c.maxWidth
+        val h = c.maxHeight
+        val head =
+            subcompose(HeadSlot) { Box(Modifier.fillMaxWidth()) { header() } }
+                .map { it.measure(Constraints(maxWidth = w, maxHeight = h)) }
+        state.layout(w / density, h / density, (head.maxOfOrNull { it.height } ?: 0) / density)
+        val body =
+            subcompose(BodySlot) {
+                    Box(Modifier.fillMaxSize()) {
+                        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = false) }
+                        // The tray is a second, bigger way into the menu, under the toolbar so the
+                        // chip keeps
+                        // its whole area; screen readers have the chip.
+                        TrayTarget(state)
+                        Toolbar(state, text, colors, root)
+                        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+                            state.frame
+                            with(painter) { drawWells(state, colors.line) }
+                        }
+                        Rows(state, text, colors, rowLabel, row)
+                        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+                            state.frame
+                            with(painter) { drawCoins(state, measurer, fly = false) }
+                        }
+                        Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = true) }
+                        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
+                            state.frame
+                            with(painter) { drawCoins(state, measurer, fly = true) }
+                        }
+                        if (state.menuOpen) {
+                            // A tap anywhere off the menu closes it.
+                            Box(
+                                Modifier.fillMaxSize().testTag("catcher").pointerInput(state) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false).consume()
+                                        state.closeMenu()
+                                    }
+                                },
+                            )
+                        }
+                        Menu(state, text, colors)
+                        Box(
+                            Modifier.size(1.dp).semantics {
+                                liveRegion = LiveRegionMode.Polite
+                                if (said.isNotEmpty()) contentDescription = said
+                            },
+                        )
                     }
-                },
-            )
+                }
+                .map { it.measure(Constraints.fixed(w, h)) }
+        layout(w, h) {
+            head.forEach { it.place(0, 0) }
+            body.forEach { it.place(0, 0) }
         }
-        Menu(state, text, colors)
-        Box(
-            Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                if (said.isNotEmpty()) contentDescription = said
-            },
-        )
     }
 }
 
