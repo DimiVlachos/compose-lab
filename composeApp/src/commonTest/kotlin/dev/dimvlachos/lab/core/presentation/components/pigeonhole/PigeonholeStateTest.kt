@@ -485,5 +485,29 @@ class PigeonholeStateTest {
         assertTrue(s.letters.isEmpty())
     }
 
+    @Test
+    fun aLetterPulledOutOfACubbyStaysBehindItsRailUntilItIsClear() {
+        val s = state()
+        s.toggleRack()
+        s.run(500)
+        val cx = s.cubCenterX(1)
+        val cy = s.cubCenterY(1)
+        s.cubDown(1, cx, cy)
+        var n = 0
+        var y = cy
+        while (s.carry == null && n++ < 20) {
+            y -= 2f
+            s.ptrMove(cx, y)
+            if (s.carry == null) s.tick(.016f)
+        }
+        val l = s.carry!!.letter
+        // Just picked up, it is drawn as the cubby drew it: cut off at the rail's top.
+        assertEquals(s.railTop(1, s.rackTop()), l.below, .01f)
+        s.ptrMove(cx, cy - 200f)
+        s.tick(.016f)
+        assertTrue(l.below.isNaN(), "lifted clear, it is drawn whole")
+        assertEquals(-1, l.behindRail)
+    }
+
     private fun PigeonholeState.busy() = !idle
 }

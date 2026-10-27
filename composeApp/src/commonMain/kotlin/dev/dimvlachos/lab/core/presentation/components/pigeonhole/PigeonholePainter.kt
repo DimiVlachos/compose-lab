@@ -503,7 +503,7 @@ internal class PigeonholePainter(
         val c = c0.setup()
         val carried = s.carry?.letter
         for (l in s.letters) if (!l.inCubby && l !== carried) drawFlying(c, l, inks)
-        if (carried != null) drawLetter(c, carried, inks)
+        if (carried != null) drawFlying(c, carried, inks)
     }
 
     // A letter passing behind the rack's top edge shows only above it.

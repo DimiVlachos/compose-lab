@@ -60,6 +60,9 @@ internal class Letter(val mail: Mail) {
      */
     var below = Float.NaN
 
+    /** The cubby whose rail it is still behind, pulled out but not yet clear of it; -1 if none. */
+    var behindRail = -1
+
     /** In a cubby, behind its rail (the prototype's phase `in`), or in the air above everything. */
     var inCubby = false
     var cub = -1
@@ -523,6 +526,22 @@ internal class PigeonholeState(
     // Whether row [i]'s slot is under the rack where it is now.
     private fun covered(i: Int) = i >= 0 && slotOf(i).second + rowH / 2 > rackTop()
 
+    // A letter pulled out of a cubby keeps behind its rail until its bottom has come up clear of
+    // it.
+    private fun clearRails() {
+        for (l in letters) {
+            val c = l.behindRail
+            if (c < 0) continue
+            val rt = railTop(c, rackTop())
+            if (l.inCubby || l.y + LH * k * l.s / 2 + k <= rt) {
+                l.behindRail = -1
+                l.below = Float.NaN
+            } else {
+                l.below = rt
+            }
+        }
+    }
+
     // Where a row's card stands with its bottom just clear of the rack's top edge.
     private fun edge() = rackTop() - rowH / 2 - 2 * k
 
@@ -560,6 +579,10 @@ internal class PigeonholeState(
                 y = py
                 f = 1f
                 s = .86f
+                // It starts behind the cubby's rail, as the cubby drew it, until it is lifted
+                // clear.
+                behindRail = c
+                below = railTop(c, rackTop())
             }
         letters += l
         lifted += m.id
@@ -882,17 +905,20 @@ internal class PigeonholeState(
                             val (rx, ry0) = slotOf(ri)
                             val ry =
                                 ry0.coerceIn(listTop - rowH * .3f, listTop + listH + rowH * .3f)
+                            // A row the rack covers comes up from behind its edge before it flies,
+                            // shown only above the edge from its first frame.
+                            val under = ry + rowH / 2 > rackTop()
                             val l =
                                 Letter(m).apply {
                                     x = rx
                                     y = ry
+                                    if (under) below = rackTop()
                                 }
                             hidden += m.id
                             letters += l
                             changed()
-                            // A row the rack covers comes up from behind its edge before it flies.
                             var sy = ry
-                            if (ry + rowH / 2 > rackTop()) {
+                            if (under) {
                                 sy = edge()
                                 animate(d(UnderMs)) { p ->
                                     l.below = rackTop()
@@ -1340,6 +1366,7 @@ internal class PigeonholeState(
         }
         paper(dt)
         while (ready.isNotEmpty()) ready.removeFirst()()
+        clearRails()
         if (
             timers.isNotEmpty() ||
                 anims.isNotEmpty() ||
