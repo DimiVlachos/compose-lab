@@ -234,6 +234,12 @@ internal class CoinSorterState(val items: List<CoinItem>) {
     val slotX = FloatArray(n)
     val coinD = FloatArray(n)
 
+    /** Whether the menu, once it opens, takes keyboard focus on the current option. */
+    var focusOnOpen = false
+
+    /** Hands focus back to the chip, when a key closes the menu. */
+    var refocusChip: (() -> Unit)? = null
+
     /** The chip's left edge and width, as laid out. */
     var chipX = 0f
     var chipW = 0f

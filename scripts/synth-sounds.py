@@ -982,6 +982,62 @@ def note_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
 
 
+# ---------- Coin sorter ----------
+# Small coins in a chrome tray heard close by: a nickel ring as one lands in its tube, dry metal
+# ticks over the slots and a rattle in the funnel, a felt pat as a row tips, and a soft card knock
+# as one opens back onto its line. Built with the soft toolkit.
+
+
+def coin_clink(rng, rate):
+    """A coin landing on the others in a tube: a small tick and a bright, short nickel ring."""
+    n = seconds(0.26, rate)
+    tick = mul(bandpass(noise(n, rng), 5200, 4.0, rate), soft_env(n, rate, 0.002, 0.007))
+    ring = mix(soft_mode(rng, n, rate, 4300, 60.0, 0.08, attack=0.003), scale(soft_mode(rng, n, rate, 6900, 50.0, 0.045, attack=0.003), 0.45))
+    after = [0.0] * n
+    place(after, scale(mul(bandpass(noise(n, rng), 4800, 6.0, rate), soft_env(n, rate, 0.002, 0.005)), 0.3), seconds(0.05, rate))
+    hit = mix(scale(tick, 0.8), scale(ring, 0.9), after)
+    return soft_finish(soft_room(soft_tilt(hit, rate, 5200), rate, 0.12), rate, 0.42, 0.003, 0.05)
+
+
+def coin_rattle(rng, rate):
+    """A coin dropping into the funnel heap: two quick metal ticks against the others and a faint ring."""
+    n = seconds(0.11, rate)
+    a = mul(bandpass(noise(n, rng), 3000, 5.0, rate), soft_env(n, rate, 0.002, 0.01))
+    b = [0.0] * n
+    place(b, scale(mul(bandpass(noise(n, rng), 3600, 6.0, rate), soft_env(n, rate, 0.002, 0.007)), 0.6), seconds(0.035, rate))
+    ring = soft_mode(rng, n, rate, 3100, 40.0, 0.03, attack=0.003)
+    return soft_finish(soft_room(soft_tilt(mix(a, b, scale(ring, 0.3)), rate, 4200), rate, 0.1), rate, 0.3, 0.003, 0.03)
+
+
+def coin_tick(rng, rate):
+    """A coin rolling over a slot too small for it: a tiny dry tick off the rail."""
+    n = seconds(0.04, rate)
+    tick = mul(bandpass(noise(n, rng), 2600, 8.0, rate), soft_env(n, rate, 0.0015, 0.005))
+    return soft_finish(soft_room(soft_tilt(tick, rate, 4000), rate, 0.08), rate, 0.16, 0.002, 0.015)
+
+
+def coin_tip(rng, rate):
+    """A row tipping up on its edge: a soft, low pat."""
+    n = seconds(0.09, rate)
+    pat = mul(lowpass(noise(n, rng), 900, rate), soft_env(n, rate, 0.004, 0.02))
+    return soft_finish(soft_room(soft_tilt(pat, rate, 2000), rate, 0.08), rate, 0.14, 0.004, 0.03)
+
+
+def coin_out(rng, rate):
+    """A coin slipping out of the bottom of its tube: a short brush of metal on metal."""
+    n = seconds(0.06, rate)
+    brush = mul(bandpass(noise(n, rng), 2200, 3.0, rate), soft_env(n, rate, 0.003, 0.01))
+    return soft_finish(soft_room(soft_tilt(brush, rate, 3600), rate, 0.08), rate, 0.14, 0.003, 0.02)
+
+
+def coin_thunk(rng, rate):
+    """A row opening back onto its line: a muffled card knock with a light tap on top."""
+    n = seconds(0.14, rate)
+    knock = mul(lowpass(lowpass(noise(n, rng), 320, rate), 320, rate), soft_env(n, rate, 0.004, 0.03))
+    tap = mul(bandpass(noise(n, rng), 1700, 2.0, rate), soft_env(n, rate, 0.002, 0.006))
+    return soft_finish(soft_room(soft_tilt(mix(knock, scale(tap, 0.15)), rate, 2400), rate, 0.1), rate, SOFT_PEAK, 0.004, 0.04)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1064,6 +1120,13 @@ def main():
     write("note_stick", note_stick(note, fast), fast)
     write("note_pat", note_pat(note, fast), fast)
     write("note_lift", note_lift(note, fast), fast)
+    coins = random.Random(1027)
+    write("coin_clink", coin_clink(coins, fast), fast)
+    write("coin_rattle", coin_rattle(coins, fast), fast)
+    write("coin_tick", coin_tick(coins, fast), fast)
+    write("coin_tip", coin_tip(coins, fast), fast)
+    write("coin_out", coin_out(coins, fast), fast)
+    write("coin_thunk", coin_thunk(coins, fast), fast)
 
 
 if __name__ == "__main__":

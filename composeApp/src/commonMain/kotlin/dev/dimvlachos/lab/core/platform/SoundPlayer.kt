@@ -71,7 +71,13 @@ internal enum class Sound(val file: String) {
     NoteRip("note_rip"),
     NoteStick("note_stick"),
     NotePat("note_pat"),
-    NoteLift("note_lift");
+    NoteLift("note_lift"),
+    CoinClink("coin_clink"),
+    CoinRattle("coin_rattle"),
+    CoinTick("coin_tick"),
+    CoinTip("coin_tip"),
+    CoinOut("coin_out"),
+    CoinThunk("coin_thunk");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
