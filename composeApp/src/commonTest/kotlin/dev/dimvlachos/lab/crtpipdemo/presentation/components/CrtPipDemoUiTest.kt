@@ -9,6 +9,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -57,6 +58,9 @@ class CrtPipDemoUiTest {
         mainClock.advanceTimeByFrame()
         onNodeWithText("Cast-iron honey cornbread in 20 minutes").assertExists()
         onNodeWithText("Camp-stove pancakes at Yosemite").assertExists()
+        // The chips row under the channel, its likes read out in words.
+        onNodeWithText("Download").assertExists()
+        onNodeWithContentDescription("18K likes").assertExists()
         assertEquals(PipMode.Full, pip.mode)
     }
 

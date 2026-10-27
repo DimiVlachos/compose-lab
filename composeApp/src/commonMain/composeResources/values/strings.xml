@@ -620,6 +620,12 @@
     <string name="crtpip_channel">Marlow Kitchen</string>
     <string name="crtpip_subscribers">1.8M subscribers</string>
     <string name="crtpip_subscribe">Subscribe</string>
+    <string name="crtpip_chip_likes">▲ 18K</string>
+    <string name="crtpip_chip_likes_said">18K likes</string>
+    <string name="crtpip_chip_share">Share</string>
+    <string name="crtpip_chip_save">Save</string>
+    <string name="crtpip_chip_download">Download</string>
+    <string name="crtpip_chip_clip">Clip</string>
     <string name="crtpip_up_next">Up next</string>
     <string name="crtpip_comments">Comments · 1.2K</string>
     <string name="crtpip_next_1">Smash burgers on a $20 griddle</string>

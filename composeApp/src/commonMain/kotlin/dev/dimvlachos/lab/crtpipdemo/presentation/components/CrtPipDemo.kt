@@ -16,13 +16,13 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -54,6 +55,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -85,6 +87,12 @@ import dev.dimvlachos.lab.resources.crtpip_channel
 import dev.dimvlachos.lab.resources.crtpip_comment_1
 import dev.dimvlachos.lab.resources.crtpip_comment_2
 import dev.dimvlachos.lab.resources.crtpip_comment_3
+import dev.dimvlachos.lab.resources.crtpip_chip_clip
+import dev.dimvlachos.lab.resources.crtpip_chip_download
+import dev.dimvlachos.lab.resources.crtpip_chip_likes
+import dev.dimvlachos.lab.resources.crtpip_chip_likes_said
+import dev.dimvlachos.lab.resources.crtpip_chip_save
+import dev.dimvlachos.lab.resources.crtpip_chip_share
 import dev.dimvlachos.lab.resources.crtpip_comments
 import dev.dimvlachos.lab.resources.crtpip_expand
 import dev.dimvlachos.lab.resources.crtpip_explore
@@ -533,9 +541,7 @@ private fun WatchPage(colors: CrtPipScreenColors, scroll: ScrollState) {
                 )
             }
         }
-        // The prototype's chips row is squeezed to nothing by its grid, so the approved page shows
-        // none; its two gaps stay.
-        Spacer(Modifier.height(0.dp))
+        ChipsRow(colors)
         BasicText(
             stringResource(Res.string.crtpip_up_next),
             Modifier.padding(top = 6.dp).semantics { heading() },
@@ -552,6 +558,46 @@ private fun WatchPage(colors: CrtPipScreenColors, scroll: ScrollState) {
         for (c in Comments) CommentRow(c, colors)
     }
 }
+
+/**
+ * The actions under the channel: pills that keep their width, clipped at the edge rather than
+ * squeezed, as the prototype's `flex: none` row with `overflow: clip`.
+ */
+@Composable
+private fun ChipsRow(colors: CrtPipScreenColors) {
+    Box(Modifier.fillMaxWidth().clipToBounds()) {
+        Row(
+            Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            for ((label, said) in Chips) {
+                val spoken = said?.let { stringResource(it) }
+                BasicText(
+                    stringResource(label),
+                    Modifier.clip(RoundedCornerShape(999.dp))
+                        .background(colors.chip)
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                        .then(
+                            if (spoken != null) {
+                                Modifier.clearAndSetSemantics { contentDescription = spoken }
+                            } else Modifier,
+                        ),
+                    style = text(colors.ink, 13.sp, 600),
+                )
+            }
+        }
+    }
+}
+
+/** The chips' labels, with what a screen reader says when the label is a glyph and a number. */
+private val Chips =
+    listOf(
+        Res.string.crtpip_chip_likes to Res.string.crtpip_chip_likes_said,
+        Res.string.crtpip_chip_share to null,
+        Res.string.crtpip_chip_save to null,
+        Res.string.crtpip_chip_download to null,
+        Res.string.crtpip_chip_clip to null,
+    )
 
 @Composable
 private fun NextRow(n: UpNext, colors: CrtPipScreenColors) {
