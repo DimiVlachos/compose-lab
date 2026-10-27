@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -384,7 +385,7 @@ internal fun PhotocopierList(
                 c.textMeasurer = measurer
                 c.fonts = fonts
                 c.scale(density, density)
-                painter.draw(c, state, colors, dark, density)
+                painter.draw(c, state, colors, dark, density, fontScale)
             }
         }
         Snack(state, words, onUndo = { focusCard(state.undo()) })
@@ -637,9 +638,11 @@ private fun CardView(
 
 @Composable
 private fun CardLine(text: String, size: Float, weight: FontWeight, line: Int, color: Color) {
+    // The row keeps its height in dp, as the card's rows are fixed; a larger system font sets the
+    // line at its own height, centred on the row and free to spill over it, rather than clipped.
     BasicText(
         text,
-        Modifier.height(line.dp),
+        Modifier.height(line.dp).wrapContentHeight(unbounded = true),
         style =
             TextStyle(
                 color = color,

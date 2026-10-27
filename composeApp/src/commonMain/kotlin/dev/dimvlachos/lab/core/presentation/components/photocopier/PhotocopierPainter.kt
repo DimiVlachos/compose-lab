@@ -109,9 +109,18 @@ internal fun shade(hex: String, a: Float): Color {
  * density, and the ellipsised lines, so a frame measures no text twice.
  */
 internal class PhotocopierPainter {
+    // The card's three fonts, at the font scale.
+    private var titleFont = "650 14.5px $Ui"
+    private var summaryFont = "400 12.8px $Ui"
+    private var metaFont = "500 11.5px $Ui"
+
     // Each text's three lines as fitted, by text, for the width they were fitted to.
     private val fitted = HashMap<String, Array<String?>>()
     private var fittedTo = 0f
+    private var fittedAt = 1f
+
+    // The system's font scale, so a card in flight sets its text as large as the list's cards.
+    private var fontScale = 1f
     private var specks = arrayOfNulls<ImageBitmap>(2)
     private var speckDensity = 0f
 
@@ -178,9 +187,10 @@ internal class PhotocopierPainter {
     }
 
     private fun Canvas2D.fit(s: String, max: Float, line: Int): String {
-        if (max != fittedTo) {
+        if (max != fittedTo || fontScale != fittedAt) {
             fitted.clear()
             fittedTo = max
+            fittedAt = fontScale
         }
         val lines = fitted.getOrPut(s) { arrayOfNulls(3) }
         lines[line]?.let {
@@ -214,13 +224,13 @@ internal class PhotocopierPainter {
         textAlign = "left"
         globalAlpha = a
         fillStyle = col.ink
-        font = "650 14.5px $Ui"
+        font = titleFont
         fillText(fit(d.title, max, 0), x, -h / 2 + 12 + 9)
         fillStyle = col.muted
-        font = "400 12.8px $Ui"
+        font = summaryFont
         fillText(fit(d.summary, max, 1), x, -h / 2 + 12 + 18 + 8.5f)
         globalAlpha = a * .85f
-        font = "500 11.5px $Ui"
+        font = metaFont
         fillText(fit(d.meta, max, 2), x, -h / 2 + 12 + 35 + 8)
     }
 
@@ -630,7 +640,14 @@ internal class PhotocopierPainter {
         col: PhotocopierScreenColors,
         dark: Boolean,
         density: Float,
+        fontScale: Float = 1f,
     ) {
+        if (fontScale != this.fontScale) {
+            this.fontScale = fontScale
+            titleFont = "650 ${14.5f * fontScale}px $Ui"
+            summaryFont = "400 ${12.8f * fontScale}px $Ui"
+            metaFont = "500 ${11.5f * fontScale}px $Ui"
+        }
         with(c) {
             textResolution = density
             drawCopier(st, col, dark, density)
