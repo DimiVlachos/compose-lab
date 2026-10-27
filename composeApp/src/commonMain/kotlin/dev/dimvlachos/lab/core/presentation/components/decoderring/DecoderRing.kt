@@ -172,7 +172,8 @@ internal fun DecoderMessage(
             bubble
                 .semantics { contentDescription = if (state.english) english else spanish }
                 .layout { m, c ->
-                    val h = (state.height + Border * 2).dp.roundToPx()
+                    // Border-box, as the prototype's: its height takes in the border.
+                    val h = state.height.dp.roundToPx()
                     val p = m.measure(Constraints.fixed(c.maxWidth, h))
                     layout(p.width, p.height) { p.place(0, 0) }
                 }
@@ -193,7 +194,8 @@ internal fun DecoderMessage(
 /**
  * The ring itself: a 62 dp button drawn as the brass decoder ring, its canvas spilling 8 dp round
  * it. Twist it round, either way, to run the wave; a tap, Enter, Space or a screen reader's click
- * toggles. [label] names what a press does, [description] what is shown.
+ * toggles. [label] names what a press does, [description] what is shown. [onInteract] hears a key
+ * or a screen reader's click just before it toggles, so a script can let go of the ring.
  */
 @Composable
 internal fun DecoderRingButton(
@@ -202,6 +204,7 @@ internal fun DecoderRingButton(
     description: String,
     focusRing: Color,
     modifier: Modifier = Modifier,
+    onInteract: () -> Unit = {},
 ) {
     val density = LocalDensity.current.density
     val measurer = rememberTextMeasurer()
@@ -260,6 +263,7 @@ internal fun DecoderRingButton(
                 contentDescription = label
                 stateDescription = description
                 onClick {
+                    onInteract()
                     state.toggle()
                     true
                 }
@@ -267,6 +271,7 @@ internal fun DecoderRingButton(
             .onKeyEvent {
                 val press = it.type == KeyEventType.KeyDown
                 if (press && (it.key == Key.Spacebar || it.key == Key.Enter)) {
+                    onInteract()
                     state.toggle()
                     true
                 } else {

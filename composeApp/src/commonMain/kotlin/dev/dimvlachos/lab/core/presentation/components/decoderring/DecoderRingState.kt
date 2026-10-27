@@ -127,6 +127,9 @@ internal class DecoderRingState {
             height = contentHeight()
             heightSet = true
         } else {
+            // Grown at once to the new lines, as the prototype's bubbleH() does in the same frame;
+            // a shrink still glides.
+            height = max(height, contentHeight())
             wake()
         }
         frame++
@@ -219,6 +222,9 @@ internal class DecoderRingState {
     fun step(dt: Float) {
         if (dt <= 0f) return
         time += dt
+        val g0 = g
+        val ring0 = ringA
+        val h0 = height
         var left = dt
         while (left > 0f) {
             val h = minOf(left, 1f / 240f)
@@ -229,7 +235,8 @@ internal class DecoderRingState {
         height = if (reducedMotion || !heightSet || t >= height) t else max(t, height - Shrink * dt)
         heightSet = true
         awake = target != null || drag != null || height != t
-        frame++
+        // A finger resting on the ring moves nothing: nothing is drawn again.
+        if (g != g0 || ringA != ring0 || height != h0) frame++
     }
 
     private fun substep(dt: Float) {
@@ -303,6 +310,11 @@ internal class DecoderRingState {
             return
         }
         if (!d.fromEnglish) go(if (g > Commit) 1 else 0) else go(if (g < 1 - Commit) 0 else 1)
+    }
+
+    /** Drops the twist [id] began without letting it go: the wave stays where it is. */
+    fun drop(id: Int) {
+        if (drag?.id == id) drag = null
     }
 
     /** Lets the held twist go where it is, as a cancel: it finishes to the nearer end. */

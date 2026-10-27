@@ -267,4 +267,39 @@ class DecoderRingStateTest {
         assertEquals(DecoderRingState.Turn, s.ringA, .01f)
         assertTrue(abs(s.ringA) > 0f)
     }
+
+    @Test
+    fun aFingerRestingOnTheRingDrawsNothingNew() {
+        val (s, _) = state()
+        s.down(-90f)
+        s.move(-40f)
+        s.settle(.5f)
+        val f = s.frame
+        repeat(10) { s.step(1 / 60f) }
+        assertEquals(f, s.frame)
+        assertTrue(s.awake, "still stepping while held")
+    }
+
+    @Test
+    fun aDroppedTwistLeavesTheWaveForWhatComesNext() {
+        val (s, _) = state()
+        val id = s.down(-90f)
+        for (a in listOf(-40f, 10f, 60f)) s.move(a)
+        val g = s.g
+        s.drop(id)
+        assertFalse(s.held)
+        s.toggle()
+        s.settle()
+        // From past half way a toggle runs back, as Enter does in the prototype.
+        assertTrue(g > .5f || s.english, "g $g")
+    }
+
+    @Test
+    fun aNarrowerBubbleGrowsAtOnce() {
+        val (s, _) = state(260f)
+        val before = s.height
+        s.layout(wrapDecoderText(es, 120f, ::measure), wrapDecoderText(en, 120f, ::measure))
+        assertTrue(s.height > before)
+        assertEquals(s.contentHeight(), s.height)
+    }
 }

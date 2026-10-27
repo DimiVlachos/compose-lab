@@ -201,7 +201,18 @@ internal fun DecoderRingDemo(
                         DecoderRingScreenColors.Lucia,
                         colors,
                     ) {
-                        Translated(ring, colors, dark) { places[1] = it }
+                        Translated(
+                            ring,
+                            colors,
+                            dark,
+                            onRing = { places[1] = it },
+                            // A key or a screen reader's click takes over from the script, as
+                            // the prototype's demoStop() drops its twist.
+                            onInteract = {
+                                hand.drop()
+                                if (state.replay) state.endReplay()
+                            },
+                        )
                     }
                     Message(
                         stringResource(Res.string.decoderring_marcy),
@@ -233,6 +244,7 @@ private fun Translated(
     colors: DecoderRingScreenColors,
     dark: Boolean,
     onRing: (LayoutCoordinates) -> Unit,
+    onInteract: () -> Unit,
 ) {
     val english = ring.english
     val shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
@@ -267,6 +279,7 @@ private fun Translated(
                 ),
             description = sub,
             focusRing = colors.accent,
+            onInteract = onInteract,
             modifier = Modifier.onGloballyPositioned(onRing),
         )
         Column(Modifier.clearAndSetSemantics {}) {

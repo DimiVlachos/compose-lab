@@ -48,7 +48,9 @@ internal class DecoderRingHand(
     }
 
     // The prototype's twist(): round the ring from angle a0 by sweep, at .78 of its radius.
-    private suspend fun twist(a0: Float, sweep: Float, ms: Int, appear: Boolean) {
+    private suspend fun twist(a0: Float, sweepBy: Float, ms: Int, appear: Boolean) {
+        // With reduced motion the finger only taps the ring, and the text changes at once.
+        val sweep = if (state.reducedMotion) 0f else sweepBy
         fun point(a: Float): Offset? {
             val c = ring() ?: return null
             val r = RingButton / 2f * .78f
@@ -63,6 +65,8 @@ internal class DecoderRingHand(
         }
         shown = 1f
         down = true
+        // A finger already on the ring keeps it.
+        if (state.held) return
         held = rel(start)?.let { state.down(it.x, it.y) } ?: return
         wait(PressMs)
         animate(ms) { p ->
@@ -88,6 +92,17 @@ internal class DecoderRingHand(
         down = false
         val from = shown
         animate(FadeMs) { shown = from * (1 - it) }
+    }
+
+    /**
+     * Drops a held twist without letting it go and vanishes, when a key or a screen reader takes
+     * over: what they do next decides where the wave goes.
+     */
+    fun drop() {
+        state.drop(held)
+        held = -1
+        down = false
+        shown = 0f
     }
 
     /** Lets go and vanishes at once, when the script is stopped. */
