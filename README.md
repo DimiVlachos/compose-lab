@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -859,6 +861,27 @@ StickyNoteList(
 }
 ```
 
+## Coin sorter sort (`core/presentation/components/coinsorter/`)
+
+A store's search results whose sort control is a little chrome coin-sorting tray under the toolbar. Pick a sort from the chip's menu (tap the chip or the tray, or press the chip, slide onto an option and let go) and, from the top, each row tips up on its edge and turns into a coin sized by its rank in the new sort, nickel, copper or brass, with its price or rating on its face. The coins rattle into the funnel and leave it one at a time, roll down the sloping rail ticking over the slots too small for them, and drop through the first one they fit with a clink. A moment later each falls out of the bottom of its tube and opens back into a row on its new line, so the list refills as the coins come down.
+
+- **Drawn as the prototype draws it.** The tray is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, as two layers drawn once: the brushed plate, rail and tube insides behind the coins, and the acrylic funnel and tube fronts in front of them, so a coin really is inside its tube. A coin in flight rides above the acrylic until its lower edge drops past the funnel rim. The coins are the prototype's CSS: a radial metal disc with inset rings, an upright face with a light text shadow, a reeded rim that turns as the coin rolls, and a still sheen.
+- **Sizes.** A coin's diameter comes from its rank, not the raw price: each slot is 3.2 dp wider than the one before and each coin 2.2 dp narrower than its own, so it always rolls over every smaller slot and drops through its own, for any data.
+- **Flip.** A row tips with an exact `perspective(800px) rotateX` and narrows to its coin's width as it goes edge-on, so the handover to the coin is the same size both ways; dealing back runs it in reverse.
+- **Motion.** Each row runs a small state machine (tip, fly, funnel, rail, drop, tube, deal, unfold) in 1/240 s substeps: on the rail a coin speeds up down the slope and rolls its distance over its radius, and in the drop gravity and a 0.3 bounce set how loud the clink is. While the rows are away their lines show a faint dashed outline.
+- **Feel and sound.** Confirm on a pick, a tick as a drag lights an option, a tap on a hard clink; synthesized clinks, rattles, rail ticks, tips and thunks.
+- **Screen readers and keys.** The chip is a dropdown with its sort, disabled while a sort runs; the options are radio items with Up/Down, Enter and Escape; each row reads its name, price and rating, and the list order is committed when the last row lands. What happens is announced politely.
+- **Reduced motion.** The rows move straight to their new lines.
+
+The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script sorts by Price: low to high, then Top rated, and then back to Best match.
+
+```kotlin
+val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating, it.metal) }) }
+CoinSorterResults(sorter, text, colors, sounds, rowLabel = { "…" }, header = { Header() }) { i ->
+    ResultRow(items[i])
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -1006,6 +1029,8 @@ The key rack's hooks share one board, which suits about four people, each with t
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
+
+The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list doesn't scroll, a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 

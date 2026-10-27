@@ -612,4 +612,24 @@
     </plurals>
     <string name="stickynote_pad_done_empty">Done pad, 0 notes</string>
     <string name="stickynote_pad_later_empty">Later pad, 0 notes</string>
+    <string name="demo_coinsorter">Coin sorter sort</string>
+    <string name="demo_coinsorter_description">Sort the results and every row turns into a coin that rolls through a chrome sorting tray</string>
+    <string name="coinsorter_title">Lanterns</string>
+    <string name="coinsorter_subtitle">Ridgeline Outfitters · Boise</string>
+    <string name="coinsorter_cart">Cart, 2 items</string>
+    <string name="coinsorter_search">lantern</string>
+    <string name="coinsorter_count">8 results</string>
+    <string name="coinsorter_best">Best match</string>
+    <string name="coinsorter_low">Price: low to high</string>
+    <string name="coinsorter_high">Price: high to low</string>
+    <string name="coinsorter_top">Top rated</string>
+    <string name="coinsorter_sorting">Sorting…</string>
+    <string name="coinsorter_chip">Sort by: %1$s</string>
+    <string name="coinsorter_sorting_by">Sorting by %1$s</string>
+    <string name="coinsorter_sorted_by">Sorted by %1$s</string>
+    <string name="coinsorter_already">Already sorted by %1$s</string>
+    <string name="coinsorter_menu">Sort by</string>
+    <string name="coinsorter_list">Results</string>
+    <string name="coinsorter_reviews">%1$s reviews</string>
+    <string name="coinsorter_row">%1$s, $%2$s, rated %3$s</string>
 </resources>
