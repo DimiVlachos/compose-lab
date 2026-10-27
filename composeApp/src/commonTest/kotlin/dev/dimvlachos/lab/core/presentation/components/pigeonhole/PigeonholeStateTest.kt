@@ -426,7 +426,7 @@ class PigeonholeStateTest {
     }
 
     @Test
-    fun aLetterLandingInARowTheRackCoversWaitsOnTopUntilTheRackHasGone() {
+    fun aLetterGoingToARowTheRackCoversSlidesInBehindItsEdge() {
         val s =
             PigeonholeState(
                     LarkspurFolders.map { Cubby(it, it.replaceFirstChar(Char::uppercase)) },
@@ -436,26 +436,25 @@ class PigeonholeStateTest {
         s.toggleRack()
         s.run(600)
         s.cubTap(1)
-        var waited = false
+        var behind = false
         var n = 0
         while ((s.busy() || s.letters.isNotEmpty()) && n++ < 400) {
             s.tick(.016f)
-            val last = s.rows.last().id
-            val landed = s.letters.firstOrNull { it.mail.id == last }?.takeIf { it.f == 0f }
-            if (landed != null && s.rackUp) {
-                // Landed, its row still under the rack: the letter stays drawn, the row hidden.
-                assertTrue(s.isHidden(last))
-                waited = true
+            for (l in s.letters) {
+                if (l.below.isNaN()) continue
+                // Shown only above the rack's edge, and never drawn over the rack.
+                assertEquals(s.rackTop(), l.below, .01f)
+                if (l.y > l.below) behind = true
             }
         }
-        assertTrue(waited, "the last row's letter waited for the rack")
+        assertTrue(behind, "a letter went in behind the rack's edge")
         assertTrue(s.letters.isEmpty())
         assertTrue(s.rows.none { s.isHidden(it.id) })
         assertFalse(s.rackUp)
     }
 
     @Test
-    fun backLiftsTheRowsTheRackWillCoverBeforeItComesUp() {
+    fun backBringsTheRowsTheRackCoversUpFromBehindItsEdge() {
         val s =
             PigeonholeState(
                     LarkspurFolders.map { Cubby(it, it.replaceFirstChar(Char::uppercase)) },
@@ -469,10 +468,19 @@ class PigeonholeStateTest {
         val last = s.rows.last().id
         s.back()
         s.tick(.016f)
-        // Its letter is there at once, before the rack is up to cover its row.
-        assertTrue(s.letters.any { it.mail.id == last })
-        assertTrue(s.isHidden(last))
-        s.idle()
+        // Nothing lifts on top of the rack as it comes up.
+        assertTrue(s.letters.isEmpty())
+        var cameUp = false
+        var n = 0
+        while ((s.busy() || s.letters.isNotEmpty()) && n++ < 400) {
+            s.tick(.016f)
+            val l = s.letters.firstOrNull { it.mail.id == last } ?: continue
+            if (!l.below.isNaN()) {
+                assertEquals(s.rackTop(), l.below, .01f)
+                if (l.y + s.rowH / 2 <= l.below) cameUp = true
+            }
+        }
+        assertTrue(cameUp, "the last row came up clear of the rack's edge")
         assertEquals(PigeonholeState.Inbox, s.view)
         assertTrue(s.letters.isEmpty())
     }

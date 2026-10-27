@@ -502,8 +502,19 @@ internal class PigeonholePainter(
         ensure(s)
         val c = c0.setup()
         val carried = s.carry?.letter
-        for (l in s.letters) if (!l.inCubby && l !== carried) drawLetter(c, l, inks)
+        for (l in s.letters) if (!l.inCubby && l !== carried) drawFlying(c, l, inks)
         if (carried != null) drawLetter(c, carried, inks)
+    }
+
+    // A letter passing behind the rack's top edge shows only above it.
+    private fun drawFlying(c: Canvas2D, l: Letter, inks: LetterInks) {
+        if (l.below.isNaN()) return drawLetter(c, l, inks)
+        c.save()
+        c.beginPath()
+        c.rect(-Far, -Far, 2 * Far, l.below + Far)
+        c.clip()
+        drawLetter(c, l, inks)
+        c.restore()
     }
 
     // ---------- The letter ----------
@@ -817,3 +828,6 @@ internal class PigeonholePainter(
         val BothWays = booleanArrayOf(false, true)
     }
 }
+
+// Far enough past any edge of the screen to stand for no edge at all.
+private const val Far = 1e4f

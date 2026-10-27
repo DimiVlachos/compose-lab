@@ -54,6 +54,12 @@ internal class Letter(val mail: Mail) {
     var lift = 0f
     var dim = 0f
 
+    /**
+     * The rack's top edge while the letter passes behind it, drawn only above that line; NaN in the
+     * open air.
+     */
+    var below = Float.NaN
+
     /** In a cubby, behind its rail (the prototype's phase `in`), or in the air above everything. */
     var inCubby = false
     var cub = -1
@@ -340,7 +346,6 @@ internal class PigeonholeState(
     }
 
     private fun renderList(flip: Boolean = false, fresh: Boolean = false) {
-        unpark(all = true)
         val before = mutableMapOf<String, Float>()
         if (flip) rows.forEachIndexed { i, m -> before[m.id] = rowTop(i) }
         rows.clear()
@@ -515,32 +520,11 @@ internal class PigeonholeState(
         letters.remove(l)
     }
 
-    // Letters landed in rows the rack still covers, waiting on top for it to uncover them.
-    private val parked = mutableListOf<Letter>()
-
     // Whether row [i]'s slot is under the rack where it is now.
     private fun covered(i: Int) = i >= 0 && slotOf(i).second + rowH / 2 > rackTop()
 
-    // Lets each parked letter become its row once the rack has uncovered it, or at once if [all];
-    // until then it keeps to its row's slot as the list scrolls.
-    private fun unpark(all: Boolean = false) {
-        if (parked.isEmpty()) return
-        val it = parked.iterator()
-        while (it.hasNext()) {
-            val l = it.next()
-            val i = rowIndex(l.mail.id)
-            if (all || i < 0 || !covered(i)) {
-                it.remove()
-                drop(l)
-                hidden -= l.mail.id
-                changed()
-            } else {
-                val (rx, ry) = slotOf(i)
-                l.x = rx
-                l.y = ry
-            }
-        }
-    }
+    // Where a row's card stands with its bottom just clear of the rack's top edge.
+    private fun edge() = rackTop() - rowH / 2 - 2 * k
 
     private fun pickUp(id: String, fx: Float, fy: Float): Boolean {
         val list = box.getValue(view)
@@ -831,28 +815,33 @@ internal class PigeonholeState(
                         l.dim = l.dim0 * (1 - e)
                     }
                     l.inCubby = false
-                    val (rx, ry) = slotOf(rowIndex(m.id))
+                    val ri = rowIndex(m.id)
+                    val (rx, ry) = slotOf(ri)
+                    // A row the rack covers: the letter unfolds just above the rack's edge, then
+                    // slides down behind it into its row.
+                    val under = covered(ri)
+                    val ty = if (under) min(ry, edge()) else ry
                     val ax = l.x
                     val ay = l.y
                     animate(d(440.0)) { p ->
                         val e = ease(p)
                         val arc = sin(p * PI.toFloat())
                         l.x = lerp(ax, rx, e)
-                        l.y = lerp(ay, ry, e) - arc * 26 * k
+                        l.y = lerp(ay, ty, e) - arc * 26 * k
                         l.f = 1 - ease((p * 1.15f).coerceIn(0f, 1f))
                         l.s = lerp(.95f, 1f, e)
                         l.lift = arc * .7f
                         l.a = arc * -.05f
                     }
-                    // A row the rack still covers would take the letter out of sight behind it at
-                    // once: the letter stays on top until the rack, going down, has uncovered it.
-                    if (covered(rowIndex(m.id))) {
-                        parked += l
-                    } else {
-                        drop(l)
-                        hidden -= m.id
-                        changed()
+                    if (under) {
+                        animate(d(UnderMs)) { p ->
+                            l.below = rackTop()
+                            l.y = lerp(ty, ry, p * p)
+                        }
                     }
+                    drop(l)
+                    hidden -= m.id
+                    changed()
                 }
             },
         )
@@ -864,28 +853,6 @@ internal class PigeonholeState(
         if (busy > 0 || carry != null || view == Inbox) return
         busy++
         val c = cubIndex(view)
-        // The rows the rising rack will cover lift off as letters first, where they lie, so the
-        // rack
-        // comes up under them instead of each popping out on top of it when its turn comes.
-        val early = HashMap<String, Letter>()
-        if (!rackUp) {
-            rows.forEachIndexed { i, m ->
-                val (rx, ry) = slotOf(i)
-                val bottom = ry + rowH / 2
-                val seen = bottom <= rackTop() && ry - rowH / 2 < listTop + listH
-                if (seen && bottom > upTop() && m.id !in hidden) {
-                    val l =
-                        Letter(m).apply {
-                            x = rx
-                            y = ry
-                        }
-                    hidden += m.id
-                    letters += l
-                    early[m.id] = l
-                }
-            }
-            if (early.isNotEmpty()) changed()
-        }
         raiseRack(null)
         wait(d(if (rackFrom0 > .5f) 320.0 else 60.0))
         emptyCub = view
@@ -916,19 +883,28 @@ internal class PigeonholeState(
                             val ry =
                                 ry0.coerceIn(listTop - rowH * .3f, listTop + listH + rowH * .3f)
                             val l =
-                                early[m.id]
-                                    ?: Letter(m).apply {
-                                        x = rx
-                                        y = ry
-                                        hidden += m.id
-                                        letters += this
-                                        changed()
-                                    }
+                                Letter(m).apply {
+                                    x = rx
+                                    y = ry
+                                }
+                            hidden += m.id
+                            letters += l
+                            changed()
+                            // A row the rack covers comes up from behind its edge before it flies.
+                            var sy = ry
+                            if (ry + rowH / 2 > rackTop()) {
+                                sy = edge()
+                                animate(d(UnderMs)) { p ->
+                                    l.below = rackTop()
+                                    l.y = lerp(ry, sy, ease(p))
+                                }
+                                l.below = Float.NaN
+                            }
                             animate(d(420.0)) { p ->
                                 val e = ease(p)
                                 val ty = slotY(c, 0f, rackTop())
                                 l.x = lerp(rx, slotX(c), e)
-                                l.y = lerp(ry, ty - 28 * k, e) - sin(p * PI.toFloat()) * 22 * k
+                                l.y = lerp(sy, ty - 28 * k, e) - sin(p * PI.toFloat()) * 22 * k
                                 l.f = ease((p * 1.25f).coerceIn(0f, 1f))
                                 l.s = lerp(1f, .93f, e)
                                 l.lift = sin(p * PI.toFloat()) * .7f
@@ -1364,7 +1340,6 @@ internal class PigeonholeState(
         }
         paper(dt)
         while (ready.isNotEmpty()) ready.removeFirst()()
-        unpark()
         if (
             timers.isNotEmpty() ||
                 anims.isNotEmpty() ||
@@ -1377,7 +1352,6 @@ internal class PigeonholeState(
 
     /** Every message back where it began, the inbox open, the rack down, nothing in the air. */
     fun reset() {
-        parked.clear()
         timers.clear()
         anims.clear()
         ready.clear()
@@ -1439,6 +1413,9 @@ internal class PigeonholeState(
 
     companion object {
         const val Inbox = "inbox"
+
+        // How long a letter takes to pass behind the rack's top edge, out or in.
+        private const val UnderMs = 200.0
 
         // The prototype's sizes: a folded letter, the rack's head, cubbies, rail and margins.
         const val LW = 78f
