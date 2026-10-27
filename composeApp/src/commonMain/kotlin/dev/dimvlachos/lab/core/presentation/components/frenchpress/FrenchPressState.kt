@@ -58,7 +58,6 @@ internal enum class PressSaid {
 internal class PressPart {
     var word = true
     var into = true
-    var seed = 0
     var index = 0
     var x0 = 0f
     var y0 = 0f
@@ -98,21 +97,11 @@ internal class PressGrain {
  */
 @Stable
 internal class FrenchPressState(paragraphs: List<List<String>>, points: List<String>) {
-    /** Every word of the story, in order; [paragraphOf] says which paragraph each is in. */
+    /** Every word of the story, in order. */
     val words: List<String> = paragraphs.flatten()
-    val paragraphOf: IntArray =
-        IntArray(words.size).also { a ->
-            var i = 0
-            paragraphs.forEachIndexed { p, ws -> repeat(ws.size) { a[i++] = p } }
-        }
 
-    /** Every letter of the summary's points, spaces included, and the point each is in. */
+    /** Every letter of the summary's points, spaces included. */
     val letters: CharArray = points.joinToString("").toCharArray()
-    val pointOf: IntArray =
-        IntArray(letters.size).also { a ->
-            var i = 0
-            points.forEachIndexed { p, s -> repeat(s.length) { a[i++] = p } }
-        }
     private val inkLetters: IntArray = letters.indices.filter { letters[it] != ' ' }.toIntArray()
 
     /** How many letters are ink, not space. */
@@ -333,11 +322,8 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
     var cardOpen by mutableFloatStateOf(0f)
         private set
 
-    /** What was last announced, and a count that changes with every announcement. */
+    /** What was last announced. */
     var said by mutableStateOf(PressSaid.None)
-        private set
-
-    var saidCount by mutableIntStateOf(0)
         private set
 
     /** Reduced motion: the press jumps straight to the summary and back. */
@@ -366,9 +352,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
         private set
 
     var arrived = 0
-        private set
-
-    var launched = 0
         private set
 
     var total = 0
@@ -433,14 +416,10 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
                 (mode == PressMode.Idle || mode == PressMode.Brewed) &&
                 (grains.isEmpty() || p >= 1f)
 
-    val brewed: Boolean
-        get() = mode == PressMode.Brewed
-
     private fun snd(e: FrenchPressEvent, i: Int = 0) = onEvent?.invoke(e, i)
 
     private fun say(s: PressSaid) {
         said = s
-        saidCount++
     }
 
     private fun setCard(f: Float) {
@@ -453,12 +432,10 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
 
     private fun launchIn(w: Int) {
         gone[w] = true
-        launched++
         parts +=
             part().apply {
                 word = true
                 into = true
-                seed = w
                 index = w
                 x0 = wordX(w)
                 y0 = wordY(w)
@@ -516,7 +493,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
             part().apply {
                 word = true
                 into = false
-                seed = w
                 index = w
                 x0 = spoutX
                 y0 = spoutY
@@ -535,7 +511,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
                 part().apply {
                     word = false
                     into = true
-                    seed = c
                     index = c
                     x0 = letterX(c)
                     y0 = letterY(c)
@@ -549,7 +524,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
                 part().apply {
                     word = false
                     into = false
-                    seed = c
                     index = c
                     x0 = spoutX
                     y0 = spoutY
@@ -600,7 +574,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
         val tok = seq
         mode = PressMode.Forward
         arrived = 0
-        launched = 0
         cancelled = false
         committed = false
         finishing = false
@@ -614,7 +587,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
                 addGrain(w, true)
             }
             arrived = total
-            launched = total
             p = 1f
             pt = 1f
             finishInstant()
@@ -893,7 +865,6 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
         pt = 0f
         speedP = 0f
         arrived = 0
-        launched = 0
         total = 0
         cancelled = false
         committed = false

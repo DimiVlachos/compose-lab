@@ -137,7 +137,7 @@ internal val FrenchPressSounds =
 
 /**
  * What the story's screen says: the summary card's [title], where it is [from], the [full] article
- * button, how many [count] words went in (with `%1$d` filled in), its closing [note]; the press's
+ * button, how many [count] words went in, its closing [note]; the press's
  * [summarize] label and its two names for screen readers, the [summary] region's name, and what is
  * announced for each [PressSaid].
  */
@@ -322,8 +322,8 @@ internal fun FrenchPressStory(
                 lineHeight = 1.4.em,
             )
         // The article has 20 a side; the card's points sit inside its 1 border, 14 padding and 18
-        // for the bullets.
-        // Measured in the same frame the width is known, so the story is laid out from the first.
+        // for the bullets. Measured in the same frame the width is known, so the story is laid
+        // out from the first.
         val widthDp = maxWidth.value
         val laid =
             remember(measurer, density, serif, widthDp, paragraphs, points) {
@@ -384,7 +384,7 @@ internal fun FrenchPressStory(
                 ) {
                     header()
                     if (laid != null) {
-                        SummaryCard(state, laid, text, colors, mono, serif, placer, ink)
+                        SummaryCard(state, laid, text, colors, mono, serif, placer)
                         Body(state, laid, paragraphs, colors, placer)
                     }
                 }
@@ -539,7 +539,6 @@ private fun SummaryCard(
     mono: FontFamily,
     serif: FontFamily,
     placer: Placer,
-    ink: Rgb,
 ) {
     val open by remember(state) { derivedStateOf { state.cardOpen > 0f } }
     var notePad by remember(state.layoutVersion) { mutableStateOf(-1f) }
@@ -625,9 +624,8 @@ private fun SummaryCard(
             }
             BasicText(
                 text.note,
-                // The browser fits a line that overflows its 383 by a hair (its widths are in 64ths
-                // of
-                // a px); a dp less margin fits the same words on a line here.
+                // The browser fits a line that overflows its 383 by a hair (its widths are in
+                // 64ths of a px); a dp less margin fits the same words on a line here.
                 Modifier.padding(top = 10.dp, start = 2.dp, end = 1.dp + max(0f, notePad).dp),
                 style =
                     TextStyle(
@@ -727,8 +725,7 @@ private fun Points(
 }
 
 // The browser's disc marker for 14.5 px text: a dot about a third of the x-height round, sitting
-// just
-// above the middle of the x-height, its centre 12 left of the text.
+// just above the middle of the x-height, its centre 12 left of the text.
 private const val BulletRadius = 2.45f
 private const val BulletRise = 4.6f
 private const val BulletX = 5.5f
@@ -792,7 +789,7 @@ private fun Footer(
         }
         Spacer(Modifier.weight(1f))
         BasicText(
-            text.count.replace("%1\$d", state.words.size.toString()),
+            text.count,
             style =
                 TextStyle(
                     textMotion = TextMotion.Animated,

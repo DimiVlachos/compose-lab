@@ -59,8 +59,7 @@ internal class PressText(
     val paragraphLayouts: List<TextLayoutResult>
     val paragraphTops: FloatArray
 
-    /** Each word's left, its centre and its baseline, dp from the body's origin. */
-    val wordLeft = FloatArray(wordCount)
+    /** Each word's centre and its baseline, dp from the body's origin. */
     val wordCx = FloatArray(wordCount)
     val wordBaseline = FloatArray(wordCount)
 
@@ -136,7 +135,6 @@ internal class PressText(
                 val left = l.getHorizontalPosition(at, true) / d
                 val one = alone(word, bodyStyle)
                 val width = one.size.width / d
-                wordLeft[w] = left
                 wordCx[w] = left + width / 2
                 wordBaseline[w] = y + l.getLineBaseline(line) / d
                 wordOffX[w] = -width / 2

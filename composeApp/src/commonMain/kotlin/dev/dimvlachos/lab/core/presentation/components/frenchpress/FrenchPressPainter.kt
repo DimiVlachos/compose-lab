@@ -137,7 +137,7 @@ internal class FrenchPressPainter {
                     val u = (t / lift).coerceIn(0f, 1f)
                     val lx = p.x0
                     val ly = p.y0 - (if (isChar) 1.5f else 6f) * k * easeOut(u)
-                    val fan = ((p.seed * 37 % 23) / 22f - .5f) * 2
+                    val fan = ((p.index * 37 % 23) / 22f - .5f) * 2
                     e = ((t - lift) / (1 - lift)).coerceIn(0f, 1f).pow(1.5f)
                     val ax = sx + 4 * k + fan * 16 * k
                     val ay = min(sy - 150 * k, ly + 40 * k) + abs(fan) * 22 * k
