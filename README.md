@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier) | `photocopier` | `photocopier.duplicate` | A list's Duplicate as a little office copier: the card goes face down on the glass, the light sweeps under the lid, and a warm copy slides out of the slot into the list right under it |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -856,6 +858,27 @@ StickyNoteList(
     emptyState = { AllClear() },
 ) {
     AppBar()
+}
+```
+
+## Photocopier duplicate (`core/presentation/components/photocopier/`)
+
+A household lists app whose Duplicate runs the list through a little putty-colored office copier. Long-press a list (or tap its ⋯) and pick Duplicate: the copier rises from the foot of the screen, the list's own card flies down onto the glass and turns face down, leaving a dashed outline in its place, the lid drops with a thunk, Start lights, and the green bar of light runs under the lid and back, leaking out of its seams. A warm copy, still flecked with toner, slides out of the slot at the back and drops into the list right under the original while the list makes room, and the original flips back up into its place. The copy cools to an ordinary card in a couple of seconds; it is a real new list called "(copy)", and a copy of it is "(copy 2)". While the copier's back edge still peeks out, drag the copy down into the slot and the rollers take it back in, or tap Undo; let go anywhere else and it glides back. Pin to top moves a list to the top.
+
+- **Drawn as the prototype draws it.** The copier and every card in flight are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the hinged lid foreshortened as it swings, its shaded foam pad past upright, the ruled platen and glass, the LCD's glowing digits, and the light leaking out of both seams. A card in flight is drawn at its real size and scaled, so turning face down is its height going through zero, the face darkening and a paper edge showing as it goes edge-on. The toner flecks are baked once from a fixed seed.
+- **A real list.** The cards are ordinary composables that scroll with a finger and fling; the state places and slides them, so the gap under the original opens as a FLIP on the copier's own clock. A list low on the screen scrolls up first, so the original and its copy stay clear of the raised copier, and the extra room at the end goes again as the copier leaves, the list easing back so nothing jumps.
+- **Gestures.** The long-press is a Compose gesture on the copier's clock, never the system's context menu. While the copier peeks, a press on a copy belongs to the finger, not the list, and the release point alone decides whether it feeds; every other card still scrolls the list.
+- **Feel and sound.** A long-press tick, a click as the lid shuts, a confirm as the copy lands and ticks as a dragged copy comes over the slot; synthesized rise, lid, thunk, slap, beep, motor, paper, feed and settle sounds.
+- **Screen readers and keys.** Every list is a node with Duplicate and Pin to top actions and a long-click; ⋯ is a button; Enter, Space, the Menu key or Shift+F10 opens the menu with focus on Duplicate, Up and Down move in it and Escape, Tab or Back closes it, and focus goes back to the list after an action. What happens is announced politely.
+- **Reduced motion.** The copy just appears under the original, and Undo removes it.
+
+The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot, so the clip ends with the six lists it began with.
+
+```kotlin
+val copier = remember { PhotocopierState(lists) }
+PhotocopierList(copier, words, colors, dark, sounds) {
+    AppBar()
+    Search()
 }
 ```
 

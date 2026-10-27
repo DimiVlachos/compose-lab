@@ -612,4 +612,42 @@
     </plurals>
     <string name="stickynote_pad_done_empty">Done pad, 0 notes</string>
     <string name="stickynote_pad_later_empty">Later pad, 0 notes</string>
+    <string name="demo_photocopier">Photocopier duplicate</string>
+    <string name="demo_photocopier_description">Duplicate runs a list through a little office copier, and the warm copy lands right under it</string>
+    <string name="photocopier_title">Lists</string>
+    <plurals name="photocopier_count">
+        <item quantity="one">The Parker household · %1$d list</item>
+        <item quantity="other">The Parker household · %1$d lists</item>
+    </plurals>
+    <string name="photocopier_search">Search lists</string>
+    <string name="photocopier_item_1">Weekly meal plan</string>
+    <string name="photocopier_item_1_summary">Mon tacos · Tue sheet-pan chicken · Wed leftovers · Thu chili</string>
+    <string name="photocopier_item_1_meta">12 items · Edited Sunday</string>
+    <string name="photocopier_item_2">Thanksgiving at the Parkers’</string>
+    <string name="photocopier_item_2_summary">Sweet potato casserole, folding chairs, pie from Mabel’s</string>
+    <string name="photocopier_item_2_meta">9 items · Nov 27</string>
+    <string name="photocopier_item_3">Road trip: Asheville</string>
+    <string name="photocopier_item_3_summary">Pigeon Creek Diner, the cabin off the Blue Ridge Parkway</string>
+    <string name="photocopier_item_3_meta">4 stops · Shared with Dana</string>
+    <string name="photocopier_item_4">Grocery run</string>
+    <string name="photocopier_item_4_summary">Oat milk, eggs, Granny Smiths, beans from Juniper Roasters</string>
+    <string name="photocopier_item_4_meta">8 items · Today</string>
+    <string name="photocopier_item_5">Packing list: Lake Tahoe</string>
+    <string name="photocopier_item_5_summary">Fleece, hiking boots, sunscreen, chargers, the good cooler</string>
+    <string name="photocopier_item_5_meta">15 items · Edited Friday</string>
+    <string name="photocopier_item_6">Soccer snack schedule</string>
+    <string name="photocopier_item_6_summary">Our week is Oct 18: orange slices and water for 14 kids</string>
+    <string name="photocopier_item_6_meta">Fall season · 6 families</string>
+    <string name="photocopier_duplicate">Duplicate</string>
+    <string name="photocopier_pin">Pin to top</string>
+    <string name="photocopier_duplicated">Duplicated</string>
+    <string name="photocopier_undo">Undo</string>
+    <string name="photocopier_menu">List options</string>
+    <string name="photocopier_list">Lists</string>
+    <string name="photocopier_more">More options for %1$s</string>
+    <string name="photocopier_said_duplicated">Duplicated %1$s</string>
+    <string name="photocopier_said_removed">Copy removed</string>
+    <string name="photocopier_said_pinned">Pinned %1$s</string>
+    <string name="photocopier_copy">copy</string>
+    <string name="photocopier_just_now">Just now</string>
 </resources>
