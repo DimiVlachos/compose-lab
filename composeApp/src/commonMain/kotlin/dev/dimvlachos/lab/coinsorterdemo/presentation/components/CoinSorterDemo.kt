@@ -311,7 +311,9 @@ private fun DrawScope.cart(ink: Color) {
 @Composable
 private fun ResultRow(item: Lantern, reviews: String, colors: CoinSorterScreenColors) {
     Row(
-        Modifier.fillMaxWidth().clearAndSetSemantics {},
+        // At the 38 dp a short screen gives a row, its two lines spill over the card's edges
+        // evenly, as the prototype's centred flex row does, instead of being clipped.
+        Modifier.fillMaxWidth().wrapContentHeight(unbounded = true).clearAndSetSemantics {},
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
