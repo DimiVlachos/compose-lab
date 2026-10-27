@@ -94,6 +94,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -740,11 +741,27 @@ private fun Footer(
 ) {
     val open by remember(state) { derivedStateOf { state.cardOpen > 0f } }
     val line = colors.line
+    // On a short screen the open card's footer reaches the press's corner: Full article and the
+    // count end short of the press (the count wraps if it must) instead of running under it.
+    var footPad by remember(state.layoutVersion) { mutableStateOf(-1f) }
+    val d = LocalDensity.current.density
     Row(
         Modifier.fillMaxWidth()
             .padding(top = 8.dp)
             .drawBehind { drawRect(line, size = Size(size.width, 1.dp.toPx())) }
-            .padding(top = 3.dp),
+            .onGloballyPositioned {
+                val root = placer.root
+                if (footPad >= 0f || root == null || !root.isAttached || !it.isAttached) {
+                    return@onGloballyPositioned
+                }
+                val bottom = (root.localPositionOf(it, Offset.Zero).y + it.size.height) / d
+                // The card's 1 border and 15 padding are already short of the article's edge.
+                footPad =
+                    if (bottom > state.clearY)
+                        max(0f, state.width - state.ox + state.cw / 2 + 14 * state.kp) - 20 - 16
+                    else 0f
+            }
+            .padding(top = 3.dp, end = max(0f, footPad).dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -795,9 +812,9 @@ private fun Footer(
                     textMotion = TextMotion.Animated,
                     fontSize = 12.sp,
                     lineHeight = 1.55.em,
+                    textAlign = TextAlign.End,
                     color = colors.muted,
                 ),
-            maxLines = 1,
         )
     }
 }
