@@ -210,8 +210,24 @@ internal class PigeonholeState(
     val rowW: Float
         get() = width - 2 * ListPad
 
-    fun layout(w: Float, h: Float, top: Float, listHeight: Float) {
-        if (w == width && h == height && top == listTop && listHeight == listH) return
+    /** How much bigger the user's font setting makes a row's 19 lines: 1 at the default size. */
+    var textScale = 1f
+        private set
+
+    /** A row's height: its three lines, which grow with the font setting, and its padding. */
+    val rowH: Float
+        get() = RowH + 3 * LineH * (textScale - 1)
+
+    fun layout(w: Float, h: Float, top: Float, listHeight: Float, fontScale: Float = 1f) {
+        if (
+            w == width &&
+                h == height &&
+                top == listTop &&
+                listHeight == listH &&
+                fontScale == textScale
+        )
+            return
+        textScale = fontScale
         width = w
         height = h
         listTop = top
@@ -250,7 +266,7 @@ internal class PigeonholeState(
 
     private fun contentHeight(): Float {
         val n = rows.size
-        return if (n == 0) EmptyH + ListFoot else n * RowH + (n - 1) * RowGap + ListFoot
+        return if (n == 0) EmptyH + ListFoot else n * rowH + (n - 1) * RowGap + ListFoot
     }
 
     fun maxScroll() = max(0f, contentHeight() - listH)
@@ -267,7 +283,7 @@ internal class PigeonholeState(
     }
 
     /** The row [i]'s top in the list's content, at rest. */
-    fun rowTop(i: Int) = i * (RowH + RowGap)
+    fun rowTop(i: Int) = i * (rowH + RowGap)
 
     private val flipFrom = mutableMapOf<String, Float>()
     private var flipAt = -1e9
@@ -335,12 +351,12 @@ internal class PigeonholeState(
 
     /** A row's resting centre on the screen, net of the scroll, ignoring any glide it's in. */
     private fun slotOf(i: Int): Pair<Float, Float> =
-        width / 2 to listTop + rowTop(i) - scrollTop + RowH / 2
+        width / 2 to listTop + rowTop(i) - scrollTop + rowH / 2
 
     // A letter only lands in a slot you can see: a row scrolled out of view is brought back first.
     fun reveal(i: Int) {
         val t = rowTop(i) - 4
-        val b = rowTop(i) + RowH + 4
+        val b = rowTop(i) + rowH + 4
         if (t < scrollTop) scrollTop = t.coerceIn(0f, maxScroll())
         else if (b > scrollTop + listH) scrollTop = (b - listH).coerceIn(0f, maxScroll())
         kick()
@@ -352,7 +368,7 @@ internal class PigeonholeState(
         if (onRack(y)) return null
         rows.forEachIndexed { i, m ->
             val top = listTop + rowTop(i) - scrollTop + rowShift(m.id)
-            if (y >= top && y < top + RowH && m.id !in hidden) return m.id
+            if (y >= top && y < top + rowH && m.id !in hidden) return m.id
         }
         return null
     }
@@ -826,7 +842,7 @@ internal class PigeonholeState(
                             // A row scrolled out of sight leaves from the edge of the list.
                             val (rx, ry0) = slotOf(ri)
                             val ry =
-                                ry0.coerceIn(listTop - RowH * .3f, listTop + listH + RowH * .3f)
+                                ry0.coerceIn(listTop - rowH * .3f, listTop + listH + rowH * .3f)
                             hidden += m.id
                             val l =
                                 Letter(m).apply {
@@ -1362,6 +1378,7 @@ internal class PigeonholeState(
         // A row: three 19 lines, 9 padding and a 1 border each side; 8 between rows; the list's
         // 16 sides and 40 foot. An empty folder's note is 40 + 21.7 + 40 tall.
         const val RowH = 77f
+        const val LineH = 19f
         const val RowGap = 8f
         const val ListPad = 16f
         const val ListFoot = 40f

@@ -115,7 +115,6 @@ import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.Inbox
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.ListPad
-import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.RowH
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
 import dev.dimvlachos.lab.core.presentation.ui.PigeonholeRackInks
 import dev.dimvlachos.lab.core.presentation.ui.PigeonholeScreenColors
@@ -278,6 +277,8 @@ internal fun PigeonholeMail(
     }
 
     val density = LocalDensity.current.density
+    // How the font setting grows a 19 line (not always linearly, at large settings).
+    val textScale = with(LocalDensity.current) { LineSp.toDp().value } / PigeonholeState.LineH
     val inks = if (LabTheme.isDark) LetterInks.Dusk else LetterInks.Day
     val pen = FontFamily(Font(Res.font.caveat_semibold, FontWeight.SemiBold))
     val mono = FontFamily(Font(Res.font.jetbrains_mono_semibold, FontWeight.SemiBold))
@@ -296,8 +297,16 @@ internal fun PigeonholeMail(
     var listH by remember { mutableFloatStateOf(0f) }
     fun relayout() {
         if (boxW > 0f && listH > 0f)
-            state.layout(boxW / density, boxH / density, listTop / density, listH / density)
+            state.layout(
+                boxW / density,
+                boxH / density,
+                listTop / density,
+                listH / density,
+                textScale,
+            )
     }
+    // The font setting changed while the screen kept its size.
+    LaunchedEffect(textScale) { relayout() }
 
     fun DrawScope.paint(rack: Boolean) {
         state.frame
@@ -778,7 +787,7 @@ private fun MailRow(
                 state.frame
                 alpha = if (state.isHidden(m.id)) 0f else state.rowAlpha()
             }
-            .size(rowW.dp, RowH.dp)
+            .size(rowW.dp, state.rowH.dp)
             .testTag("row:${m.id}")
             .drawBehind {
                 if (focused) {
@@ -826,9 +835,11 @@ private fun MailRow(
             .focusable(enabled = !hidden)
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) {
+        // A 19 line, as the font setting grows it.
+        val line = (PigeonholeState.LineH * state.textScale).dp
         Column(Modifier.padding(vertical = 1.dp).fillMaxWidth()) {
             Row(
-                Modifier.fillMaxWidth().height(19.dp),
+                Modifier.fillMaxWidth().height(line),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
@@ -852,7 +863,7 @@ private fun MailRow(
             }
             Text(
                 item.subj,
-                Modifier.height(19.dp),
+                Modifier.height(line),
                 color = colors.ink,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -862,7 +873,7 @@ private fun MailRow(
             )
             Text(
                 item.prev,
-                Modifier.height(19.dp),
+                Modifier.height(line),
                 color = colors.muted,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -1076,3 +1087,6 @@ private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = Pigeonh
 
 // How far one notch of a mouse wheel scrolls the list, in dp.
 private const val WheelStep = 64f
+
+// A row's line, which follows the font setting.
+private val LineSp = PigeonholeState.LineH.sp

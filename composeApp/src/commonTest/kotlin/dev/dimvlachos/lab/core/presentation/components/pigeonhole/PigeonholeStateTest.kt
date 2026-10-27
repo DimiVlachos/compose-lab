@@ -413,4 +413,15 @@ class PigeonholeStateTest {
         assertEquals(PigeonholeState.Inbox, s.view)
         assertFalse(s.backable)
     }
+
+    @Test
+    fun rowsGrowWithTheFontSettingAndTheListScrollsFurther() {
+        val s = state()
+        val max0 = s.maxScroll()
+        s.layout(412f, 820f, 140f, 640f, fontScale = 1.3f)
+        assertEquals(PigeonholeState.RowH + 3 * PigeonholeState.LineH * .3f, s.rowH, .01f)
+        assertTrue(s.maxScroll() > max0)
+        val (_, y) = s.row("m2")
+        assertEquals(140f + s.rowH + PigeonholeState.RowGap + s.rowH / 2, y, .01f)
+    }
 }

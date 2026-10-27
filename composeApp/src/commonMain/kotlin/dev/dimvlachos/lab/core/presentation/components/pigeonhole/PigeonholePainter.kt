@@ -13,7 +13,6 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.LH
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.LW
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.Rail
-import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.RowH
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.ease
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.hash
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.lerp
@@ -81,6 +80,8 @@ internal class PigeonholePainter(
     private val sprites = HashMap<String, Canvas2D>()
     private var k = 1f
     private var rowW = 300f
+    private var rowH = 77f
+    private var fs = 1f
     private var width = 0f
 
     // Per layout, in the rack's own coordinates.
@@ -98,8 +99,11 @@ internal class PigeonholePainter(
         laid = s.layoutVersion
         k = s.k
         rowW = s.rowW
+        rowH = s.rowH
+        fs = s.textScale
         width = s.width
         sprites.clear()
+        plates.clear()
         buildRack(s)
         val top = 0f
         for (i in 0 until 6) {
@@ -298,9 +302,11 @@ internal class PigeonholePainter(
 
     /** The rack, its cubbies' stacks, the letters going in, the rails and brass plates. */
     fun drawRack(c0: Canvas2D, s: PigeonholeState, inks: LetterInks) {
-        val top = s.rackTop()
-        if (top >= s.height || s.width <= 0f) return
+        if (s.width <= 0f) return
+        // Baked on the screen's first frame, not on the frame a letter is first picked up.
         ensure(s)
+        val top = s.rackTop()
+        if (top >= s.height) return
         val c = c0.setup()
         val rack = rackImg ?: return
         val rail = railImg ?: return
@@ -367,45 +373,75 @@ internal class PigeonholePainter(
             val bs = s.plateScale(i)
             val pw = min(78 * k, cw0 - 10 * k)
             val ph = 19 * k
-            val px = rx + cw0 / 2
-            val py = rt + Rail * k / 2
-            c.save()
-            c.translate(px, py)
-            c.scale(bs, bs)
-            c.fillStyle = (if (hot) plateHot else plate)!!
-            rr(c, -pw / 2, -ph / 2, pw, ph, 3 * k)
-            c.fill()
-            c.strokeStyle = "rgba(70,45,10,.6)"
-            c.lineWidth = .8f * k
-            c.stroke()
-            for (side in 0..1) {
-                val sx = if (side == 0) -pw / 2 + 4.5f * k else pw / 2 - 4.5f * k
-                c.fillStyle = "#7b5a1e"
-                c.beginPath()
-                c.arc(sx, 0f, 1.7f * k, 0f, 7f)
-                c.fill()
-                c.fillStyle = "rgba(255,240,200,.7)"
-                c.beginPath()
-                c.arc(sx - .4f * k, -.5f * k, .7f * k, 0f, 7f)
-                c.fill()
-            }
-            val cw = pw - 15 * k
-            val chh = ph - 6 * k
-            c.fillStyle = if (s.cubbies[i].id == s.view) "#fff7e0" else "#f6eedb"
-            c.fillRect(-cw / 2, -chh / 2, cw, chh)
-            c.fillStyle = "rgba(0,0,0,.12)"
-            c.fillRect(-cw / 2, -chh / 2, cw, .8f * k)
             val count = s.cubCount(i)
-            c.font = monoFont
-            c.textBaseline = "middle"
-            c.fillStyle = "#2c2620"
-            c.textAlign = "left"
-            c.fillText(names[i]!!, -cw / 2 + 3 * k, .4f * k)
-            c.fillStyle = "#a8321f"
-            c.textAlign = "right"
-            c.fillText(count(count), cw / 2 - 3 * k, .4f * k)
+            val open = s.cubbies[i].id == s.view
+            val img = plateImage(i, pw, ph, hot, open, count)
+            val iw = pw + 2 * PlateM * k
+            val ih = ph + 2 * PlateM * k
+            c.save()
+            c.translate(rx + cw0 / 2, rt + Rail * k / 2)
+            c.scale(bs, bs)
+            c.drawImage(img.bitmap, -iw / 2, -ih / 2, iw, ih)
             c.restore()
         }
+    }
+
+    // Each cubby's brass label holder, its name and its count, baked as it is drawn until one of
+    // them changes, so a frame draws one image per plate rather than its gradient, rivets and text.
+    private val plates = HashMap<Int, Canvas2D>()
+
+    private fun plateImage(
+        i: Int,
+        pw: Float,
+        ph: Float,
+        hot: Boolean,
+        open: Boolean,
+        n: Int,
+    ): Canvas2D {
+        val key = (n * 6 + i) * 4 + (if (hot) 2 else 0) + (if (open) 1 else 0)
+        plates[key]?.let {
+            return it
+        }
+        if (plates.size >= 64) plates.clear()
+        val iw = pw + 2 * PlateM * k
+        val ih = ph + 2 * PlateM * k
+        val c = Canvas2D.create(ceil(iw * density).toInt(), ceil(ih * density).toInt()).setup()
+        c.scale(density, density)
+        c.translate(iw / 2, ih / 2)
+        c.fillStyle = (if (hot) plateHot else plate)!!
+        rr(c, -pw / 2, -ph / 2, pw, ph, 3 * k)
+        c.fill()
+        c.strokeStyle = "rgba(70,45,10,.6)"
+        c.lineWidth = .8f * k
+        c.stroke()
+        for (side in 0..1) {
+            val sx = if (side == 0) -pw / 2 + 4.5f * k else pw / 2 - 4.5f * k
+            c.fillStyle = "#7b5a1e"
+            c.beginPath()
+            c.arc(sx, 0f, 1.7f * k, 0f, 7f)
+            c.fill()
+            c.fillStyle = "rgba(255,240,200,.7)"
+            c.beginPath()
+            c.arc(sx - .4f * k, -.5f * k, .7f * k, 0f, 7f)
+            c.fill()
+        }
+        val cw = pw - 15 * k
+        val chh = ph - 6 * k
+        c.fillStyle = if (open) "#fff7e0" else "#f6eedb"
+        c.fillRect(-cw / 2, -chh / 2, cw, chh)
+        c.fillStyle = "rgba(0,0,0,.12)"
+        c.fillRect(-cw / 2, -chh / 2, cw, .8f * k)
+        c.font = monoFont
+        c.textBaseline = "middle"
+        c.fillStyle = "#2c2620"
+        c.textAlign = "left"
+        c.fillText(names[i]!!, -cw / 2 + 3 * k, .4f * k)
+        c.fillStyle = "#a8321f"
+        c.textAlign = "right"
+        c.fillText(count(n), cw / 2 - 3 * k, .4f * k)
+        c.bitmap.freeze()
+        plates[key] = c
+        return c
     }
 
     private val counts = Array(100) { it.toString() }
@@ -474,7 +510,7 @@ internal class PigeonholePainter(
         }
         val item = mail.item
         val w = lerp(rowW, LW * k, m)
-        val ph = lerp(RowH / 3, LH * k, m)
+        val ph = lerp(rowH / 3, LH * k, m)
         val fb = ease(((f - .4f) / .3f).coerceIn(0f, 1f))
         val ft = ease(((f - .64f) / .36f).coerceIn(0f, 1f))
         val cb = cos(fb * PI.toFloat())
@@ -508,25 +544,30 @@ internal class PigeonholePainter(
             rr(c, -w / 2 + .5f, topY + .5f, w - 1, botY - topY - 1, rad)
             c.stroke()
         }
-        val s1 = lerp(14.5f, 7.6f * k, m)
-        val s2 = lerp(13.5f, 7 * k, m)
-        val s3 = lerp(13f, 6.6f * k, m)
+        val s1 = lerp(14.5f * fs, 7.6f * k, m)
+        val s2 = lerp(13.5f * fs, 7 * k, m)
+        val s3 = lerp(13f * fs, 6.6f * k, m)
         val tx = -w / 2 + pad
         val inner = w - 2 * pad
         c.textBaseline = "middle"
         c.textAlign = "left"
         // Middle third: the subject.
-        c.font = "600 ${s2}px $SysFont"
         c.fillStyle = ink
-        c.fillText(fit(item.subj, Face.Subject, s2, inner), tx, 0f)
+        text(c, fit(item.subj, Face.Subject, s2, inner), Face.Subject, s2, tx, 0f)
         // Bottom third, about the lower crease.
         c.save()
         c.translate(0f, ph / 2)
         if (cb >= 0) {
             c.scale(1f, max(cb, .001f))
-            c.font = "400 ${s3}px $SysFont"
             c.fillStyle = mut
-            c.fillText(fit(item.prev, Face.Preview, s3, inner), tx, ph / 2 - 6 * (1 - m))
+            text(
+                c,
+                fit(item.prev, Face.Preview, s3, inner),
+                Face.Preview,
+                s3,
+                tx,
+                ph / 2 - 6 * (1 - m),
+            )
             if (m > .9f) {
                 c.strokeStyle = rgba(110, 100, 90, .25f * m)
                 c.lineWidth = .7f
@@ -562,17 +603,16 @@ internal class PigeonholePainter(
         if (ct >= 0) {
             c.scale(1f, max(ct, .001f))
             val ty = -ph / 2 + 6 * (1 - m)
-            val ts = lerp(12f, 7f, m)
+            val ts = lerp(12f * fs, 7f, m)
             val tw = if (m < .8f) textWidth(item.time, Face.Time) * ts / RefPx else 0f
-            c.font = "650 ${s1}px $SysFont"
             c.fillStyle = ink
-            c.fillText(fit(item.from, Face.From, s1, inner - (if (tw > 0) tw + 10 else 0f)), tx, ty)
+            val from = fit(item.from, Face.From, s1, inner - (if (tw > 0) tw + 10 else 0f))
+            text(c, from, Face.From, s1, tx, ty)
             if (tw > 0) {
-                c.font = "400 ${ts}px $SysFont"
                 c.fillStyle = mut
                 c.globalAlpha = 1 - m / .8f
                 c.textAlign = "right"
-                c.fillText(item.time, w / 2 - pad, ty)
+                text(c, item.time, Face.Time, ts, w / 2 - pad, ty)
                 c.textAlign = "left"
                 c.globalAlpha = 1f
             }
@@ -614,12 +654,8 @@ internal class PigeonholePainter(
             c.fillStyle = rgba(36, 40, 80, .88f * -ct)
             c.textAlign = "left"
             val pen = 16.5f * k
-            c.font = "600 ${pen}px $PenFont"
-            c.fillText(
-                fit(penName(item.from), Face.Pen, pen, sx - 2 * k - (-w / 2 + 6 * k)),
-                -w / 2 + 6 * k,
-                ph * .4f,
-            )
+            val name = fit(penName(item.from), Face.Pen, pen, sx - 2 * k - (-w / 2 + 6 * k))
+            text(c, name, Face.Pen, pen, -w / 2 + 6 * k, ph * .4f)
             c.strokeStyle = rgba(36, 40, 80, .35f * -ct)
             c.lineWidth = .8f * k
             c.beginPath()
@@ -648,6 +684,21 @@ internal class PigeonholePainter(
     }
 
     // ---------- Fitting text ----------
+
+    // Each face's font at RefPx, for [text].
+    private val refFonts = Face.entries.map { "${it.weight} ${RefPx}px ${it.family}" }
+
+    // [str] at [size], laid out at RefPx and drawn scaled: a size that animates every frame keeps
+    // one layout instead of laying the text out again on every frame.
+    private fun text(c: Canvas2D, str: String, face: Face, size: Float, x: Float, y: Float) {
+        val q = size / RefPx
+        c.save()
+        c.translate(x, y)
+        c.scale(q, q)
+        c.font = refFonts[face.ordinal]
+        c.fillText(str, 0f, 0f)
+        c.restore()
+    }
 
     /** The faces the letter writes in, as weight and family. */
     private enum class Face(val weight: Int, val family: String) {
@@ -710,6 +761,8 @@ internal class PigeonholePainter(
 
     private companion object {
         const val RefPx = 40f
+        // A baked plate's margin around its stroke, in dp at k = 1.
+        const val PlateM = 1.5f
         val Unit1 = Density(1f, 1f)
         val NoDash = FloatArray(0)
     }
