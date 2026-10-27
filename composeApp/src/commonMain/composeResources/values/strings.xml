@@ -612,4 +612,34 @@
     </plurals>
     <string name="stickynote_pad_done_empty">Done pad, 0 notes</string>
     <string name="stickynote_pad_later_empty">Later pad, 0 notes</string>
+    <string name="demo_paintroller">Paint roller accent</string>
+    <string name="demo_paintroller_description">Dip a paint roller in a new accent color and roll it over the settings screen</string>
+    <string name="paintroller_back">Settings</string>
+    <string name="paintroller_title">Appearance</string>
+    <string name="paintroller_preview">Preview</string>
+    <string name="paintroller_run">Saturday long run</string>
+    <string name="paintroller_route">Greenway Loop · 8.2 mi</string>
+    <string name="paintroller_easy">Easy</string>
+    <string name="paintroller_trails">Trails</string>
+    <string name="paintroller_hills">Hills</string>
+    <string name="paintroller_goal">Weekly goal</string>
+    <string name="paintroller_goal_done">18</string>
+    <string name="paintroller_goal_of">%1$s of 25 mi</string>
+    <string name="paintroller_start">Start run</string>
+    <string name="paintroller_splits">Bold mile splits</string>
+    <string name="paintroller_color_route">Color the map route</string>
+    <string name="paintroller_auto_pause">Auto-pause at lights</string>
+    <string name="paintroller_units">Units</string>
+    <string name="paintroller_mi">mi</string>
+    <string name="paintroller_km">km</string>
+    <string name="paintroller_reset">Reset to default</string>
+    <string name="paintroller_accent">Accent color</string>
+    <string name="paintroller_paint_1">Blue Ridge</string>
+    <string name="paintroller_paint_2">Sedona</string>
+    <string name="paintroller_paint_3">Evergreen</string>
+    <string name="paintroller_paint_4">Huckleberry</string>
+    <string name="paintroller_paint_5">Firehouse</string>
+    <string name="paintroller_now">Accent is now %1$s</string>
+    <string name="paintroller_said">Accent color: %1$s</string>
+    <string name="paintroller_undo">Undo</string>
 </resources>
