@@ -1030,7 +1030,7 @@ The paper fan prints an answer of a sentence or two: the type steps down from 13
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
 
-The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list doesn't scroll, a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
+The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list itself doesn't scroll (on a screen too short for every row the whole screen scrolls instead), a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 

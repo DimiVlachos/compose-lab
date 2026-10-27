@@ -4,19 +4,23 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -173,24 +177,32 @@ internal fun CoinSorterDemo(
     val reviews = LanternResults.map { stringResource(Res.string.coinsorter_reviews, it.reviews) }
     val touch = LabTheme.colors.touch
     Box(Modifier.fillMaxSize().background(colors.background)) {
-        Box(Modifier.fillMaxSize().windowInsetsPadding(demoInsets(state))) {
-            CoinSorterResults(
-                sorter,
-                text,
-                colors,
-                sounds,
-                modifier = Modifier.fillMaxSize(),
-                rowLabel = { rowLabels[it] },
-                header = { Header(colors) },
-            ) { i ->
-                ResultRow(LanternResults[i], reviews[i], colors)
-            }
-            Canvas(Modifier.fillMaxSize()) {
-                val a = hand.shown
-                if (a <= 0f) return@Canvas
-                val at = hand.at * density
-                val k = if (hand.down) .82f else 1f
-                scale(k, k, pivot = at) { drawTouch(touch, at, a) }
+        // On a short screen (or in landscape) the screen scrolls rather than cut the last rows
+        // off, as the prototype's does on a phone.
+        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(demoInsets(state))) {
+            val view = maxHeight
+            Box(
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = view),
+                propagateMinConstraints = true,
+            ) {
+                CoinSorterResults(
+                    sorter,
+                    text,
+                    colors,
+                    sounds,
+                    modifier = Modifier.fillMaxWidth(),
+                    rowLabel = { rowLabels[it] },
+                    header = { Header(colors) },
+                ) { i ->
+                    ResultRow(LanternResults[i], reviews[i], colors)
+                }
+                Canvas(Modifier.matchParentSize()) {
+                    val a = hand.shown
+                    if (a <= 0f) return@Canvas
+                    val at = hand.at * density
+                    val k = if (hand.down) .82f else 1f
+                    scale(k, k, pivot = at) { drawTouch(touch, at, a) }
+                }
             }
         }
     }

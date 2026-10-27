@@ -112,7 +112,10 @@ import dev.dimvlachos.lab.core.presentation.canvas2d.setBlur
 import dev.dimvlachos.lab.core.presentation.components.perspective.Homography
 import dev.dimvlachos.lab.core.presentation.ui.CoinSorterScreenColors
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.awaitCancellation
@@ -268,18 +271,22 @@ internal fun CoinSorterResults(
             },
     ) { c ->
         val w = c.maxWidth
-        val h = c.maxHeight
+        // In a scroll the screen is at least its viewport ([Constraints.minHeight]), and taller
+        // where the rows wouldn't fit, as the prototype's screen keeps a min-height on a phone.
+        val view = if (c.hasBoundedHeight) c.maxHeight else c.minHeight
         val head =
             subcompose(HeadSlot) { Box(Modifier.fillMaxWidth()) { header() } }
-                .map { it.measure(Constraints(maxWidth = w, maxHeight = h)) }
-        state.layout(w / density, h / density, (head.maxOfOrNull { it.height } ?: 0) / density)
+                .map { it.measure(Constraints(maxWidth = w)) }
+        val top = (head.maxOfOrNull { it.height } ?: 0) / density
+        val fit = state.fitHeight(w / density, view / density, top)
+        val h = min(c.maxHeight, max(view, ceil(fit * density).toInt()))
+        state.layout(w / density, h / density, top)
         val body =
             subcompose(BodySlot) {
                     Box(Modifier.fillMaxSize()) {
                         Canvas(Modifier.fillMaxSize().graphicsLayer()) { tray(front = false) }
                         // The tray is a second, bigger way into the menu, under the toolbar so the
-                        // chip keeps
-                        // its whole area; screen readers have the chip.
+                        // chip keeps its whole area; screen readers have the chip.
                         TrayTarget(state)
                         Toolbar(state, text, colors, root)
                         Canvas(Modifier.fillMaxSize().graphicsLayer()) {

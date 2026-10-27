@@ -38,6 +38,17 @@ class CoinSorterStateTest {
     }
 
     @Test
+    fun aShortScreenGrowsUntilEveryRowFits() {
+        // A small phone under the lab's bar: 392 by 560, the rows would run off the bottom.
+        val s = CoinSorterState(items)
+        assertEquals(915f, s.fitHeight(412f, 915f, 129.475f), "a tall screen keeps its height")
+        val h = s.fitHeight(392f, 560f, 129.475f)
+        assertTrue(h > 560f)
+        s.layout(392f, h, 129.475f)
+        assertTrue(s.rowH >= 38f && s.rowY(7) + s.rowH <= h - 4, "the last row is on the screen")
+    }
+
+    @Test
     fun theTrayIsLaidOutAsThePrototypes() {
         val s = state()
         assertEquals(1.1444f, s.k, .001f)

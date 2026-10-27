@@ -297,6 +297,20 @@ internal class CoinSorterState(val items: List<CoinItem>) {
         frame++
     }
 
+    /**
+     * How tall a screen [w] wide whose toolbar starts at [toolbarTop] must be, at least [h], for
+     * all the rows to fit at their smallest (38 with 4 between).
+     */
+    fun fitHeight(w: Float, h: Float, toolbarTop: Float): Float {
+        var need = h
+        repeat(3) {
+            val k = min(w / 360f, need / 744f).coerceIn(.85f, 1.25f)
+            val list = toolbarTop + ToolbarH + 4 * k + 120 * k + 12 * k
+            need = max(need, list + n * (38f + 4f) + 14)
+        }
+        return need
+    }
+
     fun rowX() = 16f
 
     fun rowY(line: Int) = listTop + line * (rowH + rowGap)
