@@ -837,8 +837,9 @@ internal class PhotocopierState(
         say(CopierSaid.Removed)
     }
 
-    /** Moves list [id] to the top. */
+    /** Moves list [id] to the top; not while the copier is at work. */
     fun pin(id: Int) {
+        if (busy) return
         val c = card(id) ?: return
         nudge()
         closeMenu()
@@ -1150,11 +1151,26 @@ internal class PhotocopierState(
                 abs(shake) < .01f &&
                 abs(shakeV) < .05f
 
+    /**
+     * Nothing moves until a timer is due: how long until the next one, in ms (infinite with none),
+     * so the frame loop can sleep; null while anything is moving.
+     */
+    val idleMs: Float?
+        get() {
+            if (anims.isNotEmpty() || ready.isNotEmpty() || now < quietAt || !settledPose()) {
+                return null
+            }
+            var next = Float.POSITIVE_INFINITY
+            for (t in timers) next = min(next, t.at - now)
+            return max(0f, next)
+        }
+
     fun step(dt: Float) {
         val ms = dt * 1000
         now += ms
         due.clear()
         for (t in timers) if (t.at <= now) due += t
+        val fired = due.isNotEmpty() || ready.isNotEmpty()
         timers.removeAll(due)
         for (t in due) {
             t.fn?.invoke()
@@ -1187,7 +1203,9 @@ internal class PhotocopierState(
             val c = ready.removeAt(0)
             c.resume(Unit)
         }
-        frame++
+        // While only a timer is pending nothing on screen moves: the cards and the copier are
+        // left as drawn, rather than every one of them drawn again each frame.
+        if (fired || idleMs == null) frame++
     }
 
     private fun settledPose() =

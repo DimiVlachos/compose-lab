@@ -29,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -103,6 +102,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -270,15 +270,10 @@ internal fun PhotocopierList(
         runCatching { dupFocus.requestFocus() }
         focusMenu = false
     }
-    var screenW by remember { mutableFloatStateOf(0f) }
-    var screenH by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier
-            .onPlaced {
-                screenW = it.size.width / density
-                screenH = it.size.height / density
-            }
+
             // Any press outside the menu (and not on a ⋯) closes it first.
             .pointerInput(state) {
                 awaitEachGesture {
@@ -309,10 +304,13 @@ internal fun PhotocopierList(
                     .fillMaxWidth()
                     .clipToBounds()
                     .onPlaced {
+                        // The list is the column's foot: the screen is as wide as it is and ends
+                        // where it does.
+                        val top = it.positionInParent().y
                         state.layout(
-                            screenW,
-                            screenH,
-                            it.positionInParent().y / density,
+                            it.size.width / density,
+                            (top + it.size.height) / density,
+                            top / density,
                             it.size.height / density,
                         )
                     }
@@ -344,6 +342,7 @@ internal fun PhotocopierList(
                                 focusMenu = true
                             },
                             onAction = { focusCard(it) },
+                            onKeyMore = { focusMenu = true },
                         )
                     }
                 }
@@ -428,12 +427,14 @@ private fun CardView(
     focus: FocusRequester,
     onKeyMenu: () -> Unit,
     onAction: (Int) -> Unit,
+    onKeyMore: () -> Unit,
 ) {
     val item = card.item
     val id = item.id
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shadow = remember { Paint() }
+    val speckClip = remember { Path() }
     // Chrome's dashes for a 1.5 px border: 4.5 on, 3 off.
     val density = LocalDensity.current.density
     val dash =
@@ -442,11 +443,14 @@ private fun CardView(
         Modifier.offset {
                 val i = state.indexOf(id)
                 IntOffset(
-                    (16 * density).roundToInt(),
+                    0,
                     ((state.cardTop(maxOf(0, i)) - state.scroll) * density).roundToInt(),
                 )
             }
-            .size(state.cardW.coerceAtLeast(0f).dp, PhotocopierState.CardH.dp)
+            .zIndex(if (state.menuFor == id) 1f else 0f)
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .height(PhotocopierState.CardH.dp)
             .graphicsLayer {
                 state.frame
                 val now = state.now
@@ -464,7 +468,8 @@ private fun CardView(
                 if (item.isCopy && sp > 0f && !card.away) {
                     val inset = 1.dp.toPx()
                     val r = 13.dp.toPx()
-                    val inner = Path()
+                    val inner = speckClip
+                    inner.reset()
                     inner.addRoundRect(
                         RoundRect(
                             inset,
@@ -539,28 +544,35 @@ private fun CardView(
                     val feeding = state.canFeed(id)
                     if (feeding) down.consume()
                     var at = down.position
-                    while (true) {
-                        val e = awaitPointerEvent()
-                        val c = e.changes.firstOrNull { it.id == down.id }
-                        if (c == null) {
-                            state.cardCancel()
-                            break
-                        }
-                        at = c.position
-                        if (feeding) c.consume()
-                        if (!c.pressed) {
-                            state.cardUp(sx(at), sy(at))
-                            break
-                        }
-                        state.cardMove(sx(at), sy(at))
-                        if (!feeding) {
-                            // The list took the pointer to scroll: the press ends where it was.
-                            val f = awaitPointerEvent(PointerEventPass.Final)
-                            if (f.changes.any { it.id == down.id && it.isConsumed }) {
+                    var ended = false
+                    try {
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == down.id }
+                            if (c == null) {
                                 state.cardCancel()
                                 break
                             }
+                            at = c.position
+                            if (feeding) c.consume()
+                            if (!c.pressed) {
+                                state.cardUp(sx(at), sy(at))
+                                break
+                            }
+                            state.cardMove(sx(at), sy(at))
+                            if (!feeding) {
+                                // The list took the pointer to scroll: the press ends where it was.
+                                val f = awaitPointerEvent(PointerEventPass.Final)
+                                if (f.changes.any { it.id == down.id && it.isConsumed }) {
+                                    state.cardCancel()
+                                    break
+                                }
+                            }
                         }
+                        ended = true
+                    } finally {
+                        // A card that leaves mid-press (fed back by Undo) lets go of it.
+                        if (!ended) state.cardCancel()
                     }
                 }
             },
@@ -582,7 +594,7 @@ private fun CardView(
             card,
             words.moreFor.withTitle(item.title),
             colors,
-            onAction,
+            onKeyMore,
             Modifier.align(Alignment.TopEnd),
         )
     }
@@ -675,7 +687,7 @@ private fun MoreButton(
     card: CopierCard,
     label: String,
     colors: PhotocopierScreenColors,
-    onAction: (Int) -> Unit,
+    onKeyOpen: () -> Unit,
     modifier: Modifier,
 ) {
     val id = card.item.id
@@ -696,7 +708,7 @@ private fun MoreButton(
                         (it.key == Key.Enter || it.key == Key.Spacebar)
                 ) {
                     state.tapMore(id)
-                    if (state.menuFor == id) onAction(-id)
+                    if (state.menuFor == id) onKeyOpen()
                     true
                 } else false
             }
@@ -711,17 +723,25 @@ private fun MoreButton(
             .pointerInput(state, id) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    var lifted = false
+                    var tap = false
                     while (true) {
                         val e = awaitPointerEvent()
                         val c = e.changes.firstOrNull { it.id == down.id } ?: break
-                        if (c.isConsumed) break
                         if (!c.pressed) {
-                            lifted = true
+                            val p = c.position
+                            tap =
+                                p.x in 0f..size.width.toFloat() && p.y in 0f..size.height.toFloat()
                             break
                         }
+                        if (
+                            (c.position - down.position).getDistance() > viewConfiguration.touchSlop
+                        )
+                            break
+                        // The list took the pointer to scroll: no tap.
+                        val f = awaitPointerEvent(PointerEventPass.Final)
+                        if (f.changes.any { it.id == down.id && it.isConsumed }) break
                     }
-                    if (lifted) state.tapMore(id)
+                    if (tap) state.tapMore(id)
                 }
             },
     ) {
@@ -825,6 +845,7 @@ private fun Snack(state: PhotocopierState, words: CopierWords, onUndo: () -> Uni
                                 }
                                 .semantics {
                                     role = Role.Button
+                                    contentDescription = words.undo
                                     onClick {
                                         onUndo()
                                         true

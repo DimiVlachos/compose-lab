@@ -244,7 +244,6 @@ internal class PhotocopierPainter {
         translate(f.x + w * s / 2, f.y + h * s / 2)
         rotate(f.rot)
         scale(s, s * max(.02f, abs(fl)))
-        textResolution = density * s
         if (f.lift > 0) {
             save()
             // Shadows written for the prototype's DPR 2, in the canvas's pixels.
