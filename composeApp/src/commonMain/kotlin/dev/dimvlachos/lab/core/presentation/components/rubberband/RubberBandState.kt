@@ -129,16 +129,16 @@ internal class FlyingLetter(
     val clip: Boolean,
 )
 
-/**
- * The band's curve as the prototype's `bandOf()`: the rest curve split at the pluck point [u] (de
- * Casteljau), that point moved by the pull, each half bending with half of it and straightening as
- * it stretches.
- */
 /** A curve the band is drawn along, from 0 at the bubble to 1 at the eye. */
 internal fun interface Curve {
     fun at(t: Float): Offset
 }
 
+/**
+ * The band's curve as the prototype's `bandOf()`: the rest curve split at the pluck point [u] (de
+ * Casteljau), that point moved by the pull, each half bending with half of it and straightening as
+ * it stretches.
+ */
 internal class Band : Curve {
     var a = Offset.Zero
     var b = Offset.Zero
@@ -153,20 +153,6 @@ internal class Band : Curve {
 
     override fun at(t: Float): Offset =
         if (t <= u) q(a, c1, p, t / u) else q(p, c2, b, (t - u) / (1 - u))
-
-    fun copy(): Band =
-        Band().also {
-            it.a = a
-            it.b = b
-            it.r = r
-            it.p = p
-            it.c1 = c1
-            it.c2 = c2
-            it.u = u
-            it.length = length
-            it.rest = rest
-            it.stretch = stretch
-        }
 }
 
 /** A band that snapped, each half curling back into its end, from [t0]. */
@@ -273,7 +259,6 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     private var nextId = 0L
     private val timers = ArrayList<Pair<Double, () -> Unit>>()
     private var drag: Drag? = null
-    private var lastPt: Offset? = null
     private var unsendScripted = false
 
     private class Drag(
@@ -289,9 +274,6 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     /** Whether a finger or the script is holding the band, and past the pull that unsends. */
     val isTaut: Boolean
         get() = drag?.let { it.taut && it.t === tether } ?: false
-
-    val isHeld: Boolean
-        get() = drag != null
 
     // ---- Layout, from the screen ----
     /** The prototype's scale, from the screen's size without the keyboard. */
@@ -685,9 +667,10 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
 
     // ---- Input ----
 
-    /** Whether ([x], [y]) is on the tethered bubble or within 22 dp × k of its band. */
-    fun hits(x: Float, y: Float): Boolean = hitTether(x, y) != null
-
+    /**
+     * Where on the band ([x], [y]) takes hold: -1 on the tethered bubble, else the point along the
+     * band within 22 dp × k of it; null when it misses.
+     */
     private fun hitTether(x: Float, y: Float): Float? {
         val t = tether ?: return null
         if (t.mode == TetherMode.Fly || t.mode == TetherMode.Done || busy) return null
@@ -733,7 +716,6 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         t.held = true
         t.dv = Offset.Zero
         drag = Drag(t, p0, Offset(x, y), scripted)
-        lastPt = Offset(x, y)
         onEvent?.invoke(BandEvent.Grab, 1f)
         wake++
         return true
@@ -744,7 +726,6 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         if (dr.scripted != scripted) return
         val t = dr.t
         if (t.mode == TetherMode.Fly || t.mode == TetherMode.Done) return
-        lastPt = Offset(x, y)
         val p = Offset(dr.p0.x + x - dr.f0.x, dr.p0.y + y - dr.f0.y)
         // Lean the bubble toward the pull, a little.
         val b0 = bandOf(t, scratch)
