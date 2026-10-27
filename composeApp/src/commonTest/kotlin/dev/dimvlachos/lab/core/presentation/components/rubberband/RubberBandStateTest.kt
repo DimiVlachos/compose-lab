@@ -306,6 +306,40 @@ class RubberBandStateTest {
     }
 
     @Test
+    fun theCaptionTappedWhileAFingerHoldsTheBandLetsTheFingerGo() {
+        val s = chat()
+        s.send("And candles")
+        s.run(600)
+        val r = s.bubbleRect(s.tether!!)!!
+        assertTrue(s.down(r.center.x, r.center.y))
+        s.unsendNow()
+        events.clear()
+        s.up(r.center.x, r.center.y + 4f)
+        assertFalse(BandEvent.Boing in events)
+        s.run(1200)
+        assertEquals("And candles", restored)
+        s.send("And plates")
+        s.run(600)
+        val r2 = s.bubbleRect(s.tether!!)!!
+        assertTrue(s.down(r2.center.x, r2.center.y))
+    }
+
+    @Test
+    fun sendingWhileHoldingTheBandSnapsItWithoutATwangOnLettingGo() {
+        val s = chat()
+        s.send("Bringing the cake")
+        s.run(600)
+        val r = s.bubbleRect(s.tether!!)!!
+        assertTrue(s.down(r.center.x, r.center.y))
+        s.send("And candles")
+        events.clear()
+        s.up(r.center.x, r.center.y + 100f)
+        assertTrue(events.isEmpty(), "$events")
+        assertEquals("And candles", s.tether!!.row.text)
+        assertEquals(TetherMode.Rise, s.tether!!.mode)
+    }
+
+    @Test
     fun aRowComingGlidesTheThreadFromWhereItWas() {
         val s = chat()
         s.threadMeasured(300f)

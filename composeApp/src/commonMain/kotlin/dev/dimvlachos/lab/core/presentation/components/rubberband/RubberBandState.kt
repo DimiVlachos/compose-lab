@@ -546,6 +546,8 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     fun snap(t: Tether) {
         if (tether !== t) return
         val b = bandOf(t, Band())
+        if (drag?.t === t) drag = null
+        t.held = false
         tether = null
         tetheredId = null
         snaps++
@@ -572,6 +574,8 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         val base = bubbleBase ?: return
         t.mode = TetherMode.Fly
         t.held = false
+        // A finger still on the band (the caption tapped with another) lets go with it.
+        if (drag?.t === t) drag = null
         busy = true
         unsendScripted = scripted
         showCaption(false)
@@ -783,6 +787,8 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         val pull = dr.pull
         drag = null
         t.held = false
+        // A band that snapped (a new send) or flew home while held has nothing to twang.
+        if (t.mode == TetherMode.Fly || t.mode == TetherMode.Done) return
         if (pull > Pull * k) unsend(t, dr.scripted)
         else onEvent?.invoke(BandEvent.Boing, (pull / (Pull * k)).coerceIn(.2f, 1f))
         wake++

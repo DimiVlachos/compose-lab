@@ -54,10 +54,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
@@ -547,7 +547,9 @@ private fun RowView(
                 Who.Me ->
                     BasicText(
                         row.text,
-                        Modifier.then(if (tethered) Modifier.alpha(0f) else Modifier)
+                        // Tethered, the canvas draws it; it stays here, undrawn, for layout and
+                        // for screen readers (a transparent node would be hidden from them).
+                        Modifier.then(if (tethered) Modifier.drawWithContent {} else Modifier)
                             .then(
                                 if (receipt) {
                                     Modifier.graphicsLayer {
