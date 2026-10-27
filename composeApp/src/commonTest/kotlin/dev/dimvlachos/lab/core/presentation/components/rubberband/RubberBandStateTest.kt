@@ -214,7 +214,7 @@ class RubberBandStateTest {
         s.unsendNow()
         s.run(360)
         val last = s.letters.last()
-        assertEquals(336f - 4f, last.x1, .01f)
+        assertEquals(336f - 4f - RubberBandState.CaretW, last.x1, .01f)
         assertTrue(s.letters[0].clip)
     }
 

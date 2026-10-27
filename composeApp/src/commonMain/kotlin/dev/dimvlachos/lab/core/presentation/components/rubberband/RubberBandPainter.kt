@@ -52,6 +52,20 @@ internal class RubberBandPainter {
     private val line = Line()
     private val bubble = Path()
 
+    private var haloStroke = Stroke(0f)
+    private var glowShadow = Shadow(LetterGlow, blurRadius = 0f)
+
+    // Made again only when the scale changes, not every frame.
+    private fun halo(width: Float): Stroke {
+        if (haloStroke.width != width) haloStroke = Stroke(width, join = StrokeJoin.Round)
+        return haloStroke
+    }
+
+    private fun glow(blur: Float): Shadow {
+        if (glowShadow.blurRadius != blur) glowShadow = Shadow(LetterGlow, blurRadius = blur)
+        return glowShadow
+    }
+
     private class Line : Curve {
         var a = Offset.Zero
         var b = Offset.Zero
@@ -103,6 +117,9 @@ internal class RubberBandPainter {
     /** The eye, and the band tied from the bubble's knot to it. */
     fun Canvas2D.drawBandLayer(state: RubberBandState, dark: Boolean) {
         val k = state.k
+        // The prototype's canvas keeps the round cap ribbon() sets, so every arc after the first
+        // frame has it.
+        lineCap = "round"
         drawEye(state, dark)
         val t = state.tether ?: return
         if (t.mode == TetherMode.Done || t.popped || state.bubbleBase == null) return
@@ -131,7 +148,8 @@ internal class RubberBandPainter {
         val c = if (dark) DarkBand else LightBand
         val now = state.now
         // Snapped bands: each half curls back into its end.
-        for (s in state.breaks) {
+        for (i in state.breaks.indices.reversed()) {
+            val s = state.breaks[i]
             val p = ((now - s.t0) / RubberBandState.SnapMs).toFloat().coerceIn(0f, 1f)
             if (p >= 1f) continue
             val e = 1 - (1 - p).pow(3)
@@ -206,7 +224,7 @@ internal class RubberBandPainter {
             halo,
             topLeft = o,
             alpha = a,
-            drawStyle = Stroke(3.5f * state.k * density, join = StrokeJoin.Round),
+            drawStyle = halo(3.5f * state.k * density),
         )
         drawText(text, topLeft = o, alpha = a)
     }
@@ -250,8 +268,7 @@ internal class RubberBandPainter {
                             color,
                             Offset(-lay.size.width / 2f, -lay.size.height / 2f),
                             alpha = if (l.clip) 1 - e else 1f,
-                            shadow =
-                                if (white) Shadow(LetterGlow, blurRadius = 4 * k * d / 2) else null,
+                            shadow = if (white) glow(4 * k * d / 2) else null,
                         )
                     }
                 }
@@ -325,9 +342,9 @@ internal class RubberBandPainter {
         }
         lineWidth = max(.6f, minW * .22f)
         strokeStyle = hi
+        // Left round, as the prototype's is, for the ring end and the eye drawn after it.
         lineCap = "round"
         stroke()
-        lineCap = "butt"
     }
 
     private fun Canvas2D.drawKnot(a: Offset, w: Float, c: BandColors, k: Float) {

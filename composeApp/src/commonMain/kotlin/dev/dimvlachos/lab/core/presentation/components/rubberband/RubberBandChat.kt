@@ -11,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -46,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -113,6 +116,7 @@ import dev.dimvlachos.lab.core.presentation.ui.RubberBandScreenColors
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /** The clips the rubber band plays. */
 internal val RubberBandSounds =
@@ -182,6 +186,9 @@ internal fun RubberBandChat(
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var said by remember { mutableStateOf("") }
+    val pending = remember { StringBuilder() }
+    val scope = rememberCoroutineScope()
+    val scroll = rememberScrollState()
 
     LaunchedEffect(state, sounds, haptics, field, keyboard) {
         state.glyphs = places
@@ -209,15 +216,34 @@ internal fun RubberBandChat(
             }
         }
         state.onSay = {
-            said =
+            // What is said in one frame is said together (a band snapped by a new send, then Sent),
+            // and
+            // the live region is cleared for a frame first, so the same words are announced again.
+            val words =
                 when (it) {
                     BandSay.Sent -> text.sent
                     BandSay.Delivered -> text.deliveredSaid
                     BandSay.Unsent -> text.unsentSaid
                 }
+            val flush = pending.isEmpty()
+            pending.append(if (pending.isEmpty()) words else " $words")
+            if (flush) {
+                scope.launch {
+                    said = ""
+                    withFrameNanos {}
+                    said = pending.toString()
+                    pending.clear()
+                }
+            }
         }
         state.onRestore = { message, byHand ->
             field.setTextAndPlaceCursorAtEnd(message)
+            // Scrolled to its end, as the prototype's `scrollLeft = scrollWidth`, where its letters
+            // landed.
+            scope.launch {
+                withFrameNanos {}
+                scroll.scrollTo(scroll.maxValue)
+            }
             if (byHand) {
                 runCatching { focus.requestFocus() }
                 keyboard?.show()
@@ -295,7 +321,7 @@ internal fun RubberBandChat(
                 onTouch,
                 Modifier.weight(1f),
             )
-            Composer(state, places, field, text, colors, fieldStyle, focus, painter, send)
+            Composer(state, places, field, text, colors, fieldStyle, focus, scroll, painter, send)
         }
         Canvas(Modifier.fillMaxSize()) {
             state.frame
@@ -341,7 +367,6 @@ private class Places : GlyphPlaces {
     var measurer: TextMeasurer? = null
     var fieldStyle = TextStyle.Default
     var density: Density = Density(1f)
-    private var lettersFor: List<FlyingLetter>? = null
     private var layouts: List<TextLayoutResult> = emptyList()
 
     private fun rect(c: LayoutCoordinates?): Rect? {
@@ -363,7 +388,7 @@ private class Places : GlyphPlaces {
         rect(eye)?.let { state.eyeAt(it.center) }
         val box = rect(fieldBox)
         val inner = rect(fieldText)
-        if (box != null && inner != null) state.fieldAt(inner.left, box.right - 14f, box.center.y)
+        if (box != null && inner != null) state.fieldAt(inner.left, inner.right, box.center.y)
         val button = rect(send)
         if (box != null && button != null) state.boxesAt(box, button)
         rect(thread)?.let { state.threadAt(it.top) }
@@ -387,30 +412,24 @@ private class Places : GlyphPlaces {
         val l = m.measure(text, fieldStyle, softWrap = false, maxLines = 1, density = density)
         val d = density.density
         for (i in starts.indices) out[i] = l.getBoundingBox(starts[i]).center.x / d
+        // Each letter set on its own for its flight, now, not in the draw pass.
+        layouts =
+            List(starts.size) {
+                val end = if (it + 1 < starts.size) starts[it + 1] else text.length
+                m.measure(
+                    text.substring(starts[it], end),
+                    fieldStyle,
+                    softWrap = false,
+                    maxLines = 1,
+                    density = density,
+                )
+            }
         return l.getLineRight(0) / d
     }
 
-    /** Each landing letter set in the field's style, measured once per burst. */
-    fun letterLayouts(state: RubberBandState): List<TextLayoutResult> {
-        val ls = state.letters
-        if (ls !== lettersFor) {
-            lettersFor = ls
-            val m = measurer
-            layouts =
-                if (m == null) emptyList()
-                else
-                    ls.map {
-                        m.measure(
-                            it.ch,
-                            fieldStyle,
-                            softWrap = false,
-                            maxLines = 1,
-                            density = density,
-                        )
-                    }
-        }
-        return layouts
-    }
+    /** Each landing letter set in the field's style, measured as it burst. */
+    fun letterLayouts(state: RubberBandState): List<TextLayoutResult> =
+        if (layouts.size == state.letters.size) layouts else emptyList()
 }
 
 /**
@@ -473,7 +492,7 @@ private fun Thread(
                     )
                 state.threadMeasured(p.height / density)
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    state.frame
+                    state.glideTick
                     p.place(
                         0,
                         constraints.maxHeight - p.height + (state.glideY() * density).roundToInt(),
@@ -694,6 +713,7 @@ private fun Composer(
     colors: RubberBandScreenColors,
     fieldStyle: TextStyle,
     focus: FocusRequester,
+    scroll: ScrollState,
     painter: RubberBandPainter,
     send: () -> Unit,
 ) {
@@ -731,6 +751,7 @@ private fun Composer(
                 KeyboardOptions(imeAction = ImeAction.Send, autoCorrectEnabled = false),
             onKeyboardAction = { send() },
             interactionSource = interaction,
+            scrollState = scroll,
             decorator = { inner ->
                 Box(
                     Modifier.fillMaxSize()

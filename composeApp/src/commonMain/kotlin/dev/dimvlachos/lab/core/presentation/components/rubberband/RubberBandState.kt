@@ -205,6 +205,10 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
     /** The thread's opacity, for the tour's fade back to the opening thread. */
     var threadAlpha by mutableFloatStateOf(1f)
 
+    /** Bumped every step while the thread glides, for its column to be placed again. */
+    var glideTick by mutableIntStateOf(0)
+        private set
+
     /** Bumped every step, for the canvas to draw again. */
     var frame by mutableIntStateOf(0)
         private set
@@ -615,7 +619,8 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
             } else 0f
         val bs = BubbleFont * t.sc
         val avail = fieldRight - fieldX
-        val shift = max(0f, total - avail)
+        // The field scrolls the caret into view at its end.
+        val shift = if (total > avail) total + CaretW - avail else 0f
         val cy = base.top + base.height / 2
         letters =
             List(n) { i ->
@@ -738,6 +743,7 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         val dr = drag ?: return
         if (dr.scripted != scripted) return
         val t = dr.t
+        if (t.mode == TetherMode.Fly || t.mode == TetherMode.Done) return
         lastPt = Offset(x, y)
         val p = Offset(dr.p0.x + x - dr.f0.x, dr.p0.y + y - dr.f0.y)
         // Lean the bubble toward the pull, a little.
@@ -884,6 +890,7 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         }
         // Breaks done curling are let go.
         breaks.removeAll { now - it.t0 >= SnapMs }
+        if (now - glideT0 <= RowMs + 50) glideTick++
         frame++
     }
 
@@ -958,6 +965,9 @@ internal class RubberBandState(private val opening: List<Pair<Who, String>>) {
         /** The bubble's and the field's type sizes, as the prototype's. */
         const val BubbleFont = 15.5f
         const val FieldFont = 16f
+
+        /** The field's caret, which a text scrolled to its end leaves room for. */
+        const val CaretW = 2f
 
         fun ease(t: Float) = if (t < .5f) 2 * t * t else 1 - (-2 * t + 2).pow(2) / 2
     }

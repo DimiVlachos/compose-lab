@@ -141,6 +141,7 @@ internal class RubberBandHand(
         down = false
         chat.dropScripted()
         shown = 0f
+        chat.threadAlpha = 1f
     }
 
     private suspend fun move(to: Offset, ms: Long) {
