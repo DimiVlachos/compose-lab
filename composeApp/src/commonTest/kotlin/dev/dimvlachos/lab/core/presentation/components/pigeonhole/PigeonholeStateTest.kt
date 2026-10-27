@@ -121,7 +121,7 @@ class PigeonholeStateTest {
         val (ax, ay) = s.row("m3")
         s.rowDown("m3", ax, ay, touch = true, now = 0.0)
         s.ptrMove(ax + 2, ay - 30, now = 40.0)
-        assertTrue(s.scrolling)
+        assertTrue(s.scrollingFor(null))
         s.ptrUp(ax + 3, ay - 70)
         s.run(60)
         assertNull(s.carry)
@@ -142,7 +142,7 @@ class PigeonholeStateTest {
         val (bx, by) = s.row("m3")
         s.rowDown("m3", bx, by, touch = true, now = 0.0)
         s.ptrMove(bx, by + 30, now = 40.0)
-        assertTrue(s.scrolling)
+        assertTrue(s.scrollingFor(null))
         s.ptrUp(bx, by + 30)
         // Held first, it picks up even scrolled.
         s.rowDown("m3", bx, by, touch = true, now = 0.0)
@@ -357,9 +357,60 @@ class PigeonholeStateTest {
         assertEquals("Dana", PigeonholeState.penName("Dana Whitfield"))
         assertEquals("Rivera", PigeonholeState.penName("Ms. Rivera"))
         assertEquals("Mom", PigeonholeState.penName("Mom"))
-        assertEquals(
-            PigeonholeState.hash("Dana Whitfield") % 7,
-            PigeonholeState.hash("Dana Whitfield") % 7,
-        )
+        assertTrue(PigeonholeState.hash("Dana Whitfield") >= 0, "a stamp index, never negative")
+    }
+
+    @Test
+    fun aPressOnTheRaisedRackDoesNotReachTheRowBehindIt() {
+        val s = state()
+        // The middle of the first row that the raised rack will cover.
+        val y = s.rows.map { s.row(it.id).second }.first { it > s.upTop() + 4 }
+        assertNotNull(s.rowAt(206f, y), "with the rack down, a row is there")
+        s.toggleRack()
+        s.run(500)
+        assertTrue(s.onRack(y))
+        assertNull(s.rowAt(206f, y))
+    }
+
+    @Test
+    fun aPressWaitingAsAFolderClosesIsSpentRatherThanPickingUp() {
+        val s = state()
+        s.toggleRack()
+        s.run(500)
+        s.cubTap(1)
+        s.idle()
+        val (ax, ay) = s.row("r1")
+        s.rowDown("r1", ax, ay)
+        s.back()
+        s.run(100)
+        s.ptrMove(ax + 40, ay + 120)
+        assertNull(s.carry, "nothing in hand while the rows go home")
+        s.ptrUp(ax + 40, ay + 120)
+        s.idle()
+        assertEquals(PigeonholeState.Inbox, s.view)
+        assertEquals(7, s.rows.size)
+        assertTrue(s.letters.isEmpty())
+        assertTrue("r1" in s.ids("receipts"))
+    }
+
+    @Test
+    fun theSystemBackPutsTheRackDownThenClosesTheFolder() {
+        val s = state()
+        assertFalse(s.backable, "on the inbox at rest Back leaves the screen")
+        s.toggleRack()
+        s.run(500)
+        assertTrue(s.backable)
+        s.systemBack()
+        assertFalse(s.rackUp)
+        s.toggleRack()
+        s.run(500)
+        s.cubTap(1)
+        s.idle()
+        assertEquals("receipts", s.view)
+        assertTrue(s.backable)
+        s.systemBack()
+        s.idle()
+        assertEquals(PigeonholeState.Inbox, s.view)
+        assertFalse(s.backable)
     }
 }

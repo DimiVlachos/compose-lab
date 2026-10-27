@@ -330,7 +330,8 @@ internal class PigeonholeState(
         kick()
     }
 
-    private fun rowIndex(id: String) = rows.indexOfFirst { it.id == id }
+    /** Where row [id] stands in the list, or -1. */
+    fun rowIndex(id: String) = rows.indexOfFirst { it.id == id }
 
     /** A row's resting centre on the screen, net of the scroll, ignoring any glide it's in. */
     private fun slotOf(i: Int): Pair<Float, Float> =
@@ -348,6 +349,7 @@ internal class PigeonholeState(
     /** The row under ([x], [y]), as drawn, that isn't hidden; or null. */
     fun rowAt(x: Float, y: Float): String? {
         if (y < listTop || y > listTop + listH || x < ListPad || x > width - ListPad) return null
+        if (onRack(y)) return null
         rows.forEachIndexed { i, m ->
             val top = listTop + rowTop(i) - scrollTop + rowShift(m.id)
             if (y >= top && y < top + RowH && m.id !in hidden) return m.id
@@ -373,6 +375,12 @@ internal class PigeonholeState(
     }
 
     fun rackTop() = upTop() + rackH * rackSlide()
+
+    /**
+     * Whether a press at height [y] lands on the rack, up or on its way, which covers the list: the
+     * rows behind it are out of reach (the prototype's rack let presses through to them).
+     */
+    fun onRack(y: Float) = y >= rackTop()
 
     private fun raiseRack(from: String?) {
         rackFrom = from
@@ -413,9 +421,9 @@ internal class PigeonholeState(
     private val one = arrayOfNulls<Mail>(1)
 
     // While a letter comes in or goes out, the rest of the stack eases back or forward one place.
-    internal val inc = DoubleArray(6) { Double.NaN }
-    internal val dec = DoubleArray(6) { Double.NaN }
-    internal val bump = DoubleArray(6) { Double.NaN }
+    private val inc = DoubleArray(6) { Double.NaN }
+    private val dec = DoubleArray(6) { Double.NaN }
+    private val bump = DoubleArray(6) { Double.NaN }
 
     /** How far cubby [i]'s stack is shifted back now. */
     fun stackShift(i: Int): Float {
@@ -906,6 +914,19 @@ internal class PigeonholeState(
         }
     }
 
+    /** Whether the system Back has something here to undo: a carry, the rack, or an open folder. */
+    val backable: Boolean
+        get() = carry != null || rackUp || view != Inbox
+
+    /**
+     * The system Back: what Escape does, else the folder's Back arrow. A letter in a finger's hand
+     * is the finger's, so Back leaves it be rather than the screen.
+     */
+    fun systemBack() {
+        if (escape()) return
+        if (carry == null && view != Inbox) back()
+    }
+
     /** A cubby tapped (or pressed with keys): post a key-carried letter, or open its folder. */
     fun cubTap(c: Int) {
         val c0 = carry
@@ -1027,10 +1048,6 @@ internal class PigeonholeState(
 
     private var ptr: Ptr? = null
 
-    /** Whether the finger on the list has been given to the list to scroll. */
-    val scrolling: Boolean
-        get() = ptr?.scroll == true
-
     /** Whether the finger [owner] on the list has been given to the list to scroll. */
     fun scrollingFor(owner: Any?) = ptr?.let { it.scroll && it.owner == owner } == true
 
@@ -1081,6 +1098,14 @@ internal class PigeonholeState(
     }
 
     private fun begin(p: Ptr): Boolean {
+        // A flow started while the press waited (a folder opening or closing, a letter carried by
+        // keys): the press is spent, or it would pick up a row that is on its way somewhere else.
+        if (busy > 0 || carry != null) {
+            unpress(p)
+            ptr = null
+            kick()
+            return false
+        }
         val ok = if (p.row != null) pickUp(p.row, p.x0, p.y0) else pullOut(p.cub, p.x0, p.y0)
         p.moved = true
         return ok
@@ -1109,6 +1134,7 @@ internal class PigeonholeState(
                 return
             }
             begin(p)
+            if (ptr !== p) return
         }
         val c = carry
         if (c != null && !c.kb) {
@@ -1134,7 +1160,10 @@ internal class PigeonholeState(
             return
         }
         // Decided from the release point alone: a press and a far release still drops.
-        if (!p.moved && hypot(x - p.x0, y - p.y0) > Slop) begin(p)
+        if (!p.moved && hypot(x - p.x0, y - p.y0) > Slop) {
+            begin(p)
+            if (ptr !== p) return
+        }
         ptr = null
         if (p.moved) {
             val c = carry

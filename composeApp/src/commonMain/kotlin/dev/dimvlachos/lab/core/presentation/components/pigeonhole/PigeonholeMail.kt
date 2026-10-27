@@ -23,12 +23,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -63,6 +63,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -78,6 +79,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ScrollAxisRange
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.contentDescription
@@ -88,7 +90,9 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.verticalScrollAxisRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -102,6 +106,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.platform.playVaried
@@ -187,6 +194,17 @@ internal fun PigeonholeMail(
     val cubFocus = remember { List(6) { FocusRequester() } }
     val foldersFocus = remember { FocusRequester() }
     var focusTo by remember { mutableStateOf<PigeonholeFocus?>(null) }
+    // The system Back as the screen's own: a letter carried by keys goes back, the rack goes down,
+    // an open folder closes; only then does Back leave the screen.
+    val backable by remember(state) { derivedStateOf { state.frame.let { state.backable } } }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = backable,
+        onBackCompleted = {
+            state.releaseScripted()
+            state.systemBack()
+        },
+    )
     LaunchedEffect(state, sounds, haptics) {
         val onSound: (PigeonholeSound, Float) -> Unit = { kind, v ->
             when (kind) {
@@ -339,12 +357,15 @@ internal fun PigeonholeMail(
         RackUi(state, text, cubFocus, { screen })
         Canvas(Modifier.fillMaxSize()) { paint(rack = false) }
         val announcement = said?.let { announce(it.second, text) }.orEmpty()
-        Box(
-            Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                if (announcement.isNotEmpty()) contentDescription = announcement
-            },
-        )
+        // A node of its own per announcement, so the same words said twice are heard twice.
+        key(said?.first) {
+            Box(
+                Modifier.size(1.dp).semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    if (announcement.isNotEmpty()) contentDescription = announcement
+                },
+            )
+        }
     }
 }
 
@@ -376,6 +397,7 @@ private fun AppBar(
     onPlacedBack: (LayoutCoordinates) -> Unit,
 ) {
     state.listVersion
+    val rackUp = state.rackUp
     val inFolder = state.view != Inbox
     val n = state.messages(state.view).size
     val title = if (inFolder) state.cubbies[state.cubIndex(state.view)].name else text.inbox
@@ -453,7 +475,7 @@ private fun AppBar(
                 .onPlaced(onPlacedFolders)
                 .testTag("folders")
                 .semantics {
-                    if (state.rackUp)
+                    if (rackUp)
                         collapse {
                             state.toggleRack()
                             true
@@ -590,6 +612,22 @@ private fun MailList(
             .semantics {
                 isTraversalGroup = true
                 contentDescription = text.list
+                verticalScrollAxisRange =
+                    ScrollAxisRange(value = { state.scrollTop }, maxValue = { state.maxScroll() })
+                scrollBy { _, y -> state.scrollBy(y / density) != 0f }
+            }
+            // A mouse wheel scrolls the list as it would any other.
+            .pointerInput(state, density) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        if (e.type != PointerEventType.Scroll) continue
+                        val c = e.changes.firstOrNull() ?: continue
+                        flinging?.cancel()
+                        scroll.dispatchRawDelta(c.scrollDelta.y * WheelStep.dp.toPx())
+                        c.consume()
+                    }
+                }
             }
             .pointerInput(state, density) {
                 awaitEachGesture {
@@ -600,6 +638,8 @@ private fun MailList(
                     val me = here ?: return@awaitEachGesture
                     fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
                     val p0 = at(down)
+                    // The rack covers the list: a press on its wood isn't the list's.
+                    if (state.onRack(p0.y)) return@awaitEachGesture
                     val owner = down.id
                     // Off a row (a gap, the margins, the foot) the drag can only scroll the list.
                     val id = state.rowAt(p0.x, p0.y)
@@ -730,7 +770,7 @@ private fun MailRow(
     Box(
         Modifier.offset {
                 state.frame
-                val i = state.rows.indexOf(m)
+                val i = state.rowIndex(m.id)
                 val y = state.rowTop(i) - state.scrollTop + state.rowShift(m.id)
                 IntOffset((ListPad * density).roundToInt(), (y * density).roundToInt())
             }
@@ -773,7 +813,7 @@ private fun MailRow(
             .onFocusChanged {
                 focused = it.isFocused
                 // Tabbed to off screen, the list brings it into view, as a browser does.
-                if (it.isFocused) state.rows.indexOf(m).takeIf { i -> i >= 0 }?.let(state::reveal)
+                if (it.isFocused) state.rowIndex(m.id).takeIf { i -> i >= 0 }?.let(state::reveal)
             }
             .onKeyEvent { e ->
                 val press = e.key == Key.Enter || e.key == Key.Spacebar || e.key == Key.NumPadEnter
@@ -1033,3 +1073,6 @@ private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = Pigeonh
         style = Stroke(w),
     )
 }
+
+// How far one notch of a mouse wheel scrolls the list, in dp.
+private const val WheelStep = 64f
