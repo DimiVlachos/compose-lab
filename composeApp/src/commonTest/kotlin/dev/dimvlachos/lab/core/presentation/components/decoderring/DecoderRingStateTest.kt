@@ -21,13 +21,23 @@ class DecoderRingStateTest {
     // A stand-in for the font: narrow i, l and spaces, wide m and w, the rest 8.
     private fun measure(s: String) =
         s.sumOf {
-            when (it) {
-                ' ' -> 4.0
-                'i', 'l', '.', ',', '¡', '!', '’' -> 3.5
-                'm', 'w', 'M', 'W' -> 12.0
-                else -> 8.0
+                when (it) {
+                    ' ' -> 4.0
+                    'i',
+                    'l',
+                    '.',
+                    ',',
+                    '¡',
+                    '!',
+                    '’' -> 3.5
+                    'm',
+                    'w',
+                    'M',
+                    'W' -> 12.0
+                    else -> 8.0
+                }
             }
-        }.toFloat()
+            .toFloat()
 
     private val radius = 31f
 
@@ -154,7 +164,10 @@ class DecoderRingStateTest {
         s.toggle()
         s.settle()
         assertFalse(s.english)
-        assertEquals(DecoderEvent.Back, events.last { it == DecoderEvent.Back || it == DecoderEvent.Done })
+        assertEquals(
+            DecoderEvent.Back,
+            events.last { it == DecoderEvent.Back || it == DecoderEvent.Done },
+        )
     }
 
     @Test
@@ -207,9 +220,12 @@ class DecoderRingStateTest {
     fun theBubbleNeverClipsALetterThatHasNotLeftItsLine() {
         // Narrow enough that the Spanish takes more lines than the English.
         val width =
-            (100..400).map { it.toFloat() }.first {
-                wrapDecoderText(es, it, ::measure).lines != wrapDecoderText(en, it, ::measure).lines
-            }
+            (100..400)
+                .map { it.toFloat() }
+                .first {
+                    wrapDecoderText(es, it, ::measure).lines !=
+                        wrapDecoderText(en, it, ::measure).lines
+                }
         val a = wrapDecoderText(es, width, ::measure)
         val b = wrapDecoderText(en, width, ::measure)
         for (forward in listOf(true, false)) {

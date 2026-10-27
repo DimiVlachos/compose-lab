@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring) | `decoderring` | `decoderring.translate` | A message's Translate button as a brass cereal-box decoder ring: twist it and the letters spin through the alphabet in a wave and click down into English |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -859,6 +861,27 @@ StickyNoteList(
 }
 ```
 
+## Decoder ring translate (`core/presentation/components/decoderring/`)
+
+A neighbor posts in Spanish, and the Translate button under her message is a brass cereal-box decoder ring. Twist it round, either way, and the message's own letters lift and spin through the alphabet like the dial, in a wave across the bubble, and click down one by one into English on the English's own lines. Let go past about a quarter turn and it finishes by itself; let go sooner and the Spanish settles back. Twist it again, or tap it, and the letters spin back into her Spanish.
+
+- **Real glyph positions.** Both texts are wrapped at the bubble's width with `TextMeasurer`, each character measured within its word, so every letter knows where it starts and where it lands at any width or font scale. A letter that stays on its line slides sideways to its slot while it spins; one that changes line rolls up and out where it stands and rolls in at its English slot, so nothing flies across the bubble.
+- **One progress.** A single number from 0 to 1 drives the whole wave and the dial: each letter runs over its own window of it, staggered by its place, through a short reel of four to seven steps that starts from its own character and eases onto the target. Glyphs are laid out once and drawn on the shared `canvas2d` adapter, so the wave lays out no text while it runs.
+- **The bubble re-flows.** It is as tall as the lowest line a letter is on right now, growing at once and shrinking at 220 dp/s once a line empties, so the messages below glide and no letter is clipped before it moves.
+- **Gesture.** Each move adds the change of angle round the ring's centre, unwrapped, so a fast twist with few samples still counts its full angle; grabbing it mid-wave carries on from where it was, and a tap mid-wave reverses it.
+- **Feel and sound.** A ratchet tick for every letter of the band that passes the red pointer, soft clicks as letters land, a small chime when the English lands and a lower note when the Spanish does.
+- **Screen readers and keys.** The bubble reads as the language it shows; the ring is a button labelled Translate to English or Show original Spanish, Enter or Space turns it, and a polite live region says which one landed.
+- **Reduced motion.** The text changes at once.
+
+The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script twists the ring most of a turn and lets go so the post finishes into English, then twists it back to the Spanish.
+
+```kotlin
+val ring = remember { DecoderRingState() }
+DecoderRingEffects(ring, sounds)
+DecoderMessage(ring, spanish, english, ink, dark, Modifier.fillMaxWidth(.86f).background(card, shape))
+DecoderRingButton(ring, label = "Translate to English", description = "Spanish", focusRing = accent)
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -1006,6 +1029,8 @@ The key rack's hooks share one board, which suits about four people, each with t
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
+
+The decoder ring maps character i of the original to character i of the translation, as the prototype does: it is a reveal for a translation already in hand, not a word aligner, and a very long post still runs its wave in 1.5 s. The ring's band shows the Latin alphabet, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 
