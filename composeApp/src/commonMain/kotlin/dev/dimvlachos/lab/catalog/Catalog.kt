@@ -7,6 +7,7 @@ import dev.dimvlachos.lab.cardfiledemo.CardFileDemos
 import dev.dimvlachos.lab.core.demo.Demo
 import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
+import dev.dimvlachos.lab.frenchpressdemo.FrenchPressDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.keyhookdemo.KeyHookDemos
 import dev.dimvlachos.lab.locketdemo.LocketDemos
@@ -63,7 +64,8 @@ internal object Catalog {
                     ZipperDemos.all +
                     KeyHookDemos.all +
                     PaperFanDemos.all +
-                    StickyNoteDemos.all)
+                    StickyNoteDemos.all +
+                    FrenchPressDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
