@@ -290,7 +290,7 @@ internal fun CoinSorterResults(
             state.frame
             with(painter) { drawWells(state, colors.line) }
         }
-        Rows(state, colors, rowLabel, row)
+        Rows(state, text, colors, rowLabel, row)
         Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             with(painter) { drawCoins(state, measurer, fly = false) }
@@ -515,6 +515,7 @@ private fun DrawScope.check(color: Color) {
 @Composable
 private fun Rows(
     state: CoinSorterState,
+    text: CoinSorterText,
     colors: CoinSorterScreenColors,
     rowLabel: (Int) -> String,
     row: @Composable (Int) -> Unit,
@@ -527,6 +528,7 @@ private fun Rows(
     Box(
         Modifier.fillMaxSize().semantics {
             isTraversalGroup = true
+            contentDescription = text.list
             collectionInfo = CollectionInfo(state.n, 1)
         },
     ) {

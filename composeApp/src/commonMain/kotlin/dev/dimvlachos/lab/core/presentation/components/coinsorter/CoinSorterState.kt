@@ -368,10 +368,6 @@ internal class CoinSorterState(val items: List<CoinItem>) {
     var simNow = 0.0
         private set
 
-    /** Coins waiting in the funnel, bottom first. */
-    val queued: List<Int>
-        get() = queue
-
     /** Runs [id], as the prototype's `run()`: false when one is running or it is the same sort. */
     fun run(id: CoinSort): Boolean {
         if (running) return false
