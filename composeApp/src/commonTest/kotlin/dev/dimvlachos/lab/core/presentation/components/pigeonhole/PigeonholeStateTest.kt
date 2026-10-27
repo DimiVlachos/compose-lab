@@ -61,7 +61,9 @@ class PigeonholeStateTest {
     fun theBackLetterOfAStackStillFitsInsideItsCubby() {
         val s = state()
         val top = s.upTop()
-        assertTrue(s.slotY(0, 2f, top) - PigeonholeState.LH * s.k * .86f / 2 > s.cubY(0, top) + 2 * s.k)
+        assertTrue(
+            s.slotY(0, 2f, top) - PigeonholeState.LH * s.k * .86f / 2 > s.cubY(0, top) + 2 * s.k,
+        )
     }
 
     @Test
@@ -297,8 +299,11 @@ class PigeonholeStateTest {
         val s = state()
         val (ax, ay) = s.row("m1")
         s.rowDown("m1", ax, ay, scripted = true)
-        s.ptrMove(ax, ay + 40)
-        s.ptrMove(s.cubCenterX(1), s.cubCenterY(1))
+        s.ptrMove(ax, ay + 40, scripted = true)
+        s.ptrMove(s.cubCenterX(1), s.cubCenterY(1), scripted = true)
+        // A real finger's moves don't steer the script's letter.
+        s.ptrMove(0f, 0f)
+        assertEquals(1, s.carry!!.hover)
         s.releaseScripted()
         s.idle()
         assertNull(s.carry)

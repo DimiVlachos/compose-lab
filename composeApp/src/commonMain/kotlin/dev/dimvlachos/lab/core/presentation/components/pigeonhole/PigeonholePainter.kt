@@ -50,7 +50,8 @@ private val BackFold = Color(200, 186, 160)
 private val TopFold = Color(214, 202, 180)
 
 // Each sender has a stamp of their own colour.
-private val Stamps = listOf("#b8432f", "#2f5d8a", "#3f7a4a", "#c08a2a", "#6b4a8a", "#2b7a78", "#a0525e")
+private val Stamps =
+    listOf("#b8432f", "#2f5d8a", "#3f7a4a", "#c08a2a", "#6b4a8a", "#2b7a78", "#a0525e")
 
 // The prototype's mix(): rounded channels between [a] and [b].
 private fun mix(a: Color, b: Color, t: Float): Color {
@@ -58,7 +59,8 @@ private fun mix(a: Color, b: Color, t: Float): Color {
     return Color(ch(a.red, b.red), ch(a.green, b.green), ch(a.blue, b.blue))
 }
 
-private fun rgba(r: Int, g: Int, b: Int, a: Float) = Color(r, g, b, (a.coerceIn(0f, 1f) * 255).roundToInt())
+private fun rgba(r: Int, g: Int, b: Int, a: Float) =
+    Color(r, g, b, (a.coerceIn(0f, 1f) * 255).roundToInt())
 
 /**
  * Draws the rack and the letters as the prototype does, on its two canvases: [drawRack] under the

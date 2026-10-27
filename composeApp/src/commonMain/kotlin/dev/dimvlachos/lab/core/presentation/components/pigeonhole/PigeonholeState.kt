@@ -122,8 +122,8 @@ internal sealed interface PigeonholeFocus {
 
 /**
  * The pigeonhole rack and the mail list, as the prototype's model: the folders' messages, the
- * list's rows (their slots, scroll, glides and fades), the rack sliding up and down, the letters
- * on the canvas and the one in hand. Ported from its `renderList`, layout, `pickUp`, `pullOut`,
+ * list's rows (their slots, scroll, glides and fades), the rack sliding up and down, the letters on
+ * the canvas and the one in hand. Ported from its `renderList`, layout, `pickUp`, `pullOut`,
  * `post`, `returnRow`, `insertIntoView`, `openFolder`, `closeFolder`, pointer rules, `step()` and
  * `paper()`; units are the prototype's CSS px, which are dp here, and its times are in ms.
  *
@@ -450,10 +450,11 @@ internal class PigeonholeState(
         get() =
             timers.isEmpty() &&
                 anims.isEmpty() &&
-                carry == null &&
-                letters.isEmpty() &&
-                ptr == null &&
+                letters.size == (if (carry != null && still) 1 else 0) &&
                 simNow - quiet >= SettleMs
+
+    // Whether the letter in hand has come to rest where it is held.
+    private var still = false
 
     private var quiet = 0.0
 
@@ -479,10 +480,11 @@ internal class PigeonholeState(
         if (i < 0 || ri < 0) return false
         val m = list[i]
         val (rx, ry) = slotOf(ri)
-        val l = Letter(m).apply {
-            x = rx
-            y = ry
-        }
+        val l =
+            Letter(m).apply {
+                x = rx
+                y = ry
+            }
         letters += l
         hidden += id
         pressed = null
@@ -499,12 +501,13 @@ internal class PigeonholeState(
         val m = one[0]!!
         val px = slotX(c)
         val py = slotY(c, 0f, rackTop())
-        val l = Letter(m).apply {
-            x = px
-            y = py
-            f = 1f
-            s = .86f
-        }
+        val l =
+            Letter(m).apply {
+                x = px
+                y = py
+                f = 1f
+                s = .86f
+            }
         letters += l
         lifted += m.id
         dec[c] = simNow
@@ -723,26 +726,25 @@ internal class PigeonholeState(
         // the cubby drew it, so nothing blinks.
         emptyCub = cid
         landed.clear()
-        val ls =
-            ms.mapIndexed { j, m ->
-                val h = hash(m.id)
-                val je = min(j, 2)
-                Letter(m).apply {
-                    this.je = je
-                    ox = ((h % 3) - 1) * 6 * k * min(je, 1)
-                    a0 = ((h % 5) - 2) * .03f
-                    dim0 = je * .16f
-                    f = 1f
-                    s = .86f
-                    inCubby = true
-                    cub = c
-                    pm = 1f
-                    x = slotX(c) + ox
-                    y = slotY(c, je.toFloat(), rackTop())
-                    a = a0
-                    dim = dim0
-                }
+        val ls = ms.mapIndexed { j, m ->
+            val h = hash(m.id)
+            val je = min(j, 2)
+            Letter(m).apply {
+                this.je = je
+                ox = ((h % 3) - 1) * 6 * k * min(je, 1)
+                a0 = ((h % 5) - 2) * .03f
+                dim0 = je * .16f
+                f = 1f
+                s = .86f
+                inCubby = true
+                cub = c
+                pm = 1f
+                x = slotX(c) + ox
+                y = slotY(c, je.toFloat(), rackTop())
+                a = a0
+                dim = dim0
             }
+        }
         letters += ls.asReversed() // back to front, so the front letter is drawn last
         // One after another the letters lift out of the cubby and unfold into their rows.
         all(
@@ -814,12 +816,14 @@ internal class PigeonholeState(
                         } else {
                             // A row scrolled out of sight leaves from the edge of the list.
                             val (rx, ry0) = slotOf(ri)
-                            val ry = ry0.coerceIn(listTop - RowH * .3f, listTop + listH + RowH * .3f)
+                            val ry =
+                                ry0.coerceIn(listTop - RowH * .3f, listTop + listH + RowH * .3f)
                             hidden += m.id
-                            val l = Letter(m).apply {
-                                x = rx
-                                y = ry
-                            }
+                            val l =
+                                Letter(m).apply {
+                                    x = rx
+                                    y = ry
+                                }
                             letters += l
                             changed()
                             animate(d(420.0)) { p ->
@@ -924,7 +928,11 @@ internal class PigeonholeState(
     private fun hoverY(c: Int, top: Float, l: Letter) = cubY(c, top) - LH * k * l.s / 2 - 4 * k
 
     private fun step(dt: Float) {
-        val c0 = carry ?: return
+        val c0 = carry
+        if (c0 == null) {
+            still = false
+            return
+        }
         val l = c0.letter
         val top = rackTop()
         var tx: Float
@@ -967,6 +975,14 @@ internal class PigeonholeState(
         val at = ((l.x - ox) / dt * .00028f).coerceIn(-.18f, .18f) * l.f
         l.av += ((at - l.a) * 260 - l.av * 24) * dt
         l.a += l.av * dt
+        still =
+            abs(tx - l.x) < .05f &&
+                abs(ty - l.y) < .05f &&
+                abs(fT - l.f) < 1e-3f &&
+                abs(l.av) < 1e-3f &&
+                abs(at - l.a) < 1e-3f &&
+                1 - l.s < 1e-3f &&
+                1 - l.lift < 1e-3f
     }
 
     // Card or paper: it follows the fold with a little hysteresis, but turns over on its own 70 ms
@@ -1061,9 +1077,13 @@ internal class PigeonholeState(
         return ok
     }
 
-    fun ptrMove(x: Float, y: Float, now: Double = 0.0) {
+    /**
+     * The finger moved to ([x], [y]) at [now] ms; [scripted] for the demo's, which only moves its
+     * own.
+     */
+    fun ptrMove(x: Float, y: Float, now: Double = 0.0, scripted: Boolean = false) {
         val p = ptr ?: return
-        if (p.scroll) return
+        if (p.scroll || p.scripted != scripted) return
         p.x = x
         p.y = y
         if (!p.moved && hypot(x - p.x0, y - p.y0) > Slop) {
@@ -1088,8 +1108,10 @@ internal class PigeonholeState(
         kick()
     }
 
-    fun ptrUp(x: Float, y: Float) {
+    /** The finger lifted at ([x], [y]); [scripted] for the demo's, which only lifts its own. */
+    fun ptrUp(x: Float, y: Float, scripted: Boolean = false) {
         val p = ptr ?: return
+        if (p.scripted != scripted) return
         unpress(p)
         kick()
         if (p.scroll) {
@@ -1119,7 +1141,7 @@ internal class PigeonholeState(
             ptr = null
             kick()
         } else {
-            ptrUp(p.x, p.y)
+            ptrUp(p.x, p.y, p.scripted)
         }
     }
 
@@ -1127,7 +1149,7 @@ internal class PigeonholeState(
     fun releaseScripted() {
         val p = ptr ?: return
         if (!p.scripted) return
-        if (p.moved) ptrUp(p.x, p.y)
+        if (p.moved) ptrUp(p.x, p.y, scripted = true)
         else {
             unpress(p)
             ptr = null
@@ -1143,7 +1165,12 @@ internal class PigeonholeState(
 
     private class Timer(val at: Double, val fn: () -> Unit)
 
-    private class Anim(val t0: Double, val ms: Double, val fn: (Float) -> Unit, val done: () -> Unit)
+    private class Anim(
+        val t0: Double,
+        val ms: Double,
+        val fn: (Float) -> Unit,
+        val done: () -> Unit,
+    )
 
     private val timers = mutableListOf<Timer>()
     private val anims = mutableListOf<Anim>()
@@ -1202,7 +1229,11 @@ internal class PigeonholeState(
         }
         paper(dt)
         while (ready.isNotEmpty()) ready.removeFirst()()
-        if (timers.isNotEmpty() || anims.isNotEmpty() || carry != null || letters.isNotEmpty()) {
+        if (
+            timers.isNotEmpty() ||
+                anims.isNotEmpty() ||
+                letters.size > (if (carry != null && still) 1 else 0)
+        ) {
             quiet = simNow
         }
         frame++

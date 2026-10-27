@@ -6,12 +6,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +71,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -132,11 +133,11 @@ internal val PigeonholeSounds =
     )
 
 /**
- * What the mail screen says: the [inbox]'s title and its [account], the search field's
- * [search], the rack's [moveTo], [folders] and [done], the Back button's [back], the empty
- * folder's [empty], the list's [list] label and a row's [moveAction]; the announcements
- * [choose], [moved] and [notMoved] (with `%1$s` for a subject or folder), the tap [hint] and
- * [inboxSaid]. [messages] is "n messages", [opened] the folder opened, [cubby] a cubby's label.
+ * What the mail screen says: the [inbox]'s title and its [account], the search field's [search],
+ * the rack's [moveTo], [folders] and [done], the Back button's [back], the empty folder's [empty],
+ * the list's [list] label and a row's [moveAction]; the announcements [choose], [moved] and
+ * [notMoved] (with `%1$s` for a subject or folder), the tap [hint] and [inboxSaid]. [messages] is
+ * "n messages", [opened] the folder opened, [cubby] a cubby's label.
  */
 internal class PigeonholeText(
     val inbox: String,
@@ -189,7 +190,8 @@ internal fun PigeonholeMail(
             when (kind) {
                 PigeonholeSound.Lift -> {
                     sounds.playVaried(Sound.PigeonholeLift, v)
-                    if (v >= 1f) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                    if (v >= 1f)
+                        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                 }
                 PigeonholeSound.Fold -> sounds.playVaried(Sound.PigeonholeFold, v)
                 PigeonholeSound.Slide -> sounds.playVaried(Sound.PigeonholeSlide, v)
@@ -252,7 +254,9 @@ internal fun PigeonholeMail(
     val pen = FontFamily(Font(Res.font.caveat_semibold, FontWeight.SemiBold))
     val mono = FontFamily(Font(Res.font.jetbrains_mono_semibold, FontWeight.SemiBold))
     val fonts =
-        remember(pen, mono) { mapOf(SysFont to FontFamily.Default, MonoFont to mono, PenFont to pen) }
+        remember(pen, mono) {
+            mapOf(SysFont to FontFamily.Default, MonoFont to mono, PenFont to pen)
+        }
     val measurer = rememberTextMeasurer(cacheSize = 64)
     // Made again when the pen's face loads, so no letter keeps a fallback face baked in.
     val painter = remember(density, measurer, fonts) { PigeonholePainter(density, measurer, fonts) }
@@ -263,7 +267,8 @@ internal fun PigeonholeMail(
     var listTop by remember { mutableFloatStateOf(0f) }
     var listH by remember { mutableFloatStateOf(0f) }
     fun relayout() {
-        if (boxW > 0f && listH > 0f) state.layout(boxW / density, boxH / density, listTop / density, listH / density)
+        if (boxW > 0f && listH > 0f)
+            state.layout(boxW / density, boxH / density, listTop / density, listH / density)
     }
 
     fun DrawScope.paint(rack: Boolean) {
@@ -296,7 +301,9 @@ internal fun PigeonholeMail(
                 colors,
                 foldersFocus,
                 onPlacedFolders = { c ->
-                    screen?.let { s -> onPlacedFolders(s.localPositionOf(c, centerOf(c)) / density) }
+                    screen?.let { s ->
+                        onPlacedFolders(s.localPositionOf(c, centerOf(c)) / density)
+                    }
                 },
                 onPlacedBack = { c ->
                     screen?.let { s -> onPlacedBack(s.localPositionOf(c, centerOf(c)) / density) }
@@ -309,12 +316,14 @@ internal fun PigeonholeMail(
                 colors,
                 rowFocus,
                 Modifier.weight(1f).fillMaxWidth().onPlaced { c ->
-                    val s = screen ?: return@onPlaced
-                    listTop = s.localPositionOf(c, Offset.Zero).y
+                    // The column fills the screen from its corner, so its place is the screen's.
+                    listTop = c.positionInParent().y
                     listH = c.size.height.toFloat()
                     relayout()
                 },
-            ) { screen }
+            ) {
+                screen
+            }
         }
         Canvas(Modifier.fillMaxSize()) { paint(rack = true) }
         RackUi(state, text, cubFocus, { screen })
@@ -364,7 +373,12 @@ private fun AppBar(
     Row(
         // In a folder, Back sits 12 into the bar's 18 margin and 6 into the title's 8 gap.
         Modifier.fillMaxWidth()
-            .padding(start = if (inFolder) 6.dp else 18.dp, end = 14.dp, top = 18.dp, bottom = 6.dp),
+            .padding(
+                start = if (inFolder) 6.dp else 18.dp,
+                end = 14.dp,
+                top = 18.dp,
+                bottom = 6.dp,
+            ),
         verticalAlignment = Alignment.Bottom,
     ) {
         if (inFolder) {
@@ -381,8 +395,20 @@ private fun AppBar(
                 Canvas(Modifier.size(24.dp)) {
                     icon { s ->
                         val w = 2.2f * s
-                        drawLine(colors.ink, Offset(15 * s, 5 * s), Offset(8 * s, 12 * s), w, StrokeCap.Round)
-                        drawLine(colors.ink, Offset(8 * s, 12 * s), Offset(15 * s, 19 * s), w, StrokeCap.Round)
+                        drawLine(
+                            colors.ink,
+                            Offset(15 * s, 5 * s),
+                            Offset(8 * s, 12 * s),
+                            w,
+                            StrokeCap.Round,
+                        )
+                        drawLine(
+                            colors.ink,
+                            Offset(8 * s, 12 * s),
+                            Offset(15 * s, 19 * s),
+                            w,
+                            StrokeCap.Round,
+                        )
                     }
                 }
             }
@@ -417,8 +443,16 @@ private fun AppBar(
                 .onPlaced(onPlacedFolders)
                 .testTag("folders")
                 .semantics {
-                    if (state.rackUp) collapse { state.toggleRack(); true }
-                    else expand { state.toggleRack(); true }
+                    if (state.rackUp)
+                        collapse {
+                            state.toggleRack()
+                            true
+                        }
+                    else
+                        expand {
+                            state.toggleRack()
+                            true
+                        }
                 },
             onClick = {
                 state.releaseScripted()
@@ -440,7 +474,13 @@ private fun AppBar(
                     drawLine(colors.ink, Offset(15.2f * s, 4 * s), Offset(15.2f * s, 20 * s), w)
                     for (x in floatArrayOf(4.6f, 11f, 17.3f)) {
                         for (y in floatArrayOf(9.5f, 17.5f)) {
-                            drawLine(colors.ink, Offset(x * s, y * s), Offset((x + 2.2f) * s, y * s), 1.6f * s, StrokeCap.Round)
+                            drawLine(
+                                colors.ink,
+                                Offset(x * s, y * s),
+                                Offset((x + 2.2f) * s, y * s),
+                                1.6f * s,
+                                StrokeCap.Round,
+                            )
                         }
                     }
                 }
@@ -490,7 +530,13 @@ private fun Search(label: String, colors: PigeonholeScreenColors) {
         Canvas(Modifier.size(16.dp)) {
             icon { s ->
                 drawCircle(colors.muted, 6.5f * s, Offset(11 * s, 11 * s), style = Stroke(2 * s))
-                drawLine(colors.muted, Offset(16 * s, 16 * s), Offset(20 * s, 20 * s), 2 * s, StrokeCap.Round)
+                drawLine(
+                    colors.muted,
+                    Offset(16 * s, 16 * s),
+                    Offset(20 * s, 20 * s),
+                    2 * s,
+                    StrokeCap.Round,
+                )
             }
         }
         Text(label, color = colors.muted, fontSize = 14.sp, lineHeight = 1.55.em, maxLines = 1)
@@ -500,10 +546,13 @@ private fun Search(label: String, colors: PigeonholeScreenColors) {
 private val Line19 =
     TextStyle(
         lineHeight = 19.sp,
-        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+        lineHeightStyle =
+            LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
     )
 
-/** The list: rows at the state's slots, scrolled and gliding as the state says; or the empty note. */
+/**
+ * The list: rows at the state's slots, scrolled and gliding as the state says; or the empty note.
+ */
 @Composable
 private fun MailList(
     state: PigeonholeState,
@@ -555,7 +604,9 @@ private fun MailList(
                                 ended = true
                                 if (state.scrolling) {
                                     val v = tracker.calculateVelocity().y
-                                    flinging = scope.launch { scroll.scroll { with(fling) { performFling(-v) } } }
+                                    flinging = scope.launch {
+                                        scroll.scroll { with(fling) { performFling(-v) } }
+                                    }
                                 }
                                 val p = at(c)
                                 state.ptrUp(p.x, p.y)
@@ -568,7 +619,8 @@ private fun MailList(
                                 } else {
                                     val p = at(c)
                                     state.ptrMove(p.x, p.y, c.uptimeMillis.toDouble())
-                                    if (state.scrolling) tracker.addPosition(c.uptimeMillis, c.position)
+                                    if (state.scrolling)
+                                        tracker.addPosition(c.uptimeMillis, c.position)
                                 }
                                 last = c.position
                                 c.consume()
@@ -680,7 +732,10 @@ private fun MailRow(
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) {
         Column(Modifier.padding(vertical = 1.dp).fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().height(19.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.fillMaxWidth().height(19.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Text(
                     item.from,
                     Modifier.weight(1f).alignByBaseline(),
@@ -770,7 +825,9 @@ private fun RackUi(
                 if (from != null) {
                     Text(
                         from,
-                        Modifier.alignByBaseline().padding(start = 6.dp).graphicsLayer { alpha = .72f },
+                        Modifier.alignByBaseline().padding(start = 6.dp).graphicsLayer {
+                            alpha = .72f
+                        },
                         color = Color(0xFFFFF3E1),
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Medium,
@@ -786,7 +843,12 @@ private fun RackUi(
                 Modifier.sizeIn(minWidth = 60.dp, minHeight = 40.dp)
                     .testTag("done")
                     .onFocusChanged { doneFocused = it.isFocused }
-                    .clickable(remember { MutableInteractionSource() }, null, enabled = up, role = Role.Button) {
+                    .clickable(
+                        remember { MutableInteractionSource() },
+                        null,
+                        enabled = up,
+                        role = Role.Button,
+                    ) {
                         state.releaseScripted()
                         state.done()
                     }
@@ -832,7 +894,8 @@ private fun RackUi(
                         if (it.isFocused) state.focusCub(i)
                     }
                     .onKeyEvent { e ->
-                        val press = e.key == Key.Enter || e.key == Key.Spacebar || e.key == Key.NumPadEnter
+                        val press =
+                            e.key == Key.Enter || e.key == Key.Spacebar || e.key == Key.NumPadEnter
                         if (!press || e.type != KeyEventType.KeyDown) return@onKeyEvent false
                         state.releaseScripted()
                         state.cubTap(i)
@@ -847,7 +910,9 @@ private fun RackUi(
                     )
                     .focusRequester(cubFocus[i])
                     .focusable(enabled = up)
-                    .drawBehind { if (focused) ring(6.dp.toPx(), inset = true, color = Color(0xFFFFD58A)) },
+                    .drawBehind {
+                        if (focused) ring(6.dp.toPx(), inset = true, color = Color(0xFFFFD58A))
+                    },
             )
         }
     }
@@ -893,7 +958,8 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.cubGestu
     }
 }
 
-// The prototype's focus outline: 2 wide, drawn just inside the box, its corners rounded by [radius].
+// The prototype's focus outline: 2 wide, drawn just inside the box, its corners rounded by
+// [radius].
 private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = Color(0xFFFFD58A)) {
     val w = 2.dp.toPx()
     val o = if (inset) w / 2 else -w / 2
