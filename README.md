@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller) | `paintroller` | `paintroller.accent` | An accent colour picker as five paint trays and a roller: roll a new colour up the settings screen and every accent fill it passes takes the wet paint, then dries |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -859,6 +861,29 @@ StickyNoteList(
 }
 ```
 
+## Paint roller accent (`core/presentation/components/paintroller/`)
+
+A running app's Appearance settings whose accent colours are five little plastic paint trays with a roller resting in one. Press a tray and drag up: the roller dips, comes up off the tray full size above your finger, and paints wherever you roll it. Every button, chip, switch, route line and link it passes over takes the new colour, glossy and wet for a moment, then dries flat; half of Start run can be orange while the other half is still blue. Let go whenever you like and the roller finishes the wall by itself, rolling the strips you missed, then goes back to rest in its new tray, and a snackbar offers Undo. Or just tap a tray: the roller hops over, dips, and paints the screen in two strokes, up the left and down the right. Undo, the old tray or Reset to default rolls the old colour back on.
+
+- **Two coats.** The screen is real Compose UI, composed twice in a `Box` from one `PaintRollerScope` lambda: the base coat in the current accent and, over it, the new coat in the roller's colour, opaque so the old colour never fringes the new text, drawn through a clip of the rectangles the roller has swept. A straight run up, down or sideways grows one rectangle and going back over fresh paint adds none, so the clip `Path` stays small; it is rebuilt only when the paint changes and read in the draw phase, so painting never recomposes.
+- **Drawn as the prototype draws it.** The trays and the roller are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the ribbed ramp and the well of paint that ripples on a dip, the nap cover (baked once from the prototype's seed) that scrolls as it turns, the fuzzy edges, end caps, wire frame and beech handle, its soft shadow, and the faint film over the freshest strokes.
+- **Wet paint.** Each accent fill marked `wetPaint` draws the prototype's sheen over itself, screen-blended: a 172° gloss, the roller's hairline stripes and a stipple of SVG `feTurbulence` fractal noise, ported and baked once. It fades as `(1 − age/2.6 s)²` on one shared clock, each coat on its own, and shines less on the pale night accents.
+- **Its own clock.** The roller's flows (dip, strokes, finishing the wall, going home, Undo waiting for it) are the prototype's async functions as suspend functions on a scheduler inside `PaintRollerState`, run by `step(dt)` in 1/120 s substeps, so tests step them exactly as the screen does. The roller paints from where it actually is, so a fast swipe with few samples still leaves a solid stripe; a coarse 8 dp grid says when the wall is covered. The frame loop sleeps once everything has dried.
+- **Feel and sound.** A tick on each dip, a confirm when the colour takes, a tap as the roller sets down; synthesized dip and set sounds and a loop of wet nap on the wall, as loud as the roller is fast.
+- **Screen readers and keys.** The trays are a group of radio buttons named by colour (arrow keys pick the next or previous colour, Enter or Space this one), the new colour is announced politely, the switches are switches, and Undo and Reset to default are buttons. The new coat is hidden from accessibility.
+- **Reduced motion.** The colour changes at once, with no trip for the roller and no wet shine.
+
+The demo, `paintroller.accent`, is the Appearance screen of an invented running app. Its script presses Sedona, drags the roller up the left, across the top and partway down the right and lets go, so the roller finishes the wall; then it taps Undo and Blue Ridge rolls back on.
+
+```kotlin
+val roller = remember { PaintRollerState() }
+PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabel = "Undo") {
+    // Composed twice; fill with accent, mark wet fills, and give the new coat (isCoat) no input.
+    Button(Modifier.background(accent, shape).wetPaint(0, shape))
+    Column(Modifier.accentSection()) { Trays(names, height = 92.dp) }
+}
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -1004,6 +1029,8 @@ The birdcage is drawn in a 300 × 290 box scaled to its space, no more than 1.5 
 The key rack's hooks share one board, which suits about four people, each with two or three things on their ring: keys, a fob, a leather tag or a bobber. It fills its space, with the account card's 62 dp at its top, and its keys grow with the height it is given. Who is signed in is not saved, and the rack is not mirrored for right-to-left.
 
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
+
+The paint roller takes five paints and up to seven wet fills, laid out for a phone held upright: the roller is 56 % of the screen's width, so the wall is two strokes wide, and the screen it paints must fit above the trays without scrolling. The new coat is a second composition of the screen, so its state (the switches here) belongs outside it. Which colour is chosen is not saved, and the layout is not mirrored for right-to-left.
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
 

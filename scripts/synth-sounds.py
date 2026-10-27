@@ -982,6 +982,65 @@ def note_lift(rng, rate):
     return soft_finish(soft_room(soft_tilt(flick, rate, 3000), rate, 0.10), rate, 0.17, 0.006, 0.01)
 
 
+# ---------- Paint roller ----------
+
+def web_tone(n, rate, start, f0, f1, dur, gain, wave="sine"):
+    """The prototype's tone(): a pitch gliding exponentially from f0 to f1 over dur, its level
+    rising exponentially to gain in 12 ms and falling away to nothing by dur."""
+    out = [0.0] * n
+    phase = 0.0
+    a = seconds(0.012, rate)
+    m = seconds(dur, rate)
+    s0 = seconds(start, rate)
+    for i in range(min(m, n - s0)):
+        t = i / rate
+        f = f0 * (f1 / f0) ** min(1.0, t / dur)
+        phase += 2 * math.pi * f / rate
+        if wave == "triangle":
+            x = 2 / math.pi * math.asin(math.sin(phase))
+        else:
+            x = math.sin(phase)
+        if i < a:
+            g = 0.0001 * (gain / 0.0001) ** (i / a)
+        else:
+            g = gain * (0.0001 / gain) ** ((i - a) / max(1, m - a))
+        out[s0 + i] = x * g
+    return out
+
+
+def roller_dip(rng, rate):
+    """The roller rolled in the tray's paint: a low wet bloop falling from 180 to 90 Hz, and a
+    smaller one after it."""
+    n = seconds(0.2, rate)
+    clip = mix(web_tone(n, rate, 0.0, 180, 90, 0.16, 0.14), web_tone(n, rate, 0.05, 320, 140, 0.12, 0.06))
+    return soft_finish(soft_room(clip, rate, 0.08), rate, 0.45, 0.003, 0.02)
+
+
+def roller_set(rng, rate):
+    """The roller set down in its tray: a light plastic tick over a soft low knock."""
+    n = seconds(0.1, rate)
+    clip = mix(web_tone(n, rate, 0.0, 900, 820, 0.05, 0.05, "triangle"), web_tone(n, rate, 0.01, 220, 180, 0.07, 0.06))
+    return soft_finish(soft_room(clip, rate, 0.08), rate, 0.25, 0.002, 0.015)
+
+
+def roller_roll(rng, rate):
+    """A seamless loop of the wet nap rolling on the wall: brownish noise with a sticky crackle in
+    it, band-passed at 700 Hz, its two ends cross-faded so it repeats cleanly."""
+    n = seconds(1.6, rate)
+    total = n + seconds(0.3, rate)
+    raw, b = [], 0.0
+    for _ in range(total):
+        b = (b + rng.uniform(-1.0, 1.0) * 0.08) * 0.985
+        raw.append(b * 3 + ((rng.random() - 0.5) * 0.9 if rng.random() < 0.004 else 0.0))
+    raw = bandpass(raw, 700, 0.7, rate)
+    x = seconds(0.3, rate)
+    loop = raw[:n]
+    for i in range(x):
+        w = i / x
+        loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.5)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1064,6 +1123,10 @@ def main():
     write("note_stick", note_stick(note, fast), fast)
     write("note_pat", note_pat(note, fast), fast)
     write("note_lift", note_lift(note, fast), fast)
+    roller = random.Random(1027)
+    write("roller_dip", roller_dip(roller, fast), fast)
+    write("roller_set", roller_set(roller, fast), fast)
+    write("roller_roll", roller_roll(roller, fast), fast)
 
 
 if __name__ == "__main__":
