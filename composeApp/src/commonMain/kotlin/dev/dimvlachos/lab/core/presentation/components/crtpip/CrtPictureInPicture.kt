@@ -305,12 +305,11 @@ private fun Player(
     val shown by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(250), label = "ctl")
     val dot by animateFloatAsState(if (state.controlsOn) 1f else 0f, tween(200), label = "knob")
     Box(
-        Modifier.layout { measurable, _ ->
+        Modifier.layout { measurable, constraints ->
                 val top = (state.slotTop * density).roundToInt()
                 val hh = (state.slotH * density).roundToInt().coerceAtLeast(0)
-                val ww = (state.width * density).roundToInt()
-                val p = measurable.measure(Constraints.fixed(ww, hh))
-                layout(ww, top + hh) { p.place(0, top) }
+                val p = measurable.measure(Constraints.fixed(constraints.maxWidth, hh))
+                layout(constraints.maxWidth, constraints.maxHeight) { p.place(0, top) }
             }
             .clipToBounds()
             .testTag("crt-player")
@@ -478,7 +477,7 @@ private fun SetButton(
     // Where the button was last placed, in dp: a finger's positions are relative to it.
     val placed = remember { FloatArray(2) }
     Box(
-        Modifier.layout { measurable, _ ->
+        Modifier.layout { measurable, constraints ->
                 val p =
                     measurable.measure(
                         Constraints.fixed(
@@ -486,7 +485,7 @@ private fun SetButton(
                             (state.cabH * density).roundToInt(),
                         ),
                     )
-                layout(p.width, p.height) {
+                layout(constraints.maxWidth, constraints.maxHeight) {
                     val x = state.cabX
                     val y = state.cabY
                     placed[0] = x
