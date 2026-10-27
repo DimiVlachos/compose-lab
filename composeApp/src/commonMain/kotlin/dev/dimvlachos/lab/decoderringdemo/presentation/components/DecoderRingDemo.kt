@@ -22,6 +22,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,6 +99,8 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -140,19 +143,26 @@ internal fun DecoderRingDemo(
                 },
             )
         }
+    // The script's steps take turns, as the prototype awaits each: on a slow device a twist that
+    // runs late holds the next step back rather than steering the fingertip alongside it.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
-                block()
+                turn.withLock { block() }
             } catch (e: CancellationException) {
                 hand.stop()
                 throw e
             }
         }
         state.setControlTapHandler { control -> step { hand.play(control) } }
-        // Back in Spanish as it began, so the clip loops.
+        // Back in Spanish as it began, so the clip loops: once the twist back has landed, however
+        // late it ran.
         state.setFeedResetHandler {
-            step { hand.hide() }
+            step {
+                hand.hide()
+                while (ring.target != null) withFrameNanos {}
+            }
             if (ring.english || ring.g != 0f || ring.target != null) ring.reset()
         }
         onDispose {
