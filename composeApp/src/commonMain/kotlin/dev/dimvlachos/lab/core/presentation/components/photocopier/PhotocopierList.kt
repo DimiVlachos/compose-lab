@@ -434,7 +434,10 @@ private fun CardView(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shadow = remember { Paint() }
-    val dash = remember { PathEffect.dashPathEffect(floatArrayOf(4.5f, 4.5f)) }
+    // Chrome's dashes for a 1.5 px border: 4.5 on, 3 off.
+    val density = LocalDensity.current.density
+    val dash =
+        remember(density) { PathEffect.dashPathEffect(floatArrayOf(4.5f * density, 3f * density)) }
     Box(
         Modifier.offset {
                 val i = state.indexOf(id)

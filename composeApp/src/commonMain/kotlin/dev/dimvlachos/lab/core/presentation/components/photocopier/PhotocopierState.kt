@@ -516,6 +516,9 @@ internal class PhotocopierState(
     }
 
     private suspend fun animate(ms: Float, fn: (Float) -> Unit) = suspendCoroutine {
+        // Its first pose at once: this frame is drawn after the step that started it, where the
+        // prototype's first draw comes after its first tick.
+        fn(0f)
         anims += Anim(now, ms, fn, it)
     }
 
