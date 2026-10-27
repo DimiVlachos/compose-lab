@@ -86,6 +86,8 @@ import dev.dimvlachos.lab.resources.coinsorter_subtitle
 import dev.dimvlachos.lab.resources.coinsorter_title
 import dev.dimvlachos.lab.resources.coinsorter_top
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
 
 /** The prototype's search results for "lantern", the list in the store's own ranking. */
@@ -107,6 +109,9 @@ internal fun CoinSorterDemo(
     val sounds = rememberSoundPlayer(CoinSorterSounds)
     SideEffect { sorter.reducedMotion = reducedMotion }
     val hand = remember(sorter) { CoinSorterHand(sorter) }
+    // The script's steps take turns, as the prototype awaits each: on a slow device a sort that
+    // lands late holds the next step back rather than two steps steering the fingertip at once.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
@@ -116,10 +121,16 @@ internal fun CoinSorterDemo(
                 throw e
             }
         }
-        state.setControlTapHandler { control -> step { hand.play(control) } }
-        // Puts the list back as it began if a stopped run left it sorted, so the clip loops.
+        state.setControlTapHandler { control -> turn.withLock { step { hand.play(control) } } }
+        // Puts the list back as it began if a stopped run left it sorted, so the clip loops; a
+        // last sort still landing is let land first.
         state.setFeedResetHandler {
-            step { hand.hide() }
+            turn.withLock {
+                step {
+                    hand.idle()
+                    hand.hide()
+                }
+            }
             if (!sorter.asBegun) sorter.reset()
         }
         onDispose {

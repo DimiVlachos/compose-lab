@@ -70,7 +70,8 @@ internal class CoinSorterHand(private val sorter: CoinSorterState) {
         hide()
     }
 
-    private suspend fun idle() {
+    /** Waits for a sort that is running to land. */
+    suspend fun idle() {
         snapshotFlow { sorter.running }.first { !it }
     }
 
