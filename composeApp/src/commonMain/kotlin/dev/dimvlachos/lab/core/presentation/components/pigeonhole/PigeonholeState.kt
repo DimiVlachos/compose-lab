@@ -337,11 +337,12 @@ internal class PigeonholeState(
         width / 2 to listTop + rowTop(i) - scrollTop + RowH / 2
 
     // A letter only lands in a slot you can see: a row scrolled out of view is brought back first.
-    private fun reveal(i: Int) {
+    fun reveal(i: Int) {
         val t = rowTop(i) - 4
         val b = rowTop(i) + RowH + 4
         if (t < scrollTop) scrollTop = t.coerceIn(0f, maxScroll())
         else if (b > scrollTop + listH) scrollTop = (b - listH).coerceIn(0f, maxScroll())
+        kick()
     }
 
     /** The row under ([x], [y]), as drawn, that isn't hidden; or null. */
@@ -879,7 +880,10 @@ internal class PigeonholeState(
 
     /** Done on the rack: a letter carried by keys goes back; else the rack goes down. */
     fun done() {
-        if (carry?.kb == true) go { returnRow() } else if (busy == 0) lowerRack()
+        val c = carry
+        // A finger's carry isn't Done's to end.
+        if (c != null && !c.kb) return
+        if (c?.kb == true) go { returnRow() } else if (busy == 0) lowerRack()
         kick()
     }
 
@@ -1013,6 +1017,7 @@ internal class PigeonholeState(
         val touch: Boolean,
         val t0: Double,
         val scripted: Boolean,
+        val owner: Any?,
     ) {
         var x = x0
         var y = y0
@@ -1026,6 +1031,9 @@ internal class PigeonholeState(
     val scrolling: Boolean
         get() = ptr?.scroll == true
 
+    /** Whether the finger [owner] on the list has been given to the list to scroll. */
+    fun scrollingFor(owner: Any?) = ptr?.let { it.scroll && it.owner == owner } == true
+
     /** Whether a scripted finger has hold. */
     val scriptedTouch: Boolean
         get() = ptr?.scripted == true
@@ -1038,22 +1046,23 @@ internal class PigeonholeState(
         touch: Boolean = false,
         now: Double = 0.0,
         scripted: Boolean = false,
+        owner: Any? = null,
     ) {
-        if (busy > 0 || carry != null) return
-        ptr = Ptr(id, -1, x, y, touch, now, scripted)
+        if (busy > 0 || carry != null || ptr != null) return
+        ptr = Ptr(id, -1, x, y, touch, now, scripted, owner)
         pressed = id
         kick()
     }
 
     /** A press on cubby [c]; a key-carried letter is posted there at once. */
-    fun cubDown(c: Int, x: Float, y: Float, scripted: Boolean = false) {
+    fun cubDown(c: Int, x: Float, y: Float, scripted: Boolean = false, owner: Any? = null) {
         val c0 = carry
         if (c0 != null && c0.kb) {
             cubTap(c)
             return
         }
-        if (busy > 0 || c0 != null) return
-        ptr = Ptr(null, c, x, y, false, 0.0, scripted)
+        if (busy > 0 || c0 != null || ptr != null) return
+        ptr = Ptr(null, c, x, y, false, 0.0, scripted, owner)
         kick()
     }
 
@@ -1081,9 +1090,15 @@ internal class PigeonholeState(
      * The finger moved to ([x], [y]) at [now] ms; [scripted] for the demo's, which only moves its
      * own.
      */
-    fun ptrMove(x: Float, y: Float, now: Double = 0.0, scripted: Boolean = false) {
+    fun ptrMove(
+        x: Float,
+        y: Float,
+        now: Double = 0.0,
+        scripted: Boolean = false,
+        owner: Any? = null,
+    ) {
         val p = ptr ?: return
-        if (p.scroll || p.scripted != scripted) return
+        if (p.scroll || p.scripted != scripted || p.owner != owner) return
         p.x = x
         p.y = y
         if (!p.moved && hypot(x - p.x0, y - p.y0) > Slop) {
@@ -1109,9 +1124,9 @@ internal class PigeonholeState(
     }
 
     /** The finger lifted at ([x], [y]); [scripted] for the demo's, which only lifts its own. */
-    fun ptrUp(x: Float, y: Float, scripted: Boolean = false) {
+    fun ptrUp(x: Float, y: Float, scripted: Boolean = false, owner: Any? = null) {
         val p = ptr ?: return
-        if (p.scripted != scripted) return
+        if (p.scripted != scripted || p.owner != owner) return
         unpress(p)
         kick()
         if (p.scroll) {
@@ -1134,14 +1149,16 @@ internal class PigeonholeState(
     }
 
     /** The touch was cancelled: a carried letter drops where it was last seen; else nothing. */
-    fun ptrCancel() {
+    fun ptrCancel(owner: Any? = null) {
         val p = ptr ?: return
-        if (p.row != null && !p.moved) {
+        if (p.owner != owner) return
+        // Nothing picked up: nothing to drop, and a cubby cancelled is not a tap.
+        if (!p.moved) {
             unpress(p)
             ptr = null
             kick()
         } else {
-            ptrUp(p.x, p.y, p.scripted)
+            ptrUp(p.x, p.y, p.scripted, owner)
         }
     }
 
@@ -1149,7 +1166,7 @@ internal class PigeonholeState(
     fun releaseScripted() {
         val p = ptr ?: return
         if (!p.scripted) return
-        if (p.moved) ptrUp(p.x, p.y, scripted = true)
+        if (p.moved) ptrUp(p.x, p.y, scripted = true, owner = p.owner)
         else {
             unpress(p)
             ptr = null

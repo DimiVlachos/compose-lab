@@ -182,10 +182,11 @@ internal fun PigeonholeMail(
 ) {
     val haptics = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var said by remember { mutableStateOf<PigeonholeSay?>(null) }
+    var said by remember { mutableStateOf<Pair<Int, PigeonholeSay>?>(null) }
     val rowFocus = remember { mutableMapOf<String, FocusRequester>() }
     val cubFocus = remember { List(6) { FocusRequester() } }
     val foldersFocus = remember { FocusRequester() }
+    var focusTo by remember { mutableStateOf<PigeonholeFocus?>(null) }
     LaunchedEffect(state, sounds, haptics) {
         val onSound: (PigeonholeSound, Float) -> Unit = { kind, v ->
             when (kind) {
@@ -210,16 +211,11 @@ internal fun PigeonholeMail(
                 }
             }
         }
-        val onSay: (PigeonholeSay) -> Unit = { said = it }
-        val onFocus: (PigeonholeFocus) -> Unit = {
-            runCatching {
-                when (it) {
-                    is PigeonholeFocus.Cub -> cubFocus[it.index].requestFocus()
-                    is PigeonholeFocus.Row -> rowFocus[it.id]?.requestFocus()
-                    PigeonholeFocus.Folders -> foldersFocus.requestFocus()
-                }
-            }
-        }
+        // Numbered, so the same words said twice are announced twice.
+        val onSay: (PigeonholeSay) -> Unit = { said = (said?.first ?: 0) + 1 to it }
+        // Asked for now, given once what it goes to is focusable: the rack's cubbies only are
+        // after it has come up, as the prototype's 30 ms wait.
+        val onFocus: (PigeonholeFocus) -> Unit = { focusTo = it }
         state.onSound = onSound
         state.onSay = onSay
         state.onFocus = onFocus
@@ -230,6 +226,19 @@ internal fun PigeonholeMail(
             if (state.onSay === onSay) state.onSay = null
             if (state.onFocus === onFocus) state.onFocus = null
         }
+    }
+    LaunchedEffect(focusTo) {
+        val to = focusTo ?: return@LaunchedEffect
+        withFrameNanos {}
+        withFrameNanos {}
+        runCatching {
+            when (to) {
+                is PigeonholeFocus.Cub -> cubFocus[to.index].requestFocus()
+                is PigeonholeFocus.Row -> rowFocus[to.id]?.requestFocus()
+                PigeonholeFocus.Folders -> foldersFocus.requestFocus()
+            }
+        }
+        focusTo = null
     }
     LaunchedEffect(state, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -329,7 +338,7 @@ internal fun PigeonholeMail(
         Canvas(Modifier.fillMaxSize()) { paint(rack = true) }
         RackUi(state, text, cubFocus, { screen })
         Canvas(Modifier.fillMaxSize()) { paint(rack = false) }
-        val announcement = said?.let { announce(it, text) }.orEmpty()
+        val announcement = said?.let { announce(it.second, text) }.orEmpty()
         Box(
             Modifier.size(1.dp).semantics {
                 liveRegion = LiveRegionMode.Polite
@@ -582,7 +591,7 @@ private fun MailList(
                 isTraversalGroup = true
                 contentDescription = text.list
             }
-            .pointerInput(state) {
+            .pointerInput(state, density) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     flinging?.cancel()
@@ -591,11 +600,26 @@ private fun MailList(
                     val me = here ?: return@awaitEachGesture
                     fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
                     val p0 = at(down)
-                    val id = state.rowAt(p0.x, p0.y) ?: return@awaitEachGesture
-                    val touch = down.type == PointerType.Touch || down.type == PointerType.Stylus
-                    state.rowDown(id, p0.x, p0.y, touch, down.uptimeMillis.toDouble())
+                    val owner = down.id
+                    // Off a row (a gap, the margins, the foot) the drag can only scroll the list.
+                    val id = state.rowAt(p0.x, p0.y)
+                    val free = id == null
+                    if (id != null) {
+                        val touch =
+                            down.type == PointerType.Touch || down.type == PointerType.Stylus
+                        state.rowDown(
+                            id,
+                            p0.x,
+                            p0.y,
+                            touch,
+                            down.uptimeMillis.toDouble(),
+                            owner = owner,
+                        )
+                    }
                     val tracker = VelocityTracker()
                     var last = down.position
+                    var freeScrolling = false
+                    fun scrolling() = if (free) freeScrolling else state.scrollingFor(owner)
                     var ended = false
                     try {
                         while (true) {
@@ -603,32 +627,47 @@ private fun MailList(
                             val c = e.changes.firstOrNull { it.id == down.id } ?: break
                             if (!c.pressed) {
                                 ended = true
-                                if (state.scrolling) {
+                                if (scrolling()) {
                                     val v = tracker.calculateVelocity().y
                                     flinging = scope.launch {
                                         scroll.scroll { with(fling) { performFling(-v) } }
                                     }
                                 }
-                                val p = at(c)
-                                state.ptrUp(p.x, p.y)
+                                if (!free) {
+                                    val p = at(c)
+                                    state.ptrUp(p.x, p.y, owner = owner)
+                                }
                                 break
                             }
                             if (c.positionChanged()) {
-                                if (state.scrolling) {
+                                if (
+                                    free &&
+                                        !freeScrolling &&
+                                        (c.position - down.position).getDistance() >
+                                            viewConfiguration.touchSlop
+                                ) {
+                                    freeScrolling = true
+                                    last = c.position
+                                }
+                                if (scrolling()) {
                                     tracker.addPosition(c.uptimeMillis, c.position)
                                     scroll.dispatchRawDelta(-(c.position.y - last.y))
-                                } else {
+                                } else if (!free) {
                                     val p = at(c)
-                                    state.ptrMove(p.x, p.y, c.uptimeMillis.toDouble())
-                                    if (state.scrolling)
-                                        tracker.addPosition(c.uptimeMillis, c.position)
+                                    state.ptrMove(
+                                        p.x,
+                                        p.y,
+                                        c.uptimeMillis.toDouble(),
+                                        owner = owner,
+                                    )
+                                    if (scrolling()) tracker.addPosition(c.uptimeMillis, c.position)
                                 }
                                 last = c.position
                                 c.consume()
                             }
                         }
                     } finally {
-                        if (!ended && !state.scriptedTouch) state.ptrCancel()
+                        if (!ended && !free && !state.scriptedTouch) state.ptrCancel(owner)
                     }
                 }
             },
@@ -641,7 +680,7 @@ private fun MailList(
                     rowFocus[m.id] = requester
                     onDispose { if (rowFocus[m.id] === requester) rowFocus.remove(m.id) }
                 }
-                MailRow(state, m, text, colors, requester)
+                MailRow(state, m, state.pressed == m.id, text, colors, requester)
             }
         }
         if (rows.isEmpty()) {
@@ -662,12 +701,12 @@ private fun MailList(
 private fun MailRow(
     state: PigeonholeState,
     m: Mail,
+    pressed: Boolean,
     text: PigeonholeText,
     colors: PigeonholeScreenColors,
     requester: FocusRequester,
 ) {
     val hidden = state.isHidden(m.id)
-    val pressed = state.pressed == m.id
     val bg by
         animateColorAsState(
             if (pressed) lerp(colors.card, colors.ink, .12f) else colors.card,
@@ -720,7 +759,11 @@ private fun MailRow(
                             )
                     },
             )
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                focused = it.isFocused
+                // Tabbed to off screen, the list brings it into view, as a browser does.
+                if (it.isFocused) state.rows.indexOf(m).takeIf { i -> i >= 0 }?.let(state::reveal)
+            }
             .onKeyEvent { e ->
                 val press = e.key == Key.Enter || e.key == Key.Spacebar || e.key == Key.NumPadEnter
                 if (!press || e.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -800,10 +843,15 @@ private fun RackUi(
                 state.frame
                 IntOffset(0, (state.rackTop() * density).roundToInt())
             }
-            .semantics {
-                isTraversalGroup = true
-                contentDescription = text.folders
-            },
+            .then(
+                // Down, the rack is inert, as the prototype's: nothing on it is read or found.
+                if (!up) Modifier.clearAndSetSemantics {}
+                else
+                    Modifier.semantics {
+                        isTraversalGroup = true
+                        contentDescription = text.folders
+                    },
+            ),
     ) {
         Row(
             Modifier.fillMaxWidth()
@@ -904,7 +952,7 @@ private fun RackUi(
                     }
                     .then(
                         if (up)
-                            Modifier.pointerInput(i) {
+                            Modifier.pointerInput(i, density) {
                                 cubGesture(state, i, { screen() }, { here }, density)
                             }
                         else Modifier,
@@ -936,7 +984,8 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.cubGestu
         val me = here() ?: return@awaitEachGesture
         fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
         val p0 = at(down)
-        state.cubDown(i, p0.x, p0.y)
+        val owner = down.id
+        state.cubDown(i, p0.x, p0.y, owner = owner)
         var ended = false
         try {
             while (true) {
@@ -945,17 +994,17 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.cubGestu
                 if (!c.pressed) {
                     ended = true
                     val p = at(c)
-                    state.ptrUp(p.x, p.y)
+                    state.ptrUp(p.x, p.y, owner = owner)
                     break
                 }
                 if (c.positionChanged()) {
                     val p = at(c)
-                    state.ptrMove(p.x, p.y)
+                    state.ptrMove(p.x, p.y, owner = owner)
                     c.consume()
                 }
             }
         } finally {
-            if (!ended && !state.scriptedTouch) state.ptrCancel()
+            if (!ended && !state.scriptedTouch) state.ptrCancel(owner)
         }
     }
 }

@@ -323,6 +323,36 @@ class PigeonholeStateTest {
     }
 
     @Test
+    fun aSecondFingerNeitherStealsTheLetterNorEndsTheCarryWithDone() {
+        val s = state()
+        val (ax, ay) = s.row("m1")
+        s.rowDown("m1", ax, ay, owner = 1)
+        s.ptrMove(ax, ay + 40, owner = 1)
+        s.rowDown("m2", ax, ay + 85, owner = 2)
+        s.ptrMove(s.cubCenterX(0), s.cubCenterY(0), owner = 2)
+        s.ptrUp(s.cubCenterX(0), s.cubCenterY(0), owner = 2)
+        s.done()
+        assertEquals("m1", s.carry?.letter?.mail?.id)
+        assertTrue(s.rackUp)
+        s.ptrMove(s.cubCenterX(1), s.cubCenterY(1), owner = 1)
+        s.ptrUp(s.cubCenterX(1), s.cubCenterY(1), owner = 1)
+        s.idle()
+        assertEquals("m1", s.ids("receipts").first())
+        assertEquals(3, s.messages("work").size)
+    }
+
+    @Test
+    fun aCancelledPressOnACubbyOpensNothing() {
+        val s = state()
+        s.toggleRack()
+        s.run(500)
+        s.cubDown(2, s.cubCenterX(2), s.cubCenterY(2), owner = 1)
+        s.ptrCancel(owner = 1)
+        s.idle()
+        assertEquals(PigeonholeState.Inbox, s.view)
+    }
+
+    @Test
     fun thePenWritesTheFirstNameOrTheSurnameAfterATitle() {
         assertEquals("Dana", PigeonholeState.penName("Dana Whitfield"))
         assertEquals("Rivera", PigeonholeState.penName("Ms. Rivera"))
