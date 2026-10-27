@@ -317,7 +317,8 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
         trayRects = trayButtons
         trays.clear()
         for (r in trayButtons) {
-            val tw = min(r.width - 4f, 62f * k)
+            // Short enough to clear the name under it, which the prototype's tiny screens overlap.
+            val tw = minOf(r.width - 4f, 62f * k, (r.height - 4f - LabelRoom) / .86f)
             trays += Tray(r.left + r.width / 2f, r.top + 4f, tw, tw * .86f)
         }
         wetPos = wetCentres
@@ -998,6 +999,9 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
     internal companion object {
         /** How far a finger moves before a press on a tray is a drag. */
         const val Slop = 10f
+
+        /** The height a tray keeps under its art for its name. */
+        const val LabelRoom = 15f
 
         fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 

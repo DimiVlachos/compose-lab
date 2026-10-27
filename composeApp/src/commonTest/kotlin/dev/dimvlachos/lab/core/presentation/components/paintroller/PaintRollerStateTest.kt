@@ -279,4 +279,26 @@ class PaintRollerStateTest {
         r.timeOutSnack(r.snackShown)
         assertFalse(r.snackOn)
     }
+
+    @Test
+    fun aShortTrayKeepsItsArtClearOfItsName() {
+        // A 393 dp phone on the tiny layout: 66 dp trays, 70.6 dp wide.
+        val r =
+            PaintRollerState().apply {
+                layout(
+                    393f,
+                    588f,
+                    480f,
+                    List(5) { Rect(16f + it * 76.6f, 520f, 16f + it * 76.6f + 70.6f, 586f) },
+                    List(7) { Offset(100f, 100f + it * 40f) },
+                )
+            }
+        for ((t, b) in r.trays.zip(r.trayRects)) {
+            assertTrue(t.top + t.th <= b.bottom - PaintRollerState.LabelRoom + .01f)
+        }
+        // Where there is room, the prototype's size.
+        val roomy = roller()
+        val w = roomy.trayRects[0].width - 4f
+        assertEquals(minOf(w, 62f * roomy.k), roomy.trays[0].tw, .01f)
+    }
 }

@@ -19,7 +19,7 @@ internal object PaintRollerDemos {
     // How long each takes, as the prototype's demo moves its finger: the press and drag, then the
     // wait for the roller to finish the wall and go home, 1.6 s, and the tap on Undo while blue
     // rolls back on.
-    val PaintTakes = 3540.milliseconds
+    val PaintTakes = 4000.milliseconds
     val UndoTakes = 6600.milliseconds
 
     // The prototype's runDemo(): after a second the finger presses Sedona and drags the roller up

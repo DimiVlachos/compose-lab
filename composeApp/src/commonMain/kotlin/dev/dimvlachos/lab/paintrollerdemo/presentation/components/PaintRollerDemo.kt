@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -118,6 +119,8 @@ import dev.dimvlachos.lab.resources.paintroller_units
 import kotlin.math.roundToInt
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 
@@ -147,61 +150,20 @@ internal fun PaintRollerDemo(
     val now = stringResource(Res.string.paintroller_now, "%s")
     val said = stringResource(Res.string.paintroller_said, "%s")
 
+    // The script's moves take turns, as the prototype awaits each: on a slow device a move that
+    // runs late holds the next back rather than steering the fingertip at the same time.
+    val turn = remember { Mutex() }
+
     DisposableEffect(state, roller) {
-        state.setControlTapHandler { control ->
-            try {
-                if (!roller.laidOut) return@setControlTapHandler
-                when (control) {
-                    PaintRollerDemos.PaintSedona -> {
-                        // Press Sedona, drag up the left side, across, and partway down the
-                        // right; let go and it finishes.
-                        val w = roller.width
-                        val h = roller.height
-                        val t = roller.trays[1]
-                        val s = Offset(t.cx, t.top + t.th * .5f)
-                        finger.appear(Offset(w * .62f, h * .7f))
-                        finger.glide(s, 520)
-                        finger.press { roller.trayDown(1, it.x, it.y, demo = true) }
-                        delay(240)
-                        val l = roller.colL
-                        val r = roller.colR
-                        val top = roller.topY + roller.grip
-                        val low = roller.botY + roller.grip
-                        val move: (Offset) -> Unit = { roller.trayMove(it.x, it.y) }
-                        finger.glide(Offset(l, low), 260, move)
-                        finger.glide(Offset(l, top), 950, move)
-                        finger.glide(Offset(r - 10, top + 6), 420, move)
-                        finger.glide(Offset(r - 10, top + (low - top) * .55f), 650, move)
-                        finger.lift { roller.trayUp(it.x, it.y) }
-                        finger.glide(Offset(w * .5f, h * .62f), 500)
-                    }
-                    PaintRollerDemos.Undo -> {
-                        // Once the roller is home, a beat, then Undo rolls the old blue back on.
-                        while (roller.busy) delay(16)
-                        delay(1600)
-                        val at = roller.undoCentre
-                        if (at != null) finger.glide(at, 600)
-                        finger.press {}
-                        delay(ScriptedTouch.TapHoldMs)
-                        finger.lift { roller.undo() }
-                        finger.glide(Offset(roller.width * .7f, roller.height * .55f), 500)
-                        finger.fadeOut()
-                        while (roller.busy) delay(16)
-                    }
-                }
-            } finally {
-                // A move cut short lets go where the finger was, so the roller finishes the wall.
-                if (finger.pressed)
-                    withContext(NonCancellable) { roller.releaseDemo(finger.at.x, finger.at.y) }
-                finger.pressed = false
-            }
-        }
+        state.setControlTapHandler { control -> turn.withLock { play(control, roller, finger) } }
         state.setFeedResetHandler {
-            roller.reset()
-            switches[0] = true
-            switches[1] = true
-            switches[2] = false
-            finger.hide()
+            turn.withLock {
+                roller.reset()
+                switches[0] = true
+                switches[1] = true
+                switches[2] = false
+                finger.hide()
+            }
         }
         onDispose {
             state.setControlTapHandler(null)
@@ -263,7 +225,7 @@ private fun PaintRollerScope.Appearance(
     switches: MutableList<Boolean>,
 ) {
     val c = colors
-    Column(Modifier.fillMaxSize().background(c.background).padding(bottom = 8.dp)) {
+    Column(Modifier.fitHeight().fillMaxSize().background(c.background).padding(bottom = 8.dp)) {
         // The app bar: a back link in the accent, and the title.
         Column(
             Modifier.padding(
@@ -750,6 +712,56 @@ private fun Text(
     )
 }
 
+/** One of the script's moves, [control], played with the scripted [finger] on [roller]. */
+private suspend fun play(control: String, roller: PaintRollerState, finger: RollerFinger) {
+    try {
+        if (!roller.laidOut) return
+        when (control) {
+            PaintRollerDemos.PaintSedona -> {
+                // Press Sedona, drag up the left side, across, and partway down the
+                // right; let go and it finishes.
+                val w = roller.width
+                val h = roller.height
+                val t = roller.trays[1]
+                val s = Offset(t.cx, t.top + t.th * .5f)
+                finger.appear(Offset(w * .62f, h * .7f))
+                finger.glide(s, 520)
+                finger.press { roller.trayDown(1, it.x, it.y, demo = true) }
+                delay(240)
+                val l = roller.colL
+                val r = roller.colR
+                val top = roller.topY + roller.grip
+                val low = roller.botY + roller.grip
+                val move: (Offset) -> Unit = { roller.trayMove(it.x, it.y) }
+                finger.glide(Offset(l, low), 260, move)
+                finger.glide(Offset(l, top), 950, move)
+                finger.glide(Offset(r - 10, top + 6), 420, move)
+                finger.glide(Offset(r - 10, top + (low - top) * .55f), 650, move)
+                finger.lift { roller.trayUp(it.x, it.y) }
+                finger.glide(Offset(w * .5f, h * .62f), 500)
+            }
+            PaintRollerDemos.Undo -> {
+                // Once the roller is home, a beat, then Undo rolls the old blue back on.
+                while (roller.busy) delay(16)
+                delay(1600)
+                val at = roller.undoCentre
+                if (at != null) finger.glide(at, 600)
+                finger.press {}
+                delay(ScriptedTouch.TapHoldMs)
+                finger.lift { roller.undo() }
+                finger.glide(Offset(roller.width * .7f, roller.height * .55f), 500)
+                finger.fadeOut()
+                while (roller.busy) delay(16)
+            }
+        }
+    } finally {
+        // A move cut short lets go where the finger was, so the roller finishes the wall.
+        if (finger.pressed)
+            withContext(NonCancellable) { roller.releaseDemo(finger.at.x, finger.at.y) }
+        finger.pressed = false
+    }
+}
+
 /** The scripted fingertip, as the prototype's demo finger: it glides on the prototype's ease. */
 private class RollerFinger {
     private val alpha = Animatable(0f)
@@ -820,5 +832,32 @@ private fun Modifier.cssLineBox(fontSize: TextUnit, lineHeight: Float) =
         val box = (fontSize.toPx() * lineHeight).roundToInt()
         layout(p.width, box) { p.place(0, (box - p.height) / 2) }
     }
+
+/**
+ * The screen at its own size when it fits; on a phone shorter than the prototype's shortest (or
+ * under a large font), the whole screen scaled down from the top until it does, rather than the
+ * trays cut off at the bottom.
+ */
+private fun Modifier.fitHeight() = layout { measurable, constraints ->
+    if (!constraints.hasBoundedHeight) {
+        val p = measurable.measure(constraints)
+        return@layout layout(p.width, p.height) { p.place(0, 0) }
+    }
+    // Measured as tall as it likes: its own height, the column's fill aside.
+    val p = measurable.measure(constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+    val room = constraints.maxHeight
+    layout(constraints.maxWidth, room) {
+        if (p.height <= room) {
+            p.place(0, 0)
+        } else {
+            val s = room / p.height.toFloat()
+            p.placeWithLayer(0, 0) {
+                scaleX = s
+                scaleY = s
+                transformOrigin = TransformOrigin(.5f, 0f)
+            }
+        }
+    }
+}
 
 private val PrototypeEase = Easing { PaintRollerState.ease(it) }
