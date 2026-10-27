@@ -74,7 +74,14 @@ internal enum class Sound(val file: String) {
     NoteLift("note_lift"),
     RollerDip("roller_dip"),
     RollerSet("roller_set"),
-    RollerRoll("roller_roll");
+    RollerRoll("roller_roll"),
+    PressPour("press_pour"),
+    PressRise("press_rise"),
+    PressTick("press_tick"),
+    PressTink("press_tink"),
+    PressGlug("press_glug"),
+    PressLift("press_lift"),
+    PressHiss("press_hiss");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

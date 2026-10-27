@@ -49,6 +49,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
 | [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller) | `paintroller` | `paintroller.accent` | An accent colour picker as five paint trays and a roller: roll a new colour up the settings screen and every accent fill it passes takes the wet paint, then dries |
+| [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress) | `frenchpress` | `frenchpress.summary` | A Summarize button that is a little glass French press: push the plunger and the story's words pour in as grounds, and a three-point summary pours out into a card |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -82,6 +83,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
 - [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller)
+- [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -882,6 +884,22 @@ PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabe
     Button(Modifier.background(accent, shape).wetPaint(0, shape))
     Column(Modifier.accentSection()) { Trays(names, height = 92.dp) }
 }
+## French press summary (`core/presentation/components/frenchpress/`)
+
+A news story whose Summarize button is a little glass French press in the bottom-right corner. Push its knob down and the story's own words lift off the page, line by line, and pour into the spout, where they swirl as tiny grounds; the plunger pushes back like a rubber band until every word is in. Push past halfway and the empty summary card starts to open; let go and the mesh presses the words into a pile at the bottom, the water above clears to amber, the press tips and three short points pour out of the spout letter by letter into the card. Let go short of halfway and the words fly home. Tap the press and it does the whole thing; tap it again, pull the knob up or tap Full article, and the summary drains back, the plunger rises and every word flies back to its own place.
+
+- **Real text.** The story is laid out with `TextMeasurer`, as the browser wraps it, and each word's box comes from its layout; each word is laid out on its own too, so the page is drawn word by word from those boxes, and a word in flight is drawn from the same glyphs, on the same baseline, so it lifts from and lands on exactly its place. The summary's letters are laid out the same way.
+- **Drawn as the prototype draws it.** The press is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, tipped about its left foot to pour, with the liquid clipped to the glass and its surface level on the screen. The hundreds of words in flight and in the glass are drawn straight onto the canvas from their cached layouts, so they make no garbage frame to frame.
+- **Timing.** The prototype's sequences (press, finish, cancel, reverse) are `suspend` functions on a simulated clock that only the frame advances, so they run the same on every device and in tests.
+- **Feel and sound.** A tick every few words in, a confirm as the mesh lands; synthesized pours, glugs, a glassy tink and the plunger's hiss, which swells with how fast it moves.
+- **Screen readers and keys.** The press is a toggle button, Summarize article or Show full article, pressed with Enter or Space; the card is a region read only while it is open, and what happens is announced politely.
+- **Reduced motion.** The summary is there at once, and the story comes back at once.
+
+The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back.
+
+```kotlin
+val press = remember { FrenchPressState(paragraphs, points) }
+FrenchPressStory(press, paragraphs, points, text, colors, sounds, topBar = { AppBar() }, header = { Headline() })
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)
@@ -1034,6 +1052,8 @@ The paint roller takes five paints and up to seven wet fills, laid out for a pho
 
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
 
+The French press shows one story: the words that fly are those on the screen, the rest of the article stays still under the fade above the press, and the story doesn't scroll. The summary is fixed text, not generated. The layout is not mirrored for right-to-left.
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and the commit style.
@@ -1077,6 +1097,8 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The sticky notes are handwritten in the card file's [Caveat](https://github.com/googlefonts/caveat), at weight 600 (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Caveat-OFL.txt`).
+
+The French press's story is set in [PT Serif](https://www.paratype.com/fonts/pt/pt-serif), Copyright 2010 ParaType Ltd., and its small caps in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) Regular and SemiBold (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 

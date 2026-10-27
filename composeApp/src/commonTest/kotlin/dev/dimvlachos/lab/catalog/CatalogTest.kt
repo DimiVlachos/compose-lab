@@ -13,6 +13,7 @@ import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_frenchpress
 import dev.dimvlachos.lab.resources.demo_keyhook
 import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_magnet_filter
@@ -75,6 +76,7 @@ class CatalogTest {
                 "paperfan.faq",
                 "stickynote.swipe",
                 "paintroller.accent",
+                "frenchpress.summary",
             ),
             Catalog.demos.map { it.id },
         )
@@ -107,6 +109,7 @@ class CatalogTest {
                 Res.string.demo_paperfan,
                 Res.string.demo_stickynote,
                 Res.string.demo_paintroller,
+                Res.string.demo_frenchpress,
             ),
             Catalog.demos.map { it.title },
         )
@@ -189,6 +192,7 @@ class CatalogTest {
                 "paperfan.faq",
                 "stickynote.swipe",
                 "paintroller.accent",
+                "frenchpress.summary",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

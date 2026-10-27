@@ -1038,6 +1038,93 @@ def roller_roll(rng, rate):
     for i in range(x):
         w = i / x
         loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+# ---------- French press ----------
+# A small glass press on the table: the words pouring in and out are soft rushes of band-passed noise
+# gliding up or down, as the prototype's WebAudio bursts, with a glassy tink as the mesh lands and
+# small glugs as the summary pours. Built with the soft toolkit.
+
+def press_envelope(n, rate, dur):
+    """The prototype's burst envelope: up from silence over min(20 ms, dur / 3), exponentially, and down again by dur."""
+    out, up = [], min(0.02, dur / 3)
+    for i in range(n):
+        t = i / rate
+        if t < up:
+            out.append(0.0001 * (1 / 0.0001) ** (t / up))
+        elif t < dur:
+            out.append(0.0001 ** ((t - up) / (dur - up)))
+        else:
+            out.append(0.0)
+    return out
+
+
+def press_burst(rng, rate, f0, q, dur, f1=None):
+    """One of the prototype's bursts: noise through a band-pass at f0 (gliding to f1), in its envelope."""
+    n = seconds(dur + 0.02, rate)
+    signal = noise(n, rng)
+    shaped = sweep_bandpass(signal, f0, f1, q, dur, rate) if f1 else bandpass(signal, f0, q, rate)
+    return mul(shaped, press_envelope(n, rate, dur))
+
+
+def press_tone(rate, f0, f1, dur):
+    """The prototype's tone(): a sine gliding exponentially from f0 to f1, falling away over dur."""
+    n = seconds(dur + 0.02, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = min(1.0, i / (dur * rate))
+        phase += 2 * math.pi * f0 * (f1 / f0) ** t / rate
+        out.append(math.sin(phase) * (0.0001 ** t if i < dur * rate else 0.0))
+    return out
+
+
+def press_pour(rng, rate):
+    """The words pouring into the press: a soft rush of paper and water rising from 500 to 1700 Hz."""
+    rush = press_burst(rng, rate, 500, 1.4, 1.1, 1700)
+    return soft_finish(soft_room(soft_tilt(rush, rate, 3000), rate, 0.1), rate, 0.5, 0.01, 0.06)
+
+
+def press_rise(rng, rate):
+    """The grounds stirring up and the words pouring out: the same rush, falling from 1700 to 520 Hz."""
+    rush = press_burst(rng, rate, 1700, 1.4, 1.0, 520)
+    return soft_finish(soft_room(soft_tilt(rush, rate, 3000), rate, 0.1), rate, 0.45, 0.01, 0.06)
+
+
+def press_tick(rng, rate):
+    """A few words landing in the glass: a tiny, bright tick of 20 ms."""
+    tick = press_burst(rng, rate, 5600, 3.0, 0.02)
+    return soft_finish(soft_room(soft_tilt(tick, rate, 6000), rate, 0.08), rate, 0.2, 0.002, 0.006)
+
+
+def press_tink(rng, rate):
+    """The mesh reaching the bottom: a small glassy tink and a soft knock of the plunger."""
+    track = mix(scale(press_tone(rate, 2650, 2630, 0.3), 0.05), scale(press_tone(rate, 3980, 3960, 0.18), 0.025))
+    n = seconds(0.11, rate)
+    thud = mul(lowpass(lowpass(noise(n, rng), 260, rate), 260, rate), press_envelope(n, rate, 0.09))
+    track = mix(track, scale(normalise(thud, 1.0), 0.1))
+    return soft_finish(soft_room(soft_tilt(track, rate, 4200), rate, 0.12), rate, SOFT_PEAK, 0.004, 0.05)
+
+
+def press_glug(rng, rate):
+    """The summary pouring from the spout: a little glug, a tone rising 150 to 240 Hz with a wet grain."""
+    tone = press_tone(rate, 150, 240, 0.08)
+    grain = press_burst(rng, rate, 700, 4.0, 0.06)
+    track = mix(scale(tone, 0.1), scale(normalise(grain, 1.0), 0.05))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3000), rate, 0.1), rate, 0.5, 0.004, 0.02)
+
+
+def press_lift(rng, rate):
+    """The plunger starting up: a short breath rising from 900 to 2200 Hz."""
+    breath = press_burst(rng, rate, 900, 2.0, 0.25, 2200)
+    return soft_finish(soft_room(soft_tilt(breath, rate, 3200), rate, 0.1), rate, 0.3, 0.008, 0.04)
+
+
+def press_hiss(rng, rate):
+    """The mesh moving through the coffee, looped: noise low-passed at 520 Hz, its ends crossfaded so it loops."""
+    n, x = seconds(2.0, rate), seconds(0.2, rate)
+    hiss = soft_tilt(bandpass(noise(n + x, rng), 260, 0.4, rate), rate, 520)
+    loop = hiss[x:n]
+    for i in range(x):
+        a = i / x
+        loop[i] = loop[i] * a + hiss[n + i] * (1 - a)
     return normalise(loop, 0.5)
 
 
@@ -1127,6 +1214,14 @@ def main():
     write("roller_dip", roller_dip(roller, fast), fast)
     write("roller_set", roller_set(roller, fast), fast)
     write("roller_roll", roller_roll(roller, fast), fast)
+    press = random.Random(1027)
+    write("press_pour", press_pour(press, fast), fast)
+    write("press_rise", press_rise(press, fast), fast)
+    write("press_tick", press_tick(press, fast), fast)
+    write("press_tink", press_tink(press, fast), fast)
+    write("press_glug", press_glug(press, fast), fast)
+    write("press_lift", press_lift(press, fast), fast)
+    write("press_hiss", press_hiss(press, soft), soft)
 
 
 if __name__ == "__main__":

@@ -95,15 +95,23 @@ private constructor(
 ) {
     private val stops = mutableListOf<Pair<Float, Color>>()
 
+    // Made once and kept until a stop is added, so a gradient made once and filled every frame
+    // makes no new shader each time.
+    private var made: Shader? = null
+
     fun addColorStop(offset: Float, color: String) {
         stops += offset to cssColor(color)
+        made = null
     }
 
     fun addColorStop(offset: Float, color: Color) {
         stops += offset to color
+        made = null
     }
 
-    internal fun shader(): Shader {
+    internal fun shader(): Shader = made ?: makeShader().also { made = it }
+
+    private fun makeShader(): Shader {
         val sorted = stops.sortedBy { it.first }.ifEmpty { listOf(0f to Color.Transparent) }
         val colors = sorted.map { it.second }.let { if (it.size == 1) it + it else it }
         val offsets = sorted.map { it.first }.let { if (it.size == 1) listOf(0f, 1f) else it }
@@ -733,6 +741,30 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
 
     /** Lays down the layer [beginLayer] began, restoring what was saved with it. */
     fun endLayer() = restore()
+
+    /**
+     * Not the canvas's own: runs [block] on the Compose canvas under the current transform and
+     * clip, for a batch of hundreds of things (words in flight) that would make garbage through
+     * [save] and [restore] one by one. What [block] does to the canvas is undone after it.
+     */
+    inline fun drawUnder(block: (Canvas) -> Unit) {
+        val canvas = rawCanvas
+        canvas.save()
+        canvas.concat(currentMatrix)
+        try {
+            block(canvas)
+        } finally {
+            canvas.restore()
+        }
+    }
+
+    @PublishedApi
+    internal val rawCanvas: Canvas
+        get() = canvas
+
+    @PublishedApi
+    internal val currentMatrix: Matrix
+        get() = state.matrix
 
     fun clip(rule: String = "nonzero") {
         val device =
