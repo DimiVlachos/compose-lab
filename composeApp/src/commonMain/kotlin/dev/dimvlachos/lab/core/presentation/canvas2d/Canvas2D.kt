@@ -95,15 +95,23 @@ private constructor(
 ) {
     private val stops = mutableListOf<Pair<Float, Color>>()
 
+    // Built on first use and kept, so a gradient made once and filled every frame makes its shader
+    // once; a new stop builds it again.
+    private var built: Shader? = null
+
     fun addColorStop(offset: Float, color: String) {
         stops += offset to cssColor(color)
+        built = null
     }
 
     fun addColorStop(offset: Float, color: Color) {
         stops += offset to color
+        built = null
     }
 
-    internal fun shader(): Shader {
+    internal fun shader(): Shader = built ?: build().also { built = it }
+
+    private fun build(): Shader {
         val sorted = stops.sortedBy { it.first }.ifEmpty { listOf(0f to Color.Transparent) }
         val colors = sorted.map { it.second }.let { if (it.size == 1) it + it else it }
         val offsets = sorted.map { it.first }.let { if (it.size == 1) listOf(0f, 1f) else it }

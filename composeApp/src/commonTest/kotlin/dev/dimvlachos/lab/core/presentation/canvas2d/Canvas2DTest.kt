@@ -41,6 +41,17 @@ class Canvas2DTest {
     }
 
     @Test
+    fun aGradientBuildsItsShaderOnceUntilAStopIsAdded() {
+        val g = Gradient2D.linear(0f, 0f, 10f, 0f)
+        g.addColorStop(0f, "#000")
+        g.addColorStop(1f, "#fff")
+        val first = g.shader()
+        assertTrue(first === g.shader())
+        g.addColorStop(.5f, "#888")
+        assertTrue(first !== g.shader())
+    }
+
+    @Test
     fun cssColoursParseAsTheBrowserReadsThem() {
         assertEquals(Color(red = 0xef, green = 0xe1, blue = 0xc8), cssColor("#efe1c8"))
         assertEquals(Color(red = 0xff, green = 0xff, blue = 0xff), cssColor("#fff"))
