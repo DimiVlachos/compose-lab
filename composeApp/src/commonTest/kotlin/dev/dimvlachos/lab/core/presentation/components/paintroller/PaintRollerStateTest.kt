@@ -261,4 +261,22 @@ class PaintRollerStateTest {
         r.resetToDefault()
         assertTrue(r.runUntil(6000) { r.current == 0 && !r.busy })
     }
+
+    @Test
+    fun aPressWhileBusyIsNoDragAndTheSnackbarLetsTheLoopSleep() {
+        val r = roller()
+        r.tap(1)
+        r.run(200)
+        val t = r.trays[3]
+        assertFalse(r.trayDown(3, t.cx, t.top + 20))
+        assertTrue(r.runUntil(6000) { r.current == 1 && !r.busy })
+        assertTrue(r.snackOn)
+        // Home and dry, the loop may sleep with the snackbar up; its own timer takes it down.
+        assertTrue(r.runUntil(3000) { r.settled })
+        assertTrue(r.snackOn)
+        r.timeOutSnack(r.snackShown - 1)
+        assertTrue(r.snackOn)
+        r.timeOutSnack(r.snackShown)
+        assertFalse(r.snackOn)
+    }
 }

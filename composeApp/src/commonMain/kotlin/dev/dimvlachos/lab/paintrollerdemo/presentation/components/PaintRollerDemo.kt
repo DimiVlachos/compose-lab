@@ -150,6 +150,7 @@ internal fun PaintRollerDemo(
     DisposableEffect(state, roller) {
         state.setControlTapHandler { control ->
             try {
+                if (!roller.laidOut) return@setControlTapHandler
                 when (control) {
                     PaintRollerDemos.PaintSedona -> {
                         // Press Sedona, drag up the left side, across, and partway down the
@@ -273,8 +274,7 @@ private fun PaintRollerScope.Appearance(
             ),
         ) {
             Row(
-                Modifier.heightIn(min = 32.dp)
-                    .then(if (isCoat) Modifier else Modifier.semantics { role = Role.Button }),
+                Modifier.heightIn(min = 32.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -668,7 +668,11 @@ private fun DrawScope.drawRouteMap(accent: Color) {
                 line(-10f, 18f, 320f, 10f, minor, 2.5f)
                 line(130f, -10f, 150f, 90f, minor, 2.5f)
                 line(250f, -10f, 262f, 90f, minor, 2.5f)
-                drawPath(GreenWay, GreenWayColor, style = Stroke(16f, cap = StrokeCap.Round))
+                drawPath(
+                    GreenWay,
+                    PaintRollerScreenColors.GreenWay,
+                    style = Stroke(16f, cap = StrokeCap.Round),
+                )
                 drawPath(
                     Route,
                     accent,
@@ -702,7 +706,6 @@ private val Route =
         cubicTo(190f, 50f, 214f, 62f, 240f, 46f)
     }
 
-private val GreenWayColor = Color(0x9C / 255f, 0xC7 / 255f, 0xA0 / 255f, .55f)
 private val KnobShadow = Paint().apply { color = Color(0f, 0f, 0f, .25f) }
 private val KnobEase = CubicBezierEasing(.3f, .9f, .3f, 1.2f)
 private val CardShape = RoundedCornerShape(18.dp)

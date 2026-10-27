@@ -20,6 +20,7 @@ import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
+import dev.dimvlachos.lab.resources.demo_paintroller
 import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
 import dev.dimvlachos.lab.resources.demo_paperfan
@@ -73,6 +74,7 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "paintroller.accent",
             ),
             Catalog.demos.map { it.id },
         )
@@ -104,6 +106,7 @@ class CatalogTest {
                 Res.string.demo_keyhook,
                 Res.string.demo_paperfan,
                 Res.string.demo_stickynote,
+                Res.string.demo_paintroller,
             ),
             Catalog.demos.map { it.title },
         )
@@ -185,6 +188,7 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "paintroller.accent",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

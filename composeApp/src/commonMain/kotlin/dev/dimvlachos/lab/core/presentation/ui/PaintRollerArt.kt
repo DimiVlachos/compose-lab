@@ -52,6 +52,9 @@ internal class PaintRollerScreenColors(
         /** The snackbar's ground and text, the same in both themes. */
         val Snack = Color(0xFF24262B)
         val SnackText = Color(0xFFF2F1EE)
+
+        /** The map's green way under the route, `#9cc7a0` at .55. */
+        val GreenWay = Color(0x8C9CC7A0)
     }
 }
 

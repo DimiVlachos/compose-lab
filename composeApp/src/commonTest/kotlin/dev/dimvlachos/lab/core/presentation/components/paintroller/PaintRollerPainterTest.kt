@@ -2,9 +2,9 @@ package dev.dimvlachos.lab.core.presentation.components.paintroller
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.cssColor
 import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,7 +25,7 @@ class PaintRollerPainterTest {
 
     @Test
     fun shadeMovesTowardBlackOrWhiteAsThePrototypes() {
-        val blue = Color(0x2b / 255f, 0x5f / 255f, 0xc7 / 255f)
+        val blue = cssColor("#2b5fc7")
         // shade('#2b5fc7', .45): rgb(138, 167, 224).
         val light = shade(blue, .45f)
         assertEquals(138, (light.red * 255).roundToInt())

@@ -20,7 +20,7 @@ internal object PaintRollerDemos {
     // wait for the roller to finish the wall and go home, 1.6 s, and the tap on Undo while blue
     // rolls back on.
     val PaintTakes = 3540.milliseconds
-    val UndoTakes = 6300.milliseconds
+    val UndoTakes = 6600.milliseconds
 
     // The prototype's runDemo(): after a second the finger presses Sedona and drags the roller up
     // the left, across the top and partway down the right, and lets go; the roller finishes the
@@ -29,7 +29,7 @@ internal object PaintRollerDemos {
     private val accent = demoScript {
         at(.4.seconds, lasts = PaintTakes) { tapControl(PaintSedona) }
         at(.4.seconds + PaintTakes, lasts = UndoTakes) { tapControl(Undo) }
-        at(.4.seconds + PaintTakes + UndoTakes + 300.milliseconds) { resetFeed() }
+        at(.4.seconds + PaintTakes + UndoTakes + 1.seconds) { resetFeed() }
     }
 
     val all =

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -83,6 +84,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
+import dev.dimvlachos.lab.core.platform.SoundLoop
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
@@ -114,7 +116,7 @@ internal class Geometry(val state: PaintRollerState) {
             return Rect(o.x, o.y, o.x + c.size.width / density, o.y + c.size.height / density)
         }
         val trayRects = trays.map { c -> rect(c?.takeIf { it.isAttached } ?: return) }
-        val centres = wet.mapNotNull { c -> c?.takeIf { it.isAttached }?.let { rect(it).center } }
+        val centres = wet.map { c -> rect(c?.takeIf { it.isAttached } ?: return).center }
         state.layout(
             r.size.width / density,
             r.size.height / density,
@@ -284,7 +286,10 @@ internal constructor(
                         val origin = state.trayRects.getOrNull(i) ?: return@awaitEachGesture
                         fun x(o: Offset) = origin.left + o.x / density
                         fun y(o: Offset) = origin.top + o.y / density
-                        state.trayDown(i, x(down.position), y(down.position))
+                        // A press the roller ignored (it is busy) is no drag of this finger's.
+                        if (!state.trayDown(i, x(down.position), y(down.position))) {
+                            return@awaitEachGesture
+                        }
                         try {
                             while (true) {
                                 val e = awaitPointerEvent()
@@ -369,14 +374,15 @@ internal fun PaintRollerAccent(
     }
     LaunchedEffect(state, lifecycle, sounds) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // The wet nap on the wall, as loud as the roller is fast.
-            val roll = sounds.loop(Sound.RollerRoll, 0f)
+            // The wet nap on the wall, as loud as the roller is fast, playing only while awake.
+            var roll: SoundLoop? = null
             try {
                 var last = 0L
                 while (true) {
                     // At rest the loop sleeps, until a tap or the script sets the roller moving.
                     if (state.settled) {
-                        roll.setVolume(0f)
+                        roll?.stop()
+                        roll = null
                         val seen = state.wake
                         snapshotFlow { state.wake }.first { it != seen }
                         last = 0L
@@ -387,10 +393,12 @@ internal fun PaintRollerAccent(
                         last = now
                         state.step(dt)
                     }
-                    roll.setVolume((state.rollLevel * 2f).coerceIn(0f, 1f))
+                    val loud = (state.rollLevel * 2f).coerceIn(0f, 1f)
+                    if (roll == null && loud > .01f) roll = sounds.loop(Sound.RollerRoll, 0f)
+                    roll?.setVolume(loud)
                 }
             } finally {
-                roll.stop()
+                roll?.stop()
             }
         }
     }
@@ -410,9 +418,10 @@ internal fun PaintRollerAccent(
         // colour never fringes its text, drawn only where the roller has been.
         Box(
             Modifier.fillMaxSize()
+                .graphicsLayer()
                 .clearAndSetSemantics {}
                 .drawWithContent {
-                    state.frame
+                    state.paintVersion
                     if (state.coat < 0 || state.rects.isEmpty()) return@drawWithContent
                     if (painted.version != state.paintVersion || painted.density != density) {
                         state.paintedPath(painted.path, density)
@@ -425,7 +434,7 @@ internal fun PaintRollerAccent(
         ) {
             if (state.coat >= 0) coat.content()
         }
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             drawIntoCanvas { canvas ->
                 val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
@@ -445,13 +454,16 @@ internal fun PaintRollerAccent(
             rootOf = { geometry.root ?: it },
         )
         // What changed, for a screen reader.
-        val (heard, _) = state.said
-        Box(
-            Modifier.size(1.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = if (heard >= 0) said(names[heard]) else ""
-            },
-        )
+        val (heard, count) = state.said
+        // Made anew for each announcement, so the same colour said twice is heard twice.
+        key(count) {
+            Box(
+                Modifier.size(1.dp).semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    contentDescription = if (heard >= 0) said(names[heard]) else ""
+                },
+            )
+        }
     }
 }
 
@@ -516,6 +528,8 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
                 }
             }
             .background(PaintRollerScreenColors.Snack, RoundedCornerShape(14.dp))
+            // While up, the bar takes the touches that land on it, as the prototype's does.
+            .pointerInput(on) { if (on) awaitEachGesture { awaitFirstDown().consume() } }
             .padding(start = 16.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
             .then(if (on) Modifier else Modifier.clearAndSetSemantics {}),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -540,9 +554,6 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
                     state.undoCentre =
                         Offset((o.x + c.size.width / 2f) / d, (o.y + c.size.height / 2f) / d)
                 }
-                .semantics {
-                    role = Role.Button
-                }
                 .pointerInput(state, on) {
                     if (!on) return@pointerInput
                     awaitEachGesture {
@@ -553,7 +564,8 @@ private fun androidx.compose.foundation.layout.BoxScope.Snackbar(
                         if (up != null) state.undo()
                     }
                 }
-                .semantics {
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
                     onClick {
                         onTouch()
                         state.undo()

@@ -194,8 +194,8 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
     /** The swept rectangles, in dp: the new coat's clip is their union. */
     val rects = mutableListOf<Swept>()
 
-    /** Bumped whenever [rects] change, so the clip is rebuilt only then. */
-    var paintVersion = 0
+    /** Bumped whenever [rects] change, so the clip is rebuilt, and redrawn, only then. */
+    var paintVersion by mutableIntStateOf(0)
         private set
 
     private var grid = ByteArray(0)
@@ -500,7 +500,20 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
 
     private fun showSnack() {
         snackOn = true
+        snackShown++
         snackAt = now + 5000
+    }
+
+    /** How many times the snackbar has come up, so a timer can tell its showing from the next. */
+    var snackShown by mutableIntStateOf(0)
+        private set
+
+    /**
+     * The snackbar's five seconds are up while the roller's clock may be asleep: takes down showing
+     * [shown], if it is still the one up.
+     */
+    fun timeOutSnack(shown: Int) {
+        if (snackOn && snackShown == shown) hideSnack()
     }
 
     private fun hideSnack() {
@@ -723,14 +736,17 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
     val dragging
         get() = drag != null
 
-    /** A finger comes down on tray [i] at ([x], [y]); [demo] marks the script's finger. */
-    fun trayDown(i: Int, x: Float, y: Float, demo: Boolean = false) {
-        if (!laidOut) return
+    /**
+     * A finger comes down on tray [i] at ([x], [y]); [demo] marks the script's finger. True when
+     * the press is now this finger's drag: only then are its moves and lift to be passed on.
+     */
+    fun trayDown(i: Int, x: Float, y: Float, demo: Boolean = false): Boolean {
+        if (!laidOut) return false
         if (reducedMotion) {
             pickTray(i)
-            return
+            return false
         }
-        if (busy) return
+        if (busy) return false
         val d = Drag(i, x, y, ++runTok, demo)
         drag = d
         busy = true
@@ -742,6 +758,7 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
             rollerPaint = i
         }
         poke()
+        return true
     }
 
     fun trayMove(x: Float, y: Float) {
@@ -934,8 +951,11 @@ internal class PaintRollerState(val paintCount: Int = 5, val wetCount: Int = 7) 
     val settled: Boolean
         get() {
             if (!laidOut) return true
-            if (anims.isNotEmpty() || timers.isNotEmpty() || drag != null || busy) return false
-            if (mode != RollerMode.Rest || snackOn || rollLevel > .002f) return false
+            // A finger held still on the current colour's tray moves nothing.
+            val holding = drag?.let { it.i == current && !it.moved } == true
+            if (anims.isNotEmpty() || timers.isNotEmpty() || (busy && !holding)) return false
+            if (drag != null && !holding) return false
+            if (mode != RollerMode.Rest || rollLevel > .002f) return false
             if (paintedAt.any { now - it < 2600 } || baseWetAt.any { now - it < 2600 }) return false
             if (trays.any { now - it.ripple < 700 }) return false
             return true
