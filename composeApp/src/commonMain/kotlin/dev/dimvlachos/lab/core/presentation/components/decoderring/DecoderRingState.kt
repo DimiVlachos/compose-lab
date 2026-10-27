@@ -43,7 +43,9 @@ internal class DecoderRingState {
     /** Hears what the ring does. */
     var onEvent: ((DecoderEvent) -> Unit)? = null
 
-    /** Bumped on every step and twist that changes something, so a drawing that reads it redraws. */
+    /**
+     * Bumped on every step and twist that changes something, so a drawing that reads it redraws.
+     */
     var frame by mutableIntStateOf(0)
         private set
 
@@ -82,6 +84,9 @@ internal class DecoderRingState {
     /** The line height, and the bubble's padding above and below its lines, in dp. */
     var lineHeight = LineHeight
         private set
+
+    /** What [layout] was last given, so the same lines aren't laid out again. */
+    internal var layoutKey: Any? = null
 
     private var spinDir = 1
     private var ringFromEnglish = false
@@ -221,8 +226,7 @@ internal class DecoderRingState {
             left -= h
         }
         val t = contentHeight()
-        height =
-            if (reducedMotion || !heightSet || t >= height) t else max(t, height - Shrink * dt)
+        height = if (reducedMotion || !heightSet || t >= height) t else max(t, height - Shrink * dt)
         heightSet = true
         awake = target != null || drag != null || height != t
         frame++
@@ -252,8 +256,7 @@ internal class DecoderRingState {
     fun down(dx: Float, dy: Float): Int {
         // target0 remembers where an animation in progress was heading, so a tap on it reverses
         // it, as Enter does.
-        val d =
-            Drag(++drags, atan2(dy, dx), g, g >= .5f, ringA, target, dx, dy)
+        val d = Drag(++drags, atan2(dy, dx), g, g >= .5f, ringA, target, dx, dy)
         drag = d
         target = null
         wake()
@@ -345,7 +348,9 @@ internal class DecoderRingState {
         const val PadBottom = 9f
         private const val SettleGap = .028f
 
-        /** A slot's sideways slide, and the bubble's line curve, over the first half of its window. */
+        /**
+         * A slot's sideways slide, and the bubble's line curve, over the first half of its window.
+         */
         fun hop(q: Float) = ease((q / .5f).coerceIn(0f, 1f))
 
         fun ease(t: Float) = if (t < .5f) 2 * t * t else 1 - (-2 * t + 2).pow(2) / 2

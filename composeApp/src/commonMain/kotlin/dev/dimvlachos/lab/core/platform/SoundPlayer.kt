@@ -71,7 +71,11 @@ internal enum class Sound(val file: String) {
     NoteRip("note_rip"),
     NoteStick("note_stick"),
     NotePat("note_pat"),
-    NoteLift("note_lift");
+    NoteLift("note_lift"),
+    DecoderTick("decoder_tick"),
+    DecoderSettle("decoder_settle"),
+    DecoderDone("decoder_done"),
+    DecoderBack("decoder_back");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
