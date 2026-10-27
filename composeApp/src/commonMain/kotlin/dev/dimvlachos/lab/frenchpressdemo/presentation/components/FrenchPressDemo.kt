@@ -92,6 +92,8 @@ import dev.dimvlachos.lab.resources.frenchpress_summarize
 import dev.dimvlachos.lab.resources.frenchpress_summarize_article
 import dev.dimvlachos.lab.resources.frenchpress_summary
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -121,6 +123,10 @@ internal fun FrenchPressDemo(state: DemoState, reducedMotion: Boolean = remember
     SideEffect { press.reducedMotion = reducedMotion }
     val sounds = rememberSoundPlayer(FrenchPressSounds)
     val hand = remember(press) { FrenchPressHand(press) }
+    // The script's steps take turns: on a slow device the push can still be riding the knob when
+    // the tap on Full article is due, and the tidy-up at the end can come while it pours back, so
+    // none starts moving the fingertip until the one before it is done.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
@@ -130,14 +136,16 @@ internal fun FrenchPressDemo(state: DemoState, reducedMotion: Boolean = remember
                 throw e
             }
         }
-        state.setControlTapHandler { control -> step { hand.play(control) } }
+        state.setControlTapHandler { control -> turn.withLock { step { hand.play(control) } } }
         // Puts the story back as it began if a stopped run left it pressed, so the clip loops.
         state.setFeedResetHandler {
-            step {
-                hand.hide()
-                hand.settle(2000)
+            turn.withLock {
+                step {
+                    hand.hide()
+                    hand.settle(2000)
+                }
+                if (!press.asBegun) press.reset()
             }
-            if (!press.asBegun) press.reset()
         }
         onDispose {
             state.setControlTapHandler(null)
