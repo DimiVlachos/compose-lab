@@ -616,6 +616,48 @@ class Canvas2DTest {
     }
 
     @Test
+    fun drawUnderPaintsUnderTheTransformAndClipAndLeavesThemAsTheyWere() {
+        val c = Canvas2D.create(20, 20)
+        c.save()
+        c.beginPath()
+        c.rect(0f, 0f, 20f, 10f)
+        c.clip()
+        c.translate(10f, 5f)
+        c.drawUnder { canvas ->
+            // A square at (0, 0) under the transform: (10, 5) on the canvas, cut at y = 10.
+            canvas.translate(-2f, -2f)
+            canvas.drawRect(
+                androidx.compose.ui.geometry.Rect(0f, 0f, 4f, 10f),
+                androidx.compose.ui.graphics.Paint().apply { color = Color.Red },
+            )
+        }
+        // The translate inside the block is gone: a fill at (0, 0) lands at (10, 5) again.
+        c.fillStyle = "#0000ff"
+        c.fillRect(-1f, 3f, 2f, 1f)
+        c.restore()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[9, 6])
+        near(Color.Transparent, px[9, 12])
+        near(Color.Transparent, px[5, 6])
+        near(Color.Blue, px[10, 8])
+    }
+
+    @Test
+    fun aGradientKeepsItsShaderUntilAStopIsAdded() {
+        val c = Canvas2D.create(10, 2)
+        val g = c.createLinearGradient(0f, 0f, 10f, 0f)
+        g.addColorStop(0f, "#000000")
+        g.addColorStop(1f, "#ffffff")
+        val first = g.shader()
+        assertTrue(first === g.shader(), "filled again, the same shader")
+        g.addColorStop(1f, "#ff0000")
+        assertTrue(first !== g.shader(), "a new stop, a new shader")
+        c.fillStyle = g
+        c.fillRect(0f, 0f, 10f, 2f)
+        assertTrue(c.bitmap.toPixelMap()[9, 1].red > .8f)
+    }
+
+    @Test
     fun textWithAShadowCastsItDownAndLeavesPlainTextShadowless() = withMeasurer { m ->
         fun shadowRows(withShadow: Boolean): List<Int> {
             val c = textCanvas(m, 60, 70)

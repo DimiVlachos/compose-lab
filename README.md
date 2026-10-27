@@ -48,6 +48,8 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller) | `paintroller` | `paintroller.accent` | An accent colour picker as five paint trays and a roller: roll a new colour up the settings screen and every accent fill it passes takes the wet paint, then dries |
+| [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress) | `frenchpress` | `frenchpress.summary` | A Summarize button that is a little glass French press: push the plunger and the story's words pour in as grounds, and a three-point summary pours out into a card |
 | [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier) | `photocopier` | `photocopier.duplicate` | A list's Duplicate as a little office copier: the card goes face down on the glass, the light sweeps under the lid, and a warm copy slides out of the slot into the list right under it |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -81,6 +83,8 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller)
+- [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress)
 - [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -861,6 +865,43 @@ StickyNoteList(
 }
 ```
 
+## Paint roller accent (`core/presentation/components/paintroller/`)
+
+A running app's Appearance settings whose accent colours are five little plastic paint trays with a roller resting in one. Press a tray and drag up: the roller dips, comes up off the tray full size above your finger, and paints wherever you roll it. Every button, chip, switch, route line and link it passes over takes the new colour, glossy and wet for a moment, then dries flat; half of Start run can be orange while the other half is still blue. Let go whenever you like and the roller finishes the wall by itself, rolling the strips you missed, then goes back to rest in its new tray, and a snackbar offers Undo. Or just tap a tray: the roller hops over, dips, and paints the screen in two strokes, up the left and down the right. Undo, the old tray or Reset to default rolls the old colour back on.
+
+- **Two coats.** The screen is real Compose UI, composed twice in a `Box` from one `PaintRollerScope` lambda: the base coat in the current accent and, over it, the new coat in the roller's colour, opaque so the old colour never fringes the new text, drawn through a clip of the rectangles the roller has swept. A straight run up, down or sideways grows one rectangle and going back over fresh paint adds none, so the clip `Path` stays small; it is rebuilt only when the paint changes and read in the draw phase, so painting never recomposes.
+- **Drawn as the prototype draws it.** The trays and the roller are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the ribbed ramp and the well of paint that ripples on a dip, the nap cover (baked once from the prototype's seed) that scrolls as it turns, the fuzzy edges, end caps, wire frame and beech handle, its soft shadow, and the faint film over the freshest strokes.
+- **Wet paint.** Each accent fill marked `wetPaint` draws the prototype's sheen over itself, screen-blended: a 172° gloss, the roller's hairline stripes and a stipple of SVG `feTurbulence` fractal noise, ported and baked once. It fades as `(1 − age/2.6 s)²` on one shared clock, each coat on its own, and shines less on the pale night accents.
+- **Its own clock.** The roller's flows (dip, strokes, finishing the wall, going home, Undo waiting for it) are the prototype's async functions as suspend functions on a scheduler inside `PaintRollerState`, run by `step(dt)` in 1/120 s substeps, so tests step them exactly as the screen does. The roller paints from where it actually is, so a fast swipe with few samples still leaves a solid stripe; a coarse 8 dp grid says when the wall is covered. The frame loop sleeps once everything has dried.
+- **Feel and sound.** A tick on each dip, a confirm when the colour takes, a tap as the roller sets down; synthesized dip and set sounds and a loop of wet nap on the wall, as loud as the roller is fast.
+- **Screen readers and keys.** The trays are a group of radio buttons named by colour (arrow keys pick the next or previous colour, Enter or Space this one), the new colour is announced politely, the switches are switches, and Undo and Reset to default are buttons. The new coat is hidden from accessibility.
+- **Reduced motion.** The colour changes at once, with no trip for the roller and no wet shine.
+
+The demo, `paintroller.accent`, is the Appearance screen of an invented running app. Its script presses Sedona, drags the roller up the left, across the top and partway down the right and lets go, so the roller finishes the wall; then it taps Undo and Blue Ridge rolls back on.
+
+```kotlin
+val roller = remember { PaintRollerState() }
+PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabel = "Undo") {
+    // Composed twice; fill with accent, mark wet fills, and give the new coat (isCoat) no input.
+    Button(Modifier.background(accent, shape).wetPaint(0, shape))
+    Column(Modifier.accentSection()) { Trays(names, height = 92.dp) }
+}
+## French press summary (`core/presentation/components/frenchpress/`)
+
+A news story whose Summarize button is a little glass French press in the bottom-right corner. Push its knob down and the story's own words lift off the page, line by line, and pour into the spout, where they swirl as tiny grounds; the plunger pushes back like a rubber band until every word is in. Push past halfway and the empty summary card starts to open; let go and the mesh presses the words into a pile at the bottom, the water above clears to amber, the press tips and three short points pour out of the spout letter by letter into the card. Let go short of halfway and the words fly home. Tap the press and it does the whole thing; tap it again, pull the knob up or tap Full article, and the summary drains back, the plunger rises and every word flies back to its own place.
+
+- **Real text.** The story is laid out with `TextMeasurer`, as the browser wraps it, and each word's box comes from its layout; each word is laid out on its own too, so the page is drawn word by word from those boxes, and a word in flight is drawn from the same glyphs, on the same baseline, so it lifts from and lands on exactly its place. The summary's letters are laid out the same way.
+- **Drawn as the prototype draws it.** The press is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, tipped about its left foot to pour, with the liquid clipped to the glass and its surface level on the screen. The hundreds of words in flight and in the glass are drawn straight onto the canvas from their cached layouts, so they make no garbage frame to frame.
+- **Timing.** The prototype's sequences (press, finish, cancel, reverse) are `suspend` functions on a simulated clock that only the frame advances, so they run the same on every device and in tests.
+- **Feel and sound.** A tick every few words in, a confirm as the mesh lands; synthesized pours, glugs, a glassy tink and the plunger's hiss, which swells with how fast it moves.
+- **Screen readers and keys.** The press is a toggle button, Summarize article or Show full article, pressed with Enter or Space; the card is a region read only while it is open, and what happens is announced politely.
+- **Reduced motion.** The summary is there at once, and the story comes back at once.
+
+The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back.
+
+```kotlin
+val press = remember { FrenchPressState(paragraphs, points) }
+FrenchPressStory(press, paragraphs, points, text, colors, sounds, topBar = { AppBar() }, header = { Headline() })
 ## Photocopier duplicate (`core/presentation/components/photocopier/`)
 
 A household lists app whose Duplicate runs the list through a little putty-colored office copier. Long-press a list (or tap its ⋯) and pick Duplicate: the copier rises from the foot of the screen, the list's own card flies down onto the glass and turns face down, leaving a dashed outline in its place, the lid drops with a thunk, Start lights, and the green bar of light runs under the lid and back, leaking out of its seams. A warm copy, still flecked with toner, slides out of the slot at the back and drops into the list right under the original while the list makes room, and the original flips back up into its place. The copy cools to an ordinary card in a couple of seconds; it is a real new list called "(copy)", and a copy of it is "(copy 2)". While the copier's back edge still peeks out, drag the copy down into the slot and the rollers take it back in, or tap Undo; let go anywhere else and it glides back. Pin to top moves a list to the top.
@@ -1028,7 +1069,11 @@ The key rack's hooks share one board, which suits about four people, each with t
 
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
+The paint roller takes five paints and up to seven wet fills, laid out for a phone held upright: the roller is 56 % of the screen's width, so the wall is two strokes wide, and the screen it paints must fit above the trays without scrolling. The new coat is a second composition of the screen, so its state (the switches here) belongs outside it. Which colour is chosen is not saved, and the layout is not mirrored for right-to-left.
+
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
+
+The French press shows one story: the words that fly are those on the screen, the rest of the article stays still under the fade above the press, and the story doesn't scroll. The summary is fixed text, not generated. The layout is not mirrored for right-to-left.
 
 ## Contributing
 
@@ -1073,6 +1118,8 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The sticky notes are handwritten in the card file's [Caveat](https://github.com/googlefonts/caveat), at weight 600 (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Caveat-OFL.txt`).
+
+The French press's story is set in [PT Serif](https://www.paratype.com/fonts/pt/pt-serif), Copyright 2010 ParaType Ltd., and its small caps in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) Regular and SemiBold (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 
