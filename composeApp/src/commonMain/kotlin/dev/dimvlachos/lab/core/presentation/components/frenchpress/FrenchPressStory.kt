@@ -902,9 +902,14 @@ private fun PressTag(
             if (state.reducedMotion) snap() else tween(200),
             label = "tag",
         )
+    // The label that fades out is the one that was showing: "Full article" doesn't turn into
+    // "Summarize" as the story starts back.
+    // (Read in the same composition that sets it, so it needs no state of its own.)
+    val brewedLabel = remember { booleanArrayOf(false) }
+    if (!busy) brewedLabel[0] = mode == PressMode.Brewed
     state.layoutVersion
     BasicText(
-        (if (mode == PressMode.Brewed) text.full else text.summarize).uppercase(),
+        (if (brewedLabel[0]) text.full else text.summarize).uppercase(),
         Modifier.clearAndSetSemantics {}
             .layout { m, c ->
                 val p = m.measure(c.copy(minWidth = 0, minHeight = 0))
