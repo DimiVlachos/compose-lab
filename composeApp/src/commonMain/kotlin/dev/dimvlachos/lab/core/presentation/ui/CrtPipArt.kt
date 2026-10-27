@@ -4,19 +4,17 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * The cooking-video watch page round the CRT picture-in-picture, as the prototype styles it: warm
- * cream by day and a warm near-black by night, a tomato accent. [chip] is the chip fill, [line] the
- * nav bar's hairline, [toast] the snackbar (inverse colours), [toastInk] its text and [toastAccent]
- * its Undo.
+ * cream by day and a warm near-black by night, a tomato accent (the set's focus ring). [chip] is
+ * the chip fill, [line] the nav bar's hairline, [toast] the snackbar (inverse colours), [toastInk]
+ * its text and [toastAccent] its Undo.
  */
 internal class CrtPipScreenColors(
     val background: Color,
-    val card: Color,
     val ink: Color,
     val muted: Color,
     val line: Color,
     val chip: Color,
     val accent: Color,
-    val accentInk: Color,
     val toast: Color,
     val toastInk: Color,
     val toastAccent: Color,
@@ -42,13 +40,11 @@ internal class CrtPipScreenColors(
         val Light =
             CrtPipScreenColors(
                 background = Color(0xFFFAF7F2),
-                card = Color(0xFFFFFFFF),
                 ink = Color(0xFF1F1D1B),
                 muted = Color(0xFF6F6860),
                 line = Color(0xFFE7E0D6),
                 chip = Color(40, 30, 20, 17),
                 accent = Color(0xFFD2432C),
-                accentInk = Color(0xFFFFFFFF),
                 toast = Color(0xFF2A2623),
                 toastInk = Color(0xFFF6F1EA),
                 toastAccent = Color(0xFFFF9A80),
@@ -56,13 +52,11 @@ internal class CrtPipScreenColors(
         val Dark =
             CrtPipScreenColors(
                 background = Color(0xFF151413),
-                card = Color(0xFF1F1D1B),
                 ink = Color(0xFFEFE9E2),
                 muted = Color(0xFFA59D93),
                 line = Color(0xFF322F2B),
                 chip = Color(255, 255, 255, 19),
                 accent = Color(0xFFFF7A62),
-                accentInk = Color(0xFF2A0B05),
                 toast = Color(0xFFEFE9E2),
                 toastInk = Color(0xFF1F1D1B),
                 toastAccent = Color(0xFFB3341F),
