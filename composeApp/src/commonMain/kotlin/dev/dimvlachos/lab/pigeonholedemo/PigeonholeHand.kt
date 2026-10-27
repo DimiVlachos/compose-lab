@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.presentation.components.pigeonhole.Mail
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.ease
 import dev.dimvlachos.lab.core.presentation.components.pigeonhole.PigeonholeState.Companion.lerp
@@ -28,6 +29,8 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
 
     var down by mutableStateOf(false)
         private set
+
+    private val front = arrayOfNulls<Mail>(1)
 
     /** Where the app bar's rack icon and Back button are. */
     var folders = Offset.Zero
@@ -67,6 +70,9 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
             PigeonholeDemos.Back -> tap(back) { mail.back() }
             // 4. Pull the receipt back out into the inbox, where it was.
             PigeonholeDemos.PullBack -> {
+                // Only the receipt the clip posted; a stack something else was put on top of is
+                // left alone.
+                if (mail.cubVisible(1, front) == 0 || front[0]?.id != "m1") return
                 val sx = mail.slotX(1)
                 val sy = mail.slotY(1, 0f, mail.upTop())
                 move(Offset(sx, sy - 4), 520)
