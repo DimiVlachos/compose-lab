@@ -137,9 +137,9 @@ internal val FrenchPressSounds =
 
 /**
  * What the story's screen says: the summary card's [title], where it is [from], the [full] article
- * button, how many [count] words went in, its closing [note]; the press's
- * [summarize] label and its two names for screen readers, the [summary] region's name, and what is
- * announced for each [PressSaid].
+ * button, how many [count] words went in, its closing [note]; the press's [summarize] label and its
+ * two names for screen readers, the [summary] region's name, and what is announced for each
+ * [PressSaid].
  */
 internal class FrenchPressText(
     val title: String,
