@@ -26,6 +26,7 @@ import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
 import dev.dimvlachos.lab.resources.demo_paperfan
 import dev.dimvlachos.lab.resources.demo_pencilcup
+import dev.dimvlachos.lab.resources.demo_photocopier
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
@@ -77,6 +78,7 @@ class CatalogTest {
                 "stickynote.swipe",
                 "paintroller.accent",
                 "frenchpress.summary",
+                "photocopier.duplicate",
             ),
             Catalog.demos.map { it.id },
         )
@@ -110,6 +112,7 @@ class CatalogTest {
                 Res.string.demo_stickynote,
                 Res.string.demo_paintroller,
                 Res.string.demo_frenchpress,
+                Res.string.demo_photocopier,
             ),
             Catalog.demos.map { it.title },
         )
@@ -193,6 +196,7 @@ class CatalogTest {
                 "stickynote.swipe",
                 "paintroller.accent",
                 "frenchpress.summary",
+                "photocopier.duplicate",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

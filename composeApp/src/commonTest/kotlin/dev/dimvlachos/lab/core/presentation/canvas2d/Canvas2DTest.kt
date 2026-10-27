@@ -656,4 +656,23 @@ class Canvas2DTest {
         c.fillRect(0f, 0f, 10f, 2f)
         assertTrue(c.bitmap.toPixelMap()[9, 1].red > .8f)
     }
+
+    @Test
+    fun textWithAShadowCastsItDownAndLeavesPlainTextShadowless() = withMeasurer { m ->
+        fun shadowRows(withShadow: Boolean): List<Int> {
+            val c = textCanvas(m, 60, 70)
+            c.font = "700 20px MONO"
+            c.fillStyle = "#000000"
+            c.setShadowColor(Color(0f, 0f, 0f, 1f))
+            c.shadowBlur = 0.5f
+            c.shadowOffsetY = 24f
+            if (withShadow) c.fillTextWithShadow("H", 10f, 30f) else c.fillText("H", 10f, 30f)
+            return inkRows(c)
+        }
+        val plain = shadowRows(false)
+        val cast = shadowRows(true)
+        assertTrue(plain.max() <= 31, "fillText draws no shadow: ${plain.max()}")
+        assertTrue(cast.max() in 50..56, "the shadow lands 24px lower: ${cast.max()}")
+        assertTrue(cast.min() == plain.min(), "the text itself stays put")
+    }
 }

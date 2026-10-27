@@ -81,7 +81,18 @@ internal enum class Sound(val file: String) {
     PressTink("press_tink"),
     PressGlug("press_glug"),
     PressLift("press_lift"),
-    PressHiss("press_hiss");
+    PressHiss("press_hiss"),
+    CopierRise("copier_rise"),
+    CopierLidUp("copier_lidup"),
+    CopierThunk("copier_thunk"),
+    CopierSlap("copier_slap"),
+    CopierBeep("copier_beep"),
+    CopierHum("copier_hum"),
+    CopierPaper("copier_paper"),
+    CopierFeed("copier_feed"),
+    CopierLift("copier_lift"),
+    CopierSettle("copier_settle"),
+    CopierTick("copier_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
