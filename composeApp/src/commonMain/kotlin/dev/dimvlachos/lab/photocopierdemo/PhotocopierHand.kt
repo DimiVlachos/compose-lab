@@ -63,8 +63,19 @@ internal class PhotocopierHand(private val copier: PhotocopierState) {
                 move(Offset(w * .84f, h * .2f), 700)
             }
             PhotocopierDemos.FeedBack -> {
-                while (copier.busy || copier.copMode != CopierMode.Peek) wait(100)
+                // With reduced motion no copier comes up to feed it to: the copy just appeared,
+                // and Undo takes it away, so the clip still ends as it began.
+                while (
+                    copier.busy || (copier.copMode != CopierMode.Peek && !copier.reducedMotion)
+                ) {
+                    wait(100)
+                }
                 if (copier.cards.size < 2 || !copier.cards[1].item.isCopy) return
+                if (copier.reducedMotion) {
+                    copier.undo()
+                    hide()
+                    return
+                }
                 // Push the copy back into the slot.
                 val id = copier.cards[1].item.id
                 move(Offset(copier.rectX() + copier.cardW * .5f, copier.rectY(id) + 36), 620)
