@@ -24,12 +24,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -190,6 +193,9 @@ private class Placer(val state: FrenchPressState) {
      */
     var sectionTop = 0f
 
+    /** Where the summary's closing note ends on the screen now, dp (scrolled as it is). */
+    var summaryBottom by mutableFloatStateOf(0f)
+
     private fun at(c: LayoutCoordinates?): Offset? {
         val r = root ?: return null
         if (c == null || !c.isAttached || !r.isAttached) return null
@@ -326,8 +332,13 @@ internal fun FrenchPressStory(
         // for the bullets. Measured in the same frame the width is known, so the story is laid
         // out from the first.
         val widthDp = maxWidth.value
+        // On a short screen (or with big type) the open card's points would reach down into the
+        // press's corner: once that is seen, they are laid out again short of the press, as the
+        // note and the footer are.
+        var narrow by remember(state.layoutVersion) { mutableStateOf<Boolean?>(null) }
+        val cut = if (narrow == true) state.cornerReserve() - 16 else 0f
         val laid =
-            remember(measurer, density, serif, widthDp, paragraphs, points) {
+            remember(measurer, density, serif, widthDp, paragraphs, points, cut) {
                 if (widthDp <= 0f) null
                 else
                     PressText(
@@ -338,7 +349,7 @@ internal fun FrenchPressStory(
                             bodyStyle,
                             pointStyle,
                             bodyWidth = widthDp - 40,
-                            pointWidth = widthDp - 40 - 2 - 28 - 18,
+                            pointWidth = widthDp - 40 - 2 - 28 - 18 - cut,
                             paragraphGap = 10f,
                             pointGap = 6f,
                         )
@@ -356,6 +367,16 @@ internal fun FrenchPressStory(
                             )
                         }
             }
+        val brewed = state.mode == PressMode.Brewed
+        val scroll = rememberScrollState()
+        // Back to the top before the summary drains, so every letter and word flies to and from
+        // where it was laid out.
+        LaunchedEffect(brewed) {
+            if (!brewed && scroll.value != 0) {
+                if (state.reducedMotion) scroll.scrollTo(0)
+                else scroll.animateScrollTo(0, tween(300))
+            }
+        }
         val painter = remember { FrenchPressPainter() }
         val ink =
             remember(colors.ink) {
@@ -381,12 +402,18 @@ internal fun FrenchPressStory(
                             placer.article = it
                             placer.push()
                         }
+                        // The summary scrolls when it doesn't fit, as far as takes its foot clear
+                        // of the press; the story itself never does.
+                        .verticalScroll(scroll, enabled = brewed)
                         .padding(start = 20.dp, end = 20.dp, top = 14.dp),
                 ) {
                     header()
                     if (laid != null) {
-                        SummaryCard(state, laid, text, colors, mono, serif, placer)
+                        SummaryCard(state, laid, text, colors, mono, serif, placer) { bottom ->
+                            if (narrow == null) narrow = bottom > state.clearY
+                        }
                         Body(state, laid, paragraphs, colors, placer)
+                        if (brewed) Spacer(Modifier.height(max(0f, state.height - state.clearY).dp))
                     }
                 }
             }
@@ -401,7 +428,7 @@ internal fun FrenchPressStory(
                 }
             }
             PressButton(state, text, colors.amber)
-            PressTag(state, text, colors, mono)
+            PressTag(state, text, colors, mono, placer)
             Announcer(state, text)
             Canvas(Modifier.fillMaxSize()) { overlay() }
         }
@@ -423,7 +450,9 @@ private fun Body(
     val ink = colors.ink
     Spacer(
         Modifier.fillMaxWidth()
-            .height(laid.bodyHeight.dp)
+            // Nothing while the summary is up (every word is in the press), so the summary
+            // scrolls only as far as it needs.
+            .height(if (brewed) 0.dp else laid.bodyHeight.dp)
             .onGloballyPositioned {
                 placer.body = it
                 placer.push()
@@ -540,9 +569,10 @@ private fun SummaryCard(
     mono: FontFamily,
     serif: FontFamily,
     placer: Placer,
+    pointsBottom: (Float) -> Unit,
 ) {
     val open by remember(state) { derivedStateOf { state.cardOpen > 0f } }
-    var notePad by remember(state.layoutVersion) { mutableStateOf(-1f) }
+    var notePad by remember(state.layoutVersion, laid) { mutableStateOf(-1f) }
     val inner = remember { floatArrayOf(0f) }
     val d = LocalDensity.current.density
     Box(
@@ -554,8 +584,7 @@ private fun SummaryCard(
                 // wraps short of the press instead of under it.
                 if (notePad < 0f && inner[0] > 0f && placer.root != null) {
                     notePad =
-                        if (placer.sectionTop + inner[0] > state.clearY)
-                            max(0f, state.width - state.ox + state.cw / 2 + 14 * state.kp) - 20
+                        if (placer.sectionTop + inner[0] > state.clearY) state.cornerReserve()
                         else 0f
                 }
             }
@@ -620,14 +649,21 @@ private fun SummaryCard(
                         softWrap = false,
                     )
                 }
-                Points(state, laid, colors, placer)
-                Footer(state, text, colors, placer)
+                Points(state, laid, colors, placer, pointsBottom)
+                Footer(state, laid, text, colors, placer)
             }
             BasicText(
                 text.note,
                 // The browser fits a line that overflows its 383 by a hair (its widths are in
                 // 64ths of a px); a dp less margin fits the same words on a line here.
-                Modifier.padding(top = 10.dp, start = 2.dp, end = 1.dp + max(0f, notePad).dp),
+                Modifier.padding(top = 10.dp, start = 2.dp, end = 1.dp + max(0f, notePad).dp)
+                    .onGloballyPositioned {
+                        val root = placer.root
+                        if (root != null && root.isAttached && it.isAttached) {
+                            val px = root.localPositionOf(it, Offset.Zero).y + it.size.height
+                            placer.summaryBottom = px / placer.density
+                        }
+                    },
                 style =
                     TextStyle(
                         textMotion = TextMotion.Animated,
@@ -665,6 +701,7 @@ private fun Points(
     laid: PressText,
     colors: FrenchPressScreenColors,
     placer: Placer,
+    pointsBottom: (Float) -> Unit,
 ) {
     val amber = colors.amber
     val ink = colors.ink
@@ -721,6 +758,11 @@ private fun Points(
             .onGloballyPositioned {
                 placer.summary = it
                 placer.push()
+                val root = placer.root
+                if (root != null && root.isAttached && it.isAttached) {
+                    val px = root.localPositionOf(it, Offset.Zero).y + it.size.height
+                    pointsBottom(px / placer.density)
+                }
             },
     )
 }
@@ -735,6 +777,7 @@ private const val BulletX = 5.5f
 @Composable
 private fun Footer(
     state: FrenchPressState,
+    laid: PressText,
     text: FrenchPressText,
     colors: FrenchPressScreenColors,
     placer: Placer,
@@ -743,7 +786,7 @@ private fun Footer(
     val line = colors.line
     // On a short screen the open card's footer reaches the press's corner: Full article and the
     // count end short of the press (the count wraps if it must) instead of running under it.
-    var footPad by remember(state.layoutVersion) { mutableStateOf(-1f) }
+    var footPad by remember(state.layoutVersion, laid) { mutableStateOf(-1f) }
     val d = LocalDensity.current.density
     Row(
         Modifier.fillMaxWidth()
@@ -756,10 +799,7 @@ private fun Footer(
                 }
                 val bottom = (root.localPositionOf(it, Offset.Zero).y + it.size.height) / d
                 // The card's 1 border and 15 padding are already short of the article's edge.
-                footPad =
-                    if (bottom > state.clearY)
-                        max(0f, state.width - state.ox + state.cw / 2 + 14 * state.kp) - 20 - 16
-                    else 0f
+                footPad = if (bottom > state.clearY) state.cornerReserve() - 16 else 0f
             }
             .padding(top = 3.dp, end = max(0f, footPad).dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -910,12 +950,16 @@ private fun PressTag(
     text: FrenchPressText,
     colors: FrenchPressScreenColors,
     mono: FontFamily,
+    placer: Placer,
 ) {
     val mode = state.mode
     val busy = mode != PressMode.Idle && mode != PressMode.Brewed
+    // On a short screen (or with big type) the open summary can run down beside the press, over
+    // where its label goes: the card's own Full article says it then, so the label stays out.
+    val covered = mode == PressMode.Brewed && placer.summaryBottom > state.tagY - 11
     val alpha by
         animateFloatAsState(
-            if (busy) 0f else 1f,
+            if (busy || covered) 0f else 1f,
             if (state.reducedMotion) snap() else tween(200),
             label = "tag",
         )

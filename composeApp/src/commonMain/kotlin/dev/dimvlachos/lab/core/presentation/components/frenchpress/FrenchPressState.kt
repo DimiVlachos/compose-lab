@@ -286,6 +286,12 @@ internal class FrenchPressState(paragraphs: List<List<String>>, points: List<Str
         frame++
     }
 
+    /**
+     * How far in from the article's right edge (20 in from the screen's) the press's corner
+     * reaches: what text that runs down beside the press is kept short by.
+     */
+    fun cornerReserve() = max(0f, width - ox + cw / 2 + 14 * kp) - 20
+
     fun meshY(p: Float) = lerp(meshTop, meshBot, p)
 
     fun knobY(p: Float) = meshY(p) - rodL
