@@ -433,10 +433,6 @@ internal class PhotocopierState(
     var lastCopy = 0
         private set
 
-    /** While the copier peeks after a duplicate, a drag on a copy feeds it. */
-    var feedable = false
-        private set
-
     private var snackTok = 0
     private var epoch = 0
     private var uid = 0
@@ -829,7 +825,6 @@ internal class PhotocopierState(
         flip(380f) { cards.remove(c) }
         if (!alive()) return
         copMode = CopierMode.Hidden
-        feedable = false
         busy = false
         lastCopy = 0
         hot = 0f
@@ -869,14 +864,12 @@ internal class PhotocopierState(
     private fun startUndoWindow() {
         val t = ++snackTok
         setSnack(true)
-        if (!reducedMotion) feedable = true
         later(5200f) { if (t == snackTok) endUndoWindow() }
     }
 
     private fun endUndoWindow() {
         snackTok++
         setSnack(false)
-        feedable = false
         lastCopy = 0
         if (copMode == CopierMode.Peek) {
             copMode = CopierMode.Hidden
@@ -984,15 +977,33 @@ internal class PhotocopierState(
                 val top = listTop + cardTop(i) - scroll
                 y in top..(top + cardH)
             } ?: return false
-        return onMoreOf(cards[i].item.id, x - rectX(), y - (listTop + cardTop(i) - scroll))
+        return onMoreOf(x - rectX(), y - (listTop + cardTop(i) - scroll))
     }
 
-    /** ([x], [y]) inside card [id] is on its ⋯. */
-    @Suppress("UNUSED_PARAMETER")
-    fun onMoreOf(id: Int, x: Float, y: Float) = x in (cardW - 45)..(cardW - 5) && y in 5f..45f
+    /** ([x], [y]) inside a card is on its ⋯. */
+    fun onMoreOf(x: Float, y: Float) = x in (cardW - 45)..(cardW - 5) && y in 5f..45f
 
-    /** Something on the screen other than the menu or a ⋯ was pressed: the menu closes first. */
-    fun pressElsewhere() = closeMenu()
+    /** A finger or the script is holding a card down. */
+    val pressing: Boolean
+        get() = press != null
+
+    /**
+     * Card [id] took the keyboard's focus: the list scrolls the least it can to show all of it, at
+     * once, as the browser scrolls a focused element into view.
+     */
+    fun reveal(id: Int) {
+        val i = indexOf(id)
+        if (i < 0 || listHeight <= 0f) return
+        val top = cardTop(i)
+        val to =
+            when {
+                top < scroll -> top
+                top + cardH > scroll + listHeight -> top + cardH - listHeight
+                else -> return
+            }
+        scroll = to
+        nudge()
+    }
 
     /**
      * A finger came down on list [id] at ([x], [y]) on the screen. Returns whether the press was
@@ -1250,7 +1261,6 @@ internal class PhotocopierState(
         snack.snap(0f)
         scrim.snap(0f)
         snackTok++
-        feedable = false
         padTok++
         padded = false
         copMode = CopierMode.Hidden

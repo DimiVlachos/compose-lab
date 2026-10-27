@@ -247,8 +247,23 @@ class PhotocopierStateTest {
     fun theListStillScrollsDuringTheUndoWindow() {
         val s = copier(w = 360f, h = 640f)
         s.dup(0)
-        assertTrue(s.feedable)
+        assertTrue(s.canFeed(s.cards[1].item.id))
         assertTrue(s.scrollBy(60f) > 0f)
+    }
+
+    @Test
+    fun aFocusedCardIsScrolledIntoView() {
+        // A list 387 dp tall: the last two lists start below its foot.
+        val s = copier(w = 360f, h = 520f)
+        val last = s.cards.last().item.id
+        s.reveal(last)
+        assertEquals(s.listTop + s.listHeight, s.rectY(last) + s.cardH, "its foot at the list's")
+        val first = s.cards.first().item.id
+        s.reveal(s.cards[4].item.id)
+        assertEquals(s.listTop + s.listHeight, s.rectY(last) + s.cardH, "one in view: no scroll")
+        s.reveal(first)
+        assertEquals(s.listTop + s.cardTop(0) - s.scroll, s.rectY(first))
+        assertEquals(s.cardTop(0), s.scroll, "its top at the list's")
     }
 
     @Test

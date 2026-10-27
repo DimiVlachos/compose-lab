@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
@@ -72,6 +74,11 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
@@ -274,14 +281,17 @@ internal fun PhotocopierList(
     Box(
         modifier
 
-            // Any press outside the menu (and not on a ⋯) closes it first.
+            // Any press outside the menu (and not on a ⋯), of any button, closes it first.
             .pointerInput(state) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false, PointerEventPass.Initial)
-                    val x = down.position.x / density
-                    val y = down.position.y / density
-                    if (state.menuFor != 0 && !state.onMenu(x, y) && !state.onMore(x, y)) {
-                        state.pressElsewhere()
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent(PointerEventPass.Initial)
+                        if (e.type != PointerEventType.Press || state.menuFor == 0) continue
+                        val at =
+                            e.changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: continue
+                        val x = at.position.x / density
+                        val y = at.position.y / density
+                        if (!state.onMenu(x, y) && !state.onMore(x, y)) state.closeMenu()
                     }
                 }
             }
@@ -329,6 +339,9 @@ internal fun PhotocopierList(
                     key(card.item.id) {
                         val focus = remember { FocusRequester() }
                         cardFocus[card.item.id] = focus
+                        DisposableEffect(card.item.id) {
+                            onDispose { cardFocus.remove(card.item.id) }
+                        }
                         CardView(
                             state,
                             card,
@@ -451,6 +464,78 @@ private fun CardView(
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .height(PhotocopierState.CardH.dp)
+            // A right click opens the menu at once, as the browser's context menu does, with no
+            // hold first.
+            .pointerInput(state, id) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val right =
+                            e.type == PointerEventType.Press &&
+                                e.buttons.isSecondaryPressed &&
+                                !e.buttons.isPrimaryPressed &&
+                                e.changes.all { it.type == PointerType.Mouse }
+                        if (right && !state.pressing) state.openMenu(id)
+                    }
+                }
+            }
+            // Outside the card's layer, so a press is read in the list's own dp, neither scaled
+            // with the pressed card nor slid with it.
+            .pointerInput(state, id) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val k = density
+                    // A mouse's other buttons press nothing (Android counts them as a down).
+                    if (down.type == PointerType.Mouse && !currentEvent.buttons.isPrimaryPressed) {
+                        return@awaitEachGesture
+                    }
+                    // The ⋯ takes its own presses.
+                    if (state.onMoreOf(down.position.x / k, down.position.y / k)) {
+                        return@awaitEachGesture
+                    }
+                    fun sx(o: Offset) = state.rectX() + o.x / k
+                    fun sy(o: Offset) = state.rectY(id) + o.y / k
+                    if (!state.cardDown(id, sx(down.position), sy(down.position))) {
+                        return@awaitEachGesture
+                    }
+                    // While the copier peeks a copy is the finger's, not the list's: CSS's
+                    // `touch-action: none` on it. Anything else lets the list scroll.
+                    val feeding = state.canFeed(id)
+                    if (feeding) down.consume()
+                    var at = down.position
+                    var ended = false
+                    try {
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull { it.id == down.id }
+                            if (c == null) {
+                                state.cardCancel()
+                                break
+                            }
+                            at = c.position
+                            if (feeding) c.consume()
+                            if (!c.pressed) {
+                                state.cardUp(sx(at), sy(at))
+                                break
+                            }
+                            state.cardMove(sx(at), sy(at))
+                            if (!feeding) {
+                                // The list took the pointer to scroll: the press ends where it was.
+                                val f = awaitPointerEvent(PointerEventPass.Final)
+                                if (f.changes.any { it.id == down.id && it.isConsumed }) {
+                                    state.cardCancel()
+                                    break
+                                }
+                            }
+                        }
+                        ended = true
+                    } finally {
+                        // A card that leaves mid-press (fed back by Undo) lets go of it.
+                        if (!ended) state.cardCancel()
+                    }
+                }
+            }
+            .onFocusChanged { if (it.hasFocus) state.reveal(id) }
             .graphicsLayer {
                 state.frame
                 val now = state.now
@@ -525,56 +610,6 @@ private fun CardView(
                             true
                         },
                     )
-            }
-            .pointerInput(state, id) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val k = density
-                    // The ⋯ takes its own presses.
-                    if (state.onMoreOf(id, down.position.x / k, down.position.y / k)) {
-                        return@awaitEachGesture
-                    }
-                    fun sx(o: Offset) = state.rectX() + o.x / k
-                    fun sy(o: Offset) = state.rectY(id) + o.y / k
-                    if (!state.cardDown(id, sx(down.position), sy(down.position))) {
-                        return@awaitEachGesture
-                    }
-                    // While the copier peeks a copy is the finger's, not the list's: CSS's
-                    // `touch-action: none` on it. Anything else lets the list scroll.
-                    val feeding = state.canFeed(id)
-                    if (feeding) down.consume()
-                    var at = down.position
-                    var ended = false
-                    try {
-                        while (true) {
-                            val e = awaitPointerEvent()
-                            val c = e.changes.firstOrNull { it.id == down.id }
-                            if (c == null) {
-                                state.cardCancel()
-                                break
-                            }
-                            at = c.position
-                            if (feeding) c.consume()
-                            if (!c.pressed) {
-                                state.cardUp(sx(at), sy(at))
-                                break
-                            }
-                            state.cardMove(sx(at), sy(at))
-                            if (!feeding) {
-                                // The list took the pointer to scroll: the press ends where it was.
-                                val f = awaitPointerEvent(PointerEventPass.Final)
-                                if (f.changes.any { it.id == down.id && it.isConsumed }) {
-                                    state.cardCancel()
-                                    break
-                                }
-                            }
-                        }
-                        ended = true
-                    } finally {
-                        // A card that leaves mid-press (fed back by Undo) lets go of it.
-                        if (!ended) state.cardCancel()
-                    }
-                }
             },
     ) {
         Column(
@@ -723,6 +758,10 @@ private fun MoreButton(
             .pointerInput(state, id) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    // Only the primary button clicks; the card opens the menu on a right click.
+                    if (down.type == PointerType.Mouse && !currentEvent.buttons.isPrimaryPressed) {
+                        return@awaitEachGesture
+                    }
                     var tap = false
                     while (true) {
                         val e = awaitPointerEvent()
@@ -992,7 +1031,7 @@ private fun MenuItem(
                         runCatching { other.requestFocus() }
                         true
                     }
-                    Key.Escape,
+                    // Escape is the screen's, which closes the menu before it gets here.
                     Key.Tab -> {
                         onClose()
                         true
