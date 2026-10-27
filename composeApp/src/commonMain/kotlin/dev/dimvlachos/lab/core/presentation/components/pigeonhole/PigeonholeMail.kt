@@ -680,7 +680,17 @@ private fun MailList(
                     rowFocus[m.id] = requester
                     onDispose { if (rowFocus[m.id] === requester) rowFocus.remove(m.id) }
                 }
-                MailRow(state, m, state.pressed == m.id, text, colors, requester)
+                // The width comes from here, which recomposes with the layout; a row skips.
+                MailRow(
+                    state,
+                    m,
+                    state.rowW,
+                    state.isHidden(m.id),
+                    state.pressed == m.id,
+                    text,
+                    colors,
+                    requester,
+                )
             }
         }
         if (rows.isEmpty()) {
@@ -701,12 +711,13 @@ private fun MailList(
 private fun MailRow(
     state: PigeonholeState,
     m: Mail,
+    rowW: Float,
+    hidden: Boolean,
     pressed: Boolean,
     text: PigeonholeText,
     colors: PigeonholeScreenColors,
     requester: FocusRequester,
 ) {
-    val hidden = state.isHidden(m.id)
     val bg by
         animateColorAsState(
             if (pressed) lerp(colors.card, colors.ink, .12f) else colors.card,
@@ -727,7 +738,7 @@ private fun MailRow(
                 state.frame
                 alpha = if (state.isHidden(m.id)) 0f else state.rowAlpha()
             }
-            .size(state.rowW.dp, RowH.dp)
+            .size(rowW.dp, RowH.dp)
             .testTag("row:${m.id}")
             .drawBehind {
                 if (focused) {
