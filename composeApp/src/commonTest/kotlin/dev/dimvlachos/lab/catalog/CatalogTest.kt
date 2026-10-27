@@ -9,6 +9,7 @@ import dev.dimvlachos.lab.resources.demo_birdcage
 import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
+import dev.dimvlachos.lab.resources.demo_crtpip
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
@@ -73,6 +74,7 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "crtpip.minimize",
             ),
             Catalog.demos.map { it.id },
         )
@@ -104,6 +106,7 @@ class CatalogTest {
                 Res.string.demo_keyhook,
                 Res.string.demo_paperfan,
                 Res.string.demo_stickynote,
+                Res.string.demo_crtpip,
             ),
             Catalog.demos.map { it.title },
         )
@@ -185,6 +188,7 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "crtpip.minimize",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

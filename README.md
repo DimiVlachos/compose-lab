@@ -48,6 +48,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip) | `crtpip` | `crtpip.minimize` | A video's mini player as an old TV: swipe the video down and it switches off into a glowing dot that flies to the corner, where a little rabbit-ear set warms up with the show still playing |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -80,6 +81,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -857,6 +859,34 @@ StickyNoteList(
 ) {
     AppBar()
 }
+```
+
+## CRT picture-in-picture (`core/presentation/components/crtpip/`)
+
+A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe the video down and, as you drag, the picture already starts to squash and brighten under your finger, like a set losing its sweep. Let go past a short distance, or flick, and the TV switches off: the picture collapses to a bright line, the line pulls into a glowing dot, and the dot flies on a curve to the bottom corner. A little walnut set with rabbit ears pops up there, the dot lands on its glass and it warms up, a line first and then the frame opening with a crackle of static, the show still playing, cropped to its 4:3 tube. The space the player used closes as the dot flies, so Up next and the comments slide up into it and scroll under the set. Drag the set anywhere: let go and it springs into the nearest corner, clear of the top bar and the nav bar, and a toss carries it to the corner it was heading for. Flick it off a side edge and the show stops: it switches off into its dot, the dot glows a moment and fades like a set at night, and a toast offers Undo, which brings it back to that corner warming up. Tap the set and it switches off in turn and the dot flies back up into the full player.
+
+- **Drawn as the prototype draws it.** The show (the tiled kitchen wall, the jars, the butcher-block counter, the gingham towel, the enamel bowl and the skillet, with its butter melting, the honey drizzle and the steam on a slow camera drift) and the set are ported call by call from their HTML prototype onto the shared `canvas2d` adapter, at full density; the picture is the show itself drawn under the squeeze's scale, not a scaled bitmap. Gradients are built once per size.
+- **One piece.** The set pops in and collapses into its own screen on a graphics layer with an offscreen compositing strategy, so as it fades it fades whole and never shows the page through its glass and wood.
+- **Timing.** Every change is a timeline on the component's own clock (squeeze, line, flight, warm-up, open), and the slot's height comes from the same clock, so the page and the dot never drift apart.
+- **The corner.** The set is moved freely sideways and rubber-banded past the top and bottom corners; on release its position is projected ahead with the fling velocity and a damped spring (ζ .72) carries it to the nearest of four corners. A finger that rests before lifting doesn't fling.
+- **Feel and sound.** A threshold tick as a swipe commits, a tick as the set lands in a corner, a reject when it is flicked off and a confirm on Undo; synthesized switch-off thumps with the flyback whine, a swish for the flight and a warm-up crackle and hum.
+- **Screen readers and keys.** The player is labelled with how to shrink it and the chevron is a button; the set is a button, "Expand video", with a Stop playback action, Enter or Space to expand and Delete to stop; Undo is a button, and each change is announced. Keyboard focus follows the video from the chevron to the set, from the set back to the player, and to Undo on a stop.
+- **Reduced motion.** The player and the set swap at once, with no squeeze or flight.
+
+The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, then taps it back into the full player.
+
+```kotlin
+val pip = remember { CrtPipState() }
+CrtPictureInPicture(
+    pip,
+    labels,
+    colors,
+    dark,
+    sounds,
+    appBar = { AppBar() },
+    page = { WatchPage() },
+    navBar = { NavBar() },
+)
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)
