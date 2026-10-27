@@ -85,6 +85,8 @@ import dev.dimvlachos.lab.resources.photocopier_search
 import dev.dimvlachos.lab.resources.photocopier_title
 import dev.dimvlachos.lab.resources.photocopier_undo
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -150,10 +152,13 @@ internal fun PhotocopierDemo(
     val colors = if (dark) PhotocopierScreenColors.Dark else PhotocopierScreenColors.Light
     val sounds = rememberSoundPlayer(PhotocopierSounds)
     val hand = remember(copier) { PhotocopierHand(copier) }
+    // The script's steps take turns, as the prototype awaits each: on a slow device a step that
+    // runs late holds the next back rather than steering the fingertip at the same time.
+    val turn = remember { Mutex() }
     DisposableEffect(state, hand) {
         suspend fun step(block: suspend () -> Unit) {
             try {
-                block()
+                turn.withLock { block() }
             } catch (e: CancellationException) {
                 hand.stop()
                 throw e
@@ -162,8 +167,10 @@ internal fun PhotocopierDemo(
         state.setControlTapHandler { control -> step { hand.play(control) } }
         // Puts the six lists back as they began if a stopped run left a copy, so the clip loops.
         state.setFeedResetHandler {
-            step { hand.hide() }
-            if (!copier.asBegun) copier.reset()
+            step {
+                hand.hide()
+                if (!copier.asBegun) copier.reset()
+            }
         }
         onDispose {
             state.setControlTapHandler(null)
