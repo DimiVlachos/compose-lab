@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TileMode
@@ -798,6 +799,57 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
             canvas.translate(x + dx, y + dy)
             if (k != 1f) canvas.scale(1f / k, 1f / k)
             l.multiParagraph.paint(canvas, ink)
+        }
+    }
+
+    /**
+     * Not the canvas's own: [fillText] with the current shadow under it, as the browser draws a
+     * text's shadow (a copy in [shadowColor], blurred by [shadowBlur] and moved by the offsets, all
+     * in the canvas's pixels). [fillText] itself stays shadowless, as the painters using it were
+     * tuned that way.
+     */
+    fun fillTextWithShadow(text: String, x: Float, y: Float) {
+        val shade = state.shadowColor
+        if (
+            shade.alpha <= 0f ||
+                (state.shadowBlur <= 0f && state.shadowOffsetX == 0f && state.shadowOffsetY == 0f)
+        ) {
+            return fillText(text, x, y)
+        }
+        val l = layout(text)
+        val k = textResolution
+        val width = l.multiParagraph.getLineWidth(0) / k
+        val dx =
+            when (textAlign) {
+                "right",
+                "end" -> -width
+                "center" -> -width / 2f
+                else -> 0f
+            }
+        val dy =
+            when (textBaseline) {
+                "middle" -> -l.size.height / 2f / k
+                "top" -> 0f
+                else -> -l.firstBaseline / k
+            }
+        val style = state.fillStyle
+        val c = if (style is Color) style else cssColor(style.toString())
+        val ink = c.copy(alpha = c.alpha * state.globalAlpha)
+        // The shadow is given in the canvas's pixels and the text drawn under the transform (and
+        // the text's own resolution), so both are taken back into the text's units. Skia's blur
+        // radius r is a sigma of .57735·r + .5; the browser's blur b is a sigma of b / 2.
+        val toText = scaleOf() * k
+        val sigma = state.shadowBlur / 2f * toText
+        val shadow =
+            Shadow(
+                shade.copy(alpha = shade.alpha * state.globalAlpha),
+                Offset(state.shadowOffsetX * toText, state.shadowOffsetY * toText),
+                ((sigma - .5f) / .57735f).coerceAtLeast(0f),
+            )
+        transformed {
+            canvas.translate(x + dx, y + dy)
+            if (k != 1f) canvas.scale(1f / k, 1f / k)
+            l.multiParagraph.paint(canvas, ink, shadow)
         }
     }
 
