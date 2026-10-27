@@ -178,6 +178,22 @@ internal class PigeonholeState(
 
     fun messages(folder: String): List<Mail> = box[folder].orEmpty()
 
+    /** Message [id], in whichever folder it is or in the air between two, or null. */
+    fun mail(id: String): Mail? {
+        for (ms in box.values) for (m in ms) if (m.id == id) return m
+        for (l in letters) if (l.mail.id == id) return l.mail
+        return carry?.letter?.mail?.takeIf { it.id == id }
+    }
+
+    // Each message's place among them all as they began, which never changes.
+    private val ranks = start.values.flatten().withIndex().associate { (i, m) -> m.id to i }
+
+    /** Message [id]'s fixed place among all the messages. */
+    fun rank(id: String) = ranks[id] ?: Int.MAX_VALUE
+
+    /** Every message's id, in every folder. */
+    fun mailIds(): List<String> = box.values.flatMap { ms -> ms.map { it.id } }
+
     fun isHidden(id: String) = id in hidden
 
     fun cubIndex(id: String) = cubbies.indexOfFirst { it.id == id }

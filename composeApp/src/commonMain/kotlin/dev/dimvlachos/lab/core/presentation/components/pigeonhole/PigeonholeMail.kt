@@ -28,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -69,10 +71,19 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.SemanticsModifierNode
+import androidx.compose.ui.node.invalidateSemantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -80,7 +91,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.ScrollAxisRange
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -99,6 +110,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -188,22 +200,14 @@ internal fun PigeonholeMail(
 ) {
     val haptics = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var said by remember { mutableStateOf<Pair<Int, PigeonholeSay>?>(null) }
     val rowFocus = remember { mutableMapOf<String, FocusRequester>() }
     val cubFocus = remember { List(6) { FocusRequester() } }
     val foldersFocus = remember { FocusRequester() }
-    var focusTo by remember { mutableStateOf<PigeonholeFocus?>(null) }
-    // The system Back as the screen's own: a letter carried by keys goes back, the rack goes down,
-    // an open folder closes; only then does Back leave the screen.
-    val backable by remember(state) { derivedStateOf { state.frame.let { state.backable } } }
-    NavigationBackHandler(
-        state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = backable,
-        onBackCompleted = {
-            state.releaseScripted()
-            state.systemBack()
-        },
-    )
+    // Held in boxes the screen itself never reads, so an announcement, a focus request or the rack
+    // going up recomposes only the small scope that reads it, not the whole screen.
+    val said = remember { mutableStateOf<Pair<Int, PigeonholeSay>?>(null) }
+    val focusTo = remember { mutableStateOf<PigeonholeFocus?>(null) }
+    SystemBack(state)
     LaunchedEffect(state, sounds, haptics) {
         val onSound: (PigeonholeSound, Float) -> Unit = { kind, v ->
             when (kind) {
@@ -229,10 +233,10 @@ internal fun PigeonholeMail(
             }
         }
         // Numbered, so the same words said twice are announced twice.
-        val onSay: (PigeonholeSay) -> Unit = { said = (said?.first ?: 0) + 1 to it }
+        val onSay: (PigeonholeSay) -> Unit = { said.value = (said.value?.first ?: 0) + 1 to it }
         // Asked for now, given once what it goes to is focusable: the rack's cubbies only are
         // after it has come up, as the prototype's 30 ms wait.
-        val onFocus: (PigeonholeFocus) -> Unit = { focusTo = it }
+        val onFocus: (PigeonholeFocus) -> Unit = { focusTo.value = it }
         state.onSound = onSound
         state.onSay = onSay
         state.onFocus = onFocus
@@ -244,19 +248,7 @@ internal fun PigeonholeMail(
             if (state.onFocus === onFocus) state.onFocus = null
         }
     }
-    LaunchedEffect(focusTo) {
-        val to = focusTo ?: return@LaunchedEffect
-        withFrameNanos {}
-        withFrameNanos {}
-        runCatching {
-            when (to) {
-                is PigeonholeFocus.Cub -> cubFocus[to.index].requestFocus()
-                is PigeonholeFocus.Row -> rowFocus[to.id]?.requestFocus()
-                PigeonholeFocus.Folders -> foldersFocus.requestFocus()
-            }
-        }
-        focusTo = null
-    }
+    FocusMover(focusTo, cubFocus, rowFocus, foldersFocus)
     LaunchedEffect(state, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = 0L
@@ -289,6 +281,23 @@ internal fun PigeonholeMail(
     val measurer = rememberTextMeasurer(cacheSize = 64)
     // Made again when the pen's face loads, so no letter keeps a fallback face baked in.
     val painter = remember(density, measurer, fonts) { PigeonholePainter(density, measurer, fonts) }
+    // While nothing moves, one letter or plate a frame is baked ahead, so the rack's first rise
+    // doesn't bake every cubby's stack in the one frame it comes up in.
+    LaunchedEffect(painter, inks, state) {
+        while (true) {
+            // Waits without asking for frames, so a screen at rest stays at rest.
+            snapshotFlow { state.frame }.first { state.idle }
+            // One thing a frame: a letter takes a few milliseconds to bake.
+            val left = withFrameNanos {
+                !state.idle || painter.warm(state, inks) { true }
+            }
+            if (!left) {
+                // Baked: until a list change gives a cubby a new count, or the layout a new size.
+                val seen = state.listVersion
+                snapshotFlow { state.listVersion }.first { it != seen }
+            }
+        }
+    }
 
     var screen by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var boxW by remember { mutableFloatStateOf(0f) }
@@ -365,20 +374,67 @@ internal fun PigeonholeMail(
         Canvas(Modifier.fillMaxSize()) { paint(rack = true) }
         RackUi(state, text, cubFocus, { screen })
         Canvas(Modifier.fillMaxSize()) { paint(rack = false) }
-        val announcement = said?.let { announce(it.second, text) }.orEmpty()
-        // A node of its own per announcement, so the same words said twice are heard twice.
-        key(said?.first) {
-            Box(
-                Modifier.size(1.dp).semantics {
-                    liveRegion = LiveRegionMode.Polite
-                    if (announcement.isNotEmpty()) contentDescription = announcement
-                },
-            )
-        }
+        Announcement(said, text)
     }
 }
 
 private fun centerOf(c: LayoutCoordinates) = Offset(c.size.width / 2f, c.size.height / 2f)
+
+// The system Back as the screen's own: a letter carried by keys goes back, the rack goes down, an
+// open folder closes; only then does Back leave the screen.
+@Composable
+private fun SystemBack(state: PigeonholeState) {
+    val backable by remember(state) { derivedStateOf { state.frame.let { state.backable } } }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = backable,
+        onBackCompleted = {
+            state.releaseScripted()
+            state.systemBack()
+        },
+    )
+}
+
+// Gives the focus asked for, once what it goes to is focusable: the rack's cubbies only are after
+// it has come up, as the prototype's 30 ms wait.
+@Composable
+private fun FocusMover(
+    focusTo: MutableState<PigeonholeFocus?>,
+    cubFocus: List<FocusRequester>,
+    rowFocus: Map<String, FocusRequester>,
+    foldersFocus: FocusRequester,
+) {
+    val to = focusTo.value
+    LaunchedEffect(to) {
+        if (to == null) return@LaunchedEffect
+        withFrameNanos {}
+        withFrameNanos {}
+        runCatching {
+            when (to) {
+                is PigeonholeFocus.Cub -> cubFocus[to.index].requestFocus()
+                is PigeonholeFocus.Row -> rowFocus[to.id]?.requestFocus()
+                PigeonholeFocus.Folders -> foldersFocus.requestFocus()
+            }
+        }
+        focusTo.value = null
+    }
+}
+
+// What the screen says, for a screen reader: a node of its own per announcement, so the same words
+// said twice are heard twice.
+@Composable
+private fun Announcement(said: State<Pair<Int, PigeonholeSay>?>, text: PigeonholeText) {
+    val now = said.value
+    val announcement = now?.let { announce(it.second, text) }.orEmpty()
+    key(now?.first) {
+        Box(
+            Modifier.size(1.dp).semantics {
+                liveRegion = LiveRegionMode.Polite
+                if (announcement.isNotEmpty()) contentDescription = announcement
+            },
+        )
+    }
+}
 
 @Composable
 private fun announce(s: PigeonholeSay, text: PigeonholeText): String =
@@ -405,11 +461,19 @@ private fun AppBar(
     onPlacedFolders: (LayoutCoordinates) -> Unit,
     onPlacedBack: (LayoutCoordinates) -> Unit,
 ) {
-    state.listVersion
-    val rackUp = state.rackUp
-    val inFolder = state.view != Inbox
-    val n = state.messages(state.view).size
-    val title = if (inFolder) state.cubbies[state.cubIndex(state.view)].name else text.inbox
+    // Read through a derived state, so the many list changes that leave the folder and its count
+    // as they were don't recompose the bar.
+    val shown =
+        remember(state) {
+                derivedStateOf {
+                    state.listVersion
+                    state.view to state.messages(state.view).size
+                }
+            }
+            .value
+    val inFolder = shown.first != Inbox
+    val n = shown.second
+    val title = if (inFolder) state.cubbies[state.cubIndex(shown.first)].name else text.inbox
     val msgs = text.messages(n)
     Row(
         // In a folder, Back sits 12 into the bar's 18 margin and 6 into the title's 8 gap.
@@ -476,53 +540,66 @@ private fun AppBar(
                 maxLines = 1,
             )
         }
-        IconButton(
-            text.folders,
-            colors,
-            Modifier.padding(start = 8.dp)
-                .focusRequester(foldersFocus)
-                .onPlaced(onPlacedFolders)
-                .testTag("folders")
-                .semantics {
-                    if (rackUp)
-                        collapse {
-                            state.toggleRack()
-                            true
-                        }
-                    else
-                        expand {
-                            state.toggleRack()
-                            true
-                        }
-                },
-            onClick = {
-                state.releaseScripted()
-                state.toggleRack()
+        FoldersButton(state, text, colors, foldersFocus, onPlacedFolders)
+    }
+}
+
+/** The bar's rack icon: raises the rack, or puts it down. Its own scope reads the rack being up. */
+@Composable
+private fun FoldersButton(
+    state: PigeonholeState,
+    text: PigeonholeText,
+    colors: PigeonholeScreenColors,
+    foldersFocus: FocusRequester,
+    onPlacedFolders: (LayoutCoordinates) -> Unit,
+) {
+    val rackUp = state.rackUp
+    IconButton(
+        text.folders,
+        colors,
+        Modifier.padding(start = 8.dp)
+            .focusRequester(foldersFocus)
+            .onPlaced(onPlacedFolders)
+            .testTag("folders")
+            .semantics {
+                if (rackUp)
+                    collapse {
+                        state.toggleRack()
+                        true
+                    }
+                else
+                    expand {
+                        state.toggleRack()
+                        true
+                    }
             },
-        ) {
-            Canvas(Modifier.size(24.dp)) {
-                icon { s ->
-                    val w = 1.8f * s
-                    drawRoundRect(
-                        colors.ink,
-                        Offset(2.5f * s, 4 * s),
-                        Size(19 * s, 16 * s),
-                        CornerRadius(2 * s),
-                        style = Stroke(w),
-                    )
-                    drawLine(colors.ink, Offset(2.5f * s, 12 * s), Offset(21.5f * s, 12 * s), w)
-                    drawLine(colors.ink, Offset(8.8f * s, 4 * s), Offset(8.8f * s, 20 * s), w)
-                    drawLine(colors.ink, Offset(15.2f * s, 4 * s), Offset(15.2f * s, 20 * s), w)
-                    for (x in floatArrayOf(4.6f, 11f, 17.3f)) {
-                        for (y in floatArrayOf(9.5f, 17.5f)) {
-                            drawLine(
-                                colors.ink,
-                                Offset(x * s, y * s),
-                                Offset((x + 2.2f) * s, y * s),
-                                1.6f * s,
-                                StrokeCap.Round,
-                            )
-                        }
+        onClick = {
+            state.releaseScripted()
+            state.toggleRack()
+        },
+    ) {
+        Canvas(Modifier.size(24.dp)) {
+            icon { s ->
+                val w = 1.8f * s
+                drawRoundRect(
+                    colors.ink,
+                    Offset(2.5f * s, 4 * s),
+                    Size(19 * s, 16 * s),
+                    CornerRadius(2 * s),
+                    style = Stroke(w),
+                )
+                drawLine(colors.ink, Offset(2.5f * s, 12 * s), Offset(21.5f * s, 12 * s), w)
+                drawLine(colors.ink, Offset(8.8f * s, 4 * s), Offset(8.8f * s, 20 * s), w)
+                drawLine(colors.ink, Offset(15.2f * s, 4 * s), Offset(15.2f * s, 20 * s), w)
+                for (x in floatArrayOf(4.6f, 11f, 17.3f)) {
+                    for (y in floatArrayOf(9.5f, 17.5f)) {
+                        drawLine(
+                            colors.ink,
+                            Offset(x * s, y * s),
+                            Offset((x + 2.2f) * s, y * s),
+                            1.6f * s,
+                            StrokeCap.Round,
+                        )
                     }
                 }
             }
@@ -609,148 +686,236 @@ private fun MailList(
     val fling = ScrollableDefaults.flingBehavior()
     var flinging by remember { mutableStateOf<Job?>(null) }
     var here by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    state.listVersion
-    Box(
-        modifier
-            .clipToBounds()
-            .onPlaced { here = it }
-            .graphicsLayer {
-                state.frame
-                alpha = state.listAlpha()
-            }
-            .semantics {
-                isTraversalGroup = true
-                contentDescription = text.list
-                verticalScrollAxisRange =
-                    ScrollAxisRange(value = { state.scrollTop }, maxValue = { state.maxScroll() })
-                scrollBy { _, y -> state.scrollBy(y / density) != 0f }
-            }
-            // A mouse wheel scrolls the list as it would any other.
-            .pointerInput(state, density) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val e = awaitPointerEvent()
-                        if (e.type != PointerEventType.Scroll) continue
-                        val c = e.changes.firstOrNull() ?: continue
-                        flinging?.cancel()
-                        scroll.dispatchRawDelta(c.scrollDelta.y * WheelStep.dp.toPx())
-                        c.consume()
-                    }
+    // The rows made ahead, one a frame once the screen is still, and kept: in time, every
+    // message's.
+    val kept = remember(state) { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(state) {
+        // The listed rows are made already: kept as they are, so a folder change doesn't drop them.
+        fun keepListed() {
+            val listed = state.rows.mapTo(HashSet()) { it.id }
+            if (!kept.value.containsAll(listed)) kept.value += listed
+        }
+        while (true) {
+            // Only once the screen is still, as a row takes a while to lay out; waiting without
+            // asking for frames.
+            snapshotFlow { state.frame }
+                .first {
+                    keepListed()
+                    state.settled
                 }
+            val left = withFrameNanos {
+                if (!state.settled) return@withFrameNanos true
+                val next =
+                    state.mailIds().firstOrNull { it !in kept.value } ?: return@withFrameNanos false
+                kept.value += next
+                true
             }
-            .pointerInput(state, density) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    flinging?.cancel()
-                    state.releaseScripted()
-                    val s = screen() ?: return@awaitEachGesture
-                    val me = here ?: return@awaitEachGesture
-                    fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
-                    val p0 = at(down)
-                    // The rack covers the list: a press on its wood isn't the list's.
-                    if (state.onRack(p0.y)) return@awaitEachGesture
-                    val owner = down.id
-                    // Off a row (a gap, the margins, the foot) the drag can only scroll the list.
-                    val id = state.rowAt(p0.x, p0.y)
-                    val free = id == null
-                    if (id != null) {
-                        val touch =
-                            down.type == PointerType.Touch || down.type == PointerType.Stylus
-                        state.rowDown(
-                            id,
-                            p0.x,
-                            p0.y,
-                            touch,
-                            down.uptimeMillis.toDouble(),
-                            owner = owner,
-                        )
-                    }
-                    val tracker = VelocityTracker()
-                    var last = down.position
-                    var freeScrolling = false
-                    fun scrolling() = if (free) freeScrolling else state.scrollingFor(owner)
-                    var ended = false
-                    try {
-                        while (true) {
-                            val e = awaitPointerEvent()
-                            val c = e.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!c.pressed) {
-                                ended = true
-                                if (scrolling()) {
-                                    val v = tracker.calculateVelocity().y
-                                    flinging = scope.launch {
-                                        scroll.scroll { with(fling) { performFling(-v) } }
-                                    }
-                                }
-                                if (!free) {
-                                    val p = at(c)
-                                    state.ptrUp(p.x, p.y, owner = owner)
-                                }
-                                break
-                            }
-                            if (c.positionChanged()) {
-                                if (
-                                    free &&
-                                        !freeScrolling &&
-                                        (c.position - down.position).getDistance() >
-                                            viewConfiguration.touchSlop
-                                ) {
-                                    freeScrolling = true
-                                    last = c.position
-                                }
-                                if (scrolling()) {
-                                    tracker.addPosition(c.uptimeMillis, c.position)
-                                    scroll.dispatchRawDelta(-(c.position.y - last.y))
-                                } else if (!free) {
-                                    val p = at(c)
-                                    state.ptrMove(
-                                        p.x,
-                                        p.y,
-                                        c.uptimeMillis.toDouble(),
-                                        owner = owner,
-                                    )
-                                    if (scrolling()) tracker.addPosition(c.uptimeMillis, c.position)
-                                }
-                                last = c.position
-                                c.consume()
-                            }
-                        }
-                    } finally {
-                        if (!ended && !free && !state.scriptedTouch) state.ptrCancel(owner)
-                    }
-                }
-            },
-    ) {
-        val rows = state.rows.toList()
-        for (m in rows) {
-            key(m.id) {
-                val requester = remember { FocusRequester() }
-                DisposableEffect(m.id) {
-                    rowFocus[m.id] = requester
-                    onDispose { if (rowFocus[m.id] === requester) rowFocus.remove(m.id) }
-                }
-                // The width comes from here, which recomposes with the layout; a row skips.
-                MailRow(
-                    state,
-                    m,
-                    state.rowW,
-                    state.isHidden(m.id),
-                    state.pressed == m.id,
-                    text,
-                    colors,
-                    requester,
-                )
+            if (!left) {
+                val seen = state.listVersion
+                snapshotFlow { state.listVersion }.first { it != seen }
             }
         }
-        if (rows.isEmpty()) {
-            Text(
-                text.empty,
-                Modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 40.dp),
-                color = colors.muted,
-                fontSize = 14.sp,
-                lineHeight = 1.55.em,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
+    }
+    state.listVersion
+    val policy = remember(state) { RowsPolicy(state) }
+    Layout(
+        measurePolicy = policy,
+        modifier =
+            modifier
+                .clipToBounds()
+                .onPlaced { here = it }
+                .graphicsLayer {
+                    state.frame
+                    alpha = state.listAlpha()
+                }
+                .semantics {
+                    isTraversalGroup = true
+                    contentDescription = text.list
+                    verticalScrollAxisRange =
+                        ScrollAxisRange(
+                            value = { state.scrollTop },
+                            maxValue = { state.maxScroll() },
+                        )
+                    scrollBy { _, y -> state.scrollBy(y / density) != 0f }
+                }
+                // A mouse wheel scrolls the list as it would any other.
+                .pointerInput(state, density) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            if (e.type != PointerEventType.Scroll) continue
+                            val c = e.changes.firstOrNull() ?: continue
+                            flinging?.cancel()
+                            scroll.dispatchRawDelta(c.scrollDelta.y * WheelStep.dp.toPx())
+                            c.consume()
+                        }
+                    }
+                }
+                .pointerInput(state, density) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        flinging?.cancel()
+                        state.releaseScripted()
+                        val s = screen() ?: return@awaitEachGesture
+                        val me = here ?: return@awaitEachGesture
+                        fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
+                        val p0 = at(down)
+                        // The rack covers the list: a press on its wood isn't the list's.
+                        if (state.onRack(p0.y)) return@awaitEachGesture
+                        val owner = down.id
+                        // Off a row (a gap, the margins, the foot) the drag can only scroll the
+                        // list.
+                        val id = state.rowAt(p0.x, p0.y)
+                        val free = id == null
+                        if (id != null) {
+                            val touch =
+                                down.type == PointerType.Touch || down.type == PointerType.Stylus
+                            state.rowDown(
+                                id,
+                                p0.x,
+                                p0.y,
+                                touch,
+                                down.uptimeMillis.toDouble(),
+                                owner = owner,
+                            )
+                        }
+                        val tracker = VelocityTracker()
+                        var last = down.position
+                        var freeScrolling = false
+                        fun scrolling() = if (free) freeScrolling else state.scrollingFor(owner)
+                        var ended = false
+                        try {
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                val c = e.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!c.pressed) {
+                                    ended = true
+                                    if (scrolling()) {
+                                        val v = tracker.calculateVelocity().y
+                                        flinging = scope.launch {
+                                            scroll.scroll { with(fling) { performFling(-v) } }
+                                        }
+                                    }
+                                    if (!free) {
+                                        val p = at(c)
+                                        state.ptrUp(p.x, p.y, owner = owner)
+                                    }
+                                    break
+                                }
+                                if (c.positionChanged()) {
+                                    if (
+                                        free &&
+                                            !freeScrolling &&
+                                            (c.position - down.position).getDistance() >
+                                                viewConfiguration.touchSlop
+                                    ) {
+                                        freeScrolling = true
+                                        last = c.position
+                                    }
+                                    if (scrolling()) {
+                                        tracker.addPosition(c.uptimeMillis, c.position)
+                                        scroll.dispatchRawDelta(-(c.position.y - last.y))
+                                    } else if (!free) {
+                                        val p = at(c)
+                                        state.ptrMove(
+                                            p.x,
+                                            p.y,
+                                            c.uptimeMillis.toDouble(),
+                                            owner = owner,
+                                        )
+                                        if (scrolling())
+                                            tracker.addPosition(c.uptimeMillis, c.position)
+                                    }
+                                    last = c.position
+                                    c.consume()
+                                }
+                            }
+                        } finally {
+                            if (!ended && !free && !state.scriptedTouch) state.ptrCancel(owner)
+                        }
+                    }
+                },
+        content = {
+            val rows = state.rows.toList()
+            // The listed rows and the rows kept made but not listed now, so opening a folder or
+            // coming back to the inbox shows rows already laid out instead of making them. They
+            // are composed in a fixed order, so a list change never moves one in the composition
+            // (which costs more than a frame has); [RowsPolicy] places them in the list's order.
+            val listed = rows.mapTo(HashSet()) { it.id }
+            // Looked up first: a loop that skips an item inside it wraps each pass in a group of
+            // its own, which would match the rows by place instead of by key.
+            val made = (listed + kept.value).sortedBy(state::rank).mapNotNull(state::mail)
+            for (m in made) {
+                key(m.id) {
+                    val requester = remember { FocusRequester() }
+                    DisposableEffect(m.id) {
+                        rowFocus[m.id] = requester
+                        onDispose {
+                            if (rowFocus[m.id] === requester) rowFocus.remove(m.id)
+                        }
+                    }
+                    // The width comes from here, which recomposes with the layout; a row skips.
+                    MailRow(
+                        state,
+                        m,
+                        state.rowW,
+                        m.id !in listed || state.isHidden(m.id),
+                        state.pressed == m.id,
+                        text,
+                        colors,
+                        requester,
+                        Modifier.layoutId(m.id),
+                    )
+                }
+            }
+            if (rows.isEmpty()) {
+                Text(
+                    text.empty,
+                    Modifier.fillMaxWidth().padding(horizontal = 26.dp, vertical = 40.dp),
+                    color = colors.muted,
+                    fontSize = 14.sp,
+                    lineHeight = 1.55.em,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        },
+    )
+}
+
+// Places the list's children as a Box would, at its corner (each row offsets itself), in the
+// list's order: the order rows are placed in is the order Tab moves through them and the order
+// they are drawn in, so it is the list's however the composition holds them. The empty folder's
+// note goes last.
+private class RowsPolicy(private val state: PigeonholeState) : MeasurePolicy {
+    override fun MeasureScope.measure(
+        measurables: List<Measurable>,
+        constraints: Constraints,
+    ): MeasureResult {
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(loose) }
+        val ids = measurables.map { it.layoutId }
+        val w =
+            if (constraints.hasBoundedWidth) constraints.maxWidth
+            else placeables.maxOfOrNull { it.width } ?: 0
+        val h =
+            if (constraints.hasBoundedHeight) constraints.maxHeight
+            else placeables.maxOfOrNull { it.height } ?: 0
+        return layout(w, h) {
+            state.listVersion
+            val placed = BooleanArray(placeables.size)
+            for (m in state.rows) {
+                val at = ids.indexOf(m.id)
+                if (at >= 0) {
+                    placeables[at].place(0, 0)
+                    placed[at] = true
+                }
+            }
+            for (at in placeables.indices) {
+                if (!placed[at] && ids[at] != null) placeables[at].place(0, 0)
+            }
+            for (at in placeables.indices) {
+                if (ids[at] == null) placeables[at].place(0, 0)
+            }
         }
     }
 }
@@ -766,6 +931,7 @@ private fun MailRow(
     text: PigeonholeText,
     colors: PigeonholeScreenColors,
     requester: FocusRequester,
+    modifier: Modifier,
 ) {
     val bg by
         animateColorAsState(
@@ -777,15 +943,19 @@ private fun MailRow(
     val item = m.item
     val shape = RoundedCornerShape(14.dp)
     Box(
-        Modifier.offset {
+        modifier
+            .offset {
                 state.frame
                 val i = state.rowIndex(m.id)
+                // A row made ahead and not listed waits out of sight.
+                if (i < 0) return@offset IntOffset(0, Unlisted)
                 val y = state.rowTop(i) - state.scrollTop + state.rowShift(m.id)
                 IntOffset((ListPad * density).roundToInt(), (y * density).roundToInt())
             }
             .graphicsLayer {
                 state.frame
-                alpha = if (state.isHidden(m.id)) 0f else state.rowAlpha()
+                alpha =
+                    if (state.isHidden(m.id) || state.rowIndex(m.id) < 0) 0f else state.rowAlpha()
             }
             .size(rowW.dp, state.rowH.dp)
             .testTag("row:${m.id}")
@@ -805,20 +975,16 @@ private fun MailRow(
             .clip(shape)
             .background(bg)
             .border(1.dp, colors.line, shape)
-            .then(
-                if (hidden) Modifier.clearAndSetSemantics {}
-                else
-                    Modifier.semantics(mergeDescendants = true) {
-                        contentDescription = "${item.from}, ${item.subj}, ${item.time}"
-                        customActions =
-                            listOf(
-                                CustomAccessibilityAction(text.moveAction) {
-                                    state.kbPick(m.id)
-                                    true
-                                },
-                            )
-                    },
-            )
+            .inertSemantics(hidden, mergeDescendants = true) {
+                contentDescription = "${item.from}, ${item.subj}, ${item.time}"
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(text.moveAction) {
+                            state.kbPick(m.id)
+                            true
+                        },
+                    )
+            }
             .onFocusChanged {
                 focused = it.isFocused
                 // Tabbed to off screen, the list brings it into view, as a browser does.
@@ -884,6 +1050,9 @@ private fun MailRow(
     }
 }
 
+// What the rack's buttons are drawn from, besides the rack being up and its title.
+private data class RackLook(val counts: List<Int>, val view: String, val layout: Int)
+
 /** The rack's own buttons, riding with it: its title and Done, and the six cubbies. */
 @Composable
 private fun RackUi(
@@ -892,7 +1061,16 @@ private fun RackUi(
     cubFocus: List<FocusRequester>,
     screen: () -> LayoutCoordinates?,
 ) {
-    state.listVersion
+    // What the rack's buttons show: each cubby's count, the open folder and the layout, read
+    // through a derived state so a list change that leaves them as they were doesn't recompose it.
+    val look =
+        remember(state) {
+                derivedStateOf {
+                    state.listVersion
+                    RackLook(List(6) { state.cubCount(it) }, state.view, state.layoutVersion)
+                }
+            }
+            .value
     val density = LocalDensity.current.density
     val up = state.rackUp
     val k = state.k
@@ -905,15 +1083,11 @@ private fun RackUi(
                 state.frame
                 IntOffset(0, (state.rackTop() * density).roundToInt())
             }
-            .then(
-                // Down, the rack is inert, as the prototype's: nothing on it is read or found.
-                if (!up) Modifier.clearAndSetSemantics {}
-                else
-                    Modifier.semantics {
-                        isTraversalGroup = true
-                        contentDescription = text.folders
-                    },
-            ),
+            // Down, the rack is inert, as the prototype's: nothing on it is read or found.
+            .inertSemantics(!up) {
+                isTraversalGroup = true
+                contentDescription = text.folders
+            },
     ) {
         Row(
             Modifier.fillMaxWidth()
@@ -963,7 +1137,7 @@ private fun RackUi(
                         state.releaseScripted()
                         state.done()
                     }
-                    .then(if (up) Modifier else Modifier.clearAndSetSemantics {})
+                    .inertSemantics(!up) {}
                     .drawBehind { if (doneFocused) ring(10.dp.toPx(), inset = true) },
                 contentAlignment = Alignment.Center,
             ) {
@@ -979,8 +1153,8 @@ private fun RackUi(
         }
         for (i in 0 until 6) {
             val cub = state.cubbies[i]
-            val n = state.cubCount(i)
-            val label = text.cubby(cub.name, n, cub.id == state.view)
+            val n = look.counts[i]
+            val label = text.cubby(cub.name, n, cub.id == look.view)
             var focused by remember(i) { mutableStateOf(false) }
             var here by remember(i) { mutableStateOf<LayoutCoordinates?>(null) }
             Box(
@@ -988,18 +1162,14 @@ private fun RackUi(
                     .size(state.cubW().dp, state.cubH().dp)
                     .onPlaced { here = it }
                     .testTag("cub:${cub.id}")
-                    .then(
-                        if (!up) Modifier.clearAndSetSemantics {}
-                        else
-                            Modifier.semantics {
-                                role = Role.Button
-                                contentDescription = label
-                                onClick {
-                                    state.cubTap(i)
-                                    true
-                                }
-                            },
-                    )
+                    .inertSemantics(!up) {
+                        role = Role.Button
+                        contentDescription = label
+                        onClick {
+                            state.cubTap(i)
+                            true
+                        }
+                    }
                     .onFocusChanged {
                         focused = it.isFocused
                         if (it.isFocused) state.focusCub(i)
@@ -1012,13 +1182,11 @@ private fun RackUi(
                         state.cubTap(i)
                         true
                     }
-                    .then(
-                        if (up)
-                            Modifier.pointerInput(i, density) {
-                                cubGesture(state, i, { screen() }, { here }, density)
-                            }
-                        else Modifier,
-                    )
+                    // Always there, so the rack going up or down doesn't remake it; a press while
+                    // the rack is down (or going down) is left alone.
+                    .pointerInput(i, density) {
+                        cubGesture(state, i, { screen() }, { here }, density)
+                    }
                     .focusRequester(cubFocus[i])
                     .focusable(enabled = up)
                     .drawBehind {
@@ -1027,6 +1195,47 @@ private fun RackUi(
                     },
             )
         }
+    }
+}
+
+/**
+ * `clearAndSetSemantics {}` while [inert], else `semantics` with [properties]: one node either way,
+ * so going inert and back only updates it instead of replacing it.
+ */
+private fun Modifier.inertSemantics(
+    inert: Boolean,
+    mergeDescendants: Boolean = false,
+    properties: SemanticsPropertyReceiver.() -> Unit,
+): Modifier = this then InertSemanticsElement(inert, mergeDescendants, properties)
+
+private data class InertSemanticsElement(
+    val inert: Boolean,
+    val merge: Boolean,
+    val properties: SemanticsPropertyReceiver.() -> Unit,
+) : ModifierNodeElement<InertSemanticsNode>() {
+    override fun create() = InertSemanticsNode(inert, merge, properties)
+
+    override fun update(node: InertSemanticsNode) {
+        node.inert = inert
+        node.merge = merge
+        node.properties = properties
+        node.invalidateSemantics()
+    }
+}
+
+private class InertSemanticsNode(
+    var inert: Boolean,
+    var merge: Boolean,
+    var properties: SemanticsPropertyReceiver.() -> Unit,
+) : Modifier.Node(), SemanticsModifierNode {
+    override val shouldClearDescendantSemantics: Boolean
+        get() = inert
+
+    override val shouldMergeDescendantSemantics: Boolean
+        get() = !inert && merge
+
+    override fun SemanticsPropertyReceiver.applySemantics() {
+        if (!inert) properties()
     }
 }
 
@@ -1042,6 +1251,7 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.cubGestu
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         state.releaseScripted()
+        if (!state.rackUp) return@awaitEachGesture
         val s = screen() ?: return@awaitEachGesture
         val me = here() ?: return@awaitEachGesture
         fun at(c: PointerInputChange) = s.localPositionOf(me, c.position) / density
@@ -1084,6 +1294,9 @@ private fun DrawScope.ring(radius: Float, inset: Boolean, color: Color = Pigeonh
         style = Stroke(w),
     )
 }
+
+// Where a row not listed waits, in px: far above the list.
+private const val Unlisted = -1_000_000
 
 // How far one notch of a mouse wheel scrolls the list, in dp.
 private const val WheelStep = 64f

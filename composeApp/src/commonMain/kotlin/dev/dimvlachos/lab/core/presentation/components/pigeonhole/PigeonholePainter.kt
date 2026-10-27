@@ -97,10 +97,13 @@ internal class PigeonholePainter(
     private fun ensure(s: PigeonholeState) {
         if (laid == s.layoutVersion && rackImg != null) return
         laid = s.layoutVersion
-        k = s.k
         rowW = s.rowW
         rowH = s.rowH
         fs = s.textScale
+        // The rack, the letters and the plates are drawn at the rack's scale across the screen's
+        // width: a layout that keeps both (the list moving under a new inset) keeps them baked.
+        if (rackImg != null && k == s.k && width == s.width) return
+        k = s.k
         width = s.width
         sprites.clear()
         plates.clear()
@@ -277,6 +280,8 @@ internal class PigeonholePainter(
         }
         c.restore()
         img.bitmap.freeze()
+        // Sent to the GPU now, not on the frame that first draws it.
+        img.bitmap.prepareToDraw()
         rackImg = img
         // The rails go on top of the letters, so they are a second image.
         val rail = Canvas2D.create((w * dpr).roundToInt(), (rackH * dpr).roundToInt())
@@ -297,6 +302,8 @@ internal class PigeonholePainter(
             rail.fillRect(rx - 1, rt + Rail * k - 1 * k, rw + 2, 1 * k)
         }
         rail.bitmap.freeze()
+        // Sent to the GPU now, not on the frame that first draws it.
+        rail.bitmap.prepareToDraw()
         railImg = rail
     }
 
@@ -398,7 +405,7 @@ internal class PigeonholePainter(
         open: Boolean,
         n: Int,
     ): Canvas2D {
-        val key = (n * 6 + i) * 4 + (if (hot) 2 else 0) + (if (open) 1 else 0)
+        val key = plateKey(i, hot, open, n)
         plates[key]?.let {
             return it
         }
@@ -440,9 +447,50 @@ internal class PigeonholePainter(
         c.textAlign = "right"
         c.fillText(count(n), cw / 2 - 3 * k, .4f * k)
         c.bitmap.freeze()
+        // Sent to the GPU now, not on the frame that first draws it.
+        c.bitmap.prepareToDraw()
         plates[key] = c
         return c
     }
+
+    /**
+     * Bakes ahead, while nothing moves, what a frame would otherwise bake the first time it drew
+     * it: every message's folded letter and each cubby's plate at its count and the next one, lit
+     * and not. Asks [enough] after each thing it bakes; returns whether anything may be left.
+     */
+    fun warm(s: PigeonholeState, inks: LetterInks, enough: () -> Boolean): Boolean {
+        if (s.width <= 0f) return false
+        val built = rackImg
+        ensure(s)
+        if (rackImg !== built && enough()) return true
+        for (folder in folders(s)) {
+            for (m in s.messages(folder)) {
+                if (m.id in sprites) continue
+                sprite(m, inks)
+                if (enough()) return true
+            }
+        }
+        val pw = min(78 * k, s.cubW() - 10 * k)
+        val ph = 19 * k
+        for (i in 0 until 6) {
+            val n = s.cubCount(i)
+            val open = s.cubbies[i].id == s.view
+            for (count in n..n + 1) {
+                for (hot in BothWays) {
+                    if (plateKey(i, hot, open, count) in plates) continue
+                    plateImage(i, pw, ph, hot, open, count)
+                    if (enough()) return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun folders(s: PigeonholeState) =
+        listOf(PigeonholeState.Inbox) + s.cubbies.map { it.id }
+
+    private fun plateKey(i: Int, hot: Boolean, open: Boolean, n: Int) =
+        (n * 6 + i) * 4 + (if (hot) 2 else 0) + (if (open) 1 else 0)
 
     private val counts = Array(100) { it.toString() }
 
@@ -472,6 +520,7 @@ internal class PigeonholePainter(
             sp.scale(density, density)
             drawLetter(sp, m, sw / 2, sh / 2, 1f, 1f, 0f, 0f, 0f, Float.NaN, inks, fresh = true)
             sp.bitmap.freeze()
+            sp.bitmap.prepareToDraw()
             sp
         }
 
@@ -765,5 +814,6 @@ internal class PigeonholePainter(
         const val PlateM = 1.5f
         val Unit1 = Density(1f, 1f)
         val NoDash = FloatArray(0)
+        val BothWays = booleanArrayOf(false, true)
     }
 }
