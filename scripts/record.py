@@ -42,9 +42,11 @@ ANDROID_CAPTURE_LEAD_S = 0.08
 # How loud a clip with sound peaks.
 PEAK_DB = -1.0
 # How far behind its picture scrcpy records the sound the app plays: the phone's audio output plus
-# the playback capture (measured on a Galaxy S23 Ultra as 192-226 ms, from typewriter strikes and a
-# bookshelf page crossing its spine). The audio is cut this much later, so each sound lands on its frame.
-ANDROID_AUDIO_LAG_S = 0.20
+# the playback capture. Measured on a Galaxy S23 Ultra since clips play as media (#49): 115-250 ms
+# over eleven sounds (typewriter strikes, the paint roller's dip and one event in each of seven
+# clips), median 170. It jitters by about 50 ms either way, so no constant lands every sound on
+# its frame. The audio is cut this much later, so sounds land on their frames on average.
+ANDROID_AUDIO_LAG_S = 0.17
 
 
 def run(cmd):
