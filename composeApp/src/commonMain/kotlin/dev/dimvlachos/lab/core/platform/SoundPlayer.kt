@@ -101,7 +101,15 @@ internal enum class Sound(val file: String) {
     PigeonholeTick("pigeonhole_tick"),
     CrtOff("crt_off"),
     CrtFly("crt_fly"),
-    CrtOn("crt_on");
+    CrtOn("crt_on"),
+    BandSend("band_send"),
+    BandGrab("band_grab"),
+    BandTaut("band_taut"),
+    BandBoing("band_boing"),
+    BandYank("band_yank"),
+    BandBurst("band_burst"),
+    BandTick("band_tick"),
+    BandTwang("band_twang");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

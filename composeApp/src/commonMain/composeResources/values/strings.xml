@@ -790,4 +790,24 @@
     <string name="crtpip_undo">Undo</string>
     <string name="crtpip_now_mini">Playing in the mini player</string>
     <string name="crtpip_now_full">Back to the full player</string>
+    <string name="demo_rubberband">Rubber band unsend</string>
+    <string name="demo_rubberband_description">A message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field</string>
+    <string name="rubberband_name">Jess Parker</string>
+    <string name="rubberband_initials">JP</string>
+    <string name="rubberband_active">Active now</string>
+    <string name="rubberband_day">Today 6:12 PM</string>
+    <string name="rubberband_message_1">Are we still on for Friday?</string>
+    <string name="rubberband_message_2">Yes!! Can’t wait</string>
+    <string name="rubberband_message_3">Want me to book somewhere? Ellie said she can come too</string>
+    <string name="rubberband_message_4">I got it, one sec</string>
+    <string name="rubberband_placeholder">Message</string>
+    <string name="rubberband_send">Send</string>
+    <string name="rubberband_unsend">Unsend message</string>
+    <string name="rubberband_caption_pull">Pull the band</string>
+    <string name="rubberband_caption_rest">to unsend</string>
+    <string name="rubberband_delivered">Delivered</string>
+    <string name="rubberband_typing">Jess is typing</string>
+    <string name="rubberband_sent_said">Sent. Pull the band to unsend, for nine seconds.</string>
+    <string name="rubberband_delivered_said">Delivered. It can’t be unsent now.</string>
+    <string name="rubberband_unsent_said">Unsent. It’s back in the message box to edit.</string>
 </resources>

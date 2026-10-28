@@ -1386,6 +1386,71 @@ def crt_on(rng, rate):
         crt_burst(rng, n, rate, 900, 2.0, 0.05, 0.08, start=0.02),
     )
     return soft_finish(soft_room(warm, rate, 0.1), rate, 0.36, 0.003, 0.03)
+# ---------- Rubber band ----------
+
+def band_tone(rate, f0, f1, dur, kind="triangle", vib=0.0):
+    """The prototype's tone(): a pitch gliding from f0 to f1 (exponentially) over dur, a 6 ms rise and an
+    exponential fall, through a 1.8 kHz low-pass; vib wobbles the pitch by 4 % at that rate, as a band does."""
+    n = seconds(dur + 0.02, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate
+        f = f0 * (f1 / f0) ** min(1.0, t / dur)
+        if vib:
+            f += f0 * 0.04 * math.sin(2 * math.pi * vib * t)
+        phase += f / rate
+        x = phase % 1.0
+        v = 4 * abs(x - 0.5) - 1 if kind == "triangle" else math.sin(2 * math.pi * phase)
+        env = (t / 0.006) if t < 0.006 else math.exp(-(t - 0.006) / (dur / 9.2))
+        out.append(v * env)
+    return lowpass(out, 1800, rate)
+
+
+def band_burst(rng, rate, freq, q, dur, kind="bandpass"):
+    """The prototype's burst(): noise through a filter, falling to nothing over dur."""
+    n = seconds(dur + 0.02, rate)
+    src = noise(n, rng)
+    if kind == "highpass":
+        src = highpass(src, freq, rate)
+    elif kind == "lowpass":
+        src = lowpass(lowpass(src, freq, rate), freq, rate)
+    else:
+        src = bandpass(src, freq, q, rate)
+    return mul(src, soft_env(n, rate, 0.003, dur / 9.2))
+
+
+def band_mix(*parts):
+    """Mixes (gain, track) pairs, laid from the start."""
+    n = max(len(t) for _, t in parts)
+    out = [0.0] * n
+    for g, t in parts:
+        for i, x in enumerate(t):
+            out[i] += g * x
+    return out
+
+
+def band_clips(rng, rate):
+    """The rubber band's clips, from the prototype's snd() recipes, softened like the rest."""
+    clips = {
+        # A soft whoosh off the field and a small rising chirp.
+        "band_send": (band_mix((0.05, band_burst(rng, rate, 1800, 0.8, 0.14, "highpass")), (0.035, band_tone(rate, 620, 880, 0.09))), 0.22),
+        # The finger taking hold of the latex: a dull pat.
+        "band_grab": (band_burst(rng, rate, 500, 1.5, 0.05, "lowpass"), 0.3),
+        # Pulled far enough: a short low creak and a tick of stretched rubber.
+        "band_taut": (band_mix((0.05, band_tone(rate, 210, 230, 0.12)), (0.04, band_burst(rng, rate, 2600, 6, 0.03))), 0.22),
+        # Let go short: the band boings back, wobbling.
+        "band_boing": (band_tone(rate, 150, 120, 0.44, vib=22), 0.4),
+        # Yanked home: a thump, a snap and a falling twang.
+        "band_yank": (band_mix((0.3, band_burst(rng, rate, 260, 1, 0.09, "lowpass")), (0.14, band_burst(rng, rate, 1400, 2, 0.05)), (0.07, band_tone(rate, 260, 90, 0.16))), SOFT_PEAK),
+        # The bubble bursting into its letters: a short airy pop.
+        "band_burst": (band_burst(rng, rate, 3200, 0.9, 0.12, "highpass"), 0.24),
+        # A letter landing in the field.
+        "band_tick": (band_burst(rng, rate, 2400, 4, 0.025), 0.2),
+        # The window ran out: a snap and a wobbling twang that falls.
+        "band_twang": (band_mix((0.18, band_burst(rng, rate, 3000, 3, 0.03)), (0.1, band_tone(rate, 330, 170, 0.42, vib=26)), (0.05, band_tone(rate, 165, 120, 0.3, "sine"))), 0.45),
+    }
+    return {name: soft_finish(soft_room(soft_tilt(clip, rate, 3000), rate, 0.1), rate, peak, 0.004, 0.03)
+            for name, (clip, peak) in clips.items()}
 
 
 def main():
@@ -1505,6 +1570,8 @@ def main():
     write("crt_off", crt_off(crt, fast), fast)
     write("crt_fly", crt_fly(crt, fast), fast)
     write("crt_on", crt_on(crt, fast), fast)
+    for name, clip in band_clips(random.Random(1027), fast).items():
+        write(name, clip, fast)
 
 
 if __name__ == "__main__":
