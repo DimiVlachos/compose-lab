@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- **French press summary** (`frenchpress`): its demo also lets go of a push early so the words fly home, summarizes with a tap on the press and gives the story back by pulling the knob up, so the clip shows every way in and out.
+- **Recording**: `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice and a 30 s script took more than the old minute.
+
 ## [0.2.0] - 2026-10-28
 
 Twenty-four new components, sound, a light theme and landscape.

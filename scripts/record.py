@@ -31,7 +31,9 @@ APP_ID = "dev.dimvlachos.lab"
 ACTIVITY = f"{APP_ID}/.MainActivity"
 DEVICE_FILE = "/sdcard/compose-lab-demo.mp4"
 MAX_BYTES = 5 * 1024 * 1024
-MARKER_TIMEOUT_S = 60
+# Recording plays the script twice (a warm-up run, then the recorded one), so a 30 s script needs
+# over a minute before its done marker.
+MARKER_TIMEOUT_S = 120
 # How long to wait for a landscape demo to turn the screen, and for the turn's animation to end.
 LANDSCAPE_TIMEOUT_S = 10
 LANDSCAPE_ANIMATION_S = 0.8

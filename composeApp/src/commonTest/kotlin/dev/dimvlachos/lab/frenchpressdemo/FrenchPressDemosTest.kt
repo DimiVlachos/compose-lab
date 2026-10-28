@@ -20,17 +20,24 @@ class FrenchPressDemosTest {
     }
 
     @Test
-    fun theClipPushesThePressThenPoursTheStoryBack() = runTest {
+    fun theClipShowsEveryWayToSummarizeAndGiveTheStoryBack() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf("tapControl(push)", "tapControl(full)", "resetFeed()"),
+            listOf(
+                "tapControl(push-early)",
+                "tapControl(push)",
+                "tapControl(full)",
+                "tapControl(tap)",
+                "tapControl(pull-up)",
+                "resetFeed()",
+            ),
             controller.calls.map { it.second },
         )
     }
 
     @Test
-    fun theClipFitsInSixteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 16.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInThirtyTwoSeconds() {
+        assertTrue(demo.script.nominalDuration <= 32.seconds, "${demo.script.nominalDuration}")
     }
 }

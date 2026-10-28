@@ -907,7 +907,7 @@ A news story whose Summarize button is a little glass French press in the bottom
 - **Screen readers and keys.** The press is a toggle button, Summarize article or Show full article, pressed with Enter or Space; the card is a region read only while it is open, and what happens is announced politely.
 - **Reduced motion.** The summary is there at once, and the story comes back at once.
 
-The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back.
+The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob a little way and lets go, so the words fly home; then pushes it down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back; then taps the press, which summarizes by itself, and pulls the knob up to give the story back.
 
 ```kotlin
 val press = remember { FrenchPressState(paragraphs, points) }
