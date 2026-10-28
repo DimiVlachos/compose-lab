@@ -23,134 +23,146 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+
+/**
+ * How long a test that plays the demo's script through may take in real time: it draws twenty
+ * seconds of the table frame by frame, about 6 s on a laptop, and on a busy CI runner it has run
+ * past the test runner's own 60 s.
+ */
+private val SlowMagnetTest: Duration = 3.minutes
 
 @OptIn(ExperimentalTestApi::class)
 class MagnetDemoUiTest {
     @Test
-    fun theScriptSearchesApartThenTogetherOpensAPhotoAndPutsEverythingBack() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val demo = MagnetDemos.all.single()
-        val state = DemoState()
-        var finished = false
-        var table: MagnetState? = null
-        setContent {
-            LabTheme {
-                Box(Modifier.size(400.dp, 800.dp)) {
-                    val islands = rememberIslandMagnetState()
-                    table = islands
-                    MagnetDemo(state, islands)
-                }
-                LaunchedEffect(Unit) {
-                    demo.script.play(state)
-                    finished = true
+    fun theScriptSearchesApartThenTogetherOpensAPhotoAndPutsEverythingBack() =
+        runComposeUiTest(testTimeout = SlowMagnetTest) {
+            mainClock.autoAdvance = false
+            val demo = MagnetDemos.all.single()
+            val state = DemoState()
+            var finished = false
+            var table: MagnetState? = null
+            setContent {
+                LabTheme {
+                    Box(Modifier.size(400.dp, 800.dp)) {
+                        val islands = rememberIslandMagnetState()
+                        table = islands
+                        MagnetDemo(state, islands)
+                    }
+                    LaunchedEffect(Unit) {
+                        demo.script.play(state)
+                        finished = true
+                    }
                 }
             }
-        }
-        // The script's clock runs 600 ms behind the screen's, held still at the start.
-        val start = mainClock.currentTime
-        fun at(seconds: Double) =
-            mainClock.advanceTimeBy(
-                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
+            // The script's clock runs 600 ms behind the screen's, held still at the start.
+            val start = mainClock.currentTime
+            fun at(seconds: Double) =
+                mainClock.advanceTimeBy(
+                    start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
+                )
+            fun results(tag: String) = table!!.results[tag].orEmpty()
+            val corfuAndNaxos = setOf("corfu", "naxos")
+            // Sunset and Sea apart, two searches: Sunset has every one of its photos, even those
+            // that
+            // lay across the table, and Sea every one of its own that Sunset hadn't taken first.
+            at(7.7)
+            assertEquals(
+                setOf("corfu", "santorini", "naxos", "folegandros"),
+                results(IslandTags.Sunset),
             )
-        fun results(tag: String) = table!!.results[tag].orEmpty()
-        val corfuAndNaxos = setOf("corfu", "naxos")
-        // Sunset and Sea apart, two searches: Sunset has every one of its photos, even those that
-        // lay across the table, and Sea every one of its own that Sunset hadn't taken first.
-        at(7.7)
-        assertEquals(
-            setOf("corfu", "santorini", "naxos", "folegandros"),
-            results(IslandTags.Sunset),
-        )
-        assertEquals(setOf("milos", "crete", "rhodes", "zakynthos"), results(IslandTags.Sea))
-        // Sea snapped to Sunset's side: one search, for the photos of both.
-        at(10.4)
-        assertEquals(corfuAndNaxos, results(IslandTags.Sunset))
-        assertEquals(corfuAndNaxos, results(IslandTags.Sea))
-        // Fanned out, Corfu opened and closed, and folded back.
-        at(11.3)
-        assertEquals(IslandTags.Sunset, table!!.fannedOut)
-        at(12.8)
-        assertEquals("corfu", table!!.opened)
-        at(14.9)
-        assertNull(table!!.opened)
-        at(15.9)
-        assertNull(table!!.fannedOut)
-        // Sea flicked home: Sunset is a search on its own again, and has all its photos back.
-        at(18.4)
-        assertEquals(
-            setOf("corfu", "santorini", "naxos", "folegandros"),
-            results(IslandTags.Sunset),
-        )
-        assertTrue(IslandTags.Sea !in table!!.results, "${table!!.results}")
-        // Flicked, Sea tore straight off the pair: Sunset was left where the two were joined.
-        val sunsetAt = table!!.magnetPosition(IslandTags.Sunset)!! / table!!.density
-        val joinedAt = MagnetDemos.SunsetPath.last()
-        assertTrue(
-            (sunsetAt - Offset(joinedAt.x * 400f, joinedAt.y * 800f)).getDistance() < 60f,
-            "Sunset was dragged off to $sunsetAt",
-        )
-        // Both flicked back by the end: nothing out, everything home, and the table asleep.
-        at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
-        assertTrue(finished, "the script must have played to its end")
-        assertTrue(table!!.results.isEmpty(), "${table!!.results}")
-        for (body in table!!.bodies.bodies) {
-            assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
+            assertEquals(setOf("milos", "crete", "rhodes", "zakynthos"), results(IslandTags.Sea))
+            // Sea snapped to Sunset's side: one search, for the photos of both.
+            at(10.4)
+            assertEquals(corfuAndNaxos, results(IslandTags.Sunset))
+            assertEquals(corfuAndNaxos, results(IslandTags.Sea))
+            // Fanned out, Corfu opened and closed, and folded back.
+            at(11.3)
+            assertEquals(IslandTags.Sunset, table!!.fannedOut)
+            at(12.8)
+            assertEquals("corfu", table!!.opened)
+            at(14.9)
+            assertNull(table!!.opened)
+            at(15.9)
+            assertNull(table!!.fannedOut)
+            // Sea flicked home: Sunset is a search on its own again, and has all its photos back.
+            at(18.4)
+            assertEquals(
+                setOf("corfu", "santorini", "naxos", "folegandros"),
+                results(IslandTags.Sunset),
+            )
+            assertTrue(IslandTags.Sea !in table!!.results, "${table!!.results}")
+            // Flicked, Sea tore straight off the pair: Sunset was left where the two were joined.
+            val sunsetAt = table!!.magnetPosition(IslandTags.Sunset)!! / table!!.density
+            val joinedAt = MagnetDemos.SunsetPath.last()
+            assertTrue(
+                (sunsetAt - Offset(joinedAt.x * 400f, joinedAt.y * 800f)).getDistance() < 60f,
+                "Sunset was dragged off to $sunsetAt",
+            )
+            // Both flicked back by the end: nothing out, everything home, and the table asleep.
+            at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
+            assertTrue(finished, "the script must have played to its end")
+            assertTrue(table!!.results.isEmpty(), "${table!!.results}")
+            for (body in table!!.bodies.bodies) {
+                assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
+            }
+            assertFalse(table!!.awake, "the table must be still by the end")
         }
-        assertFalse(table!!.awake, "the table must be still by the end")
-    }
 
     @Test
-    fun onAPhoneOnItsSideTheScriptStillSearchesApartThenTogether() = runComposeUiTest {
-        mainClock.autoAdvance = false
-        val demo = MagnetDemos.all.single()
-        val state = DemoState()
-        var table: MagnetState? = null
-        setContent {
-            LabTheme {
-                // A phone on its side, the stage under the top bar.
-                Box(Modifier.size(780.dp, 270.dp)) {
-                    val islands = rememberIslandMagnetState()
-                    table = islands
-                    MagnetDemo(state, islands)
+    fun onAPhoneOnItsSideTheScriptStillSearchesApartThenTogether() =
+        runComposeUiTest(testTimeout = SlowMagnetTest) {
+            mainClock.autoAdvance = false
+            val demo = MagnetDemos.all.single()
+            val state = DemoState()
+            var table: MagnetState? = null
+            setContent {
+                LabTheme {
+                    // A phone on its side, the stage under the top bar.
+                    Box(Modifier.size(780.dp, 270.dp)) {
+                        val islands = rememberIslandMagnetState()
+                        table = islands
+                        MagnetDemo(state, islands)
+                    }
+                    LaunchedEffect(Unit) { demo.script.play(state) }
                 }
-                LaunchedEffect(Unit) { demo.script.play(state) }
+            }
+            val start = mainClock.currentTime
+            fun at(seconds: Double) =
+                mainClock.advanceTimeBy(
+                    start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
+                )
+            fun results(tag: String) = table!!.results[tag].orEmpty()
+            // The hint lies over the table, which has every bit of height over the strip.
+            at(0.0)
+            assertEquals(270f - table!!.stripHeight, table!!.tableHeight, 0.5f)
+            // Put down apart, two searches.
+            at(7.7)
+            assertFalse(table!!.joined, "Sea must first be put down apart")
+            assertTrue(results(IslandTags.Sunset).isNotEmpty())
+            assertTrue(results(IslandTags.Sea).isNotEmpty())
+            // Brought up close enough to snap to Sunset's side: one search, for the photos of both.
+            at(10.4)
+            assertTrue(table!!.joined, "Sea must snap to Sunset's side")
+            assertEquals(setOf("corfu", "naxos"), results(IslandTags.Sunset))
+            at(11.3)
+            assertEquals(IslandTags.Sunset, table!!.fannedOut)
+            // Fanned out over the whole stage, strip and all, the cards grow as far as they may.
+            assertEquals(MagnetDimens.FanScale, table!!.fanScale())
+            at(12.8)
+            assertEquals("corfu", table!!.opened)
+            // Opened, the photo takes most of the stage's height, not a sliver of the table's.
+            val opened = table!!.openedBounds
+            val openedHeight = opened.height / table!!.density
+            assertTrue(openedHeight >= 270f * 0.6f, "the photo opened $openedHeight dp tall")
+            assertTrue(opened.top >= 0f && opened.bottom <= 270f * table!!.density, "$opened")
+            at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
+            assertTrue(table!!.results.isEmpty(), "${table!!.results}")
+            for (body in table!!.bodies.bodies) {
+                assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
             }
         }
-        val start = mainClock.currentTime
-        fun at(seconds: Double) =
-            mainClock.advanceTimeBy(
-                start + ((seconds + 0.6) * 1_000).toLong() - mainClock.currentTime,
-            )
-        fun results(tag: String) = table!!.results[tag].orEmpty()
-        // The hint lies over the table, which has every bit of height over the strip.
-        at(0.0)
-        assertEquals(270f - table!!.stripHeight, table!!.tableHeight, 0.5f)
-        // Put down apart, two searches.
-        at(7.7)
-        assertFalse(table!!.joined, "Sea must first be put down apart")
-        assertTrue(results(IslandTags.Sunset).isNotEmpty())
-        assertTrue(results(IslandTags.Sea).isNotEmpty())
-        // Brought up close enough to snap to Sunset's side: one search, for the photos of both.
-        at(10.4)
-        assertTrue(table!!.joined, "Sea must snap to Sunset's side")
-        assertEquals(setOf("corfu", "naxos"), results(IslandTags.Sunset))
-        at(11.3)
-        assertEquals(IslandTags.Sunset, table!!.fannedOut)
-        // Fanned out over the whole stage, strip and all, the cards grow as far as they may.
-        assertEquals(MagnetDimens.FanScale, table!!.fanScale())
-        at(12.8)
-        assertEquals("corfu", table!!.opened)
-        // Opened, the photo takes most of the stage's height, not a sliver of the table's.
-        val opened = table!!.openedBounds
-        val openedHeight = opened.height / table!!.density
-        assertTrue(openedHeight >= 270f * 0.6f, "the photo opened $openedHeight dp tall")
-        assertTrue(opened.top >= 0f && opened.bottom <= 270f * table!!.density, "$opened")
-        at(demo.script.nominalDuration.inWholeMilliseconds / 1_000.0 - 0.5)
-        assertTrue(table!!.results.isEmpty(), "${table!!.results}")
-        for (body in table!!.bodies.bodies) {
-            assertTrue((body.at - body.home).getDistance() < 2f, "${body.id} is not home")
-        }
-    }
 
     @Test
     fun theHintGivesWayWhileAMagnetIsOut() = runComposeUiTest {
