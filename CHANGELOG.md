@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
+Twenty-four new components, sound, a light theme and landscape.
+
 ### Added
 
 - **French press summary** (`frenchpress`): a Summarize button on a news story that is a little glass French press. Push its plunger and the story's own words lift off the page and pour into the spout, swirling as grounds; past halfway the mesh presses them down, the coffee clears to amber and three points pour out letter by letter into a summary card. Let go early and the words fly home; tap Full article, tap the press or pull the knob up and every word flies back to its place. The words are real laid-out text. Haptics and synthesized pours, glugs, a tink and the plunger's hiss; a toggle button for screen readers and keys. Its demo is a city hall story from The Harlow Courier.
@@ -60,5 +64,6 @@ The first release: five components, the apps that demo them, and Moodboard.
 - **Moodboard** (`moodboard/`): a Kotlin Multiplatform app that shares data, logic and ViewModels, with a SwiftUI UI on iOS 26 and a Material 3 Expressive UI on Android.
 - Scripted demos for every component, and tools to record them as clips and GIFs.
 
-[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/DimiVlachos/compose-lab/releases/tag/v0.1.0
