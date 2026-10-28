@@ -923,7 +923,7 @@ A household lists app whose Duplicate runs the list through a little putty-color
 - **Screen readers and keys.** Every list is a node with Duplicate and Pin to top actions and a long-click; ⋯ is a button; Enter, Space, the Menu key or Shift+F10 opens the menu with focus on Duplicate, Up and Down move in it and Escape, Tab or Back closes it, and focus goes back to the list after an action. What happens is announced politely.
 - **Reduced motion.** The copy just appears under the original, and Undo removes it.
 
-The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot, so the clip ends with the six lists it began with.
+The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot; then duplicates it again and taps Undo, so the rollers take that copy back too; then pins Thanksgiving to the top and pins Weekly meal plan back above it, so the clip ends with the six lists as it began.
 
 ```kotlin
 val copier = remember { PhotocopierState(lists) }

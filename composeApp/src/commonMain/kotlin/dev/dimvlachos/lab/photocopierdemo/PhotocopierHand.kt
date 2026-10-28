@@ -39,17 +39,39 @@ internal class PhotocopierHand(private val copier: PhotocopierState) {
     /** Plays the scripted step [control], one of [PhotocopierDemos]'. */
     suspend fun play(control: String) {
         when (control) {
-            PhotocopierDemos.LongPress -> {
-                // Long-press the meal plan.
-                appear(Offset(w * .62f, h * .56f))
-                val id = copier.cards[0].item.id
-                move(Offset(copier.rectX() + copier.cardW * .42f, copier.rectY(id) + 36), 620)
+            // Long-press the meal plan, or the list under it.
+            PhotocopierDemos.LongPress -> longPress(0)
+            PhotocopierDemos.LongPressSecond -> longPress(1)
+            PhotocopierDemos.TapPin -> {
+                if (copier.menuFor == 0) return
+                val item = PhotocopierState.MenuW - 12
+                move(Offset(copier.menuX + 6 + item * .38f, copier.menuY + 6 + 44 + 2 + 22), 480)
                 down = true
-                copier.cardDown(id, at.x, at.y, scripted = true)
-                wait(560)
-                copier.holdScripted()
-                wait(150)
-                lift()
+                wait(110)
+                down = false
+                copier.pin(copier.menuFor)
+                wait(180)
+                while (copier.busy) wait(100)
+                move(Offset(w * .62f, h * .56f), 500)
+                hide()
+            }
+            PhotocopierDemos.TapUndo -> {
+                // Once the copy has landed and the copier peeks, Undo on the bar feeds it back.
+                while (
+                    copier.busy || (copier.copMode != CopierMode.Peek && !copier.reducedMotion)
+                ) {
+                    wait(100)
+                }
+                if (copier.cards.size < 2 || !copier.cards[1].item.isCopy) return
+                move(Offset(w - 52, h - 90), 620)
+                down = true
+                wait(110)
+                down = false
+                copier.undo()
+                while (copier.busy) wait(100)
+                wait(250)
+                move(Offset(w * .62f, h * .56f), 500)
+                hide()
             }
             PhotocopierDemos.TapDuplicate -> {
                 if (copier.menuFor == 0) return
@@ -103,6 +125,18 @@ internal class PhotocopierHand(private val copier: PhotocopierState) {
                 hide()
             }
         }
+    }
+
+    private suspend fun longPress(i: Int) {
+        appear(Offset(w * .62f, h * .56f))
+        val id = copier.cards[i].item.id
+        move(Offset(copier.rectX() + copier.cardW * .42f, copier.rectY(id) + 36), 620)
+        down = true
+        copier.cardDown(id, at.x, at.y, scripted = true)
+        wait(560)
+        copier.holdScripted()
+        wait(150)
+        lift()
     }
 
     private suspend fun appear(to: Offset) {
