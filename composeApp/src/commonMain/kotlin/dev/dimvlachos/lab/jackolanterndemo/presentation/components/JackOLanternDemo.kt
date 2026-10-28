@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -117,26 +118,31 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun JackOLanternDemo(
     state: DemoState,
-    // In the dark theme the candle starts lit, so the screen opens by night; a clip, and its
-    // replay, always start with it out, so the script's tap and flick play the right way round.
-    // The theme picks only where it starts: the pumpkin changes the screen, never the app.
+    // In the dark theme the candle starts lit, so the screen opens by night, a replay too: its
+    // script then blows it out first and lights it again, as the prototype's runDemo() does. A
+    // clip always starts out, so every recording is the same. The theme picks only where it
+    // starts: the pumpkin changes the screen, never the app.
     lantern: JackOLanternState =
-        (LabTheme.isDark && !state.recording && !state.replay).let { lit ->
+        (LabTheme.isDark && !state.recording).let { lit ->
             remember { JackOLanternState(lit = lit) }
         },
     reducedMotion: Boolean = rememberReducedMotion(),
 ) {
     SideEffect { lantern.scripted = state.recording || state.replay }
+    // Where the script starts and must end: its moves play the other way round from lit.
+    val startLit = remember(lantern) { lantern.lit }
     val sounds = rememberSoundPlayer(JackOLanternSounds)
     val finger = remember { LanternFinger() }
     // The script's moves take turns, as the prototype awaits each: on a slow device a move that
     // runs late holds the next back rather than steering the fingertip at the same time.
     val turn = remember { Mutex() }
     DisposableEffect(state, lantern) {
-        state.setControlTapHandler { control -> turn.withLock { play(control, lantern, finger) } }
+        state.setControlTapHandler { control ->
+            turn.withLock { play(control, lantern, finger, startLit) }
+        }
         state.setFeedResetHandler {
             turn.withLock {
-                lantern.setInstant(false)
+                lantern.setInstant(startLit)
                 finger.hide()
             }
         }
@@ -150,11 +156,10 @@ internal fun JackOLanternDemo(
 
     val touch = LabTheme.colors.touch
     val texts = farmTexts()
-    Box(
-        Modifier.fillMaxSize()
-            .background(JackOLanternScreenColors.Day.background)
-            .windowInsetsPadding(demoInsets(state)),
-    ) {
+    // Both copies reach under the insets and pad their content inside, so the strips at the foot
+    // and the sides are in whichever theme the light has brought, never left by day.
+    val insets = demoInsets(state)
+    Box(Modifier.fillMaxSize()) {
         JackOLanternTheme(
             state = lantern,
             sounds = sounds,
@@ -166,7 +171,7 @@ internal fun JackOLanternDemo(
             modifier = Modifier.fillMaxSize(),
             reducedMotion = reducedMotion,
         ) {
-            Farm(texts)
+            Farm(texts, insets)
         }
         Canvas(Modifier.fillMaxSize()) { with(finger) { drawFinger(touch) } }
     }
@@ -233,9 +238,9 @@ private fun farmTexts(): FarmTexts {
 
 /** The screen the candle themes, composed once by day and once by night. */
 @Composable
-private fun JackOLanternScope.Farm(t: FarmTexts) {
+private fun JackOLanternScope.Farm(t: FarmTexts, insets: WindowInsets) {
     val c = colors
-    Column(Modifier.fillMaxSize().background(c.background)) {
+    Column(Modifier.fillMaxSize().background(c.background).windowInsetsPadding(insets)) {
         // The top bar: the farm's name, tonight's title, and the pumpkin's slot.
         Row(
             Modifier.fillMaxWidth().height(66.dp).padding(start = 20.dp, end = 14.dp, top = 6.dp),
@@ -604,10 +609,15 @@ private class LanternFinger {
 private val LinearEasingPassThrough = Easing { it }
 
 /** The prototype's `demoTap`: to the pumpkin, a tap, and away unless [away] is false. */
-private suspend fun tap(l: JackOLanternState, finger: LanternFinger, away: Boolean = true) {
+private suspend fun tap(
+    l: JackOLanternState,
+    finger: LanternFinger,
+    away: Boolean = true,
+    approach: Int = 760,
+) {
     val at = Offset(l.px + 2f, l.py + 6f)
     finger.appear(Offset(l.px - 60f, l.py + 260f))
-    finger.glide(at, 760)
+    finger.glide(at, approach)
     finger.press { l.down(it.x, it.y, finger.ms()) }
     delay(150)
     finger.lift { l.up(it.x, it.y, finger.ms()) }
@@ -615,8 +625,16 @@ private suspend fun tap(l: JackOLanternState, finger: LanternFinger, away: Boole
     if (away) finger.glide(Offset(l.px - 60f, l.py + 190f), 820)
 }
 
-/** The prototype's `demoFlick`: from low on the left, across the flame and up to the right. */
-private suspend fun flick(l: JackOLanternState, finger: LanternFinger, approach: Int = 820) {
+/**
+ * The prototype's `demoFlick`: from low on the left, across the flame and up to the right, and away
+ * unless [away] is false.
+ */
+private suspend fun flick(
+    l: JackOLanternState,
+    finger: LanternFinger,
+    approach: Int = 820,
+    away: Boolean = true,
+) {
     val from = Offset(l.px - 120f, l.py + 46f)
     val to = Offset(l.px + 60f, l.py - 8f)
     finger.appear(Offset(l.px - 60f, l.py + 260f))
@@ -626,29 +644,43 @@ private suspend fun flick(l: JackOLanternState, finger: LanternFinger, approach:
     finger.glide(to, 230, arc = 10f) { l.move(it.x, it.y, finger.ms()) }
     finger.lift { l.up(it.x, it.y, finger.ms()) }
     delay(240)
-    finger.glide(Offset(l.px - 60f, l.py + 190f), 900)
+    if (away) finger.glide(Offset(l.px - 60f, l.py + 190f), 900)
 }
 
-private suspend fun play(control: String, l: JackOLanternState, finger: LanternFinger) {
+/**
+ * The script's moves, the prototype's way round from where it started: out, a tap lights it and a
+ * flick blows it out; lit ([startLit]), a flick first and then a tap.
+ */
+private suspend fun play(
+    control: String,
+    l: JackOLanternState,
+    finger: LanternFinger,
+    startLit: Boolean,
+) {
     try {
         while (!l.laidOut) delay(16)
         when (control) {
-            JackOLanternDemos.Light -> {
-                if (l.lit) l.setInstant(false)
-                tap(l, finger)
-                // The light spreads over the whole screen; a beat to see the night.
+            JackOLanternDemos.Change -> {
+                if (l.lit != startLit) l.setInstant(startLit)
+                if (startLit) flick(l, finger) else tap(l, finger)
+                // The light spreads over the whole screen, or draws back into the pumpkin.
                 delay(2600)
             }
-            JackOLanternDemos.Blow -> {
-                flick(l, finger)
+            JackOLanternDemos.ChangeBack -> {
+                if (startLit) tap(l, finger) else flick(l, finger)
                 delay(2300)
                 finger.fadeOut()
             }
-            JackOLanternDemos.LightAndTurn -> {
-                if (l.lit) l.setInstant(false)
-                tap(l, finger, away = false)
-                // Changed its mind while the night is still spreading: the flick turns it round.
-                flick(l, finger, approach = 520)
+            JackOLanternDemos.ChangeAndTurn -> {
+                if (l.lit != startLit) l.setInstant(startLit)
+                // Changed its mind halfway: the second move turns the light round mid-flight.
+                if (startLit) {
+                    flick(l, finger, away = false)
+                    tap(l, finger, approach = 520)
+                } else {
+                    tap(l, finger, away = false)
+                    flick(l, finger, approach = 520)
+                }
                 delay(2600)
                 finger.fadeOut()
             }

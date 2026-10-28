@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -134,6 +135,45 @@ internal constructor(
     }
 }
 
+/**
+ * A [Canvas2D] over a layer's canvas, kept from frame to frame while the layer draws into the same
+ * canvas at the same size, with its bounds: drawing makes no new wrapper each frame.
+ */
+private class LayerCanvas {
+    private var canvas: androidx.compose.ui.graphics.Canvas? = null
+    private var c2d: Canvas2D? = null
+    private var rect = Rect.Zero
+
+    fun get(
+        canvas: androidx.compose.ui.graphics.Canvas,
+        w: Float,
+        h: Float,
+        density: Float,
+    ): Canvas2D {
+        val kept = c2d
+        val c =
+            if (
+                kept != null &&
+                    canvas === this.canvas &&
+                    kept.width == w.toInt() &&
+                    kept.height == h.toInt()
+            )
+                kept
+            else
+                Canvas2D(canvas, w.toInt(), h.toInt()).also {
+                    this.canvas = canvas
+                    c2d = it
+                }
+        c.setTransform(density, 0f, 0f, density, 0f, 0f)
+        return c
+    }
+
+    fun bounds(w: Float, h: Float): Rect {
+        if (rect.width != w || rect.height != h) rect = Rect(0f, 0f, w, h)
+        return rect
+    }
+}
+
 /** The baked grin, kept until the screen changes size. */
 private class Projection {
     var w = 0f
@@ -232,6 +272,8 @@ internal fun JackOLanternTheme(
     val glowPaints = remember(state) { LanternPaints() }
     val projection = remember(state) { Projection() }
     val screen = remember { Paint().apply { blendMode = BlendMode.Screen } }
+    val glowCanvas = remember { LayerCanvas() }
+    val lanternCanvas = remember { LayerCanvas() }
     Box(
         modifier.onGloballyPositioned {
             geometry.root = it
@@ -252,9 +294,8 @@ internal fun JackOLanternTheme(
                     if (s <= .0005f || !state.laidOut) return@drawWithContent
                     drawContent()
                     drawIntoCanvas { canvas ->
-                        canvas.saveLayer(Rect(0f, 0f, size.width, size.height), screen)
-                        val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
-                        c.scale(density, density)
+                        canvas.saveLayer(glowCanvas.bounds(size.width, size.height), screen)
+                        val c = glowCanvas.get(canvas, size.width, size.height, density)
                         c.drawCandleGlow(
                             state,
                             glowPaints,
@@ -290,9 +331,9 @@ internal fun JackOLanternTheme(
             state.frame
             if (!state.laidOut) return@Canvas
             drawIntoCanvas { canvas ->
-                val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
-                c.scale(density, density)
-                c.drawLantern(state, paints)
+                lanternCanvas
+                    .get(canvas, size.width, size.height, density)
+                    .drawLantern(state, paints)
             }
         }
         if (state.laidOut) {
@@ -408,13 +449,15 @@ private fun LanternSwitch(state: JackOLanternState, label: String) {
 /** The prototype's hint chip under the pumpkin, at its right edge, fading in and out. */
 @Composable
 private fun Hint(state: JackOLanternState, text: String, reducedMotion: Boolean) {
-    val shown by
+    // The fade is read only where it is drawn; composition hears only whether it shows at all.
+    val shown =
         animateFloatAsState(
             if (state.hintOn) 1f else 0f,
             if (reducedMotion) snap() else tween(500),
             label = "hint",
         )
-    if (shown <= 0f) return
+    val visible by remember { derivedStateOf { shown.value > 0f } }
+    if (!visible) return
     Box(Modifier.fillMaxSize().clearAndSetSemantics {}, contentAlignment = Alignment.TopEnd) {
         BasicText(
             text,
@@ -422,7 +465,7 @@ private fun Hint(state: JackOLanternState, text: String, reducedMotion: Boolean)
                     top = (state.py + state.r + 36f).dp,
                     end = max(10f, state.width - state.px - 30f).dp,
                 )
-                .graphicsLayer { alpha = shown }
+                .graphicsLayer { alpha = shown.value }
                 .background(JackOLanternScreenColors.Hint, RoundedCornerShape(999.dp))
                 .border(1.dp, Color(255, 255, 255, 31), RoundedCornerShape(999.dp))
                 .padding(horizontal = 11.dp, vertical = 6.dp),

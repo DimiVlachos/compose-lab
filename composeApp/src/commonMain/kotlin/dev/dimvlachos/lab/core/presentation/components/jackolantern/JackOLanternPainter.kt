@@ -129,6 +129,7 @@ internal class LanternPaints {
             w = width
             h = height
             t = Float.NaN
+            innerGradient = null
             shadow =
                 Gradient2D.radial(px, py + pr * .86f, 0f, px, py + pr * .86f, pr * .95f).apply {
                     addColorStop(0f, rgba(60, 30, 8, 1f))
@@ -195,7 +196,42 @@ internal class LanternPaints {
     }
 
     private fun lerpInt(a: Int, b: Int, k: Float) = (a + (b - a) * k).roundToInt()
+
+    // The candlelit inside of the holes, its bright spot leaning with the flame: made again only
+    // when the lean moves by a visible step, so a still flame makes none.
+    private var innerKey = Int.MIN_VALUE
+    private var innerGradient: Gradient2D? = null
+
+    fun inner(lean: Float): Gradient2D {
+        val key = (lean * 200f).roundToInt()
+        innerGradient?.let { if (key == innerKey) return it }
+        innerKey = key
+        val l = key / 200f
+        return Gradient2D.radial(x + l * r * .08f, y + r * .4f, r * .02f, x, y + r * .2f, r * .95f)
+            .apply {
+                addColorStop(0f, Inner0)
+                addColorStop(.32f, Inner1)
+                addColorStop(.72f, Inner2)
+                addColorStop(1f, Inner3)
+            }
+            .also { innerGradient = it }
+    }
 }
+
+/** The flame seen through the grin, on a unit circle, laid on the flame under a transform. */
+private val FlameGradient =
+    Gradient2D.radial(0f, 0f, 0f, 0f, 0f, 1f).apply {
+        addColorStop(0f, rgba(255, 255, 240, 1f))
+        addColorStop(.35f, rgba(255, 226, 130, .95f))
+        addColorStop(1f, rgba(255, 140, 40, 0f))
+    }
+
+private val Inner0 = cssColor("#fff6c8")
+private val Inner1 = cssColor("#ffc650")
+private val Inner2 = cssColor("#f07a20")
+private val Inner3 = cssColor("#a8400e")
+private val EdgeClear = rgba(255, 150, 60, 0f)
+private val EdgeWarm = rgba(255, 160, 70, 1f)
 
 /** How far the night copy reaches from the pumpkin at [s]: its soft edge ends here. */
 internal fun nightRadius(s: Float, px: Float, py: Float, w: Float, h: Float): Float {
@@ -315,14 +351,7 @@ private fun Canvas2D.drawPumpkin(
     fill()
     if (f > .005f) {
         globalAlpha = (f * fl).coerceIn(0f, 1f)
-        fillStyle =
-            Gradient2D.radial(x + lean * r * .08f, y + r * .4f, r * .02f, x, y + r * .2f, r * .95f)
-                .apply {
-                    addColorStop(0f, "#fff6c8")
-                    addColorStop(.32f, "#ffc650")
-                    addColorStop(.72f, "#f07a20")
-                    addColorStop(1f, "#a8400e")
-                }
+        fillStyle = paints.inner(lean)
         holesPath(x, y, r, r * .03f, r * .06f)
         fill()
         // The flame itself, seen through the grin.
@@ -332,18 +361,25 @@ private fun Canvas2D.drawPumpkin(
         val w = r * .085f * (.6f + .4f * f)
         val tx = bx + lean * r * .32f
         val ty = by - h
-        fillStyle =
-            Gradient2D.radial(bx, by - h * .3f, 0f, bx, by - h * .3f, h).apply {
-                addColorStop(0f, rgba(255, 255, 240, 1f))
-                addColorStop(.35f, rgba(255, 226, 130, .95f))
-                addColorStop(1f, rgba(255, 140, 40, 0f))
-            }
-        beginPath()
-        moveTo(bx - w, by)
-        quadraticCurveTo(bx - w * 1.2f, by - h * .45f, tx, ty)
-        quadraticCurveTo(bx + w * 1.2f, by - h * .45f, bx + w, by)
-        quadraticCurveTo(bx, by + w * .9f, bx - w, by)
-        fill()
+        if (h > .01f) {
+            // The flame's gradient is one unit circle, made once and laid on the flame's centre
+            // at its size, so the path is drawn in that circle's units.
+            val cx = bx
+            val cy = by - h * .3f
+            fun lx(v: Float) = (v - cx) / h
+            fun ly(v: Float) = (v - cy) / h
+            save()
+            translate(cx, cy)
+            scale(h, h)
+            fillStyle = FlameGradient
+            beginPath()
+            moveTo(lx(bx - w), ly(by))
+            quadraticCurveTo(lx(bx - w * 1.2f), ly(by - h * .45f), lx(tx), ly(ty))
+            quadraticCurveTo(lx(bx + w * 1.2f), ly(by - h * .45f), lx(bx + w), ly(by))
+            quadraticCurveTo(lx(bx), ly(by + w * .9f), lx(bx - w), ly(by))
+            fill()
+            restore()
+        }
         globalAlpha = 1f
     }
     // The wick's ember, as the flame catches or dies.
@@ -410,9 +446,9 @@ internal fun Canvas2D.drawCandleGlow(
     if (edge > .01f && big > NightFeather) {
         fillStyle =
             Gradient2D.radial(x, y, max(0f, big - NightFeather * 1.6f), x, y, big).apply {
-                addColorStop(0f, rgba(255, 150, 60, 0f))
-                addColorStop(.6f, rgba(255, 160, 70, 1f))
-                addColorStop(1f, rgba(255, 150, 60, 0f))
+                addColorStop(0f, EdgeClear)
+                addColorStop(.6f, EdgeWarm)
+                addColorStop(1f, EdgeClear)
             }
         globalAlpha = .16f * edge
         fillRect(0f, 0f, w, h)

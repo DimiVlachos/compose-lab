@@ -12,10 +12,11 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object JackOLanternDemos {
-    // The script's moves, by name.
-    const val Light = "light"
-    const val Blow = "blow"
-    const val LightAndTurn = "light-and-turn"
+    // The script's moves, by name: each plays the prototype's way round from where the candle
+    // started, out (a tap, then a flick) or lit in the dark theme (a flick, then a tap).
+    const val Change = "change"
+    const val ChangeBack = "change-back"
+    const val ChangeAndTurn = "change-and-turn"
 
     // How long each takes, as the prototype's demo moves its finger: to the pumpkin, the tap and
     // away, then the night spreading; to the flick's start, the flick and away, then the night
@@ -27,12 +28,12 @@ internal object JackOLanternDemos {
     // The prototype's runDemo(): a tap lights the candle and the night spreads out of its face; a
     // flick across the flame blows it out and the night draws back in. Then the other way to
     // change your mind: a tap, and while the night is still spreading, a flick that turns it
-    // round. The clip ends by day, where it began.
+    // round. It ends where it began: a clip by day, a replay in the dark theme by night.
     private val theme = demoScript {
-        at(.4.seconds, lasts = LightTakes) { tapControl(Light) }
-        at(.4.seconds + LightTakes, lasts = BlowTakes) { tapControl(Blow) }
+        at(.4.seconds, lasts = LightTakes) { tapControl(Change) }
+        at(.4.seconds + LightTakes, lasts = BlowTakes) { tapControl(ChangeBack) }
         at(.4.seconds + LightTakes + BlowTakes + .6.seconds, lasts = TurnTakes) {
-            tapControl(LightAndTurn)
+            tapControl(ChangeAndTurn)
         }
         at(.4.seconds + LightTakes + BlowTakes + .6.seconds + TurnTakes + .6.seconds) {
             resetFeed()

@@ -2,8 +2,17 @@ package dev.dimvlachos.lab.jackolanterndemo.presentation.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
@@ -13,13 +22,18 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
 import dev.dimvlachos.lab.core.presentation.components.jackolantern.JackOLanternState
 import dev.dimvlachos.lab.core.presentation.ui.LabTheme
+import dev.dimvlachos.lab.jackolanterndemo.JackOLanternDemos
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -40,6 +54,27 @@ class JackOLanternDemoUiTest {
         }
     }
 
+    /**
+     * The demo as the app shows it: its own lantern, in [dark] or not, its script played if [play].
+     */
+    private fun ComposeUiTest.showAsApp(dark: Boolean, state: DemoState, play: Boolean = false) {
+        // Lit, the candle flickers every frame and the screen is never idle.
+        mainClock.autoAdvance = false
+        setContent {
+            LabTheme(darkTheme = dark) {
+                Box(Modifier.size(412.dp, 800.dp)) {
+                    JackOLanternDemo(state, reducedMotion = false)
+                }
+                if (play) LaunchedEffect(Unit) { JackOLanternDemos.all.single().script.play(state) }
+            }
+        }
+    }
+
+    private fun ComposeUiTest.isOn() =
+        onNodeWithContentDescription(label)
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.ToggleableState] == ToggleableState.On
+
     @Test
     fun theFarmShowsTonightWithThePumpkinOut() = runComposeUiTest {
         val lantern = JackOLanternState()
@@ -57,6 +92,64 @@ class JackOLanternDemoUiTest {
     // by hand.
     private fun ComposeUiTest.run(ms: Int) {
         repeat(ms / 16) { mainClock.advanceTimeByFrame() }
+    }
+
+    @Test
+    fun theSwitchsClickActionAndItsKeysLightAndBlowItOut() = runComposeUiTest {
+        val lantern = JackOLanternState()
+        show(lantern)
+        mainClock.autoAdvance = false
+        val switch = onNodeWithContentDescription(label)
+        switch.performSemanticsAction(SemanticsActions.OnClick)
+        run(200)
+        assertTrue(lantern.lit)
+        switch.requestFocus()
+        switch.performKeyInput { pressKey(Key.Spacebar) }
+        run(200)
+        assertFalse(lantern.lit)
+        switch.performKeyInput { pressKey(Key.Enter) }
+        run(200)
+        assertTrue(lantern.lit)
+    }
+
+    @Test
+    fun inTheDarkThemeItOpensLitButARecordingStartsOut() = runComposeUiTest {
+        var recording by mutableStateOf(false)
+        mainClock.autoAdvance = false
+        setContent {
+            LabTheme(darkTheme = true) {
+                Box(Modifier.size(412.dp, 800.dp)) {
+                    key(recording) {
+                        JackOLanternDemo(DemoState(recording = recording), reducedMotion = false)
+                    }
+                }
+            }
+        }
+        mainClock.autoAdvance = false
+        run(100)
+        onNodeWithContentDescription(label).assertIsOn()
+        recording = true
+        run(100)
+        onNodeWithContentDescription(label).assertIsOff()
+    }
+
+    @Test
+    fun aReplayInTheDarkThemeStartsLitBlowsOutFirstAndEndsLit() = runComposeUiTest {
+        showAsApp(dark = true, DemoState(replay = true), play = true)
+        mainClock.autoAdvance = false
+        run(200)
+        assertTrue(isOn(), "the replay opens by night, as the screen was")
+        // The first move flicks it out.
+        run(4000)
+        assertFalse(isOn())
+        // Then a tap lights it again, and the change of mind ends lit too.
+        var sawOnAfter = false
+        repeat(22_000 / 16) {
+            mainClock.advanceTimeByFrame()
+            if (isOn()) sawOnAfter = true
+        }
+        assertTrue(sawOnAfter)
+        assertTrue(isOn(), "it ends lit, where it began")
     }
 
     @Test

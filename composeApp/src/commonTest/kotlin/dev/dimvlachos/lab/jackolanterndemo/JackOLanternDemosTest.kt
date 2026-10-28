@@ -20,14 +20,14 @@ class JackOLanternDemosTest {
     }
 
     @Test
-    fun theClipLightsBlowsOutThenTurnsALightRoundAndEndsByDay() = runTest {
+    fun theScriptChangesTheThemeChangesItBackThenTurnsAChangeRoundAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
             listOf(
-                "tapControl(light)",
-                "tapControl(blow)",
-                "tapControl(light-and-turn)",
+                "tapControl(change)",
+                "tapControl(change-back)",
+                "tapControl(change-and-turn)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },

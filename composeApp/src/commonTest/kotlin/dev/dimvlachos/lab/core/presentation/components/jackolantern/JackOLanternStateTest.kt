@@ -71,7 +71,10 @@ class JackOLanternStateTest {
         assertTrue(l.puffs.any { it.live }, "smoke curls off the lid")
         l.run(3200)
         assertEquals(0f, l.spread())
-        assertTrue(l.settled || l.puffs.any { it.live })
+        // The last puffs live under 2.6 s and the flame's lean dies away: it comes to rest.
+        l.run(2000)
+        assertTrue(l.puffs.none { it.live }, "the smoke has cleared")
+        assertTrue(l.settled)
     }
 
     @Test
