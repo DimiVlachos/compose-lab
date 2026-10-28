@@ -151,10 +151,12 @@ class CatalogTest {
     @Test
     fun everyScriptFitsInAShortClipAndTheRecorder() {
         // The recorder plays a script twice after a 1.5 s pre-roll, and waits 120 s in all for the
-        // app to start and finish. 36 s leaves room for a demo that shows every way in and out.
+        // app to start and finish. 40 s leaves room for a demo that shows every way in and out,
+        // even
+        // one that has to wait out a timeout (the grave undo's hand sinks after 6.5 s).
         for (demo in Catalog.demos) {
             assertTrue(
-                demo.script.nominalDuration <= 36.seconds,
+                demo.script.nominalDuration <= 40.seconds,
                 "${demo.id} runs ${demo.script.nominalDuration}",
             )
         }
