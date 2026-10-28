@@ -22,7 +22,7 @@ internal object JackOLanternDemos {
     // drawing back; and a tap whose light a flick turns round halfway.
     val LightTakes = 5000.milliseconds
     val BlowTakes = 5000.milliseconds
-    val TurnTakes = 7400.milliseconds
+    val TurnTakes = 6600.milliseconds
 
     // The prototype's runDemo(): a tap lights the candle and the night spreads out of its face; a
     // flick across the flame blows it out and the night draws back in. Then the other way to

@@ -603,8 +603,8 @@ private class LanternFinger {
 
 private val LinearEasingPassThrough = Easing { it }
 
-/** The prototype's `demoTap`: to the pumpkin, a tap, and away. */
-private suspend fun tap(l: JackOLanternState, finger: LanternFinger) {
+/** The prototype's `demoTap`: to the pumpkin, a tap, and away unless [away] is false. */
+private suspend fun tap(l: JackOLanternState, finger: LanternFinger, away: Boolean = true) {
     val at = Offset(l.px + 2f, l.py + 6f)
     finger.appear(Offset(l.px - 60f, l.py + 260f))
     finger.glide(at, 760)
@@ -612,7 +612,7 @@ private suspend fun tap(l: JackOLanternState, finger: LanternFinger) {
     delay(150)
     finger.lift { l.up(it.x, it.y, finger.ms()) }
     delay(260)
-    finger.glide(Offset(l.px - 60f, l.py + 190f), 820)
+    if (away) finger.glide(Offset(l.px - 60f, l.py + 190f), 820)
 }
 
 /** The prototype's `demoFlick`: from low on the left, across the flame and up to the right. */
@@ -646,7 +646,7 @@ private suspend fun play(control: String, l: JackOLanternState, finger: LanternF
             }
             JackOLanternDemos.LightAndTurn -> {
                 if (l.lit) l.setInstant(false)
-                tap(l, finger)
+                tap(l, finger, away = false)
                 // Changed its mind while the night is still spreading: the flick turns it round.
                 flick(l, finger, approach = 520)
                 delay(2600)

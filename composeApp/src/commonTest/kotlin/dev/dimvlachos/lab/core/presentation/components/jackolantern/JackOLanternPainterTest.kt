@@ -1,8 +1,8 @@
 package dev.dimvlachos.lab.core.presentation.components.jackolantern
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.cssColor
 import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,7 +21,7 @@ class JackOLanternPainterTest {
     @Test
     fun mixRgbRoundsEachChannelAsThePrototypes() {
         // mix('#ffb24a', '#b05a1c', .5): rgb(216, 134, 51).
-        val m = mixRgb(Color(0xFFFFB24A), Color(0xFFB05A1C), .5f)
+        val m = mixRgb(cssColor("#ffb24a"), cssColor("#b05a1c"), .5f)
         assertEquals(216, (m.red * 255).roundToInt())
         assertEquals(134, (m.green * 255).roundToInt())
         assertEquals(51, (m.blue * 255).roundToInt())

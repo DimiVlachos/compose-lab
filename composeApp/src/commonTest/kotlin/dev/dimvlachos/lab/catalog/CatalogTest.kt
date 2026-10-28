@@ -17,6 +17,7 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_frenchpress
+import dev.dimvlachos.lab.resources.demo_jackolantern
 import dev.dimvlachos.lab.resources.demo_keyhook
 import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_magnet_filter
@@ -89,6 +90,7 @@ class CatalogTest {
                 "rubberband.unsend",
                 "coinsorter.sort",
                 "decoderring.translate",
+                "jackolantern.theme",
             ),
             Catalog.demos.map { it.id },
         )
@@ -128,6 +130,7 @@ class CatalogTest {
                 Res.string.demo_rubberband,
                 Res.string.demo_coinsorter,
                 Res.string.demo_decoderring,
+                Res.string.demo_jackolantern,
             ),
             Catalog.demos.map { it.title },
         )
@@ -217,6 +220,7 @@ class CatalogTest {
                 "rubberband.unsend",
                 "coinsorter.sort",
                 "decoderring.translate",
+                "jackolantern.theme",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )
