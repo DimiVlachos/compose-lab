@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A French press: the knob on its rod, the lid with its spout, the glass and the handle. -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M12,1.5a1.8,1.8 0 1,1 0,3.6a1.8,1.8 0 1,1 0,-3.6zM11.3,5h1.4v3h-1.4z" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M5.5,9.6L4,9.2l1.5,-0.9C7,7.5 9.5,7.2 12,7.2s5,0.3 6.5,1.1V10h-13z" />
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M6,10.5h12v9.5a1.5,1.5 0 0,1 -1.5,1.5h-9A1.5,1.5 0 0,1 6,20zM7.6,15.5v4.4h8.8v-4.4z" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M18,12h1.6a1,1 0 0,1 1,1v4.6a1,1 0 0,1 -0.4,0.8l-2.2,1.6v-1.9l1,-0.8v-3.7h-1z" />
+</vector>
