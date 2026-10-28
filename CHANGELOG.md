@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- **Spider refresh** (`spider`): pull to refresh as a little spider on its silk. Pull a feed down and it lowers itself from under the chips, swaying with your finger, its eyes going wide past the threshold; let go and it spins a ball of silk, the ball opens into the new posts hanging below it, and it climbs back up its thread reeling them to the top. Let go early and it scurries home. The list flings, a cancelled touch never fetches, and the app bar's refresh button runs the same sequence. Tiny steps, a silk whisper and warm notes, with a tick felt at the threshold; a live region says how many posts arrived. Its demo is a neighborhood feed.
 - **Jack-o’-lantern theme** (`jackolantern`): a theme switch that is a small carved pumpkin in a farm app's top bar. Tap it and the candle catches and the night theme spreads out of its face in a soft-edged circle of candlelight over the whole screen, with the grin cast faintly across the feed; flick across the flame to blow it out, and the smoke curls off the lid as the night draws back in. Either change turns round mid-flight. Haptics and synthesized match, catch, breath and crackle sounds; a switch for screen readers and keys. Its demo is Maple Hollow Farm's Tonight screen.
 
 ### Changed

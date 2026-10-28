@@ -120,6 +120,14 @@ internal enum class Sound(val file: String) {
     DecoderSettle("decoder_settle"),
     DecoderDone("decoder_done"),
     DecoderBack("decoder_back"),
+    SpiderArm("spider_arm"),
+    SpiderDisarm("spider_disarm"),
+    SpiderPatter("spider_patter"),
+    SpiderClimb("spider_climb"),
+    SpiderSpin("spider_spin"),
+    SpiderCatch("spider_catch"),
+    SpiderSettle("spider_settle"),
+    SpiderEmpty("spider_empty"),
 
     // Jack-o'-lantern theme.
     LanternStrike("lantern_strike"),

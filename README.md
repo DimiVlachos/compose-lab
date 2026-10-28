@@ -56,6 +56,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband) | `rubberband` | `rubberband.unsend` | A chat composer where the message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field to edit |
 | [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
 | [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring) | `decoderring` | `decoderring.translate` | A message's Translate button as a brass cereal-box decoder ring: twist it and the letters spin through the alphabet in a wave and click down into English |
+| [Spider refresh](#spider-refresh-corepresentationcomponentsspider) | `spider` | `spider.refresh` | Pull to refresh on a neighborhood feed: a little spider lowers itself on its silk, spins the new posts up in a ball of silk and climbs back up its thread, reeling them in to the top |
 | [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern) | `jackolantern` | `jackolantern.theme` | A theme switch that is a carved pumpkin: light its candle and the night theme spreads out of its face over the whole screen; flick across the flame to blow it out |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -97,6 +98,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband)
 - [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
 - [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring)
+- [Spider refresh](#spider-refresh-corepresentationcomponentsspider)
 - [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -1074,6 +1076,27 @@ val ring = remember { DecoderRingState() }
 DecoderRingEffects(ring, sounds)
 DecoderMessage(ring, spanish, english, ink, dark, Modifier.fillMaxWidth(.86f), Modifier.background(card, shape))
 DecoderRingButton(ring, label = "Translate to English", description = "Spanish", focusRing = accent)
+```
+
+## Spider refresh (`core/presentation/components/spider/`)
+
+![](docs/media/spider.refresh.gif)
+
+Pull to refresh for Halloween week. Pull the feed down and a small spider lowers itself from under the chips on its silk, dangling and swinging as your finger moves sideways; past the threshold its eyes go wide. Let go there and it spins a little ball of silk while the posts load, the ball opens into the new posts hanging below it on silk, and it climbs back up its thread, reeling them up until they settle at the top of the feed. Let go early and it scurries home empty-handed. After a few rounds it comes back with nothing and the feed says you're all caught up.
+
+- **One gesture.** The same drag scrolls the feed or, at the top, pulls it, through a rubber band; a scroll that turns into a pull keeps its place. Let go of a scroll and the list flings and coasts to a stop; a cancelled touch never fetches.
+- **The posts stay put.** The list is pushed down in the draw phase, so a pull never recomposes. The new posts are real items, composed while they hang and grown from their top centre as the ball opens; the list moves down with them as they are reeled up, so nothing overlaps, and they land at the top of the list in the same frame.
+- **The spider.** Drawn on the shared `canvas2d` adapter in one canvas over the feed: eight two-jointed legs that walk faster as it scurries or climbs, a bow where the thread ties on, eyes that follow the finger and blink, a damped pendulum for the dangle, and glints running up the thread while it climbs.
+- **Feel and sound.** A tick when its eyes go wide, felt as well when a finger pulls it there; tiny steps as it peeks, scurries and climbs, a silk whisper, a soft pluck as the ball opens and two warm notes as the posts settle.
+- **Screen readers and keys.** The app bar's refresh button runs the same sequence, sliding a scrolled feed back to the top first, and a polite live region says how many posts arrived.
+- **Reduced motion.** The new posts appear at once, without the climb.
+
+The demo, `spider.refresh`, is the Elm Hollow neighbors' feed. Its script pulls a little and lets go too soon, so the spider peeks out and scurries back; then pulls all the way, swaying, so it fetches two posts and reels them up; then taps the refresh button for one more.
+
+```kotlin
+val spider = remember { SpiderRefreshState() }
+SpiderRefreshEffects(spider, sounds)
+SpiderRefreshFeed(spider, colors, accent, label = "Neighborhood feed. Pull down to refresh.") { id -> Post(id) }
 ```
 
 ## Jack-o’-lantern theme (`core/presentation/components/jackolantern/`)
