@@ -1618,6 +1618,85 @@ def spider_empty(rng, rate):
     place(track, spider_tone(rate, 440, 400, 0.2, 0.1), 0)
     place(track, scale(spider_tone(rate, 392, 350, 0.26, 0.12), 0.8), seconds(0.16, rate))
     return soft_finish(soft_room(soft_tilt(track, rate, 3400), rate, 0.1), rate, 0.22, 0.006, 0.06)
+# ---------- Grave undo ----------
+# A moonlit graveyard in a snackbar, heard close and soft: a dry tick as the swipe arms, a hushed
+# whoosh as the row flies off, a muffled thud into the soil, a crumble of dirt and a faint low "ooo"
+# as the hand comes up, and two knuckle clicks and a soft lift as it hands the task back. The
+# prototype's WebAudio shots: filtered noise whose cutoff glides, and gliding sines, through the
+# soft toolkit.
+
+
+def grave_shot(rng, rate, mode, f0, f1, gain, attack, dur, q=0.7, delay=0.0):
+    """The prototype's noiseShot(): noise through a filter gliding from f0 to f1 (exponentially) over
+    dur, with an exponential rise to gain over attack and a fall to nothing at dur."""
+    n = seconds(delay + dur + 0.05, rate)
+    src = noise(n, rng)
+    low = band = 0.0
+    out = []
+    for i, x in enumerate(src):
+        t = i / rate - delay
+        if t < 0:
+            out.append(0.0)
+            continue
+        f = f0 * (f1 / f0) ** min(1.0, t / dur)
+        k = 2 * math.sin(math.pi * min(f, rate / 6) / rate)
+        high = x - low - band / q
+        band += k * high
+        low += k * band
+        v = low if mode == "lowpass" else band
+        if t < attack:
+            env = 0.0001 * (gain / 0.0001) ** (t / attack)
+        elif t < dur:
+            env = gain * (0.0001 / gain) ** ((t - attack) / (dur - attack))
+        else:
+            env = 0.0
+        out.append(v * env)
+    return out
+
+
+def grave_tone(rate, f0, f1, gain, attack, dur, delay=0.0, vib=0.0):
+    """The prototype's tone(): a sine gliding from f0 to f1 over dur, a vib Hz-deep wobble at 5 Hz,
+    rising to gain over attack and falling to nothing at dur."""
+    n = seconds(delay + dur + 0.05, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate - delay
+        if t < 0:
+            out.append(0.0)
+            continue
+        f = f0 * (f1 / f0) ** min(1.0, t / dur) + vib * math.sin(2 * math.pi * 5 * t)
+        phase += f / rate
+        if t < attack:
+            env = 0.0001 * (gain / 0.0001) ** (t / attack)
+        elif t < dur:
+            env = gain * (0.0001 / gain) ** ((t - attack) / (dur - attack))
+        else:
+            env = 0.0
+        out.append(math.sin(2 * math.pi * phase) * env)
+    return out
+
+
+def grave_clips(rng, rate):
+    """The grave's clips, from the prototype's sTick/sSwipe/sThud/sCrumble/sOoo/sClick/sLift."""
+    crumble = band_mix(*[(1.0, grave_shot(rng, rate, "bandpass", 900 + rng.random() * 900, 600, 0.03 + rng.random() * 0.03, 0.003, 0.05 + rng.random() * 0.05, 2.5, i * 0.07 + rng.random() * 0.04)) for i in range(9)])
+    clips = {
+        # The swipe passing the line: a tiny dry tick.
+        "grave_tick": (grave_shot(rng, rate, "bandpass", 3200, 2400, 0.035, 0.002, 0.03, 3), 0.16),
+        # The row flying off: a hushed whoosh that darkens.
+        "grave_swipe": (grave_shot(rng, rate, "lowpass", 1600, 300, 0.05, 0.04, 0.45), 0.2),
+        # Into the soil: a muffled thud with a low body under it.
+        "grave_thud": (band_mix((1.0, grave_shot(rng, rate, "lowpass", 320, 110, 0.14, 0.006, 0.3)), (1.0, grave_tone(rate, 88, 52, 0.09, 0.006, 0.32))), SOFT_PEAK),
+        # The hand pushing up: dirt crumbling.
+        "grave_crumble": (crumble, 0.22),
+        # And under it, a faint low "ooo", a quarter second in.
+        "grave_ooo": (band_mix((1.0, grave_tone(rate, 300, 270, 0.018, 0.35, 1.4, 0.25, 6)), (1.0, grave_tone(rate, 450, 405, 0.008, 0.4, 1.3, 0.3, 6))), 0.12),
+        # Two knuckle clicks as the hand lets go.
+        "grave_click": (band_mix((1.0, grave_shot(rng, rate, "bandpass", 2600, 2200, 0.06, 0.001, 0.025, 4)), (1.0, grave_shot(rng, rate, "bandpass", 3000, 2500, 0.05, 0.001, 0.025, 4, 0.075))), 0.2),
+        # The task lifting home: a soft rising breath.
+        "grave_lift": (grave_shot(rng, rate, "bandpass", 500, 2200, 0.025, 0.2, 0.7, 1.2), 0.14),
+    }
+    return {name: soft_finish(soft_room(soft_tilt(clip, rate, 3200), rate, 0.1), rate, peak, 0.002, 0.03)
+            for name, (clip, peak) in clips.items()}
 # ---------- Jack-o'-lantern ----------
 # A candle in a carved pumpkin: the prototype's air() bursts, noise through a filter whose
 # frequency glides exponentially, in an exponential rise and fall, as WebAudio's ramps. Built with
@@ -1827,6 +1906,8 @@ def main():
     write("spider_catch", spider_catch(spider, fast), fast)
     write("spider_settle", spider_settle(spider, fast), fast)
     write("spider_empty", spider_empty(spider, fast), fast)
+    for name, clip in grave_clips(random.Random(1028), fast).items():
+        write(name, clip, fast)
     lantern = random.Random(1028)
     write("lantern_strike", lantern_strike(lantern, fast), fast)
     write("lantern_catch", lantern_catch(lantern, fast), fast)

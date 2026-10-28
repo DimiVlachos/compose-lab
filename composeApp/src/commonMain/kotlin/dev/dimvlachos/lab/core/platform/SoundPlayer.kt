@@ -128,6 +128,13 @@ internal enum class Sound(val file: String) {
     SpiderCatch("spider_catch"),
     SpiderSettle("spider_settle"),
     SpiderEmpty("spider_empty"),
+    GraveTick("grave_tick"),
+    GraveSwipe("grave_swipe"),
+    GraveThud("grave_thud"),
+    GraveCrumble("grave_crumble"),
+    GraveOoo("grave_ooo"),
+    GraveClick("grave_click"),
+    GraveLift("grave_lift"),
 
     // Jack-o'-lantern theme.
     LanternStrike("lantern_strike"),
