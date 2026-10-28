@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ScrollAxisRange
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
@@ -203,6 +204,9 @@ internal fun SpiderRefreshFeed(
                     Modifier.padding(horizontal = 12.dp)
                         .fillMaxWidth()
                         .wrapContentHeight(Alignment.Top, unbounded = true)
+                        // Hidden from screen readers while it hangs, as in the prototype; it is
+                        // read once it settles into the list.
+                        .clearAndSetSemantics {}
                         .onSizeChanged { state.cardMeasured(i, it.height / dp) }
                         .graphicsLayer {
                             state.frame

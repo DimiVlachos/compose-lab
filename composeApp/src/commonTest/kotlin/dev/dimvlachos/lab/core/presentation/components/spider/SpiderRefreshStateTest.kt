@@ -146,6 +146,11 @@ class SpiderRefreshStateTest {
         assertFalse(s.toast)
         assertEquals(11, s.posts.size)
         assertTrue(s.fresh.isEmpty())
+        // A second empty refresh clears the announcement first, so the live region speaks again.
+        s.refreshButton()
+        assertEquals(-1, s.said)
+        s.run(2.6f)
+        assertEquals(0, s.said)
     }
 
     @Test

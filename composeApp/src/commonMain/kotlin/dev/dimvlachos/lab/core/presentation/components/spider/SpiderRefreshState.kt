@@ -402,6 +402,7 @@ internal class SpiderRefreshState(
 
     private fun startRefresh(button: Boolean) {
         phase = SpiderPhase.Refresh
+        said = -1
         busy = true
         fling = 0f
         fromButton = button
