@@ -92,7 +92,13 @@ internal enum class Sound(val file: String) {
     CopierFeed("copier_feed"),
     CopierLift("copier_lift"),
     CopierSettle("copier_settle"),
-    CopierTick("copier_tick");
+    CopierTick("copier_tick"),
+    PigeonholeLift("pigeonhole_lift"),
+    PigeonholeFold("pigeonhole_fold"),
+    PigeonholeSlide("pigeonhole_slide"),
+    PigeonholeTock("pigeonhole_tock"),
+    PigeonholeRack("pigeonhole_rack"),
+    PigeonholeTick("pigeonhole_tick");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

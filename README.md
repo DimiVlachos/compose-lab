@@ -51,6 +51,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller) | `paintroller` | `paintroller.accent` | An accent colour picker as five paint trays and a roller: roll a new colour up the settings screen and every accent fill it passes takes the wet paint, then dries |
 | [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress) | `frenchpress` | `frenchpress.summary` | A Summarize button that is a little glass French press: push the plunger and the story's words pour in as grounds, and a three-point summary pours out into a card |
 | [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier) | `photocopier` | `photocopier.duplicate` | A list's Duplicate as a little office copier: the card goes face down on the glass, the light sweeps under the lid, and a warm copy slides out of the slot into the list right under it |
+| [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole) | `pigeonhole` | `pigeonhole.move` | Move to… in a mail app as an oak sorting rack: the email folds into a letter and is posted into a cubby |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -86,6 +87,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller)
 - [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress)
 - [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier)
+- [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -921,6 +923,22 @@ PhotocopierList(copier, words, colors, dark, sounds) {
     AppBar()
     Search()
 }
+## Pigeonhole move (`core/presentation/components/pigeonhole/`)
+
+A mail app's Move to… as the oak sorting rack from behind a hotel front desk. Press a message and drag: the rack slides up from the bottom of the screen, and the nearer the email gets to it the more it turns into paper, narrowing to a letter page and then folding in thirds, the bottom up and the top down, until only the sender's first name in pen and a stamp in their own colour show on the outside. Hover a cubby and it lights up while the letter waits just above its frame; let go and it slips in behind the rail, the letters behind it shuffle back, the count on the brass plate ticks up and the inbox closes the gap. Let go over the list and it unfolds back into its slot. The rack icon brings the rack up on its own: tap a cubby and its letters lift out one after another and unfold into that folder's rows; Back folds them up and files them away again. Drag a letter out of a cubby onto the list and it unfolds back where it was before it was moved.
+
+- **Drawn as the prototype draws it.** The rack and the letters are ported call by call from their HTML prototype onto the shared `canvas2d` adapter: the oak body, the walnut cubby holes and the rails are baked once into images, and a letter's outer thirds turn about their creases with `scale(1, cos θ)`, so the text on them foreshortens, switching to the paper's back past the edge. One number, the fold, drives the whole change, and it comes from how near the finger is to the rack, never from time. Only the card's turn to paper runs on its own 70 ms clock, so in dark mode it never rests on a grey card.
+- **Layers.** The rack is drawn under its buttons, and a letter going in disappears behind the rail; the letters in the air, the one in hand last, are a second canvas over everything.
+- **The list still scrolls.** A quick drag up, or down once the list is scrolled, scrolls it with the platform's fling; a drag down from the top, a sideways drag or a short hold first picks the message up. The drop is decided from where the finger lifts, so a fast flick still posts to the right cubby.
+- **Feel and sound.** A haptic as a message lifts and as a cubby lights, a confirm as a letter lands; synthesized paper lifts, folds and slides, an oak tock and the rack's rumble.
+- **Screen readers and keys.** Every row has a Move to… action, and Enter picks it up with keys: it folds and waits over the rack, the cubbies are buttons ("Receipts, 4 messages") that post it, and Escape or Done puts it back. The rack icon is an expandable button, the list can be scrolled by a screen reader or a mouse wheel, the system Back puts the rack down or closes the folder, the rows grow with the font setting, and every move is announced politely.
+- **Reduced motion.** The rack, the folds and the folders change at once.
+
+The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
+
+```kotlin
+val mail = remember { PigeonholeState(cubbies, messages) }
+PigeonholeMail(mail, text, sounds, colors)
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

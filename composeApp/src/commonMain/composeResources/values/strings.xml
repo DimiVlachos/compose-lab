@@ -709,4 +709,42 @@
     <string name="photocopier_said_pinned">Pinned %1$s</string>
     <string name="photocopier_copy">copy</string>
     <string name="photocopier_just_now">Just now</string>
+    <string name="demo_pigeonhole">Pigeonhole move</string>
+    <string name="demo_pigeonhole_description">Move to… as an oak sorting rack: an email folds into a letter and is posted into a cubby</string>
+    <string name="pigeonhole_inbox">Inbox</string>
+    <string name="pigeonhole_account">Larkspur Mail</string>
+    <string name="pigeonhole_search">Search mail</string>
+    <string name="pigeonhole_move_to">Move to</string>
+    <string name="pigeonhole_folders">Folders</string>
+    <string name="pigeonhole_done">Done</string>
+    <string name="pigeonhole_back">Back to Inbox</string>
+    <string name="pigeonhole_empty">Nothing in this folder yet.</string>
+    <string name="pigeonhole_list">Messages. Drag one to the rack, or use its Move to action.</string>
+    <string name="pigeonhole_move_action">Move to…</string>
+    <string name="pigeonhole_choose">Move %1$s. Choose a folder.</string>
+    <string name="pigeonhole_moved">Moved to %1$s</string>
+    <string name="pigeonhole_not_moved">Not moved</string>
+    <string name="pigeonhole_hint">Drag a message to the rack to move it</string>
+    <string name="pigeonhole_folder_work">Work</string>
+    <string name="pigeonhole_folder_receipts">Receipts</string>
+    <string name="pigeonhole_folder_family">Family</string>
+    <string name="pigeonhole_folder_travel">Travel</string>
+    <string name="pigeonhole_folder_school">School</string>
+    <string name="pigeonhole_folder_archive">Archive</string>
+    <plurals name="pigeonhole_messages">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <plurals name="pigeonhole_opened">
+        <item quantity="one">%1$s: %2$d message</item>
+        <item quantity="other">%1$s: %2$d messages</item>
+    </plurals>
+    <plurals name="pigeonhole_cubby">
+        <item quantity="one">%1$s, %2$d message</item>
+        <item quantity="other">%1$s, %2$d messages</item>
+    </plurals>
+    <plurals name="pigeonhole_cubby_open">
+        <item quantity="one">%1$s, %2$d message, open</item>
+        <item quantity="other">%1$s, %2$d messages, open</item>
+    </plurals>
 </resources>
