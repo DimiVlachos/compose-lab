@@ -119,7 +119,13 @@ internal enum class Sound(val file: String) {
     DecoderTick("decoder_tick"),
     DecoderSettle("decoder_settle"),
     DecoderDone("decoder_done"),
-    DecoderBack("decoder_back");
+    DecoderBack("decoder_back"),
+
+    // Jack-o'-lantern theme.
+    LanternStrike("lantern_strike"),
+    LanternCatch("lantern_catch"),
+    LanternBlow("lantern_blow"),
+    LanternCrackle("lantern_crackle");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

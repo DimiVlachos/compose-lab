@@ -1546,6 +1546,75 @@ def decoder_back(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 3800), rate, 0.12), rate, 0.3, 0.004, 0.06)
 
 
+# ---------- Jack-o'-lantern ----------
+# A candle in a carved pumpkin: the prototype's air() bursts, noise through a filter whose
+# frequency glides exponentially, in an exponential rise and fall, as WebAudio's ramps. Built with
+# the soft toolkit.
+
+def lantern_filter(signal, kind, f0, f1, q, dur, rate):
+    """An RBJ low-, high- or band-pass whose frequency glides exponentially from f0 to f1 over dur seconds."""
+    if kind == "bandpass":
+        return sweep_bandpass(signal, f0, f1, q, dur, rate)
+    out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
+    for i, x in enumerate(signal):
+        t = min(1.0, i / (dur * rate))
+        w = 2 * math.pi * f0 * (f1 / f0) ** t / rate
+        alpha = math.sin(w) / (2 * q)
+        cw = math.cos(w)
+        if kind == "lowpass":
+            b0, b1, b2 = (1 - cw) / 2, 1 - cw, (1 - cw) / 2
+        else:
+            b0, b1, b2 = (1 + cw) / 2, -(1 + cw), (1 + cw) / 2
+        a0, a1, a2 = 1 + alpha, -2 * cw, 1 - alpha
+        y = (b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0
+        x2, x1, y2, y1 = x1, x, y1, y
+        out.append(y)
+    return out
+
+
+def lantern_air(rng, rate, kind, f0, f1, peak, attack, dur, q=0.7):
+    """The prototype's air(): noise through a gliding filter, up to peak over attack and down to silence by dur."""
+    n = seconds(dur + 0.05, rate)
+    env = []
+    for i in range(n):
+        t = i / rate
+        if t < attack:
+            env.append(0.0001 * (peak / 0.0001) ** (t / attack))
+        elif t < dur:
+            env.append(peak * (0.0001 / peak) ** ((t - attack) / (dur - attack)))
+        else:
+            env.append(0.0)
+    return mul(lantern_filter(noise(n, rng), kind, f0, f1, q, dur, rate), env)
+
+
+def lantern_strike(rng, rate):
+    """A match struck: a bright scratch rising from 2.6 to 4.2 kHz, and a softer rasp falling after it."""
+    track = [0.0] * seconds(0.35, rate)
+    place(track, lantern_air(rng, rate, "highpass", 2600, 4200, 0.09, 0.01, 0.14, 0.8), 0)
+    place(track, lantern_air(rng, rate, "bandpass", 1800, 900, 0.05, 0.02, 0.22, 1.2), seconds(0.06, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 5200), rate, 0.10), rate, 0.30, 0.003, 0.03)
+
+
+def lantern_catch(rng, rate):
+    """The candle catching: a low, soft whoomp of air opening from 260 to 900 Hz."""
+    clip = lantern_air(rng, rate, "lowpass", 260, 900, 0.2, 0.12, 0.7, 0.9)
+    return soft_finish(soft_room(clip, rate, 0.12), rate, 0.42, 0.01, 0.08)
+
+
+def lantern_blow(rng, rate):
+    """A breath across the flame: a rush rising from 700 to 1700 Hz and a low gust falling under it."""
+    track = [0.0] * seconds(0.7, rate)
+    place(track, lantern_air(rng, rate, "bandpass", 700, 1700, 0.22, 0.06, 0.5, 0.6), 0)
+    place(track, lantern_air(rng, rate, "lowpass", 500, 180, 0.1, 0.02, 0.5, 0.8), seconds(0.12, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 4200), rate, 0.10), rate, 0.45, 0.01, 0.08)
+
+
+def lantern_crackle(rng, rate):
+    """The wick crackling: a tiny bright tick, played now and then while it burns."""
+    clip = lantern_air(rng, rate, "bandpass", 4000, 2400, 0.035, 0.003, 0.03, 3)
+    return soft_finish(soft_room(soft_tilt(clip, rate, 6000), rate, 0.06), rate, 0.12, 0.002, 0.01)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1677,6 +1746,11 @@ def main():
     write("decoder_settle", decoder_settle(ring, fast), fast)
     write("decoder_done", decoder_done(ring, fast), fast)
     write("decoder_back", decoder_back(ring, fast), fast)
+    lantern = random.Random(1028)
+    write("lantern_strike", lantern_strike(lantern, fast), fast)
+    write("lantern_catch", lantern_catch(lantern, fast), fast)
+    write("lantern_blow", lantern_blow(lantern, fast), fast)
+    write("lantern_crackle", lantern_crackle(lantern, fast), fast)
 
 
 if __name__ == "__main__":

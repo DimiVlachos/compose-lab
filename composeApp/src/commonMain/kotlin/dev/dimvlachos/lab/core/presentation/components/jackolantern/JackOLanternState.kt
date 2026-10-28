@@ -3,6 +3,7 @@ package dev.dimvlachos.lab.core.presentation.components.jackolantern
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -120,20 +121,21 @@ internal class JackOLanternState(lit: Boolean = false, seed: Int = 1031) {
     var hintLit by mutableStateOf(false)
         private set
 
-    // The pumpkin: its centre, radius and the radius a finger finds it in.
-    var px = 0f
+    // The pumpkin: its centre, radius and the radius a finger finds it in. Observed, so the touch
+    // zone, the switch and the hint follow the screen's layout.
+    var px by mutableFloatStateOf(0f)
         private set
 
-    var py = 0f
+    var py by mutableFloatStateOf(0f)
         private set
 
     val r = 25f
     val hit = 46f
 
-    var width = 0f
+    var width by mutableFloatStateOf(0f)
         private set
 
-    var height = 0f
+    var height by mutableFloatStateOf(0f)
         private set
 
     val laidOut
