@@ -2,6 +2,8 @@ name: Hygiene
 
 on:
   pull_request:
+    # edited too, so a description changed after opening is checked again.
+    types: [opened, edited, synchronize, reopened]
   push:
     branches:
       - main
@@ -27,6 +29,9 @@ jobs:
           HYGIENE_EXTRA_PATTERNS: ${{ vars.HYGIENE_EXTRA_PATTERNS }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_TEXT: |
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
         run: |
           # A new branch or a force-push has no usable base; then check the head commit alone.
           if [[ -n "$BASE" ]] && git cat-file -e "$BASE^{commit}" 2>/dev/null \

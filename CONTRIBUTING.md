@@ -28,7 +28,7 @@ CI runs these on every pull request. Run them locally first:
 ./gradlew :moodboard:androidApp:lintDebug
 ```
 
-CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE problem shows up), and builds the lab app in Xcode; [ci.yml](.github/workflows/ci.yml) has every step. The iOS tests and builds need macOS with Xcode. A separate hygiene check (`scripts/check-hygiene.sh`) keeps private links, local notes and oversized GIFs out of the repo.
+CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE problem shows up), and builds the lab app in Xcode; [ci.yml](.github/workflows/ci.yml) has every step. The iOS tests and builds need macOS with Xcode. A separate hygiene check (`scripts/check-hygiene.sh`) keeps private links, local notes and oversized GIFs out of the repo and out of pull request descriptions, and fails when the README would render wrong: a code block left open, or a link to a heading that isn't there.
 
 ## Code
 
@@ -39,6 +39,7 @@ CI also builds both debug APKs, links Moodboard's iOS framework (where a SKIE pr
 - A landscape layout branches on the shape of the whole stage, `isWideStage(maxWidth, maxHeight)`, never on a height threshold. The 4:5 and 9:16 record frames are never wide, so clips keep their portrait layout.
 - Every colour is a `LabTheme` token in `core/presentation/ui/Color.kt`, either themed (with a light value in `AppColors.Light`) or art (the same in both themes). The `AppColors` tests fail until a new token is sorted into one or the other, and hold the themed ones to their contrast.
 - A new `Demo` needs a description, an icon (a vector drawable, `ic_demo_*`) and at least one tag, for its catalog card, the search and the tag filter.
+- A new component needs its README section, its row in the components table and `docs/media/<demoId>.gif` (made with `scripts/gif.sh`) shown under its heading. `ReadmeTest` fails until each demo has them.
 - A change to how a component looks should update its clip. [Record a clip](README.md#record-a-clip) has the scripts.
 
 ## Commits and pull requests
