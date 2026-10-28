@@ -20,17 +20,23 @@ class PaintRollerDemosTest {
     }
 
     @Test
-    fun theClipPaintsSedonaThenUndoesIt() = runTest {
+    fun theClipPaintsSedonaThenTapsEvergreenUndoingEach() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf("tapControl(paint-sedona)", "tapControl(undo)", "resetFeed()"),
+            listOf(
+                "tapControl(paint-sedona)",
+                "tapControl(undo)",
+                "tapControl(tap-evergreen)",
+                "tapControl(undo)",
+                "resetFeed()",
+            ),
             controller.calls.map { it.second },
         )
     }
 
     @Test
-    fun theClipFitsInSixteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 16.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInTwentySixSeconds() {
+        assertTrue(demo.script.nominalDuration <= 26.seconds, "${demo.script.nominalDuration}")
     }
 }

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
+
 ## [0.2.0] - 2026-10-28
 
 Twenty-four new components, sound, a light theme and landscape.
