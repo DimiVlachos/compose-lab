@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A little rabbit-ear TV set with a glowing dot on its screen. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M5,8.5h14a2.5,2.5 0 0,1 2.5,2.5v7a2.5,2.5 0 0,1 -2.5,2.5h-14a2.5,2.5 0 0,1 -2.5,-2.5v-7a2.5,2.5 0 0,1 2.5,-2.5zM5.5,10.5h9a1,1 0 0,1 1,1v6a1,1 0 0,1 -1,1h-9a1,1 0 0,1 -1,-1v-6a1,1 0 0,1 1,-1zM10,14.5m-1.4,0a1.4,1.4 0,1 1,2.8 0a1.4,1.4 0,1 1,-2.8 0" />
+  <path
+      android:strokeColor="#FF000000"
+      android:strokeWidth="1.5"
+      android:strokeLineCap="round"
+      android:fillColor="#00000000"
+      android:pathData="M13,8.2L9.5,3M13,8.2L17.5,3.6" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M18,12.5m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0M18,16m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0" />
+</vector>

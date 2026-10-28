@@ -1323,6 +1323,69 @@ def pigeonhole_tick(rng, rate):
     n = seconds(0.04, rate)
     tick = soft_mode(rng, n, rate, 3400, 5.0, 0.004, attack=0.002)
     return soft_finish(soft_room(soft_tilt(tick, rate, 4200), rate, 0.08), rate, 0.07, 0.002, 0.008)
+# ---------- CRT picture-in-picture ----------
+# An old portable TV, from the prototype's WebAudio: oscillators and noise bursts whose gain falls
+# exponentially to nothing over each one's length, as `exponentialRampToValueAtTime(.0001, …)`.
+
+
+def crt_ramp(n, rate, gain, dur, start=0.0):
+    """A gain set at start and ramped exponentially down to .0001 over dur seconds, then silent."""
+    s0, m = seconds(start, rate), seconds(dur, rate)
+    return [gain * (0.0001 / gain) ** ((i - s0) / m) if s0 <= i < s0 + m else 0.0 for i in range(n)]
+
+
+def crt_tone(n, rate, f0, f1, dur, gain, shape="sine", start=0.0):
+    """An oscillator gliding exponentially from f0 to f1 over dur, under its falling gain."""
+    out, phase, s0, m = [0.0] * n, 0.0, seconds(start, rate), seconds(dur, rate)
+    env = crt_ramp(n, rate, gain, dur, start)
+    for i in range(s0, min(n, s0 + m)):
+        f = f0 * (f1 / f0) ** ((i - s0) / m)
+        phase += f / rate
+        p = phase % 1.0
+        v = math.sin(2 * math.pi * p) if shape == "sine" else 4 * abs(p - 0.5) - 1
+        out[i] = v * env[i]
+    return out
+
+
+def crt_burst(rng, n, rate, freq, q, dur, gain, kind="bandpass", start=0.0):
+    """Filtered noise under a falling gain, as the prototype's burst()."""
+    src = noise(n, rng)
+    if kind == "lowpass":
+        shaped = lowpass(lowpass(src, freq, rate), freq, rate)
+    elif kind == "highpass":
+        shaped = highpass(highpass(src, freq, rate), freq, rate)
+    else:
+        shaped = bandpass(src, freq, q, rate)
+    return mul(shaped, crt_ramp(n, rate, gain, dur, start))
+
+
+def crt_off(rng, rate):
+    """The tube switching off: the flyback whine cutting out and the soft thump of it letting go."""
+    n = seconds(0.26, rate)
+    hit = mix(
+        crt_tone(n, rate, 7800, 7600, 0.16, 0.012),
+        crt_tone(n, rate, 150, 42, 0.22, 0.16),
+        crt_burst(rng, n, rate, 420, 0.8, 0.09, 0.22, "lowpass"),
+    )
+    return soft_finish(soft_room(hit, rate, 0.1), rate, 0.5, 0.003, 0.03)
+
+
+def crt_fly(rng, rate):
+    """The dot in flight: a soft band of air and a faint rising tone."""
+    n = seconds(0.36, rate)
+    air = mix(crt_burst(rng, n, rate, 1600, 1.2, 0.34, 0.035), crt_tone(n, rate, 900, 1400, 0.3, 0.008))
+    return soft_finish(soft_room(soft_tilt(air, rate, 3600), rate, 0.1), rate, 0.2, 0.01, 0.04)
+
+
+def crt_on(rng, rate):
+    """The set warming up: a crackle of static, the low hum of it coming on and a small tick."""
+    n = seconds(0.34, rate)
+    warm = mix(
+        crt_burst(rng, n, rate, 4200, 0.6, 0.26, 0.09, "highpass"),
+        crt_tone(n, rate, 118, 122, 0.32, 0.05, "triangle"),
+        crt_burst(rng, n, rate, 900, 2.0, 0.05, 0.08, start=0.02),
+    )
+    return soft_finish(soft_room(warm, rate, 0.1), rate, 0.36, 0.003, 0.03)
 
 
 def main():
@@ -1438,6 +1501,10 @@ def main():
     write("pigeonhole_tock", pigeonhole_tock(rack, fast), fast)
     write("pigeonhole_rack", pigeonhole_rack(rack, fast), fast)
     write("pigeonhole_tick", pigeonhole_tick(rack, fast), fast)
+    crt = random.Random(1027)
+    write("crt_off", crt_off(crt, fast), fast)
+    write("crt_fly", crt_fly(crt, fast), fast)
+    write("crt_on", crt_on(crt, fast), fast)
 
 
 if __name__ == "__main__":

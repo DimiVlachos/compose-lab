@@ -5,6 +5,7 @@ import dev.dimvlachos.lab.bookdemo.BookDemos
 import dev.dimvlachos.lab.bookshelfdemo.BookshelfDemos
 import dev.dimvlachos.lab.cardfiledemo.CardFileDemos
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.crtpipdemo.CrtPipDemos
 import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.frenchpressdemo.FrenchPressDemos
@@ -71,7 +72,8 @@ internal object Catalog {
                     PaintRollerDemos.all +
                     FrenchPressDemos.all +
                     PhotocopierDemos.all +
-                    PigeonholeDemos.all)
+                    PigeonholeDemos.all +
+                    CrtPipDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
