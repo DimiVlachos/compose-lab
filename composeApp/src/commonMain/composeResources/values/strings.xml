@@ -856,7 +856,7 @@
     <string name="decoderring_landed_english">Translated from Spanish.</string>
     <string name="decoderring_landed_spanish">Showing the original Spanish.</string>
     <!-- Jack-o’-lantern theme -->
-    <string name="demo_jackolantern">Jack-o’-lantern theme</string>
+    <string name="demo_jackolantern">Jack-o’-lantern</string>
     <string name="demo_jackolantern_description">Light a carved pumpkin and the night theme spreads out of its face; flick the flame to blow it out</string>
     <string name="jackolantern_farm">Maple Hollow Farm</string>
     <string name="jackolantern_title">Tonight at the farm</string>

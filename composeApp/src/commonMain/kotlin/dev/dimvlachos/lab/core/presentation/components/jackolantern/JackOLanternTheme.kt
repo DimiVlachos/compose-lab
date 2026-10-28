@@ -13,8 +13,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,6 +50,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -275,10 +274,48 @@ internal fun JackOLanternTheme(
     val glowCanvas = remember { LayerCanvas() }
     val lanternCanvas = remember { LayerCanvas() }
     Box(
-        modifier.onGloballyPositioned {
-            geometry.root = it
-            geometry.update()
-        },
+        modifier
+            // Where a finger works the candle: the top of the screen, down well past the pumpkin,
+            // so a flick can start and end clear of it. Watched on the way down, before the screen
+            // under it, and never consumed: the page still scrolls under a vertical drag.
+            .pointerInput(state) {
+                awaitEachGesture {
+                    val down =
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val d = density
+                    if (!state.laidOut || down.position.y / d > state.py + 190f)
+                        return@awaitEachGesture
+                    state.down(
+                        down.position.x / d,
+                        down.position.y / d,
+                        down.uptimeMillis.toDouble(),
+                    )
+                    try {
+                        while (true) {
+                            val e = awaitPointerEvent(PointerEventPass.Initial)
+                            val c = e.changes.firstOrNull { it.id == down.id }
+                            if (c == null) {
+                                state.cancel()
+                                break
+                            }
+                            val x = c.position.x / d
+                            val y = c.position.y / d
+                            if (!c.pressed) {
+                                state.up(x, y, c.uptimeMillis.toDouble())
+                                break
+                            }
+                            state.move(x, y, c.uptimeMillis.toDouble())
+                        }
+                    } catch (e: CancellationException) {
+                        state.cancel()
+                        throw e
+                    }
+                }
+            }
+            .onGloballyPositioned {
+                geometry.root = it
+                geometry.update()
+            },
     ) {
         Box(Modifier.fillMaxSize()) { day.content() }
         // The night copy: an exact copy of the screen in the night theme, with the candle's light
@@ -337,46 +374,6 @@ internal fun JackOLanternTheme(
             }
         }
         if (state.laidOut) {
-            // Where a finger works the candle: the top of the screen, down well past the pumpkin,
-            // so a flick can start and end clear of it.
-            Box(
-                Modifier.fillMaxWidth()
-                    .height((state.py + 190f).dp)
-                    .clearAndSetSemantics {}
-                    .pointerInput(state) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            down.consume()
-                            val d = density
-                            state.down(
-                                down.position.x / d,
-                                down.position.y / d,
-                                down.uptimeMillis.toDouble(),
-                            )
-                            try {
-                                while (true) {
-                                    val e = awaitPointerEvent()
-                                    val c = e.changes.firstOrNull { it.id == down.id }
-                                    if (c == null) {
-                                        state.cancel()
-                                        break
-                                    }
-                                    c.consume()
-                                    val x = c.position.x / d
-                                    val y = c.position.y / d
-                                    if (!c.pressed) {
-                                        state.up(x, y, c.uptimeMillis.toDouble())
-                                        break
-                                    }
-                                    state.move(x, y, c.uptimeMillis.toDouble())
-                                }
-                            } catch (e: CancellationException) {
-                                state.cancel()
-                                throw e
-                            }
-                        }
-                    },
-            )
             LanternSwitch(state, switchLabel)
             Hint(state, if (state.hintLit) hintBlow else hintLight, reducedMotion)
         }
@@ -461,10 +458,11 @@ private fun Hint(state: JackOLanternState, text: String, reducedMotion: Boolean)
     Box(Modifier.fillMaxSize().clearAndSetSemantics {}, contentAlignment = Alignment.TopEnd) {
         BasicText(
             text,
-            Modifier.padding(
-                    top = (state.py + state.r + 36f).dp,
-                    end = max(10f, state.width - state.px - 30f).dp,
-                )
+            Modifier
+                // Under the pumpkin wherever the page has scrolled it, above the top too: placed,
+                // not padded, so it never recomposes as the page moves.
+                .offset { IntOffset(0, ((state.py + state.r + 36f) * density).roundToInt()) }
+                .padding(end = max(10f, state.width - state.px - 30f).dp)
                 .graphicsLayer { alpha = shown.value }
                 .background(JackOLanternScreenColors.Hint, RoundedCornerShape(999.dp))
                 .border(1.dp, Color(255, 255, 255, 31), RoundedCornerShape(999.dp))

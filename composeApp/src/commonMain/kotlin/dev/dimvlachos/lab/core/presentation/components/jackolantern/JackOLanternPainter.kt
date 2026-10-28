@@ -11,6 +11,7 @@ import dev.dimvlachos.lab.core.presentation.components.jackolantern.JackOLantern
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -469,7 +470,9 @@ internal fun bakeProjection(w: Float, h: Float): ImageBitmap {
     c.setTransform(gs, 0f, 0f, gs, 0f, 0f)
     val cx = w * .44f
     val cy = h * .55f
-    val big = w * .42f
+    // Sized from the shorter side: the prototype's portrait screen is as wide as that, and on a
+    // landscape stage a width-sized grin would cover the header.
+    val big = min(w, h) * .42f
     c.save()
     c.translate(cx, cy)
     c.rotate(-.1f)

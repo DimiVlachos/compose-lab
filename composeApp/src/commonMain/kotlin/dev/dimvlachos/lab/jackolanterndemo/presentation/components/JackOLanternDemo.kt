@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,12 +16,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -159,6 +161,7 @@ internal fun JackOLanternDemo(
     // Both copies reach under the insets and pad their content inside, so the strips at the foot
     // and the sides are in whichever theme the light has brought, never left by day.
     val insets = demoInsets(state)
+    val scroll = rememberScrollState()
     Box(Modifier.fillMaxSize()) {
         JackOLanternTheme(
             state = lantern,
@@ -171,7 +174,7 @@ internal fun JackOLanternDemo(
             modifier = Modifier.fillMaxSize(),
             reducedMotion = reducedMotion,
         ) {
-            Farm(texts, insets)
+            Farm(texts, insets, scroll)
         }
         Canvas(Modifier.fillMaxSize()) { with(finger) { drawFinger(touch) } }
     }
@@ -238,9 +241,20 @@ private fun farmTexts(): FarmTexts {
 
 /** The screen the candle themes, composed once by day and once by night. */
 @Composable
-private fun JackOLanternScope.Farm(t: FarmTexts, insets: WindowInsets) {
+private fun JackOLanternScope.Farm(t: FarmTexts, insets: WindowInsets, scroll: ScrollState) {
     val c = colors
     Column(Modifier.fillMaxSize().background(c.background).windowInsetsPadding(insets)) {
+        // The page scrolls when the stage is shorter than it, as in landscape; both copies share
+        // the scroll, so the night lies over the day line for line. The tab bar stays at the foot.
+        Column(Modifier.weight(1f).verticalScroll(scroll)) { Page(t) }
+        TabBar(t)
+    }
+}
+
+@Composable
+private fun JackOLanternScope.Page(t: FarmTexts) {
+    val c = colors
+    Column(Modifier.fillMaxWidth()) {
         // The top bar: the farm's name, tonight's title, and the pumpkin's slot.
         Row(
             Modifier.fillMaxWidth().height(66.dp).padding(start = 20.dp, end = 14.dp, top = 6.dp),
@@ -351,25 +365,29 @@ private fun JackOLanternScope.Farm(t: FarmTexts, insets: WindowInsets) {
         ) {
             Text(t.cta, 15.sp, c.onAccent, FontWeight(650))
         }
-        Spacer(Modifier.weight(1f).heightIn(min = 8.dp))
-        // The tab bar.
-        Row(
-            Modifier.fillMaxWidth()
-                .background(c.tabBar)
-                .drawBehind { drawRect(c.line, size = Size(size.width, 1.dp.toPx())) }
-                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 18.dp),
-        ) {
-            for (i in t.tabs.indices) {
-                val on = i == 0
-                val ink = if (on) c.accent else c.muted
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Icon(TabIcons[i], ink, 22f)
-                    Text(t.tabs[i], 11.sp, ink, if (on) FontWeight.SemiBold else FontWeight.Normal)
-                }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun JackOLanternScope.TabBar(t: FarmTexts) {
+    val c = colors
+    Row(
+        Modifier.fillMaxWidth()
+            .background(c.tabBar)
+            .drawBehind { drawRect(c.line, size = Size(size.width, 1.dp.toPx())) }
+            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 18.dp),
+    ) {
+        for (i in t.tabs.indices) {
+            val on = i == 0
+            val ink = if (on) c.accent else c.muted
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Icon(TabIcons[i], ink, 22f)
+                Text(t.tabs[i], 11.sp, ink, if (on) FontWeight.SemiBold else FontWeight.Normal)
             }
         }
     }

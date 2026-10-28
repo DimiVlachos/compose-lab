@@ -28,6 +28,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -150,6 +151,26 @@ class JackOLanternDemoUiTest {
         }
         assertTrue(sawOnAfter)
         assertTrue(isOn(), "it ends lit, where it began")
+    }
+
+    @Test
+    fun onAShortStageThePageScrollsThePumpkinAndItsHintOffTheTop() = runComposeUiTest {
+        val lantern = JackOLanternState()
+        setContent {
+            LabTheme(darkTheme = false) {
+                Box(Modifier.size(800.dp, 220.dp)) {
+                    JackOLanternDemo(DemoState(), lantern = lantern, reducedMotion = false)
+                }
+            }
+        }
+        mainClock.autoAdvance = false
+        // A quiet while brings the hint up under the pumpkin.
+        run(4200)
+        assertTrue(lantern.hintOn)
+        onRoot().performTouchInput { swipeUp(startY = centerY, endY = top + 2f) }
+        run(1000)
+        assertTrue(lantern.py < 0f, "scrolled up with the page: ${lantern.py}")
+        onNodeWithText("Tonight").assertExists()
     }
 
     @Test
