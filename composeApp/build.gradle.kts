@@ -59,6 +59,9 @@ compose.resources { packageOfResClass = "dev.dimvlachos.lab.resources" }
 // The shared tests' classes run spread over several JVMs at once, half the machine's cores.
 tasks.named<Test>("jvmTest") {
     maxParallelForks = Runtime.getRuntime().availableProcessors()
+    // ReadmeTest reads these, so a change to them runs the tests again.
+    inputs.file(rootProject.file("README.md"))
+    inputs.dir(rootProject.file("docs/media"))
     // CI splits the classes over several machines: -PtestShards=3 -PtestShard=0 runs a third of
     // them, chosen by a hash of each class's path. The salt was picked so the three weigh alike.
     val shards = providers.gradleProperty("testShards").orNull?.toInt()

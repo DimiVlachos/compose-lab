@@ -11,3 +11,4 @@
 - [ ] `./gradlew spotlessCheck` and the tests in [CONTRIBUTING.md](https://github.com/DimiVlachos/compose-lab/blob/main/CONTRIBUTING.md#checks) pass
 - [ ] New behaviour has a test in `commonTest`
 - [ ] The README and the clip are updated if the component looks or behaves differently
+- [ ] A new component has its README section, table row and `docs/media/<demoId>.gif`
