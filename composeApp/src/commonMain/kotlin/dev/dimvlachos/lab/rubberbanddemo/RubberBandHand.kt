@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.Offset
+import dev.dimvlachos.lab.core.presentation.components.rubberband.Band
 import dev.dimvlachos.lab.core.presentation.components.rubberband.RubberBandState
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -63,6 +64,7 @@ internal class RubberBandHand(
                 delay(RubberBandDemos.LiftAfterMs)
                 hide()
             }
+            RubberBandDemos.Twang -> twang()
             RubberBandDemos.Reply -> {
                 chat.showTyping()
                 delay(RubberBandDemos.TypingMs)
@@ -103,6 +105,32 @@ internal class RubberBandHand(
         delay(RubberBandDemos.HoldPulledMs)
         down = false
         chat.releaseScripted()
+    }
+
+    // A short pull on the band itself, halfway down, let go before it's taut: it twangs back and
+    // wobbles, and the message stays sent.
+    private suspend fun twang() {
+        val t = chat.tether ?: return
+        val k = chat.k
+        val g = chat.bandOf(t, Band()).at(.5f)
+        at = Offset(chat.width * .7f, g.y + 60 * k)
+        coroutineScope {
+            launch { show() }
+            move(g, RubberBandDemos.ToBubbleMs)
+        }
+        down = true
+        chat.down(g.x, g.y, scripted = true)
+        delay(RubberBandDemos.GripMs)
+        animate(RubberBandDemos.TwangPullMs) {
+            val e = RubberBandState.ease(it)
+            at = Offset(g.x + 22 * k * e, g.y + 8 * k * e)
+            chat.move(at.x, at.y, scripted = true)
+        }
+        delay(120)
+        down = false
+        chat.up(at.x, at.y, scripted = true)
+        delay(RubberBandDemos.AsideMs)
+        hide()
     }
 
     private suspend fun tapField(across: Float) {

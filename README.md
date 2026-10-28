@@ -985,7 +985,7 @@ A chat thread and its composer where, for nine seconds after a message lands, it
 - **Screen readers and keys.** The caption is a button, "Unsend message"; sending, the snap and the unsend are announced politely.
 - **Reduced motion.** The bubble lands at once, an unsend puts the text back at once, and nothing curls or glides.
 
-The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, then leaves the band to snap before Jess replies.
+The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, plucks the band a little so it twangs back and the message stays, then leaves the band to snap before Jess replies.
 
 ```kotlin
 val chat = remember { RubberBandState(opening) }
