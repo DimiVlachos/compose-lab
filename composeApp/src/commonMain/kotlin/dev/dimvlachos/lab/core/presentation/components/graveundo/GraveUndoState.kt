@@ -702,7 +702,7 @@ internal class GraveUndoState(
                 crumbs.n == 0 &&
                 items.none { it.snapT >= 0f || it.labelL > 0f || it.labelR > 0f || it.armK > 0f } &&
                 abs(hint - hintTarget()) < .002f &&
-                (scripted || (simNow - idleSince) > 1700f || liveItems.isEmpty())
+                (scripted || (simNow - idleSince) > 1700f || items.all { it.gone })
 
     /** Moves everything on by [dt] seconds. */
     fun step(dt: Float) {
@@ -741,7 +741,7 @@ internal class GraveUndoState(
                 drag == null &&
                 graves.isEmpty() &&
                 pillV < .01f &&
-                liveItems.isNotEmpty() &&
+                items.any { !it.gone } &&
                 idle > 1.6f
         return if (want) 1f else 0f
     }

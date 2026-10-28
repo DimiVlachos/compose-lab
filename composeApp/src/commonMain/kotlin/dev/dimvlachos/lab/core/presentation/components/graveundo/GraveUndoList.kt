@@ -444,8 +444,7 @@ private fun Nodes(state: GraveUndoState, text: GraveUndoText, ring: Color) {
                     else
                         Modifier.semantics {
                                 role = Role.Button
-                                contentDescription =
-                                    text.undo.replace(GraveTitleSlot, g.task.title)
+                                contentDescription = text.undo.replace(GraveTitleSlot, g.task.title)
                                 onClick { state.undo() }
                             }
                             .onFocusChanged { focused = it.isFocused }

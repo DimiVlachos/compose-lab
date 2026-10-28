@@ -109,7 +109,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         if (a <= .002f) return
         c.save()
         c.globalAlpha = c.globalAlpha * a
-        c.font = "600 ${14f * s.textScale}px $GraveSans"
+        c.font = fonts(s).label
         c.textBaseline = "middle"
         c.textAlign = "left"
         val tw = c.measureText(words.bury)
@@ -202,7 +202,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             c.stroke()
         }
         c.textBaseline = "middle"
-        c.font = "500 ${12.5f * k}px $GraveSans"
+        c.font = fonts(s).time
         c.textAlign = "right"
         c.fillStyle = colors.muted
         val timeW = c.measureText(task.time)
@@ -213,7 +213,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         val titleH = 15.5f * 1.25f * k
         val subH = 13f * 1.3f * k
         val t0 = cy - (titleH + subH) / 2
-        c.font = "600 ${15.5f * k}px $GraveSans"
+        c.font = fonts(s).title
         c.fillStyle = if (done) colors.muted else colors.ink
         val title = fit(c, task.title, maxW)
         c.fillText(title, tx, t0 + titleH / 2 + .5f)
@@ -222,27 +222,48 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             val tw = c.measureText(title)
             c.fillRect(tx, t0 + titleH / 2 + 1f * k, tw, 1.2f * k)
         }
-        c.font = "400 ${13f * k}px $GraveSans"
+        c.font = fonts(s).sub
         c.fillStyle = colors.muted
         c.fillText(fit(c, task.sub, maxW), tx, t0 + titleH + subH / 2 + .5f)
     }
 
-    // A text cut to [maxW] with an ellipsis, as the row's CSS and the prototype's card cut it.
-    private val fits = HashMap<String, String>()
+    // A text cut to [maxW] with an ellipsis, as the row's CSS and the prototype's card cut it;
+    // kept per text with the font and width it was cut for, so a frame cuts nothing again.
+    private class Fit(val font: String, val maxW: Int, val text: String)
+
+    private val fits = HashMap<String, Fit>()
 
     private fun fit(c: Canvas2D, text: String, maxW: Float): String {
-        val key = "${c.font}|${maxW.roundToInt()}|$text"
-        fits[key]?.let {
-            return it
-        }
+        val w = maxW.roundToInt()
+        fits[text]?.let { if (it.font == c.font && it.maxW == w) return it.text }
         var t = text
         if (c.measureText(t) > maxW + .5f) {
             while (t.length > 1 && c.measureText("$t…") > maxW) t = t.dropLast(1)
             t += "…"
         }
-        if (fits.size > 256) fits.clear()
-        fits[key] = t
+        if (fits.size > 64) fits.clear()
+        fits[text] = Fit(c.font, w, t)
         return t
+    }
+
+    // The painter's font strings, made again only when the screen's width or the font size changes.
+    private class Fonts(val u: Float, val k: Float) {
+        val label = "600 ${14f * k}px $GraveSans"
+        val time = "500 ${12.5f * k}px $GraveSans"
+        val title = "600 ${15.5f * k}px $GraveSans"
+        val sub = "400 ${13f * k}px $GraveSans"
+        val hereLies = "700 ${5.8f * u}px $GraveSerif"
+        val carved = "600 ${8f * u}px $GraveSerif"
+        val name = "600 ${13.5f * u}px $GraveSans"
+        val status = "500 ${12f * u}px $GraveSans"
+    }
+
+    private var fontCache = Fonts(1f, 1f)
+
+    private fun fonts(s: GraveUndoState): Fonts {
+        val f = fontCache
+        if (f.u == s.u && f.k == s.textScale) return f
+        return Fonts(s.u, s.textScale).also { fontCache = it }
     }
 
     /** A row's face as a card in flight, centred at ([x], [y]), scaled [s], tilted [rot]. */
@@ -437,14 +458,13 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
 
     // ---------- Headstone ----------
 
-    private val lines = HashMap<String, List<String>>()
+    private class Wrap(val font: String, val maxW: Float, val lines: List<String>)
+
+    private val lines = HashMap<String, Wrap>()
 
     // The title cut into at most two lines that fit the stone, as the prototype's wrapTitle().
     private fun wrapTitle(c: Canvas2D, text: String, maxW: Float): List<String> {
-        val key = "${c.font}|$maxW|$text"
-        lines[key]?.let {
-            return it
-        }
+        lines[text]?.let { if (it.font == c.font && it.maxW == maxW) return it.lines }
         val out = mutableListOf("")
         for (wd in text.split(' ')) {
             val cur = out.last()
@@ -458,7 +478,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             out[1] = "$t…"
         }
         if (lines.size > 64) lines.clear()
-        lines[key] = out
+        lines[text] = Wrap(c.font, maxW, out)
         return out
     }
 
@@ -551,7 +571,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         c.globalAlpha = a * g.engr
         c.textBaseline = "middle"
         // "HERE LIES", letter-spaced 1.1 as the prototype sets it, centred letter by letter.
-        c.font = "700 ${5.8f * u}px $GraveSerif"
+        c.font = fonts(s).hereLies
         c.textAlign = "left"
         val gap = 1.1f * u
         val head = words.hereLies
@@ -564,7 +584,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             hx += c.measureText(t) + gap
         }
         c.textAlign = "center"
-        c.font = "600 ${8f * u}px $GraveSerif"
+        c.font = fonts(s).carved
         val ls = wrapTitle(c, g.item.task.title, sw - 9 * u)
         for (i in ls.indices) carveText(c, ls[i], x, base - sh + 29 * u + i * 9.4f * u, u)
     }
@@ -716,11 +736,11 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             c.textAlign = "left"
             c.textBaseline = "middle"
             if (g != null) {
-                c.font = "600 ${13.5f * u}px $GraveSans"
+                c.font = fonts(s).name
                 c.fillStyle = "#f3ecf6"
                 c.fillText(fit(c, g.item.task.title, maxW), s.textX, py + 30 * u)
             }
-            c.font = "500 ${12f * u}px $GraveSans"
+            c.font = fonts(s).status
             c.fillStyle = "#c9bdd2"
             val k = s.statusK
             if (k < 1f && s.statusPrev != GraveStatus.None) {
@@ -840,7 +860,7 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
 
     private companion object {
         const val Pad = 24f
-        val Bone = Color(0xFFEFE5CF)
+        val Bone = GraveUndoScreenColors.Bone
         val BoneEdge = Color(66 / 255f, 54 / 255f, 42 / 255f, .9f)
         val BoneHi = Color(1f, 252 / 255f, 242 / 255f, .75f)
         val CarveLight = Color(1f, 1f, 1f, .22f)
@@ -849,8 +869,8 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         val DotLight = Color(1f, 1f, 1f, .09f)
         val MoundLight = Color(130 / 255f, 98 / 255f, 72 / 255f, .7f)
         val MoundDark = Color(30 / 255f, 20 / 255f, 14 / 255f, .5f)
-        val CrumbDark = Color(0xFF5D4331)
-        val CrumbLight = Color(0xFF7B5C43)
+        val CrumbDark = GraveUndoScreenColors.CrumbDark
+        val CrumbLight = GraveUndoScreenColors.CrumbLight
         val Grass = arrayOf("#2f3d24", "#3f5230", "#55683a", "#46592f")
         val MoonSpots =
             listOf(Triple(-.3f, .2f, .22f), Triple(.25f, -.2f, .16f), Triple(.1f, .4f, .12f))

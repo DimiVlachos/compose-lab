@@ -308,8 +308,8 @@ private fun Hint() {
     Box(Modifier.fillMaxSize().clearAndSetSemantics {}, contentAlignment = Alignment.BottomCenter) {
         Row(
             Modifier.padding(bottom = 40.dp)
-                .background(Color(0x9E1C1418), RoundedCornerShape(999.dp))
-                .border(1.dp, Color(0x24FFFFFF), RoundedCornerShape(999.dp))
+                .background(GraveUndoScreenColors.HintPill, RoundedCornerShape(999.dp))
+                .border(1.dp, GraveUndoScreenColors.HintEdge, RoundedCornerShape(999.dp))
                 .padding(start = 11.dp, end = 13.dp, top = 7.dp, bottom = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),

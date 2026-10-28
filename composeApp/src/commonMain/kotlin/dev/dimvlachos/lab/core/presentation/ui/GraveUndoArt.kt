@@ -21,6 +21,17 @@ internal class GraveUndoScreenColors(
     val soilInk: Color,
 ) {
     internal companion object {
+        /** The hand's bone, the same in both themes. */
+        val Bone = Color(0xFFEFE5CF)
+
+        /** The dirt thrown up as a task lands: two browns. */
+        val CrumbDark = Color(0xFF5D4331)
+        val CrumbLight = Color(0xFF7B5C43)
+
+        /** The hint's smoked pill and its hairline. */
+        val HintPill = Color(0x9E1C1418)
+        val HintEdge = Color(0x24FFFFFF)
+
         val Light =
             GraveUndoScreenColors(
                 background = Color(0xFFF5F1EA),
