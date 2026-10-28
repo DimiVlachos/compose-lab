@@ -14,6 +14,7 @@ import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
+import dev.dimvlachos.lab.resources.demo_frenchpress
 import dev.dimvlachos.lab.resources.demo_keyhook
 import dev.dimvlachos.lab.resources.demo_locket
 import dev.dimvlachos.lab.resources.demo_magnet_filter
@@ -21,10 +22,13 @@ import dev.dimvlachos.lab.resources.demo_mailbox
 import dev.dimvlachos.lab.resources.demo_morph_app
 import dev.dimvlachos.lab.resources.demo_navbar
 import dev.dimvlachos.lab.resources.demo_padlock
+import dev.dimvlachos.lab.resources.demo_paintroller
 import dev.dimvlachos.lab.resources.demo_paper_plane
 import dev.dimvlachos.lab.resources.demo_paperbag
 import dev.dimvlachos.lab.resources.demo_paperfan
 import dev.dimvlachos.lab.resources.demo_pencilcup
+import dev.dimvlachos.lab.resources.demo_photocopier
+import dev.dimvlachos.lab.resources.demo_pigeonhole
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_smoke
@@ -74,6 +78,10 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "paintroller.accent",
+                "frenchpress.summary",
+                "photocopier.duplicate",
+                "pigeonhole.move",
                 "crtpip.minimize",
             ),
             Catalog.demos.map { it.id },
@@ -106,6 +114,10 @@ class CatalogTest {
                 Res.string.demo_keyhook,
                 Res.string.demo_paperfan,
                 Res.string.demo_stickynote,
+                Res.string.demo_paintroller,
+                Res.string.demo_frenchpress,
+                Res.string.demo_photocopier,
+                Res.string.demo_pigeonhole,
                 Res.string.demo_crtpip,
             ),
             Catalog.demos.map { it.title },
@@ -188,6 +200,10 @@ class CatalogTest {
                 "keyhook.signout",
                 "paperfan.faq",
                 "stickynote.swipe",
+                "paintroller.accent",
+                "frenchpress.summary",
+                "photocopier.duplicate",
+                "pigeonhole.move",
                 "crtpip.minimize",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },

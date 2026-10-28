@@ -41,17 +41,6 @@ class Canvas2DTest {
     }
 
     @Test
-    fun aGradientBuildsItsShaderOnceUntilAStopIsAdded() {
-        val g = Gradient2D.linear(0f, 0f, 10f, 0f)
-        g.addColorStop(0f, "#000")
-        g.addColorStop(1f, "#fff")
-        val first = g.shader()
-        assertTrue(first === g.shader())
-        g.addColorStop(.5f, "#888")
-        assertTrue(first !== g.shader())
-    }
-
-    @Test
     fun cssColoursParseAsTheBrowserReadsThem() {
         assertEquals(Color(red = 0xef, green = 0xe1, blue = 0xc8), cssColor("#efe1c8"))
         assertEquals(Color(red = 0xff, green = 0xff, blue = 0xff), cssColor("#fff"))
@@ -624,5 +613,66 @@ class Canvas2DTest {
         assertEquals(2.5f, c.transformScale, 1e-5f)
         c.setTransform(0f, 3f, -3f, 0f, 5f, 5f)
         assertEquals(3f, c.transformScale, 1e-5f)
+    }
+
+    @Test
+    fun drawUnderPaintsUnderTheTransformAndClipAndLeavesThemAsTheyWere() {
+        val c = Canvas2D.create(20, 20)
+        c.save()
+        c.beginPath()
+        c.rect(0f, 0f, 20f, 10f)
+        c.clip()
+        c.translate(10f, 5f)
+        c.drawUnder { canvas ->
+            // A square at (0, 0) under the transform: (10, 5) on the canvas, cut at y = 10.
+            canvas.translate(-2f, -2f)
+            canvas.drawRect(
+                androidx.compose.ui.geometry.Rect(0f, 0f, 4f, 10f),
+                androidx.compose.ui.graphics.Paint().apply { color = Color.Red },
+            )
+        }
+        // The translate inside the block is gone: a fill at (0, 0) lands at (10, 5) again.
+        c.fillStyle = "#0000ff"
+        c.fillRect(-1f, 3f, 2f, 1f)
+        c.restore()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Red, px[9, 6])
+        near(Color.Transparent, px[9, 12])
+        near(Color.Transparent, px[5, 6])
+        near(Color.Blue, px[10, 8])
+    }
+
+    @Test
+    fun aGradientKeepsItsShaderUntilAStopIsAdded() {
+        val c = Canvas2D.create(10, 2)
+        val g = c.createLinearGradient(0f, 0f, 10f, 0f)
+        g.addColorStop(0f, "#000000")
+        g.addColorStop(1f, "#ffffff")
+        val first = g.shader()
+        assertTrue(first === g.shader(), "filled again, the same shader")
+        g.addColorStop(1f, "#ff0000")
+        assertTrue(first !== g.shader(), "a new stop, a new shader")
+        c.fillStyle = g
+        c.fillRect(0f, 0f, 10f, 2f)
+        assertTrue(c.bitmap.toPixelMap()[9, 1].red > .8f)
+    }
+
+    @Test
+    fun textWithAShadowCastsItDownAndLeavesPlainTextShadowless() = withMeasurer { m ->
+        fun shadowRows(withShadow: Boolean): List<Int> {
+            val c = textCanvas(m, 60, 70)
+            c.font = "700 20px MONO"
+            c.fillStyle = "#000000"
+            c.setShadowColor(Color(0f, 0f, 0f, 1f))
+            c.shadowBlur = 0.5f
+            c.shadowOffsetY = 24f
+            if (withShadow) c.fillTextWithShadow("H", 10f, 30f) else c.fillText("H", 10f, 30f)
+            return inkRows(c)
+        }
+        val plain = shadowRows(false)
+        val cast = shadowRows(true)
+        assertTrue(plain.max() <= 31, "fillText draws no shadow: ${plain.max()}")
+        assertTrue(cast.max() in 50..56, "the shadow lands 24px lower: ${cast.max()}")
+        assertTrue(cast.min() == plain.min(), "the text itself stays put")
     }
 }
