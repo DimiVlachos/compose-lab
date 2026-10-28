@@ -21,7 +21,7 @@ class RubberBandDemosTest {
     }
 
     @Test
-    fun theClipSendsPullsBackFixesSendsAgainAndFadesBack() = runTest {
+    fun theClipSendsPullsBackFixesSendsAgainTwangsAndFadesBack() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -31,6 +31,7 @@ class RubberBandDemosTest {
                 "tapControl(pull-back)",
                 "tapControl(fix)",
                 "tapControl(send-again)",
+                "tapControl(twang)",
                 "tapControl(reply)",
                 "resetFeed()",
             ),
@@ -42,7 +43,7 @@ class RubberBandDemosTest {
     fun jessRepliesOnlyOnceTheSecondBandHasSnapped() {
         val steps = demo.script.steps
         val sendAgain = steps[4].at
-        val reply = steps[5].at
+        val reply = steps[6].at // after the twang
         // Sent at the end of its tap, landed 420 ms later, then nine seconds of window.
         val snaps =
             sendAgain + (RubberBandDemos.TapMs + RubberBandDemos.HoldMs + 420 + 9000).milliseconds

@@ -7,6 +7,14 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
+- **French press summary** (`frenchpress`): its demo also lets go of a push early so the words fly home, summarizes with a tap on the press and gives the story back by pulling the knob up, so the clip shows every way in and out.
+- **Photocopier duplicate** (`photocopier`): its demo also feeds a second copy back with Undo and pins a list to the top and back, so the clip shows every menu item and both ways to send a copy back.
+- **Pigeonhole move** (`pigeonhole`): its demo first carries a message toward the rack and lets go over the list, so it unfolds back into its slot.
+- **CRT picture-in-picture** (`crtpip`): its demo also flicks the set off the side to stop playback and brings it back with Undo.
+- **Rubber band unsend** (`rubberband`): its demo also plucks the band a little after the second send, so it twangs back and wobbles and the message stays sent.
+- **Coin sorter sort** (`coinsorter`): its demo picks every sort, Price: high to low too, and two of them by pressing the chip and sliding onto the option.
+- **Decoder ring translate** (`decoderring`): its demo also lets go of a short twist so the letters spring back, and taps the ring both ways.
+- **Recording**: a demo script may run up to 36 s instead of 26, so a clip can show every way in and out of its component, and `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice.
 
 ## [0.2.0] - 2026-10-28
 

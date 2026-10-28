@@ -17,6 +17,8 @@ internal object CrtPipDemos {
     const val BrowseDown = "browse-down"
     const val BrowseUp = "browse-up"
     const val SlideSet = "slide-set"
+    const val FlickOff = "flick-off"
+    const val TapUndo = "tap-undo"
     const val TapSet = "tap-set"
 
     // How long each move takes, as the prototype's demo moves its finger.
@@ -24,12 +26,15 @@ internal object CrtPipDemos {
     val BrowseDownTakes = 2400.milliseconds
     val BrowseUpTakes = 1150.milliseconds
     val SlideTakes = 1620.milliseconds
+    val FlickTakes = 800.milliseconds
+    val UndoTakes = 800.milliseconds
     val TapTakes = 760.milliseconds
 
     // The prototype's tour: swipe the video down so it switches off into the set; browse the page
     // while the show plays in the corner, then come back to the top; slide the set over to the
-    // other corner, letting go a little short so the spring shows; tap it and it flies back into
-    // the full player. The next minimize goes to the usual corner again, so the clip loops.
+    // other corner, letting go a little short so the spring shows. Then flick it off the side so
+    // playback stops, and Undo brings it back. Last, tap it and it flies back into the full
+    // player. The next minimize goes to the usual corner again, so the clip loops.
     private val minimize = demoScript {
         var t = 1.4.seconds
         at(t, lasts = SwipeTakes) { tapControl(SwipeDown) }
@@ -40,6 +45,10 @@ internal object CrtPipDemos {
         t += BrowseUpTakes + 700.milliseconds
         at(t, lasts = SlideTakes) { tapControl(SlideSet) }
         t += SlideTakes + 700.milliseconds
+        at(t, lasts = FlickTakes) { tapControl(FlickOff) }
+        t += FlickTakes + 1100.milliseconds
+        at(t, lasts = UndoTakes) { tapControl(TapUndo) }
+        t += UndoTakes + 1300.milliseconds
         at(t, lasts = TapTakes) { tapControl(TapSet) }
         t += TapTakes + 1470.milliseconds
         at(t) { resetFeed() }

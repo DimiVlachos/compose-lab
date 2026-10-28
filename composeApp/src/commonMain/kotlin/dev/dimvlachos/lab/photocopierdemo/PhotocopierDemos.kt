@@ -16,15 +16,22 @@ internal object PhotocopierDemos {
     const val LongPress = "long-press"
     const val TapDuplicate = "tap-duplicate"
     const val FeedBack = "feed-back"
+    const val TapUndo = "tap-undo"
+    const val LongPressSecond = "long-press-second"
+    const val TapPin = "tap-pin"
 
     // How long each move takes, as the prototype's demo moves its finger.
     val LongPressTakes = 1650.milliseconds
     val TapTakes = 1520.milliseconds
     val FeedTakes = 4100.milliseconds
+    val UndoTakes = 4000.milliseconds
+    val PinTakes = 2000.milliseconds
 
     // The prototype's tour: Weekly meal plan held until its menu opens, Duplicate tapped, and
     // once the copy has landed and the copier peeks, the copy dragged down into the slot, so the
-    // rollers take it back in and the clip ends with the six lists it began with.
+    // rollers take it back in. Then the other ways: duplicated again and fed back with Undo, and
+    // Pin to top on the second list, then on the first, so the clip ends with the six lists in
+    // the order it began with.
     private val duplicate = demoScript {
         var t = .9.seconds
         at(t, lasts = LongPressTakes) { tapControl(LongPress) }
@@ -34,6 +41,20 @@ internal object PhotocopierDemos {
         t += 5600.milliseconds
         at(t, lasts = FeedTakes) { tapControl(FeedBack) }
         t += FeedTakes + 300.milliseconds
+        at(t, lasts = LongPressTakes) { tapControl(LongPress) }
+        t += LongPressTakes + 520.milliseconds
+        at(t, lasts = TapTakes) { tapControl(TapDuplicate) }
+        t += 5600.milliseconds
+        at(t, lasts = UndoTakes) { tapControl(TapUndo) }
+        t += UndoTakes + 300.milliseconds
+        at(t, lasts = LongPressTakes) { tapControl(LongPressSecond) }
+        t += LongPressTakes + 520.milliseconds
+        at(t, lasts = PinTakes) { tapControl(TapPin) }
+        t += PinTakes + 300.milliseconds
+        at(t, lasts = LongPressTakes) { tapControl(LongPressSecond) }
+        t += LongPressTakes + 520.milliseconds
+        at(t, lasts = PinTakes) { tapControl(TapPin) }
+        t += PinTakes + 300.milliseconds
         at(t) { resetFeed() }
     }
 

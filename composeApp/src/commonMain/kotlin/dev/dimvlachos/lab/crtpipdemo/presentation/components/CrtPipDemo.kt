@@ -294,6 +294,24 @@ private suspend fun script(
             finger.glide(Offset(tx, ty), 700) { at, _ -> pip.setMove(at.x, at.y, pip.now) }
             finger.lift { pip.setUp(it.x, it.y, pip.now + 1e6) }
         }
+        CrtPipDemos.FlickOff -> {
+            // Flick the set off the left side: playback stops and the toast offers Undo.
+            finger.glide(Offset(pip.setX, pip.setY), 450)
+            finger.press { pip.setDown(it.x, it.y, pip.now, scripted = true) }
+            delay(100)
+            finger.glide(Offset(-pip.cabW * .2f, pip.setY), 150) { at, _ ->
+                pip.setMove(at.x, at.y, pip.now)
+            }
+            finger.lift { pip.setUp(it.x, it.y, pip.now) }
+        }
+        CrtPipDemos.TapUndo -> {
+            // Undo on the toast: the set pops back into its corner and warms up.
+            while (!pip.toastOn) delay(16)
+            finger.glide(Offset(w - 48 * k, h - pip.toastBottom - 24), 500)
+            finger.press {}
+            delay(ScriptedTouch.TapHoldMs)
+            finger.lift { pip.undo() }
+        }
         CrtPipDemos.TapSet -> {
             finger.glide(Offset(pip.setX, pip.setY), 450)
             finger.press {}

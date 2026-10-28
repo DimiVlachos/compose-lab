@@ -20,11 +20,12 @@ class PigeonholeDemosTest {
     }
 
     @Test
-    fun theClipPostsOpensGoesBackAndPullsTheReceiptOut() = runTest {
+    fun theClipCallsOffAPostThenPostsOpensGoesBackAndPullsTheReceiptOut() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
             listOf(
+                "tapControl(post-cancel)",
                 "tapControl(post)",
                 "tapControl(open-rack)",
                 "tapControl(open-receipts)",
@@ -38,7 +39,7 @@ class PigeonholeDemosTest {
     }
 
     @Test
-    fun theClipFitsInTwentySeconds() {
-        assertTrue(demo.script.nominalDuration <= 20.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInTwentyFourSeconds() {
+        assertTrue(demo.script.nominalDuration <= 24.seconds, "${demo.script.nominalDuration}")
     }
 }

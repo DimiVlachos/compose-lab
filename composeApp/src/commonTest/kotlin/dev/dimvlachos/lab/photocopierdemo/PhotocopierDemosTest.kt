@@ -20,7 +20,7 @@ class PhotocopierDemosTest {
     }
 
     @Test
-    fun theClipHoldsDuplicatesFeedsTheCopyBackAndResets() = runTest {
+    fun theClipDuplicatesTwiceFeedingEachBackThenPinsAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -28,6 +28,13 @@ class PhotocopierDemosTest {
                 "tapControl(long-press)",
                 "tapControl(tap-duplicate)",
                 "tapControl(feed-back)",
+                "tapControl(long-press)",
+                "tapControl(tap-duplicate)",
+                "tapControl(tap-undo)",
+                "tapControl(long-press-second)",
+                "tapControl(tap-pin)",
+                "tapControl(long-press-second)",
+                "tapControl(tap-pin)",
                 "resetFeed()",
             ),
             controller.calls.map { it.second },
@@ -35,7 +42,7 @@ class PhotocopierDemosTest {
     }
 
     @Test
-    fun theClipFitsInSixteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 16.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInThirtySixSeconds() {
+        assertTrue(demo.script.nominalDuration <= 36.seconds, "${demo.script.nominalDuration}")
     }
 }

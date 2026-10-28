@@ -907,7 +907,7 @@ A news story whose Summarize button is a little glass French press in the bottom
 - **Screen readers and keys.** The press is a toggle button, Summarize article or Show full article, pressed with Enter or Space; the card is a region read only while it is open, and what happens is announced politely.
 - **Reduced motion.** The summary is there at once, and the story comes back at once.
 
-The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back.
+The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob a little way and lets go, so the words fly home; then pushes it down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back; then taps the press, which summarizes by itself, and pulls the knob up to give the story back.
 
 ```kotlin
 val press = remember { FrenchPressState(paragraphs, points) }
@@ -923,7 +923,7 @@ A household lists app whose Duplicate runs the list through a little putty-color
 - **Screen readers and keys.** Every list is a node with Duplicate and Pin to top actions and a long-click; ⋯ is a button; Enter, Space, the Menu key or Shift+F10 opens the menu with focus on Duplicate, Up and Down move in it and Escape, Tab or Back closes it, and focus goes back to the list after an action. What happens is announced politely.
 - **Reduced motion.** The copy just appears under the original, and Undo removes it.
 
-The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot, so the clip ends with the six lists it began with.
+The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot; then duplicates it again and taps Undo, so the rollers take that copy back too; then pins Thanksgiving to the top and pins Weekly meal plan back above it, so the clip ends with the six lists as it began.
 
 ```kotlin
 val copier = remember { PhotocopierState(lists) }
@@ -942,7 +942,7 @@ A mail app's Move to… as the oak sorting rack from behind a hotel front desk. 
 - **Screen readers and keys.** Every row has a Move to… action, and Enter picks it up with keys: it folds and waits over the rack, the cubbies are buttons ("Receipts, 4 messages") that post it, and Escape or Done puts it back. The rack icon is an expandable button, the list can be scrolled by a screen reader or a mouse wheel, the system Back puts the rack down or closes the folder, the rows grow with the font setting, and every move is announced politely.
 - **Reduced motion.** The rack, the folds and the folders change at once.
 
-The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
+The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script picks up Dana Whitfield's message, carries it toward the rack and lets go over the list, so it unfolds back into its slot; then carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
 
 ```kotlin
 val mail = remember { PigeonholeState(cubbies, messages) }
@@ -959,7 +959,7 @@ A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe th
 - **Screen readers and keys.** The player is labelled with how to shrink it and the chevron is a button; the set is a button, "Expand video", with a Stop playback action, Enter or Space to expand and Delete to stop; Undo is a button, and each change is announced. Keyboard focus follows the video from the chevron to the set, from the set back to the player, and to Undo on a stop.
 - **Reduced motion.** The player and the set swap at once, with no squeeze or flight.
 
-The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, then taps it back into the full player.
+The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, flicks it off the left side so playback stops and taps Undo on the toast, then taps it back into the full player.
 
 ```kotlin
 val pip = remember { CrtPipState() }
@@ -985,7 +985,7 @@ A chat thread and its composer where, for nine seconds after a message lands, it
 - **Screen readers and keys.** The caption is a button, "Unsend message"; sending, the snap and the unsend are announced politely.
 - **Reduced motion.** The bubble lands at once, an unsend puts the text back at once, and nothing curls or glides.
 
-The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, then leaves the band to snap before Jess replies.
+The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, plucks the band a little so it twangs back and the message stays, then leaves the band to snap before Jess replies.
 
 ```kotlin
 val chat = remember { RubberBandState(opening) }
@@ -1002,7 +1002,7 @@ A store's search results whose sort control is a little chrome coin-sorting tray
 - **Screen readers and keys.** The chip is a dropdown with its sort, disabled while a sort runs; the options are radio items with Up/Down, Enter and Escape; each row reads its name, price and rating, and the list order is committed when the last row lands. What happens is announced politely.
 - **Reduced motion.** The rows move straight to their new lines.
 
-The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script sorts by Price: low to high, then Top rated, and then back to Best match.
+The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script picks every sort, two by tapping the chip and an option and two by pressing the chip and sliding onto one: Price: low to high, Price: high to low, Top rated, and then back to Best match.
 
 ```kotlin
 val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating, it.metal) }) }
@@ -1021,7 +1021,7 @@ A neighbor posts in Spanish, and the Translate button under her message is a bra
 - **Screen readers and keys.** The bubble reads as the language it shows; the ring is a button labelled Translate to English or Show original Spanish, Enter or Space turns it, and a polite live region says which one landed.
 - **Reduced motion.** The text changes at once.
 
-The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script twists the ring most of a turn and lets go so the post finishes into English, then twists it back to the Spanish.
+The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script first twists the ring a little and lets go too soon, so the letters spring back; then twists it most of a turn and lets go so the post finishes into English, taps it back to the Spanish and again to the English, then twists it back to the Spanish.
 
 ```kotlin
 val ring = remember { DecoderRingState() }

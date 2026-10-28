@@ -12,26 +12,30 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object CoinSorterDemos {
-    // The script's steps, by name: tap the chip, then an option.
+    // The script's steps, by name: tap the chip, then an option; or, for High and Best, press the
+    // chip and slide onto the option.
     const val SortLow = "sort-low"
+    const val SortHigh = "sort-high"
     const val SortTop = "sort-top"
     const val SortBest = "sort-best"
 
     // How long a step's taps take, as the prototype's finger moves: to the chip, a tap, the menu
-    // opening, to the option and a tap.
+    // opening, to the option and a tap. A slide is as long: to the chip, a hold, the slide onto
+    // the option and a beat on it.
     val TapsTake = (560 + 110 + 650 + 460 + 110).milliseconds
 
     // A sort takes about 3.1 s from the pick to the last row landing, with room to spare.
     val SortTakes = 3300.milliseconds
 
-    // The prototype's clip: Price: low to high, then Top rated, each left to be read for 1.4 s,
-    // then Best match, so the clip ends where it began.
+    // The prototype's clip, with every sort and both ways to pick one: Price: low to high by
+    // taps, Price: high to low by sliding, Top rated by taps, each left to be read for 1.4 s, then
+    // Best match by sliding, so the clip ends where it began.
     private val sort = demoScript {
         var t = .9.seconds
-        at(t, lasts = TapsTake + SortTakes) { tapControl(SortLow) }
-        t += TapsTake + SortTakes + 1400.milliseconds
-        at(t, lasts = TapsTake + SortTakes) { tapControl(SortTop) }
-        t += TapsTake + SortTakes + 1400.milliseconds
+        for (step in listOf(SortLow, SortHigh, SortTop)) {
+            at(t, lasts = TapsTake + SortTakes) { tapControl(step) }
+            t += TapsTake + SortTakes + 1400.milliseconds
+        }
         at(t, lasts = TapsTake + SortTakes) { tapControl(SortBest) }
         t += TapsTake + SortTakes + 500.milliseconds
         at(t) { resetFeed() }

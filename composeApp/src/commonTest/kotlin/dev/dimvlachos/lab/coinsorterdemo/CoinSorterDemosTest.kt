@@ -20,12 +20,13 @@ class CoinSorterDemosTest {
     }
 
     @Test
-    fun theClipSortsLowToHighThenTopRatedThenBackToBestMatch() = runTest {
+    fun theClipSortsEveryWayThenBackToBestMatch() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
             listOf(
                 "tapControl(sort-low)",
+                "tapControl(sort-high)",
                 "tapControl(sort-top)",
                 "tapControl(sort-best)",
                 "resetFeed()",
@@ -35,8 +36,8 @@ class CoinSorterDemosTest {
     }
 
     @Test
-    fun theClipFitsInTwentyTwoSeconds() {
-        assertTrue(demo.script.nominalDuration <= 22.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInTwentyEightSeconds() {
+        assertTrue(demo.script.nominalDuration <= 28.seconds, "${demo.script.nominalDuration}")
     }
 
     @Test

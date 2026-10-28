@@ -32,18 +32,89 @@ internal class FrenchPressHand(private val press: FrenchPressState) {
 
     private var turn = 0
 
-    // Whether a real touch, a key or the button has taken over since this run's push began: the
-    // prototype's demoStop() ends the whole run, so the later tap on Full article never comes.
+    // Whether a real touch, a key or the button has taken over since this run's first push began:
+    // the prototype's demoStop() ends the whole run, so the later steps never come.
     private fun ok() = press.takenOver == turn
 
     /** Plays the scripted step [control], one of [FrenchPressDemos]'. */
     suspend fun play(control: String) {
-        if (control == FrenchPressDemos.Push) turn = press.takenOver
+        if (control == FrenchPressDemos.PushEarly) turn = press.takenOver
         when (control) {
+            FrenchPressDemos.PushEarly -> pushEarly()
             FrenchPressDemos.Push -> push()
             FrenchPressDemos.Full -> full()
+            FrenchPressDemos.Tap -> tap()
+            FrenchPressDemos.PullUp -> pullUp()
         }
         if (!ok()) stop()
+    }
+
+    // Push a little way and let go before halfway: the words fly home.
+    private suspend fun pushEarly() {
+        appear(Offset(press.width * .5f, press.height * .55f))
+        val kx = press.knobX
+        val ky = press.knobScreenY
+        move(Offset(kx, ky), 620)
+        if (!ok()) return
+        down = true
+        press.pressDown(kx, ky, scripted = true)
+        wait(140)
+        if (!ok()) return
+        val t = press.travel
+        animate(650) { if (ok()) pushTo(kx, ky + t * .3f * ease(it)) }
+        if (!ok()) return
+        wait(350)
+        if (!ok()) return
+        down = false
+        press.pressUp(kx, ky + t * .3f, scripted = true)
+        wait(250)
+        fade(0f)
+        while (ok() && press.mode != PressMode.Idle) frame()
+    }
+
+    // A beat, then a tap on the knob: the press summarizes by itself.
+    private suspend fun tap() {
+        wait(600)
+        if (!ok()) return
+        appear(Offset(press.width * .5f, press.height * .55f))
+        val kx = press.knobX
+        val ky = press.knobScreenY
+        move(Offset(kx, ky), 620)
+        if (!ok()) return
+        down = true
+        press.pressDown(kx, ky, scripted = true)
+        wait(120)
+        if (!ok()) return
+        down = false
+        press.pressUp(kx, ky, scripted = true)
+        wait(250)
+        fade(0f)
+        while (ok() && press.mode != PressMode.Brewed) frame()
+    }
+
+    // Once the summary is up, a beat to read it, then the knob is pulled up and the story pours
+    // back.
+    private suspend fun pullUp() {
+        while (ok() && press.mode != PressMode.Brewed) frame()
+        wait(1500)
+        if (!ok()) return
+        val kx = press.knobX
+        val ky = press.knobScreenY
+        appear(Offset(press.width * .6f, ky + 120 * press.k))
+        move(Offset(kx, ky), 600)
+        if (!ok()) return
+        down = true
+        press.pressDown(kx, ky, scripted = true)
+        wait(140)
+        if (!ok()) return
+        val lift = press.travel * .3f
+        animate(500) { if (ok()) at = Offset(kx, ky - lift * ease(it)) }
+        if (!ok()) return
+        down = false
+        press.pressUp(kx, ky - lift, scripted = true)
+        wait(250)
+        fade(0f)
+        while (ok() && press.mode != PressMode.Idle) frame()
     }
 
     private suspend fun push() {

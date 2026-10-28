@@ -37,13 +37,17 @@ internal class DecoderRingHand(
 
     /** Plays the scripted step [control], one of [DecoderRingDemos]'. */
     suspend fun play(control: String) {
+        // The first step shows the fingertip low on the right, as the prototype's, fading in as it
+        // glides over; later steps carry on from where it is.
+        val appear = shown <= 0f
+        if (appear) screen()?.let { at = Offset(it.x * .62f, it.y * .78f) }
         when (control) {
-            DecoderRingDemos.Twist -> {
-                // It shows low on the right, as the prototype's, and fades in as it glides over.
-                screen()?.let { at = Offset(it.x * .62f, it.y * .78f) }
-                twist(-2.6f, 4.6f, 1500, appear = true)
-            }
-            DecoderRingDemos.TwistBack -> twist(1.8f, -4.4f, 1400, appear = false)
+            // A short twist, let go short of the commit point, so the letters spring back.
+            DecoderRingDemos.TwistShort -> twist(-2.6f, 1f, 700, appear)
+            DecoderRingDemos.Twist -> twist(-2.6f, 4.6f, 1500, appear)
+            // A press with no twist is a tap: the ring turns the other way round by itself.
+            DecoderRingDemos.Tap -> twist(-1.2f, 0f, 60, appear)
+            DecoderRingDemos.TwistBack -> twist(1.8f, -4.4f, 1400, appear)
         }
     }
 

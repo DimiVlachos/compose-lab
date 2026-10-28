@@ -13,25 +13,28 @@ import kotlin.time.Duration.Companion.seconds
 
 internal object PigeonholeDemos {
     // The steps the script takes, by name.
+    const val PostCancel = "post-cancel"
     const val Post = "post"
     const val OpenRack = "open-rack"
     const val OpenReceipts = "open-receipts"
     const val Back = "back"
     const val PullBack = "pull-back"
 
-    // The prototype's clip, on its own timeline (less the script's 600 ms hold): the Corner Market
-    // receipt is carried down to Receipts and posted; the rack icon brings the rack up and
-    // Receipts is tapped, its letters unfolding into the folder; Back files them away; and the
-    // rack comes up again for the receipt to be pulled back out onto the inbox, where it was, so
-    // the clip ends as it began.
+    // First a message is picked up and carried toward the rack, then brought back over the list
+    // and let go, so it unfolds back into its slot. Then the prototype's clip, on its own timeline
+    // (less the script's 600 ms hold) and 3.6 s later: the Corner Market receipt is carried down
+    // to Receipts and posted; the rack icon brings the rack up and Receipts is tapped, its letters
+    // unfolding into the folder; Back files them away; and the rack comes up again for the
+    // receipt to be pulled back out onto the inbox, where it was, so the clip ends as it began.
     private val move = demoScript {
-        at(0.3.seconds, lasts = 2680.milliseconds) { tapControl(Post) }
-        at(4.58.seconds, lasts = 670.milliseconds) { tapControl(OpenRack) }
-        at(5.9.seconds, lasts = 670.milliseconds) { tapControl(OpenReceipts) }
-        at(9.07.seconds, lasts = 670.milliseconds) { tapControl(Back) }
-        at(12.44.seconds, lasts = 670.milliseconds) { tapControl(OpenRack) }
-        at(13.76.seconds, lasts = 2000.milliseconds) { tapControl(PullBack) }
-        at(17.26.seconds, lasts = 300.milliseconds) { resetFeed() }
+        at(0.3.seconds, lasts = 3000.milliseconds) { tapControl(PostCancel) }
+        at(3.9.seconds, lasts = 2680.milliseconds) { tapControl(Post) }
+        at(8.18.seconds, lasts = 670.milliseconds) { tapControl(OpenRack) }
+        at(9.5.seconds, lasts = 670.milliseconds) { tapControl(OpenReceipts) }
+        at(12.67.seconds, lasts = 670.milliseconds) { tapControl(Back) }
+        at(16.04.seconds, lasts = 670.milliseconds) { tapControl(OpenRack) }
+        at(17.36.seconds, lasts = 2000.milliseconds) { tapControl(PullBack) }
+        at(20.86.seconds, lasts = 300.milliseconds) { resetFeed() }
     }
 
     val all =

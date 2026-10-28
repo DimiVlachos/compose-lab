@@ -17,6 +17,7 @@ internal object RubberBandDemos {
     const val PullBack = "pull-back"
     const val Fix = "fix"
     const val SendAgain = "send-again"
+    const val Twang = "twang"
     const val Reply = "reply"
 
     /** What the tour types first, then what it puts in place of the 7, and Jess's reply. */
@@ -39,6 +40,10 @@ internal object RubberBandDemos {
     const val PullMs = 700L
     const val HoldPulledMs = 380L
 
+    // The twang: to the band in 520 ms, held 160, pulled 23 dp aside over 380 (short of the 36 a
+    // yank takes), held 120, let go, and aside in 400 as the fingertip fades.
+    const val TwangPullMs = 380L
+
     /**
      * After the second send the finger lifts away after 500 ms, then the band is left to run out.
      */
@@ -52,10 +57,12 @@ internal object RubberBandDemos {
     val PullTakes = (ToBubbleMs + GripMs + PullMs + HoldPulledMs).milliseconds
     val FixTakes = tap + (AsideMs + 260L).milliseconds + Fixed.sumOf { keyMs(it) }.milliseconds
     val SendAgainTakes = tap + (LiftAfterMs + 200L).milliseconds
+    val TwangTakes = (ToBubbleMs + GripMs + TwangPullMs + 120L + AsideMs + 200L).milliseconds
 
     // The prototype's runDemo(): type a message and send it; grab the bubble and pull it back
     // (oops, it's
-    // 8:30), so it comes back into the field; swap the 7 for 8:30 and send again; leave the band to
+    // 8:30), so it comes back into the field; swap the 7 for 8:30 and send again; pluck the band
+    // a little, short of a yank, so it twangs and wobbles and the message stays; leave the band to
     // thin and
     // snap; Jess types and replies. Then the thread fades back to its opening four rows, so the
     // clip loops.
@@ -72,6 +79,8 @@ internal object RubberBandDemos {
             at(t, lasts = FixTakes) { tapControl(Fix) }
             t += FixTakes + 350.milliseconds
             at(t, lasts = SendAgainTakes) { tapControl(SendAgain) }
+            // The twang comes inside the band's wait, well before it would snap.
+            at(t + SendAgainTakes + 1200.milliseconds, lasts = TwangTakes) { tapControl(Twang) }
             // The band holds nine seconds from landing, and the prototype waits 9.3 after the
             // finger lifts.
             t += tap + LiftAfterMs.milliseconds + 9300.milliseconds

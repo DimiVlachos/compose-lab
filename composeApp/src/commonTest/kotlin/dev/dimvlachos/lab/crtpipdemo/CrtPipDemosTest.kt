@@ -20,7 +20,7 @@ class CrtPipDemosTest {
     }
 
     @Test
-    fun theClipSwipesDownBrowsesSlidesTheSetTapsItAndResets() = runTest {
+    fun theClipSwipesDownBrowsesSlidesFlicksUndoesTapsAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
@@ -29,6 +29,8 @@ class CrtPipDemosTest {
                 "tapControl(browse-down)",
                 "tapControl(browse-up)",
                 "tapControl(slide-set)",
+                "tapControl(flick-off)",
+                "tapControl(tap-undo)",
                 "tapControl(tap-set)",
                 "resetFeed()",
             ),
@@ -45,7 +47,7 @@ class CrtPipDemosTest {
     }
 
     @Test
-    fun theClipFitsInFifteenSeconds() {
-        assertTrue(demo.script.nominalDuration <= 15.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInTwentySeconds() {
+        assertTrue(demo.script.nominalDuration <= 20.seconds, "${demo.script.nominalDuration}")
     }
 }
