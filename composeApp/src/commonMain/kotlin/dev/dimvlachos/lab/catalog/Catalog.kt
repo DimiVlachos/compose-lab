@@ -35,6 +35,7 @@ import dev.dimvlachos.lab.resources.ic_demo_fog
 import dev.dimvlachos.lab.rubberbanddemo.RubberBandDemos
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
+import dev.dimvlachos.lab.spiderdemo.SpiderDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
 import dev.dimvlachos.lab.stickynotedemo.StickyNoteDemos
 import dev.dimvlachos.lab.typewriterdemo.TypewriterDemos
@@ -81,6 +82,7 @@ internal object Catalog {
                     RubberBandDemos.all +
                     CoinSorterDemos.all +
                     DecoderRingDemos.all +
+                    SpiderDemos.all +
                     GraveUndoDemos.all)
                 .map {
                     CatalogEntry.Single(it)
