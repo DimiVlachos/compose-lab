@@ -58,6 +58,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring) | `decoderring` | `decoderring.translate` | A message's Translate button as a brass cereal-box decoder ring: twist it and the letters spin through the alphabet in a wave and click down into English |
 | [Spider refresh](#spider-refresh-corepresentationcomponentsspider) | `spider` | `spider.refresh` | Pull to refresh on a neighborhood feed: a little spider lowers itself on its silk, spins the new posts up in a ball of silk and climbs back up its thread, reeling them in to the top |
 | [Grave undo](#grave-undo-corepresentationcomponentsgraveundo) | `graveundo` | `graveundo.undo` | Delete with undo as a tiny moonlit graveyard where the snackbar goes: a swiped task sinks under a headstone carved with its name, and a skeleton hand rises holding it; tap the hand to bring it back |
+| [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern) | `jackolantern` | `jackolantern.theme` | A theme switch that is a carved pumpkin: light its candle and the night theme spreads out of its face over the whole screen; flick across the flame to blow it out |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -100,6 +101,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring)
 - [Spider refresh](#spider-refresh-corepresentationcomponentsspider)
 - [Grave undo](#grave-undo-corepresentationcomponentsgraveundo)
+- [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -1119,6 +1121,31 @@ The demo, `graveundo.undo`, is Maple Street Bakery's list. Its script swipes Ord
 ```kotlin
 val list = remember { GraveUndoState(tasks) }
 GraveUndoList(list, text, colors, sounds, ring = accent, header = { Header() }, hint = { Hint() }, emptyState = { Empty() })
+```
+
+## Jack-o’-lantern theme (`core/presentation/components/jackolantern/`)
+
+![](docs/media/jackolantern.theme.gif)
+
+A farm's Tonight screen whose theme switch, in the corner of its top bar, is a small carved pumpkin. Tap it and a match strikes, the candle catches, and the night theme spreads out of the carved face in one soft-edged circle of candlelight over every card, row and the tab bar, with the grin cast faintly across the feed. Flick across the flame, from either side, and it blows out: smoke curls off the lid and the night draws back into the pumpkin. Change your mind halfway and it turns round from wherever it is.
+
+- **The screen twice.** The screen is composed by day and again by night, and the night copy is drawn in an offscreen layer masked by a radial gradient from the pumpkin, opaque to 70 dp inside its edge, so the light has a soft edge and each theme's text is drawn once, never cross-faded.
+- **Candlelight.** The candle's warm wash, the projected grin (baked once, blurred, at half size) and a warm leading edge while the light moves are laid over the night copy with `BlendMode.Screen`, all scaled by the flame and a flicker of summed sines, never a flash.
+- **The pumpkin.** Five ribs, a zigzag lid cut and a stem, the flame and the inner glow clipped to the carved holes with a rim of pale flesh, drawn on the shared `canvas2d` adapter; its colours follow the theme as the light passes over it.
+- **Gesture.** A blow is any segment of the finger's path that passes the flame fast enough, checked segment by segment, so a quick flick of a few samples still counts; a slow drag only makes the flame lean. A tap lights it, and a tap on a lit pumpkin only wobbles the flame and shows how to blow it out.
+- **Motion.** Flame, ember and spread are tweens on a soft in-out curve that each restart from where they are, so a change of mind turns round mid-flight with no hold.
+- **Feel and sound.** A match strike, a soft whoomp as it catches, a breath to blow it out and a small crackle now and then while it burns; a tick when it catches and a confirm when it goes out.
+- **Screen readers and keys.** The pumpkin is a switch labelled Night theme; a click, Enter or Space lights it or blows it out, and a polite live region says which theme you are in.
+- **Reduced motion.** The theme changes at once, with no smoke.
+
+The demo, `jackolantern.theme`, is Maple Hollow Farm's Tonight screen. Its script taps the pumpkin and the night spreads; flicks across the flame and the night draws back; then taps it again and, while the night is still spreading, flicks it out so the light turns round. In the dark theme the screen opens lit.
+
+```kotlin
+val lantern = remember { JackOLanternState() }
+JackOLanternTheme(lantern, sounds, switchLabel = "Night theme", nightSaid, daySaid, hintLight, hintBlow) {
+    // Composed by day and by night: style it with colors, and mark the top bar's slot.
+    MyScreen(colors, Modifier.pumpkinSlot())
+}
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

@@ -134,7 +134,13 @@ internal enum class Sound(val file: String) {
     GraveCrumble("grave_crumble"),
     GraveOoo("grave_ooo"),
     GraveClick("grave_click"),
-    GraveLift("grave_lift");
+    GraveLift("grave_lift"),
+
+    // Jack-o'-lantern theme.
+    LanternStrike("lantern_strike"),
+    LanternCatch("lantern_catch"),
+    LanternBlow("lantern_blow"),
+    LanternCrackle("lantern_crackle");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
