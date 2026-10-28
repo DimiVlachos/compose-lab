@@ -57,6 +57,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
 | [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring) | `decoderring` | `decoderring.translate` | A message's Translate button as a brass cereal-box decoder ring: twist it and the letters spin through the alphabet in a wave and click down into English |
 | [Spider refresh](#spider-refresh-corepresentationcomponentsspider) | `spider` | `spider.refresh` | Pull to refresh on a neighborhood feed: a little spider lowers itself on its silk, spins the new posts up in a ball of silk and climbs back up its thread, reeling them in to the top |
+| [Grave undo](#grave-undo-corepresentationcomponentsgraveundo) | `graveundo` | `graveundo.undo` | Delete with undo as a tiny moonlit graveyard where the snackbar goes: a swiped task sinks under a headstone carved with its name, and a skeleton hand rises holding it; tap the hand to bring it back |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -98,6 +99,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
 - [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring)
 - [Spider refresh](#spider-refresh-corepresentationcomponentsspider)
+- [Grave undo](#grave-undo-corepresentationcomponentsgraveundo)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -1097,6 +1099,28 @@ SpiderRefreshEffects(spider, sounds)
 SpiderRefreshFeed(spider, colors, accent, label = "Neighborhood feed. Pull down to refresh.") { id -> Post(id) }
 ```
 
+## Grave undo (`core/presentation/components/graveundo/`)
+
+![](docs/media/graveundo.undo.gif)
+
+A bakery's to-do list for the day before Halloween. Swipe a task away and it is buried: the row arcs down into a little moonlit graveyard where the snackbar goes and sinks into the soil, and its name is carved on the headstone. A moment later a skeleton hand pushes up through the dirt, holding the task up like a sign. Tap the hand, or the grave, and it hands the row back to its place in the list. Leave it and the hand sinks back, the task is gone for good, and the grave slides away.
+
+- **One eased flight.** A task's flight into the ground and its flight home are each one cubic Bézier read through one eased progress, so the arc, the shrink, the tilt and the drop into the soil are a single move, and the list closes its gap (or opens it again) with the same progress. The motion is the prototype's, about 1.3 times slower.
+- **The row is the card.** Rows, the cards in flight and the card in the hand are drawn by the same code on the shared `canvas2d` adapter, so the card is exactly the row it was, ticked or not.
+- **The grave.** The dusk sky, moon, distant headstones, fence, soil and grass are baked once into two layers, behind and in front of whatever is in the ground; a clip at the soil line lets a card sink and a hand rise. The headstone's carving is set in Fraunces and fades in as the task lands. Mist drifts along the ground and dirt flies as it lands and as the hand comes up.
+- **The hand.** About twenty rounded bones, each a short shaft with a knob at both ends, curled round the card's lower edge, driven by how far it has risen, a slow sway and a little wiggle of the fingers.
+- **Gesture.** Past 30 % of the row's width, or a flick, buries the task; short of it the row springs back. The drag locks across or up and down from the first moves, so it works from a fast swipe's few samples, and on a short screen an up-and-down drag scrolls the list. Burying a second task sends the first for good and clears its carving fast, so two names never overlap on the stone.
+- **Feel and sound.** A tick as a swipe arms, a hushed whoosh as the row flies, a thud into the soil, a crumble of dirt and a faint low "ooo" as the hand comes up, and knuckle clicks and a soft lift as it hands the task back.
+- **Screen readers and keys.** Every task has a Delete action, and Delete or Backspace buries the focused one and moves focus on to the next; each check is a checkbox; the grave is a button, "Undo: bring back Order 50 lb of flour", and what happened is announced politely.
+- **Reduced motion.** Each move jumps to where it ends, and nothing sways.
+
+The demo, `graveundo.undo`, is Maple Street Bakery's list. Its script swipes Order 50 lb of flour away, waits for the hand to come up holding it, then taps the hand so it flies back to the top of the list.
+
+```kotlin
+val list = remember { GraveUndoState(tasks) }
+GraveUndoList(list, text, colors, sounds, ring = accent, header = { Header() }, hint = { Hint() }, emptyState = { Empty() })
+```
+
 ## Moodboard: native on both platforms (`moodboard/`)
 
 ![](docs/media/moodboard.showcase.gif)
@@ -1297,6 +1321,8 @@ The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instr
 The sticky notes are handwritten in the card file's [Caveat](https://github.com/googlefonts/caveat), at weight 600 (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Caveat-OFL.txt`).
 
 The French press's story is set in [PT Serif](https://www.paratype.com/fonts/pt/pt-serif), Copyright 2010 ParaType Ltd., and its small caps in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) Regular and SemiBold (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
+
+The grave undo's headstone is carved in [Fraunces](https://github.com/undercasetype/Fraunces), Copyright 2018 The Fraunces Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Fraunces-OFL.txt`; static instances, at weights 600 and 700 and the 9 pt optical size, of the variable font).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 

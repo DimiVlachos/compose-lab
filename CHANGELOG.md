@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - **Spider refresh** (`spider`): pull to refresh as a little spider on its silk. Pull a feed down and it lowers itself from under the chips, swaying with your finger, its eyes going wide past the threshold; let go and it spins a ball of silk, the ball opens into the new posts hanging below it, and it climbs back up its thread reeling them to the top. Let go early and it scurries home. The list flings, a cancelled touch never fetches, and the app bar's refresh button runs the same sequence. Tiny steps, a silk whisper and warm notes, with a tick felt at the threshold; a live region says how many posts arrived. Its demo is a neighborhood feed.
+- **Grave undo** (`graveundo`): delete with undo as a tiny moonlit graveyard where the snackbar goes. Swipe a task away and its row arcs down and sinks into the soil under a headstone carved with its name; a skeleton hand pushes up holding it, and tapping the hand or the grave flies it back to its place. Left alone, the hand sinks and the task is gone. Haptics and synthesized soil, crumble and knuckle sounds; Delete actions and keys, and the grave as an Undo button for screen readers. Its demo is Maple Street Bakery's list the day before Halloween.
 
 ### Changed
 

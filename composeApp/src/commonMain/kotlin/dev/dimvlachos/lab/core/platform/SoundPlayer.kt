@@ -127,7 +127,14 @@ internal enum class Sound(val file: String) {
     SpiderSpin("spider_spin"),
     SpiderCatch("spider_catch"),
     SpiderSettle("spider_settle"),
-    SpiderEmpty("spider_empty");
+    SpiderEmpty("spider_empty"),
+    GraveTick("grave_tick"),
+    GraveSwipe("grave_swipe"),
+    GraveThud("grave_thud"),
+    GraveCrumble("grave_crumble"),
+    GraveOoo("grave_ooo"),
+    GraveClick("grave_click"),
+    GraveLift("grave_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
