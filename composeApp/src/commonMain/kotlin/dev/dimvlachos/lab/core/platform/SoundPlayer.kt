@@ -119,7 +119,14 @@ internal enum class Sound(val file: String) {
     DecoderTick("decoder_tick"),
     DecoderSettle("decoder_settle"),
     DecoderDone("decoder_done"),
-    DecoderBack("decoder_back");
+    DecoderBack("decoder_back"),
+    GraveTick("grave_tick"),
+    GraveSwipe("grave_swipe"),
+    GraveThud("grave_thud"),
+    GraveCrumble("grave_crumble"),
+    GraveOoo("grave_ooo"),
+    GraveClick("grave_click"),
+    GraveLift("grave_lift");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
