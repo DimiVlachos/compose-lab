@@ -48,6 +48,12 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook) | `keyhook` | `keyhook.signout` | An account switcher that is the key rack by the front door: hang your keys on the rack to sign out, carry someone's set up to the account card to sign in |
 | [Paper fan](#paper-fan-corepresentationcomponentspaperfan) | `paperfan` | `paperfan.faq` | An FAQ whose expand arrows are folded paper fans: tap a question and its fan snaps open across the card with the answer printed on its pleats |
 | [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote) | `stickynote` | `stickynote.swipe` | Swipe actions on a list row: each reminder is a sticky note that peels from the corner over Archive or Snooze and sticks to a Done or Later pad |
+| [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller) | `paintroller` | `paintroller.accent` | An accent colour picker as five paint trays and a roller: roll a new colour up the settings screen and every accent fill it passes takes the wet paint, then dries |
+| [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress) | `frenchpress` | `frenchpress.summary` | A Summarize button that is a little glass French press: push the plunger and the story's words pour in as grounds, and a three-point summary pours out into a card |
+| [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier) | `photocopier` | `photocopier.duplicate` | A list's Duplicate as a little office copier: the card goes face down on the glass, the light sweeps under the lid, and a warm copy slides out of the slot into the list right under it |
+| [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole) | `pigeonhole` | `pigeonhole.move` | Move to… in a mail app as an oak sorting rack: the email folds into a letter and is posted into a cubby |
+| [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip) | `crtpip` | `crtpip.minimize` | A video's mini player as an old TV: swipe the video down and it switches off into a glowing dot that flies to the corner, where a little rabbit-ear set warms up with the show still playing |
+| [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband) | `rubberband` | `rubberband.unsend` | A chat composer where the message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field to edit |
 | [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -81,6 +87,12 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Key hook sign-out](#key-hook-sign-out-corepresentationcomponentskeyhook)
 - [Paper fan](#paper-fan-corepresentationcomponentspaperfan)
 - [Sticky note swipe](#sticky-note-swipe-corepresentationcomponentsstickynote)
+- [Paint roller accent](#paint-roller-accent-corepresentationcomponentspaintroller)
+- [French press summary](#french-press-summary-corepresentationcomponentsfrenchpress)
+- [Photocopier duplicate](#photocopier-duplicate-corepresentationcomponentsphotocopier)
+- [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole)
+- [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip)
+- [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband)
 - [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -861,6 +873,121 @@ StickyNoteList(
 }
 ```
 
+## Paint roller accent (`core/presentation/components/paintroller/`)
+
+A running app's Appearance settings whose accent colours are five little plastic paint trays with a roller resting in one. Press a tray and drag up: the roller dips, comes up off the tray full size above your finger, and paints wherever you roll it. Every button, chip, switch, route line and link it passes over takes the new colour, glossy and wet for a moment, then dries flat; half of Start run can be orange while the other half is still blue. Let go whenever you like and the roller finishes the wall by itself, rolling the strips you missed, then goes back to rest in its new tray, and a snackbar offers Undo. Or just tap a tray: the roller hops over, dips, and paints the screen in two strokes, up the left and down the right. Undo, the old tray or Reset to default rolls the old colour back on.
+
+- **Two coats.** The screen is real Compose UI, composed twice in a `Box` from one `PaintRollerScope` lambda: the base coat in the current accent and, over it, the new coat in the roller's colour, opaque so the old colour never fringes the new text, drawn through a clip of the rectangles the roller has swept. A straight run up, down or sideways grows one rectangle and going back over fresh paint adds none, so the clip `Path` stays small; it is rebuilt only when the paint changes and read in the draw phase, so painting never recomposes.
+- **Drawn as the prototype draws it.** The trays and the roller are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the ribbed ramp and the well of paint that ripples on a dip, the nap cover (baked once from the prototype's seed) that scrolls as it turns, the fuzzy edges, end caps, wire frame and beech handle, its soft shadow, and the faint film over the freshest strokes.
+- **Wet paint.** Each accent fill marked `wetPaint` draws the prototype's sheen over itself, screen-blended: a 172° gloss, the roller's hairline stripes and a stipple of SVG `feTurbulence` fractal noise, ported and baked once. It fades as `(1 − age/2.6 s)²` on one shared clock, each coat on its own, and shines less on the pale night accents.
+- **Its own clock.** The roller's flows (dip, strokes, finishing the wall, going home, Undo waiting for it) are the prototype's async functions as suspend functions on a scheduler inside `PaintRollerState`, run by `step(dt)` in 1/120 s substeps, so tests step them exactly as the screen does. The roller paints from where it actually is, so a fast swipe with few samples still leaves a solid stripe; a coarse 8 dp grid says when the wall is covered. The frame loop sleeps once everything has dried.
+- **Feel and sound.** A tick on each dip, a confirm when the colour takes, a tap as the roller sets down; synthesized dip and set sounds and a loop of wet nap on the wall, as loud as the roller is fast.
+- **Screen readers and keys.** The trays are a group of radio buttons named by colour (arrow keys pick the next or previous colour, Enter or Space this one), the new colour is announced politely, the switches are switches, and Undo and Reset to default are buttons. The new coat is hidden from accessibility.
+- **Reduced motion.** The colour changes at once, with no trip for the roller and no wet shine.
+
+The demo, `paintroller.accent`, is the Appearance screen of an invented running app. Its script presses Sedona, drags the roller up the left, across the top and partway down the right and lets go, so the roller finishes the wall; then it taps Undo and Blue Ridge rolls back on.
+
+```kotlin
+val roller = remember { PaintRollerState() }
+PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabel = "Undo") {
+    // Composed twice; fill with accent, mark wet fills, and give the new coat (isCoat) no input.
+    Button(Modifier.background(accent, shape).wetPaint(0, shape))
+    Column(Modifier.accentSection()) { Trays(names, height = 92.dp) }
+}
+## French press summary (`core/presentation/components/frenchpress/`)
+
+A news story whose Summarize button is a little glass French press in the bottom-right corner. Push its knob down and the story's own words lift off the page, line by line, and pour into the spout, where they swirl as tiny grounds; the plunger pushes back like a rubber band until every word is in. Push past halfway and the empty summary card starts to open; let go and the mesh presses the words into a pile at the bottom, the water above clears to amber, the press tips and three short points pour out of the spout letter by letter into the card. Let go short of halfway and the words fly home. Tap the press and it does the whole thing; tap it again, pull the knob up or tap Full article, and the summary drains back, the plunger rises and every word flies back to its own place.
+
+- **Real text.** The story is laid out with `TextMeasurer`, as the browser wraps it, and each word's box comes from its layout; each word is laid out on its own too, so the page is drawn word by word from those boxes, and a word in flight is drawn from the same glyphs, on the same baseline, so it lifts from and lands on exactly its place. The summary's letters are laid out the same way.
+- **Drawn as the prototype draws it.** The press is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, tipped about its left foot to pour, with the liquid clipped to the glass and its surface level on the screen. The hundreds of words in flight and in the glass are drawn straight onto the canvas from their cached layouts, so they make no garbage frame to frame.
+- **Timing.** The prototype's sequences (press, finish, cancel, reverse) are `suspend` functions on a simulated clock that only the frame advances, so they run the same on every device and in tests.
+- **Feel and sound.** A tick every few words in, a confirm as the mesh lands; synthesized pours, glugs, a glassy tink and the plunger's hiss, which swells with how fast it moves.
+- **Screen readers and keys.** The press is a toggle button, Summarize article or Show full article, pressed with Enter or Space; the card is a region read only while it is open, and what happens is announced politely.
+- **Reduced motion.** The summary is there at once, and the story comes back at once.
+
+The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. Its script pushes the knob down, riding it while the words pour in, lets go at the bottom, and once the summary is up taps Full article so the story pours back.
+
+```kotlin
+val press = remember { FrenchPressState(paragraphs, points) }
+FrenchPressStory(press, paragraphs, points, text, colors, sounds, topBar = { AppBar() }, header = { Headline() })
+## Photocopier duplicate (`core/presentation/components/photocopier/`)
+
+A household lists app whose Duplicate runs the list through a little putty-colored office copier. Long-press a list (or tap its ⋯) and pick Duplicate: the copier rises from the foot of the screen, the list's own card flies down onto the glass and turns face down, leaving a dashed outline in its place, the lid drops with a thunk, Start lights, and the green bar of light runs under the lid and back, leaking out of its seams. A warm copy, still flecked with toner, slides out of the slot at the back and drops into the list right under the original while the list makes room, and the original flips back up into its place. The copy cools to an ordinary card in a couple of seconds; it is a real new list called "(copy)", and a copy of it is "(copy 2)". While the copier's back edge still peeks out, drag the copy down into the slot and the rollers take it back in, or tap Undo; let go anywhere else and it glides back. Pin to top moves a list to the top.
+
+- **Drawn as the prototype draws it.** The copier and every card in flight are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the hinged lid foreshortened as it swings, its shaded foam pad past upright, the ruled platen and glass, the LCD's glowing digits, and the light leaking out of both seams. A card in flight is drawn at its real size and scaled, so turning face down is its height going through zero, the face darkening and a paper edge showing as it goes edge-on. The toner flecks are baked once from a fixed seed.
+- **A real list.** The cards are ordinary composables that scroll with a finger and fling; the state places and slides them, so the gap under the original opens as a FLIP on the copier's own clock. A list low on the screen scrolls up first, so the original and its copy stay clear of the raised copier, and the extra room at the end goes again as the copier leaves, the list easing back so nothing jumps.
+- **Gestures.** The long-press is a Compose gesture on the copier's clock, never the system's context menu. While the copier peeks, a press on a copy belongs to the finger, not the list, and the release point alone decides whether it feeds; every other card still scrolls the list.
+- **Feel and sound.** A long-press tick, a click as the lid shuts, a confirm as the copy lands and ticks as a dragged copy comes over the slot; synthesized rise, lid, thunk, slap, beep, motor, paper, feed and settle sounds.
+- **Screen readers and keys.** Every list is a node with Duplicate and Pin to top actions and a long-click; ⋯ is a button; Enter, Space, the Menu key or Shift+F10 opens the menu with focus on Duplicate, Up and Down move in it and Escape, Tab or Back closes it, and focus goes back to the list after an action. What happens is announced politely.
+- **Reduced motion.** The copy just appears under the original, and Undo removes it.
+
+The demo, `photocopier.duplicate`, is the Parker household's six lists. Its script long-presses Weekly meal plan, picks Duplicate, and once the copy has landed drags it back into the slot, so the clip ends with the six lists it began with.
+
+```kotlin
+val copier = remember { PhotocopierState(lists) }
+PhotocopierList(copier, words, colors, dark, sounds) {
+    AppBar()
+    Search()
+}
+## Pigeonhole move (`core/presentation/components/pigeonhole/`)
+
+A mail app's Move to… as the oak sorting rack from behind a hotel front desk. Press a message and drag: the rack slides up from the bottom of the screen, and the nearer the email gets to it the more it turns into paper, narrowing to a letter page and then folding in thirds, the bottom up and the top down, until only the sender's first name in pen and a stamp in their own colour show on the outside. Hover a cubby and it lights up while the letter waits just above its frame; let go and it slips in behind the rail, the letters behind it shuffle back, the count on the brass plate ticks up and the inbox closes the gap. Let go over the list and it unfolds back into its slot. The rack icon brings the rack up on its own: tap a cubby and its letters lift out one after another and unfold into that folder's rows; Back folds them up and files them away again. Drag a letter out of a cubby onto the list and it unfolds back where it was before it was moved.
+
+- **Drawn as the prototype draws it.** The rack and the letters are ported call by call from their HTML prototype onto the shared `canvas2d` adapter: the oak body, the walnut cubby holes and the rails are baked once into images, and a letter's outer thirds turn about their creases with `scale(1, cos θ)`, so the text on them foreshortens, switching to the paper's back past the edge. One number, the fold, drives the whole change, and it comes from how near the finger is to the rack, never from time. Only the card's turn to paper runs on its own 70 ms clock, so in dark mode it never rests on a grey card.
+- **Layers.** The rack is drawn under its buttons, and a letter going in disappears behind the rail; the letters in the air, the one in hand last, are a second canvas over everything.
+- **The list still scrolls.** A quick drag up, or down once the list is scrolled, scrolls it with the platform's fling; a drag down from the top, a sideways drag or a short hold first picks the message up. The drop is decided from where the finger lifts, so a fast flick still posts to the right cubby.
+- **Feel and sound.** A haptic as a message lifts and as a cubby lights, a confirm as a letter lands; synthesized paper lifts, folds and slides, an oak tock and the rack's rumble.
+- **Screen readers and keys.** Every row has a Move to… action, and Enter picks it up with keys: it folds and waits over the rack, the cubbies are buttons ("Receipts, 4 messages") that post it, and Escape or Done puts it back. The rack icon is an expandable button, the list can be scrolled by a screen reader or a mouse wheel, the system Back puts the rack down or closes the folder, the rows grow with the font setting, and every move is announced politely.
+- **Reduced motion.** The rack, the folds and the folders change at once.
+
+The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
+
+```kotlin
+val mail = remember { PigeonholeState(cubbies, messages) }
+PigeonholeMail(mail, text, sounds, colors)
+## CRT picture-in-picture (`core/presentation/components/crtpip/`)
+
+A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe the video down and, as you drag, the picture already starts to squash and brighten under your finger, like a set losing its sweep. Let go past a short distance, or flick, and the TV switches off: the picture collapses to a bright line, the line pulls into a glowing dot, and the dot flies on a curve to the bottom corner. A little walnut set with rabbit ears pops up there, the dot lands on its glass and it warms up, a line first and then the frame opening with a crackle of static, the show still playing, cropped to its 4:3 tube. The space the player used closes as the dot flies, so Up next and the comments slide up into it and scroll under the set. Drag the set anywhere: let go and it springs into the nearest corner, clear of the top bar and the nav bar, and a toss carries it to the corner it was heading for. Flick it off a side edge and the show stops: it switches off into its dot, the dot glows a moment and fades like a set at night, and a toast offers Undo, which brings it back to that corner warming up. Tap the set and it switches off in turn and the dot flies back up into the full player.
+
+- **Drawn as the prototype draws it.** The show (the tiled kitchen wall, the jars, the butcher-block counter, the gingham towel, the enamel bowl and the skillet, with its butter melting, the honey drizzle and the steam on a slow camera drift) and the set are ported call by call from their HTML prototype onto the shared `canvas2d` adapter, at full density; the picture is the show itself drawn under the squeeze's scale, not a scaled bitmap. Gradients are built once per size.
+- **One piece.** The set pops in and collapses into its own screen on a graphics layer with an offscreen compositing strategy, so as it fades it fades whole and never shows the page through its glass and wood.
+- **Timing.** Every change is a timeline on the component's own clock (squeeze, line, flight, warm-up, open), and the slot's height comes from the same clock, so the page and the dot never drift apart.
+- **The corner.** The set is moved freely sideways and rubber-banded past the top and bottom corners; on release its position is projected ahead with the fling velocity and a damped spring (ζ .72) carries it to the nearest of four corners. A finger that rests before lifting doesn't fling.
+- **Feel and sound.** A threshold tick as a swipe commits, a tick as the set lands in a corner, a reject when it is flicked off and a confirm on Undo; synthesized switch-off thumps with the flyback whine, a swish for the flight and a warm-up crackle and hum.
+- **Screen readers and keys.** The player is labelled with how to shrink it and the chevron is a button; the set is a button, "Expand video", with a Stop playback action, Enter or Space to expand and Delete to stop; Undo is a button, and each change is announced. Keyboard focus follows the video from the chevron to the set, from the set back to the player, and to Undo on a stop.
+- **Reduced motion.** The player and the set swap at once, with no squeeze or flight.
+
+The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, then taps it back into the full player.
+
+```kotlin
+val pip = remember { CrtPipState() }
+CrtPictureInPicture(
+    pip,
+    labels,
+    colors,
+    dark,
+    sounds,
+    appBar = { AppBar() },
+    page = { WatchPage() },
+    navBar = { NavBar() },
+)
+CrtPipAnnouncer(pip, labels) // the polite live region for each change
+## Rubber band unsend (`core/presentation/components/rubberband/`)
+
+A chat thread and its composer where, for nine seconds after a message lands, it is still tied back to the text box by a tan rubber band hooked to a little brass eye. Grab the bubble or the band and pull: the band stretches thinner, the bubble leans toward the finger, and past 36 dp of travel from where you grabbed, in any direction, the band turns a darker tan. Let go there and it yanks the bubble back down to the field, where it bursts into its letters and they drop into place, the cursor at the end, ready to fix. Let go short of it and the band twangs back and wobbles. Leave it and the band thins, necks in the middle over its last three seconds and snaps with a twang; the message says Delivered and stays sent. Sending again snaps the last band at once.
+
+- **Drawn as the prototype draws it.** The band, its knot, the brass eye, the snapped halves curling home and the burst bubble's shell are ported call by call from the HTML prototype onto the shared `canvas2d` adapter. The band is the rest curve split at the grabbed point, each half bending with the pull, filled as a ribbon whose width follows its stretch and the time left.
+- **Over the composer.** While it is tied, the bubble is drawn on the screen's canvas, so it rises out of the field and is yanked back into it over the composer. The caption under it is drawn above the band with a halo in the thread's colour, and the "Message" placeholder fades while a band is tied.
+- **Real letters, real field.** The composer is a `BasicTextField`: the soft keyboard types into it and its Send action sends. Each letter of a message coming back starts at its glyph's place in the bubble's own layout and lands on its place in the field's style, measured with a `TextMeasurer`, so the hand-off to the field is exact. The screen pads itself for the keyboard (`imePadding`), so the thread and composer sit above it and drop back when it closes.
+- **Feel and sound.** A tick as the band is grabbed, a click as it goes taut, a confirm on the yank; synthesized send, grab, taut, boing, yank, burst, letter ticks and twang.
+- **Screen readers and keys.** The caption is a button, "Unsend message"; sending, the snap and the unsend are announced politely.
+- **Reduced motion.** The bubble lands at once, an unsend puts the text back at once, and nothing curls or glides.
+
+The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Table’s booked at Rosie’s for 7", sends it, pulls it back, changes the 7 to 8:30 and sends again, then leaves the band to snap before Jess replies.
+
+```kotlin
+val chat = remember { RubberBandState(opening) }
+RubberBandChat(chat, rememberTextFieldState(), text, colors, dark, sounds, appBar = { AppBar() })
 ## Coin sorter sort (`core/presentation/components/coinsorter/`)
 
 A store's search results whose sort control is a little chrome coin-sorting tray under the toolbar. Pick a sort from the chip's menu (tap the chip or the tray, or press the chip, slide onto an option and let go) and, from the top, each row tips up on its edge and turns into a coin sized by its rank in the new sort, nickel, copper or brass, with its price or rating on its face. The coins rattle into the funnel and leave it one at a time, roll down the sloping rail ticking over the slots too small for them, and drop through the first one they fit with a clink. A moment later each falls out of the bottom of its tube and opens back into a row on its new line, so the list refills as the coins come down.
@@ -1028,8 +1155,12 @@ The key rack's hooks share one board, which suits about four people, each with t
 
 The paper fan prints an answer of a sentence or two: the type steps down from 13 to 10.5 px to fit the half ring, and an answer longer than that is not printed (it is still read out). The fan is sized to its card, between 110 and 172 dp across its radius, the list is a plain scrolling column rather than a lazy one, and the fan is not mirrored for right-to-left.
 
+The paint roller takes five paints and up to seven wet fills, laid out for a phone held upright: the roller is 56 % of the screen's width, so the wall is two strokes wide, and the screen it paints must fit above the trays without scrolling. The new coat is a second composition of the screen, so its state (the switches here) belongs outside it. Which colour is chosen is not saved, and the layout is not mirrored for right-to-left.
+
 The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96 dp to fill the height, and a list longer than the screen doesn't scroll. A note put back goes to the index it left from, so notes put back out of order can change places. A pad shows its last four notes. The notes, the pads and what is on them are not saved, and the layout is not mirrored for right-to-left.
 
+The French press shows one story: the words that fly are those on the screen, the rest of the article stays still under the fade above the press, and the story doesn't scroll. The summary is fixed text, not generated. The layout is not mirrored for right-to-left.
+The rubber band ties only the newest message, from a composer on one line; a long message comes back scrolled to its end. The window is nine seconds of the screen's own clock, paused while the band is held and not saved, and the thread is a plain column, not a lazy list, and is not mirrored for right-to-left.
 The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list itself doesn't scroll (on a screen too short for every row the whole screen scrolls instead), a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
 
 ## Contributing
@@ -1075,6 +1206,8 @@ The card file's faces are [Courier Prime](https://github.com/quoteunquoteapps/Co
 The bookshelf's faces are [Instrument Serif](https://github.com/Instrument/instrument-serif), Copyright 2022 The Instrument Serif Project Authors, and [Instrument Sans](https://github.com/Instrument/instrument-sans), Copyright 2022 The Instrument Sans Project Authors (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The sticky notes are handwritten in the card file's [Caveat](https://github.com/googlefonts/caveat), at weight 600 (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/Caveat-OFL.txt`).
+
+The French press's story is set in [PT Serif](https://www.paratype.com/fonts/pt/pt-serif), Copyright 2010 ParaType Ltd., and its small caps in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) Regular and SemiBold (SIL Open Font License 1.1, licences bundled at `composeApp/src/commonMain/composeResources/files/licenses/`).
 
 The star stickers' sheet is printed in [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), Copyright 2020 The JetBrains Mono Project Authors (SIL Open Font License 1.1, licence bundled at `composeApp/src/commonMain/composeResources/files/licenses/JetBrainsMono-OFL.txt`).
 

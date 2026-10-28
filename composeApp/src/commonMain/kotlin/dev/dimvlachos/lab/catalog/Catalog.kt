@@ -6,8 +6,10 @@ import dev.dimvlachos.lab.bookshelfdemo.BookshelfDemos
 import dev.dimvlachos.lab.cardfiledemo.CardFileDemos
 import dev.dimvlachos.lab.coinsorterdemo.CoinSorterDemos
 import dev.dimvlachos.lab.core.demo.Demo
+import dev.dimvlachos.lab.crtpipdemo.CrtPipDemos
 import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
+import dev.dimvlachos.lab.frenchpressdemo.FrenchPressDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.keyhookdemo.KeyHookDemos
 import dev.dimvlachos.lab.locketdemo.LocketDemos
@@ -15,9 +17,12 @@ import dev.dimvlachos.lab.magnetdemo.MagnetDemos
 import dev.dimvlachos.lab.mailboxdemo.MailboxDemos
 import dev.dimvlachos.lab.navbardemo.NavBarDemos
 import dev.dimvlachos.lab.padlockdemo.PadlockDemos
+import dev.dimvlachos.lab.paintrollerdemo.PaintRollerDemos
 import dev.dimvlachos.lab.paperbagdemo.PaperBagDemos
 import dev.dimvlachos.lab.paperfandemo.PaperFanDemos
 import dev.dimvlachos.lab.pencilcupdemo.PencilCupDemos
+import dev.dimvlachos.lab.photocopierdemo.PhotocopierDemos
+import dev.dimvlachos.lab.pigeonholedemo.PigeonholeDemos
 import dev.dimvlachos.lab.planedemo.PlaneDemos
 import dev.dimvlachos.lab.popupdemo.PopUpDemos
 import dev.dimvlachos.lab.pullcorddemo.PullCordDemos
@@ -25,6 +30,7 @@ import dev.dimvlachos.lab.resources.Res
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_description
 import dev.dimvlachos.lab.resources.ic_demo_fog
+import dev.dimvlachos.lab.rubberbanddemo.RubberBandDemos
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.stickersdemo.StickerDemos
@@ -65,6 +71,12 @@ internal object Catalog {
                     KeyHookDemos.all +
                     PaperFanDemos.all +
                     StickyNoteDemos.all +
+                    PaintRollerDemos.all +
+                    FrenchPressDemos.all +
+                    PhotocopierDemos.all +
+                    PigeonholeDemos.all +
+                    CrtPipDemos.all +
+                    RubberBandDemos.all +
                     CoinSorterDemos.all)
                 .map {
                     CatalogEntry.Single(it)

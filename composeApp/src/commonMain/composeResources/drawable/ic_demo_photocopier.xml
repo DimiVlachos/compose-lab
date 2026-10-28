@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A photocopier from the front: its lid raised a little, a sheet coming out of the slot. -->
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M8,3h8v4.5h-8z" />
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M5,9h14a2,2 0 0,1 2,2v8a2,2 0 0,1 -2,2H5a2,2 0 0,1 -2,-2v-8a2,2 0 0,1 2,-2zM6,11.5v1.5h12v-1.5zM15.5,16a1.3,1.3 0 1,0 2.6,0a1.3,1.3 0 1,0 -2.6,0z" />
+</vector>
