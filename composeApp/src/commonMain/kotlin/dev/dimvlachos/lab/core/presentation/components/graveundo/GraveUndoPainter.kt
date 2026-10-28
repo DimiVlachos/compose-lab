@@ -231,18 +231,20 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
     // kept per text with the font and width it was cut for, so a frame cuts nothing again.
     private class Fit(val font: String, val maxW: Int, val text: String)
 
-    private val fits = HashMap<String, Fit>()
+    // By font, then text: the font strings are made once, so a lookup makes nothing.
+    private val fits = HashMap<String, HashMap<String, Fit>>()
 
     private fun fit(c: Canvas2D, text: String, maxW: Float): String {
         val w = maxW.roundToInt()
-        fits[text]?.let { if (it.font == c.font && it.maxW == w) return it.text }
+        val byText = fits.getOrPut(c.font) { HashMap() }
+        byText[text]?.let { if (it.maxW == w) return it.text }
         var t = text
         if (c.measureText(t) > maxW + .5f) {
             while (t.length > 1 && c.measureText("$t…") > maxW) t = t.dropLast(1)
             t += "…"
         }
-        if (fits.size > 64) fits.clear()
-        fits[text] = Fit(c.font, w, t)
+        if (byText.size > 64) byText.clear()
+        byText[text] = Fit(c.font, w, t)
         return t
     }
 
@@ -313,12 +315,14 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
 
     private var back: Canvas2D? = null
     private var front: Canvas2D? = null
-    private var bakedFor = ""
+    private var bakedW = -1f
+    private var bakedU = -1f
 
     private fun bake(s: GraveUndoState) {
-        val key = "${s.slotW}|${s.u}"
-        if (key == bakedFor && back != null) return
-        bakedFor = key
+        if (s.slotW == bakedW && s.u == bakedU && back != null) return
+        bakedW = s.slotW
+        bakedU = s.u
+        grads = null
         val u = s.u
         val w = s.slotW
         val h = s.slotH
@@ -456,6 +460,66 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         front = f
     }
 
+    // ---------- Gradients made once per layout ----------
+
+    private class Grads(val stone: Any, val stoneShade: Any, val mist: Any)
+
+    private var grads: Grads? = null
+
+    // The stone's sideways shading sits at its own place across the grave; its top-to-bottom one
+    // and the mist's are made at the origin and moved where they go.
+    private fun grads(s: GraveUndoState): Grads {
+        grads?.let {
+            return it
+        }
+        val c = Canvas2D.create(1, 1)
+        val u = s.u
+        val x = s.stoneX
+        val sw = 60 * u
+        val sh = 60 * u
+        val gr = c.createLinearGradient(x - sw / 2, 0f, x + sw / 2, 0f)
+        gr.addColorStop(0f, "#53555e")
+        gr.addColorStop(.45f, "#7d7f88")
+        gr.addColorStop(.8f, "#a2a4ab")
+        gr.addColorStop(1f, "#6a6c74")
+        val v = c.createLinearGradient(0f, -sh, 0f, 0f)
+        v.addColorStop(0f, "rgba(255,240,220,.12)")
+        v.addColorStop(1f, "rgba(20,10,30,.35)")
+        val q = c.createRadialGradient(0f, 0f, 0f, 0f, 0f, 70 * u)
+        q.addColorStop(0f, "rgba(220,214,236,.16)")
+        q.addColorStop(1f, "rgba(220,214,236,0)")
+        return Grads(gr, v, q).also { grads = it }
+    }
+
+    private var mound: Any? = null
+    private var moundRy = -1f
+
+    // The mound's shading, at the origin; made again only while the mound swells as a task lands.
+    private fun moundShade(ry: Float): Any {
+        mound?.let { if (ry == moundRy) return it }
+        val gr = Canvas2D.create(1, 1).createLinearGradient(0f, -ry, 0f, ry)
+        gr.addColorStop(0f, "#6a4c37")
+        gr.addColorStop(.5f, "#4b3527")
+        gr.addColorStop(1f, "#2c1e15")
+        moundRy = ry
+        mound = gr
+        return gr
+    }
+
+    private class Heading(val font: String, val letters: Array<String>, val widths: FloatArray) {
+        val total: Float = widths.sum()
+    }
+
+    private var heading: Heading? = null
+
+    // "HERE LIES" in letters, each measured once for the font it is carved in.
+    private fun heading(c: Canvas2D): Heading {
+        heading?.let { if (it.font == c.font) return it }
+        val letters = Array(words.hereLies.length) { words.hereLies[it].toString() }
+        val widths = FloatArray(letters.size) { c.measureText(letters[it]) }
+        return Heading(c.font, letters, widths).also { heading = it }
+    }
+
     // ---------- Headstone ----------
 
     private class Wrap(val font: String, val maxW: Float, val lines: List<String>)
@@ -505,22 +569,19 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         path()
         c.fill()
         c.restore()
-        val gr = c.createLinearGradient(x - sw / 2, 0f, x + sw / 2, 0f)
-        gr.addColorStop(0f, "#53555e")
-        gr.addColorStop(.45f, "#7d7f88")
-        gr.addColorStop(.8f, "#a2a4ab")
-        gr.addColorStop(1f, "#6a6c74")
-        c.fillStyle = gr
+        val gs = grads(s)
+        c.fillStyle = gs.stone
         path()
         c.fill()
         c.save()
         path()
         c.clip()
-        val v = c.createLinearGradient(0f, base - sh, 0f, base)
-        v.addColorStop(0f, "rgba(255,240,220,.12)")
-        v.addColorStop(1f, "rgba(20,10,30,.35)")
-        c.fillStyle = v
-        c.fillRect(x - sw, base - sh - 2, sw * 2, sh + 4)
+        // The shading is made once at the soil's origin and moved down with the stone.
+        c.save()
+        c.translate(0f, base)
+        c.fillStyle = gs.stoneShade
+        c.fillRect(x - sw, -sh - 2, sw * 2, sh + 4)
+        c.restore()
         for (i in 0 until StoneDots.size / 3) {
             val fx = StoneDots[i * 3]
             val fy = StoneDots[i * 3 + 1]
@@ -574,14 +635,11 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
         c.font = fonts(s).hereLies
         c.textAlign = "left"
         val gap = 1.1f * u
-        val head = words.hereLies
-        var total = 0f
-        for (ch in head) total += c.measureText(ch.toString()) + gap
-        var hx = x - total / 2 + gap / 2
-        for (ch in head) {
-            val t = ch.toString()
-            carveText(c, t, hx, base - sh + 17 * u, u)
-            hx += c.measureText(t) + gap
+        val head = heading(c)
+        var hx = x - (head.total + gap * head.widths.size) / 2 + gap / 2
+        for (i in head.letters.indices) {
+            carveText(c, head.letters[i], hx, base - sh + 17 * u, u)
+            hx += head.widths[i] + gap
         }
         c.textAlign = "center"
         c.font = fonts(s).carved
@@ -786,14 +844,13 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
             val my = s.soil + 2 * u
             val mrx = 30 * u
             val mry = 8 * u * mk
-            val gr = c.createLinearGradient(0f, my - mry, 0f, my + mry)
-            gr.addColorStop(0f, "#6a4c37")
-            gr.addColorStop(.5f, "#4b3527")
-            gr.addColorStop(1f, "#2c1e15")
-            c.fillStyle = gr
+            c.save()
+            c.translate(mx, my)
+            c.fillStyle = moundShade(mry)
             c.beginPath()
-            c.ellipse(mx, my, mrx, mry, 0f, 0f, TAU)
+            c.ellipse(0f, 0f, mrx, mry, 0f, 0f, TAU)
             c.fill()
+            c.restore()
             for (i in 0 until MoundDots.size / 4) {
                 val a = MoundDots[i * 4]
                 val d = MoundDots[i * 4 + 1]
@@ -808,7 +865,8 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
                 )
                 c.fill()
             }
-            // Mist drifting along the ground.
+            // Mist drifting along the ground, each wisp the one gradient moved along.
+            val gs = grads(s)
             c.beginPath()
             c.roundRect(px, py, pw, ph, 20f)
             c.clip()
@@ -816,16 +874,12 @@ internal class GraveUndoPainter(private val words: GraveWords, private val densi
                 val span = pw + 160 * u
                 val x = px - 80 * u + ((s.simNow * .012f * u * (1 + i * .4f) + i * span / 3) % span)
                 val y = s.soil - 4 * u + i * 3 * u
-                val q = c.createRadialGradient(x, y, 0f, x, y, 70 * u)
-                q.addColorStop(0f, "rgba(220,214,236,.16)")
-                q.addColorStop(1f, "rgba(220,214,236,0)")
                 c.save()
                 c.translate(x, y)
                 c.scale(1f, .22f)
-                c.translate(-x, -y)
-                c.fillStyle = q
+                c.fillStyle = gs.mist
                 c.beginPath()
-                c.arc(x, y, 70 * u, 0f, TAU)
+                c.arc(0f, 0f, 70 * u, 0f, TAU)
                 c.fill()
                 c.restore()
             }

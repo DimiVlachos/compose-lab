@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,6 +78,7 @@ import dev.dimvlachos.lab.resources.fraunces_semibold
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.Font
 
@@ -138,6 +140,16 @@ internal fun GraveUndoList(
     val haptics = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var said by remember { mutableStateOf("") }
+    // What to say next and how many times something was said: the region is cleared first, as the
+    // prototype's say() does, so the same words twice are announced twice.
+    var pending by remember { mutableStateOf("") }
+    var sayings by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sayings) {
+        if (sayings == 0) return@LaunchedEffect
+        said = ""
+        delay(30)
+        said = pending
+    }
     LaunchedEffect(state, sounds, haptics, text) {
         val listener: (GraveEvent, GraveItem?) -> Unit = { event, item ->
             when (event) {
@@ -147,7 +159,8 @@ internal fun GraveUndoList(
                 }
                 GraveEvent.Buried -> {
                     sounds.playVaried(Sound.GraveSwipe)
-                    said = text.deleted.replace(GraveTitleSlot, item!!.task.title)
+                    pending = text.deleted.replace(GraveTitleSlot, item!!.task.title)
+                    sayings++
                 }
                 GraveEvent.Thud -> {
                     sounds.playVaried(Sound.GraveThud)
@@ -160,7 +173,8 @@ internal fun GraveUndoList(
                 GraveEvent.Restored -> {
                     sounds.playVaried(Sound.GraveClick)
                     sounds.playVaried(Sound.GraveLift)
-                    said = text.restored.replace(GraveTitleSlot, item!!.task.title)
+                    pending = text.restored.replace(GraveTitleSlot, item!!.task.title)
+                    sayings++
                 }
             }
         }
@@ -296,6 +310,7 @@ private suspend fun PointerInputScope.graveGesture(state: GraveUndoState) {
                 y <= state.slotY + state.slotH
         if (onHand || onSlot) {
             var moved = false
+            var lifted = false
             while (true) {
                 val event = awaitPointerEvent()
                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
@@ -304,9 +319,13 @@ private suspend fun PointerInputScope.graveGesture(state: GraveUndoState) {
                         abs(change.position.y - down.position.y) > viewConfiguration.touchSlop
                 )
                     moved = true
-                if (!change.pressed) break
+                if (!change.pressed) {
+                    lifted = !change.isConsumed
+                    break
+                }
             }
-            if (!moved) state.undo()
+            // Only a finger lifted where it went down undoes; a cancelled touch does nothing.
+            if (lifted && !moved) state.undo()
             return@awaitEachGesture
         }
         state.down(x, y, down.uptimeMillis.toDouble())
@@ -316,7 +335,10 @@ private suspend fun PointerInputScope.graveGesture(state: GraveUndoState) {
             while (true) {
                 val event = awaitPointerEvent()
                 val change = event.changes.firstOrNull { it.id == down.id }
-                if (change == null || !change.pressed) break
+                if (change == null) break
+                // A cancelled touch comes as every pointer up, already consumed: it lets go as
+                // the prototype's pointercancel does, and the row springs back.
+                if (!change.pressed && change.isConsumed) break
                 if (change.positionChanged()) {
                     last = change.position
                     state.move(
@@ -325,11 +347,16 @@ private suspend fun PointerInputScope.graveGesture(state: GraveUndoState) {
                         change.uptimeMillis.toDouble(),
                     )
                 }
+                // The lift-off's own position counts, as the prototype's pointerup moves first.
+                if (!change.pressed) {
+                    ended = true
+                    val tap = state.up()
+                    // A tap on the check, with a finger's slop round its 24 dp ring, ticks it.
+                    if (tap && last.x / density in 6f..54f)
+                        state.tapped(x, y)?.let { state.toggleDone(it) }
+                    break
+                }
             }
-            ended = true
-            val tap = state.up()
-            // A tap on the check, with a finger's slop round its 24 dp ring, ticks the task.
-            if (tap && last.x / density in 6f..54f) state.tapped(x, y)?.let { state.toggleDone(it) }
         } finally {
             if (!ended) state.up(cancel = true)
         }

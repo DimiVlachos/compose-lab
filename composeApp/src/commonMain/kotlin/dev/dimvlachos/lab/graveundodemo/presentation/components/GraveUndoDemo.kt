@@ -223,13 +223,19 @@ internal fun GraveUndoDemo(
     val text =
         remember(
             words.laidToRest,
-            words.bury,
+            words.tapToUndo,
+            words.backFromGrave,
+            words.restInPeace,
             words.hereLies,
+            words.bury,
             label,
             delete,
             markDone,
+            done,
+            notDone,
             undo,
             deleted,
+            restored,
         ) {
             GraveUndoText(words, label, delete, markDone, done, notDone, undo, deleted, restored)
         }

@@ -169,4 +169,45 @@ class GraveUndoStateTest {
         assertEquals(GravePhase.Held, s.graves.single().phase)
         assertEquals(0, s.crumbs.n)
     }
+
+    @Test
+    fun undoAfterARowAboveHasGoneFliesHomeToWhereTheRowIsNow() {
+        val s = list()
+        s.swipe(0, -170f)
+        s.until(20000) { graves.isEmpty() && pillV == 0f }
+        assertTrue(s.items[0].gone)
+        s.swipe(3, -170f)
+        s.until(8000) { graves.any { it.phase == GravePhase.Held } }
+        assertTrue(s.undo())
+        val g = s.graves.single()
+        assertEquals(s.rowTop(s.items[3]) + s.rowH / 2, g.toY, .01f)
+        s.until(6000) { graves.isEmpty() }
+        assertEquals(listOf(1, 2, 3, 4, 5, 6), s.liveItems.map { it.index })
+        assertEquals(0f, s.items[3].collapse)
+    }
+
+    @Test
+    fun noUndoOnceTheHandHasSunkAfterTheTimeout() {
+        val s = list()
+        s.swipe(1, -170f)
+        s.until(20000) { graves.any { it.phase == GravePhase.Leave } }
+        assertFalse(s.undo())
+        assertNull(s.undoable())
+        s.until(6000) { graves.isEmpty() }
+        assertTrue(s.items[1].gone)
+    }
+
+    @Test
+    fun aSecondBurialWhileTheFirstHandIsUpSendsTheFirstForGood() {
+        val s = list()
+        s.swipe(0, -170f)
+        s.until(8000) { graves.any { it.phase == GravePhase.Held } }
+        s.swipe(2, 170f)
+        val first = s.graves.first { it.item === s.items[0] }
+        assertEquals(GravePhase.Leave, first.phase)
+        s.until(8000) { graves.size == 1 && graves[0].phase == GravePhase.Held }
+        assertTrue(s.items[0].gone)
+        assertEquals(s.items[2], s.undoable()?.item)
+        assertEquals(5, s.liveCount)
+    }
 }

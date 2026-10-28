@@ -5,11 +5,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -91,6 +97,107 @@ class GraveUndoDemoUiTest {
         advance(9_000)
         assertEquals(7, list.liveCount)
         assertTrue(list.graves.isEmpty())
+    }
+
+    // Real pointer input through the list's gesture: a swipe of five sparse moves that lets go
+    // well past where its last move was, so only the lift-off's own position arms it.
+    @Test
+    fun aSparseRealSwipeBuriesFromWhereTheFingerLifts() = runComposeUiTest {
+        lateinit var list: GraveUndoState
+        setContent {
+            list = rememberGraveUndo()
+            Phone { GraveUndoDemo(DemoState(), list, reducedMotion = false) }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        val d = density.density
+        val it = list.items[1]
+        val y = (list.rowTop(it) + list.rowH / 2) * d
+        onRoot().performTouchInput {
+            down(Offset(300f * d, y))
+            moveTo(Offset(290f * d, y))
+            up()
+        }
+        advance(100)
+        assertTrue(list.graves.isEmpty(), "a 10 dp drag springs back")
+        onRoot().performTouchInput {
+            down(Offset(300f * d, y))
+            moveTo(Offset(290f * d, y))
+            moveTo(Offset(150f * d, y + 2))
+            up()
+        }
+        advance(100)
+        assertEquals(it, list.graves.single().item)
+        assertEquals(false, it.done)
+    }
+
+    // A cancelled touch reaches the list as every pointer up, already consumed (Compose's
+    // onCancelPointerInput). The test's own cancel() isn't delivered on the JVM, so a parent marks
+    // the lift-off consumed before the list sees it, which is the same event.
+    @Test
+    fun aCancelledTouchSpringsTheRowBack() = runComposeUiTest {
+        lateinit var list: GraveUndoState
+        setContent {
+            list = rememberGraveUndo()
+            Phone {
+                Box(
+                    Modifier.pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val e = awaitPointerEvent(PointerEventPass.Initial)
+                                e.changes.forEach { if (!it.pressed) it.consume() }
+                            }
+                        }
+                    },
+                ) {
+                    GraveUndoDemo(DemoState(), list, reducedMotion = false)
+                }
+            }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        val d = density.density
+        val y = (list.rowTop(list.items[2]) + list.rowH / 2) * d
+        onRoot().performTouchInput {
+            down(Offset(300f * d, y))
+            moveTo(Offset(250f * d, y))
+            moveTo(Offset(100f * d, y))
+            up()
+        }
+        advance(1_000)
+        assertTrue(list.graves.isEmpty())
+        assertEquals(0f, list.items[2].dx)
+        assertEquals(7, list.liveCount)
+    }
+
+    @Test
+    fun aRealTapOnTheHandBringsTheTaskBack() = runComposeUiTest {
+        lateinit var list: GraveUndoState
+        setContent {
+            list = rememberGraveUndo()
+            Phone { GraveUndoDemo(DemoState(), list, reducedMotion = false) }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        val d = density.density
+        val y = (list.rowTop(list.items[0]) + list.rowH / 2) * d
+        onRoot().performTouchInput {
+            down(Offset(300f * d, y))
+            moveTo(Offset(200f * d, y))
+            moveTo(Offset(80f * d, y))
+            up()
+        }
+        advance(5_000)
+        assertTrue(list.handHitOn)
+        val at =
+            Offset(
+                (list.handHitX + list.handHitW / 2) * d,
+                (list.handHitY + 20 * list.u) * d,
+            )
+        onRoot().performTouchInput { click(at) }
+        advance(4_000)
+        assertEquals(7, list.liveCount)
+        assertTrue(list.asBegun)
     }
 
     // The clock in half-second steps. The tests turn autoAdvance off, so
