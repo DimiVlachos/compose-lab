@@ -109,7 +109,13 @@ internal enum class Sound(val file: String) {
     BandYank("band_yank"),
     BandBurst("band_burst"),
     BandTick("band_tick"),
-    BandTwang("band_twang");
+    BandTwang("band_twang"),
+    CoinClink("coin_clink"),
+    CoinRattle("coin_rattle"),
+    CoinTick("coin_tick"),
+    CoinTip("coin_tip"),
+    CoinOut("coin_out"),
+    CoinThunk("coin_thunk");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

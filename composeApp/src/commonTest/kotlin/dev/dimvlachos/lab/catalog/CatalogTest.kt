@@ -9,6 +9,7 @@ import dev.dimvlachos.lab.resources.demo_birdcage
 import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
+import dev.dimvlachos.lab.resources.demo_coinsorter
 import dev.dimvlachos.lab.resources.demo_crtpip
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
@@ -85,6 +86,7 @@ class CatalogTest {
                 "pigeonhole.move",
                 "crtpip.minimize",
                 "rubberband.unsend",
+                "coinsorter.sort",
             ),
             Catalog.demos.map { it.id },
         )
@@ -122,6 +124,7 @@ class CatalogTest {
                 Res.string.demo_pigeonhole,
                 Res.string.demo_crtpip,
                 Res.string.demo_rubberband,
+                Res.string.demo_coinsorter,
             ),
             Catalog.demos.map { it.title },
         )
@@ -209,6 +212,7 @@ class CatalogTest {
                 "pigeonhole.move",
                 "crtpip.minimize",
                 "rubberband.unsend",
+                "coinsorter.sort",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

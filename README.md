@@ -54,6 +54,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole) | `pigeonhole` | `pigeonhole.move` | Move to… in a mail app as an oak sorting rack: the email folds into a letter and is posted into a cubby |
 | [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip) | `crtpip` | `crtpip.minimize` | A video's mini player as an old TV: swipe the video down and it switches off into a glowing dot that flies to the corner, where a little rabbit-ear set warms up with the show still playing |
 | [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband) | `rubberband` | `rubberband.unsend` | A chat composer where the message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field to edit |
+| [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -92,6 +93,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Pigeonhole move](#pigeonhole-move-corepresentationcomponentspigeonhole)
 - [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip)
 - [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband)
+- [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -986,6 +988,25 @@ The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Tab
 ```kotlin
 val chat = remember { RubberBandState(opening) }
 RubberBandChat(chat, rememberTextFieldState(), text, colors, dark, sounds, appBar = { AppBar() })
+## Coin sorter sort (`core/presentation/components/coinsorter/`)
+
+A store's search results whose sort control is a little chrome coin-sorting tray under the toolbar. Pick a sort from the chip's menu (tap the chip or the tray, or press the chip, slide onto an option and let go) and, from the top, each row tips up on its edge and turns into a coin sized by its rank in the new sort, nickel, copper or brass, with its price or rating on its face. The coins rattle into the funnel and leave it one at a time, roll down the sloping rail ticking over the slots too small for them, and drop through the first one they fit with a clink. A moment later each falls out of the bottom of its tube and opens back into a row on its new line, so the list refills as the coins come down.
+
+- **Drawn as the prototype draws it.** The tray is ported call by call from its HTML prototype onto the shared `canvas2d` adapter, as two layers drawn once: the brushed plate, rail and tube insides behind the coins, and the acrylic funnel and tube fronts in front of them, so a coin really is inside its tube. A coin in flight rides above the acrylic until its lower edge drops past the funnel rim. The coins are the prototype's CSS: a radial metal disc with inset rings, an upright face with a light text shadow, a reeded rim that turns as the coin rolls, and a still sheen.
+- **Sizes.** A coin's diameter comes from its rank, not the raw price: each slot is 3.2 dp wider than the one before and each coin 2.2 dp narrower than its own, so it always rolls over every smaller slot and drops through its own, for any data.
+- **Flip.** A row tips with an exact `perspective(800px) rotateX` and narrows to its coin's width as it goes edge-on, so the handover to the coin is the same size both ways; dealing back runs it in reverse.
+- **Motion.** Each row runs a small state machine (tip, fly, funnel, rail, drop, tube, deal, unfold) in 1/240 s substeps: on the rail a coin speeds up down the slope and rolls its distance over its radius, and in the drop gravity and a 0.3 bounce set how loud the clink is. While the rows are away their lines show a faint dashed outline.
+- **Feel and sound.** Confirm on a pick, a tick as a drag lights an option, a tap on a hard clink; synthesized clinks, rattles, rail ticks, tips and thunks.
+- **Screen readers and keys.** The chip is a dropdown with its sort, disabled while a sort runs; the options are radio items with Up/Down, Enter and Escape; each row reads its name, price and rating, and the list order is committed when the last row lands. What happens is announced politely.
+- **Reduced motion.** The rows move straight to their new lines.
+
+The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script sorts by Price: low to high, then Top rated, and then back to Best match.
+
+```kotlin
+val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating, it.metal) }) }
+CoinSorterResults(sorter, text, colors, sounds, rowLabel = { "…" }, header = { Header() }) { i ->
+    ResultRow(items[i])
+}
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)
@@ -1140,6 +1161,7 @@ The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96
 
 The French press shows one story: the words that fly are those on the screen, the rest of the article stays still under the fade above the press, and the story doesn't scroll. The summary is fixed text, not generated. The layout is not mirrored for right-to-left.
 The rubber band ties only the newest message, from a composer on one line; a long message comes back scrolled to its end. The window is nine seconds of the screen's own clock, paused while the band is held and not saved, and the thread is a plain column, not a lazy list, and is not mirrored for right-to-left.
+The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list itself doesn't scroll (on a screen too short for every row the whole screen scrolls instead), a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 
