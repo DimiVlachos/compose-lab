@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
 - **French press summary** (`frenchpress`): its demo also lets go of a push early so the words fly home, summarizes with a tap on the press and gives the story back by pulling the knob up, so the clip shows every way in and out.
 - **Photocopier duplicate** (`photocopier`): its demo also feeds a second copy back with Undo and pins a list to the top and back, so the clip shows every menu item and both ways to send a copy back.
 - **Pigeonhole move** (`pigeonhole`): its demo first carries a message toward the rack and lets go over the list, so it unfolds back into its slot.

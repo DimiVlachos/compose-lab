@@ -744,11 +744,26 @@ private suspend fun play(control: String, roller: PaintRollerState, finger: Roll
                 // Once the roller is home, a beat, then Undo rolls the old blue back on.
                 while (roller.busy) delay(16)
                 delay(1600)
+                finger.appear(Offset(roller.width * .7f, roller.height * .55f))
                 val at = roller.undoCentre
                 if (at != null) finger.glide(at, 600)
                 finger.press {}
                 delay(ScriptedTouch.TapHoldMs)
                 finger.lift { roller.undo() }
+                finger.glide(Offset(roller.width * .7f, roller.height * .55f), 500)
+                finger.fadeOut()
+                while (roller.busy) delay(16)
+            }
+            PaintRollerDemos.TapEvergreen -> {
+                // A beat, then a tap on Evergreen: no drag, so the roller paints two strokes.
+                while (roller.busy) delay(16)
+                delay(1000)
+                val t = roller.trays[2]
+                finger.appear(Offset(roller.width * .7f, roller.height * .55f))
+                finger.glide(Offset(t.cx, t.top + t.th * .5f), 600)
+                finger.press { roller.trayDown(2, it.x, it.y, demo = true) }
+                delay(ScriptedTouch.TapHoldMs)
+                finger.lift { roller.trayUp(it.x, it.y) }
                 finger.glide(Offset(roller.width * .7f, roller.height * .55f), 500)
                 finger.fadeOut()
                 while (roller.busy) delay(16)

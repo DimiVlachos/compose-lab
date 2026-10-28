@@ -887,7 +887,7 @@ A running app's Appearance settings whose accent colours are five little plastic
 - **Screen readers and keys.** The trays are a group of radio buttons named by colour (arrow keys pick the next or previous colour, Enter or Space this one), the new colour is announced politely, the switches are switches, and Undo and Reset to default are buttons. The new coat is hidden from accessibility.
 - **Reduced motion.** The colour changes at once, with no trip for the roller and no wet shine.
 
-The demo, `paintroller.accent`, is the Appearance screen of an invented running app. Its script presses Sedona, drags the roller up the left, across the top and partway down the right and lets go, so the roller finishes the wall; then it taps Undo and Blue Ridge rolls back on.
+The demo, `paintroller.accent`, is the Appearance screen of an invented running app. Its script presses Sedona, drags the roller up the left, across the top and partway down the right and lets go, so the roller finishes the wall; then it taps Undo and Blue Ridge rolls back on; then it taps Evergreen, which the roller paints in two strokes, and Undo rolls Blue Ridge back on again.
 
 ```kotlin
 val roller = remember { PaintRollerState() }
