@@ -9,8 +9,8 @@ import dev.dimvlachos.lab.resources.demo_birdcage
 import dev.dimvlachos.lab.resources.demo_book_turn
 import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
-import dev.dimvlachos.lab.resources.demo_crtpip
 import dev.dimvlachos.lab.resources.demo_coinsorter
+import dev.dimvlachos.lab.resources.demo_crtpip
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
