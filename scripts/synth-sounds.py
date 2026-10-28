@@ -1038,6 +1038,9 @@ def roller_roll(rng, rate):
     for i in range(x):
         w = i / x
         loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.5)
+
+
 # ---------- French press ----------
 # A small glass press on the table: the words pouring in and out are soft rushes of band-passed noise
 # gliding up or down, as the prototype's WebAudio bursts, with a glassy tink as the mesh lands and
