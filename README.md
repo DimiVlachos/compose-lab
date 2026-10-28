@@ -959,7 +959,7 @@ A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe th
 - **Screen readers and keys.** The player is labelled with how to shrink it and the chevron is a button; the set is a button, "Expand video", with a Stop playback action, Enter or Space to expand and Delete to stop; Undo is a button, and each change is announced. Keyboard focus follows the video from the chevron to the set, from the set back to the player, and to Undo on a stop.
 - **Reduced motion.** The player and the set swap at once, with no squeeze or flight.
 
-The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, then taps it back into the full player.
+The demo, `crtpip.minimize`, is the watch page. Its script swipes the video down into the set, browses the page and comes back to the top, slides the set over to the other corner and lets go a little short so the spring shows, flicks it off the left side so playback stops and taps Undo on the toast, then taps it back into the full player.
 
 ```kotlin
 val pip = remember { CrtPipState() }

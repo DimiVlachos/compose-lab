@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **French press summary** (`frenchpress`): its demo also lets go of a push early so the words fly home, summarizes with a tap on the press and gives the story back by pulling the knob up, so the clip shows every way in and out.
 - **Photocopier duplicate** (`photocopier`): its demo also feeds a second copy back with Undo and pins a list to the top and back, so the clip shows every menu item and both ways to send a copy back.
 - **Pigeonhole move** (`pigeonhole`): its demo first carries a message toward the rack and lets go over the list, so it unfolds back into its slot.
+- **CRT picture-in-picture** (`crtpip`): its demo also flicks the set off the side to stop playback and brings it back with Undo.
 - **Recording**: `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice and a 30 s script took more than the old minute.
 
 ## [0.2.0] - 2026-10-28
