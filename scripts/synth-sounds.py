@@ -1038,6 +1038,9 @@ def roller_roll(rng, rate):
     for i in range(x):
         w = i / x
         loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.5)
+
+
 # ---------- French press ----------
 # A small glass press on the table: the words pouring in and out are soft rushes of band-passed noise
 # gliding up or down, as the prototype's WebAudio bursts, with a glassy tink as the mesh lands and
@@ -1543,6 +1546,80 @@ def decoder_back(rng, rate):
     return soft_finish(soft_room(soft_tilt(track, rate, 3800), rate, 0.12), rate, 0.3, 0.004, 0.06)
 
 
+# ---------- Spider refresh ----------
+
+def spider_tone(rate, f0, f1, dur, decay, triangle=False):
+    """The prototype's tone(): a pitch glide from f0 to f1 over dur, a little odd harmonic for a triangle."""
+    n = seconds(dur + 0.05, rate)
+    body = chirp(n, rate, f0, f1, dur, decay)
+    if triangle:
+        body = mix(body, scale(chirp(n, rate, f0 * 3, f1 * 3, dur, decay * 0.6), 0.11))
+    return mul(body, soft_env(n, rate, 0.008, decay))
+
+
+def spider_steps(rng, rate, count, span):
+    """Tiny feet: soft high ticks, each 2.3 to 3 kHz, spread over span seconds."""
+    track = [0.0] * seconds(span + 0.06, rate)
+    for i in range(count):
+        f = 2300 + rng.random() * 700
+        n = seconds(0.03, rate)
+        tick = mix(damped_sine(n, rate, f, 0.006), scale(mul(bandpass(noise(n, rng), f, 5, rate), soft_env(n, rate, 0.001, 0.004)), 0.5))
+        place(track, scale(tick, 0.7 + rng.random() * 0.3), seconds((i + rng.random() * 0.6) * span / count, rate))
+    return track
+
+
+def spider_arm(rng, rate):
+    """Pulled past the threshold, its eyes go wide: a small rising tick."""
+    return soft_finish(soft_room(soft_tilt(spider_tone(rate, 1180, 1460, 0.03, 0.03, True), rate, 5200), rate, 0.06), rate, 0.22, 0.002, 0.02)
+
+
+def spider_disarm(rng, rate):
+    """Back above the threshold: the same tick, falling and quieter."""
+    return soft_finish(soft_room(soft_tilt(spider_tone(rate, 900, 760, 0.03, 0.03, True), rate, 4800), rate, 0.06), rate, 0.14, 0.002, 0.02)
+
+
+def spider_patter(rng, rate):
+    """It peeks out or scurries home: six tiny steps over half a second."""
+    return soft_finish(soft_room(soft_tilt(spider_steps(rng, rate, 6, 0.55), rate, 5200), rate, 0.08), rate, 0.2, 0.002, 0.03)
+
+
+def spider_climb(rng, rate):
+    """It climbs its thread with the posts: a long run of tiny steps."""
+    return soft_finish(soft_room(soft_tilt(spider_steps(rng, rate, 20, 1.95), rate, 5200), rate, 0.08), rate, 0.18, 0.002, 0.05)
+
+
+def spider_spin(rng, rate):
+    """It spins its ball of silk: four soft high whispers."""
+    track = [0.0] * seconds(0.95, rate)
+    for i in range(4):
+        n = seconds(0.2, rate)
+        whisper = mul(bandpass(noise(n, rng), 5600, 3, rate), soft_env(n, rate, 0.06, 0.05))
+        place(track, whisper, seconds(i * 0.24, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 6200), rate, 0.1), rate, 0.16, 0.01, 0.06)
+
+
+def spider_catch(rng, rate):
+    """The ball opens into the new posts: a soft low pluck and its octave."""
+    track = mix(spider_tone(rate, 392, 389, 0.45, 0.18, True), scale(spider_tone(rate, 784, 780, 0.3, 0.12), 0.35))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3600), rate, 0.12), rate, 0.3, 0.006, 0.08)
+
+
+def spider_settle(rng, rate):
+    """It docks and the posts settle: two warm notes, the second a beat later."""
+    track = [0.0] * seconds(0.75, rate)
+    place(track, spider_tone(rate, 659, 657, 0.5, 0.2), 0)
+    place(track, scale(spider_tone(rate, 988, 985, 0.55, 0.2), 0.66), seconds(0.1, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3800), rate, 0.12), rate, 0.26, 0.006, 0.08)
+
+
+def spider_empty(rng, rate):
+    """Nothing new: two small falling notes."""
+    track = [0.0] * seconds(0.5, rate)
+    place(track, spider_tone(rate, 440, 400, 0.2, 0.1), 0)
+    place(track, scale(spider_tone(rate, 392, 350, 0.26, 0.12), 0.8), seconds(0.16, rate))
+    return soft_finish(soft_room(soft_tilt(track, rate, 3400), rate, 0.1), rate, 0.22, 0.006, 0.06)
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1674,6 +1751,15 @@ def main():
     write("decoder_settle", decoder_settle(ring, fast), fast)
     write("decoder_done", decoder_done(ring, fast), fast)
     write("decoder_back", decoder_back(ring, fast), fast)
+    spider = random.Random(1028)
+    write("spider_arm", spider_arm(spider, fast), fast)
+    write("spider_disarm", spider_disarm(spider, fast), fast)
+    write("spider_patter", spider_patter(spider, fast), fast)
+    write("spider_climb", spider_climb(spider, soft), soft)
+    write("spider_spin", spider_spin(spider, fast), fast)
+    write("spider_catch", spider_catch(spider, fast), fast)
+    write("spider_settle", spider_settle(spider, fast), fast)
+    write("spider_empty", spider_empty(spider, fast), fast)
 
 
 if __name__ == "__main__":

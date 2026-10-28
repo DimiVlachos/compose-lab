@@ -119,7 +119,15 @@ internal enum class Sound(val file: String) {
     DecoderTick("decoder_tick"),
     DecoderSettle("decoder_settle"),
     DecoderDone("decoder_done"),
-    DecoderBack("decoder_back");
+    DecoderBack("decoder_back"),
+    SpiderArm("spider_arm"),
+    SpiderDisarm("spider_disarm"),
+    SpiderPatter("spider_patter"),
+    SpiderClimb("spider_climb"),
+    SpiderSpin("spider_spin"),
+    SpiderCatch("spider_catch"),
+    SpiderSettle("spider_settle"),
+    SpiderEmpty("spider_empty");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

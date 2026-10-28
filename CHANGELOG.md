@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Spider refresh** (`spider`): pull to refresh as a little spider on its silk. Pull a feed down and it lowers itself from under the chips, swaying with your finger, its eyes going wide past the threshold; let go and it spins a ball of silk, the ball opens into the new posts hanging below it, and it climbs back up its thread reeling them to the top. Let go early and it scurries home. The list flings, a cancelled touch never fetches, and the app bar's refresh button runs the same sequence. Tiny steps, a silk whisper and warm notes, with a tick felt at the threshold; a live region says how many posts arrived. Its demo is a neighborhood feed.
+
 ### Changed
 
 - **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
