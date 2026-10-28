@@ -1,10 +1,17 @@
 package dev.dimvlachos.lab.core.presentation.components.coinsorter
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -466,13 +473,30 @@ private fun Toolbar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
+            // The label's room eases to the new words' width, so the pill grows or shrinks around
+            // it with the chevron at its end; the old words fade out before the new fade in.
+            val still = state.reducedMotion
+            AnimatedContent(
                 label,
-                color = if (state.running) colors.muted else colors.ink,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
+                transitionSpec = {
+                    if (still) EnterTransition.None togetherWith ExitTransition.None
+                    else
+                        (fadeIn(tween(ChipMs - ChipOutMs, ChipOutMs, CssEase)) togetherWith
+                                fadeOut(tween(ChipOutMs, easing = CssEase)))
+                            .using(SizeTransform { _, _ -> tween(ChipMs, easing = CssEase) })
+                },
+                contentAlignment = Alignment.CenterStart,
+                label = "chip label",
+            ) { shown ->
+                Text(
+                    shown,
+                    color = if (state.running) colors.muted else colors.ink,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
             val ink = if (state.running) colors.muted else colors.ink
             Canvas(Modifier.size(14.dp)) {
                 rotate(turn) { chevron(ink) }
@@ -480,6 +504,10 @@ private fun Toolbar(
         }
     }
 }
+
+// How long the chip takes to change to a new label's width and words, the old fading out first.
+private const val ChipMs = 280
+private const val ChipOutMs = 110
 
 // The prototype's focus outline: 2 wide, 2 out from the pill.
 private fun DrawScope.chipRing(color: Color) {
