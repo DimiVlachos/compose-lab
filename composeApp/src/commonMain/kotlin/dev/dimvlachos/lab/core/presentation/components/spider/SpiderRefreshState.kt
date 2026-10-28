@@ -341,6 +341,17 @@ internal class SpiderRefreshState(
         if (pull >= Thresh && !cancel) startRefresh(button = false) else startRetreat()
     }
 
+    /** Scrolls the list by [dy] dp, as a screen reader's scroll does; says whether it moved. */
+    fun scrollBy(dy: Float): Boolean {
+        if (phase == SpiderPhase.Refresh) return false
+        val to = (scroll + dy).coerceIn(0f, maxScroll)
+        if (to == scroll) return false
+        fling = 0f
+        scroll = to
+        frame++
+        return true
+    }
+
     /** The app bar's refresh button: the same sequence, lowering the spider by itself. */
     fun refreshButton() {
         if (phase == SpiderPhase.Refresh) return

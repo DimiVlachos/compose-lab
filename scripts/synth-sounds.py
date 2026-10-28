@@ -1755,7 +1755,7 @@ def main():
     write("spider_arm", spider_arm(spider, fast), fast)
     write("spider_disarm", spider_disarm(spider, fast), fast)
     write("spider_patter", spider_patter(spider, fast), fast)
-    write("spider_climb", spider_climb(spider, fast), fast)
+    write("spider_climb", spider_climb(spider, soft), soft)
     write("spider_spin", spider_spin(spider, fast), fast)
     write("spider_catch", spider_catch(spider, fast), fast)
     write("spider_settle", spider_settle(spider, fast), fast)

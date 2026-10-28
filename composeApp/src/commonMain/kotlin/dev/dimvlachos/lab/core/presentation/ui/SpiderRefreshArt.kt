@@ -73,6 +73,15 @@ internal class SpiderRefreshScreenColors(
                 dark = true,
             )
 
+        /** The spider's face, the same in both themes: pupils, cheeks, its smile and its shine. */
+        val Pupil = Color(0xFF17121C)
+        val Cheek = Color(255, 128, 150).copy(alpha = .38f)
+        val Mouth = Color.White.copy(alpha = .75f)
+        val Shine = Color.White.copy(alpha = .12f)
+
+        /** The threads wound round the silk ball. */
+        val BallLines = Color(140, 132, 160).copy(alpha = .55f)
+
         /** The "You're all caught up" pill, the same in both themes. */
         val Toast = Color(28, 24, 32).copy(alpha = .92f)
         val ToastInk = Color(0xFFF3F1F5)

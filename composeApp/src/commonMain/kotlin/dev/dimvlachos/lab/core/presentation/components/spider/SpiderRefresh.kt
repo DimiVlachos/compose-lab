@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -28,8 +30,11 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.ScrollAxisRange
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.verticalScrollAxisRange
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -127,16 +132,23 @@ internal fun SpiderRefreshFeed(
 ) {
     val paints = remember(colors) { SpiderPaints(colors) }
     val dp = LocalDensity.current.density
+    val touched by rememberUpdatedState(onTouch)
     Box(
         modifier
             .clipToBounds()
             .testTag("feed")
-            .semantics { contentDescription = label }
+            .semantics {
+                contentDescription = label
+                // A screen reader scrolls the posts as a finger would.
+                verticalScrollAxisRange =
+                    ScrollAxisRange(value = { state.scroll }, maxValue = { state.maxScroll })
+                scrollBy { _, dy -> state.scrollBy(dy / dp) }
+            }
             .onSizeChanged { state.layout(it.width / dp, it.height / dp) }
             .pointerInput(state) {
                 awaitEachGesture {
                     val first = awaitFirstDown(requireUnconsumed = false)
-                    onTouch()
+                    touched()
                     val id = first.id
                     var done = false
                     try {

@@ -392,17 +392,17 @@ private fun Tabs(colors: SpiderRefreshScreenColors) {
 /** "You're all caught up", fading in and out as the prototype's `.toast` over .5 s. */
 @Composable
 private fun Toast(on: Boolean, reducedMotion: Boolean, modifier: Modifier) {
-    val a by
+    // Read in the layer, so the fade never recomposes.
+    val a =
         animateFloatAsState(
             if (on) 1f else 0f,
             tween(if (reducedMotion) 0 else 500, easing = EaseInOut),
             label = "toast",
         )
-    if (a <= 0f) return
     BasicText(
         stringResource(Res.string.spider_caught_up),
         modifier
-            .graphicsLayer { alpha = a }
+            .graphicsLayer { alpha = a.value }
             .clip(RoundedCornerShape(999.dp))
             .background(SpiderRefreshScreenColors.Toast)
             .padding(horizontal = 16.dp, vertical = 10.dp)

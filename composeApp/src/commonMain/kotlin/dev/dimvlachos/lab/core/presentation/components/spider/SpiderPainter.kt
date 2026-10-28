@@ -21,11 +21,6 @@ internal class SpiderPaints(val colors: SpiderRefreshScreenColors) {
         }
 }
 
-private val Pupil = Color(0xFF17121C)
-private val Cheek = Color(255, 128, 150).copy(alpha = .38f)
-private val Mouth = Color.White.copy(alpha = .75f)
-private val Shine = Color.White.copy(alpha = .12f)
-private val BallLines = Color(140, 132, 160).copy(alpha = .55f)
 private val Sides = intArrayOf(-1, 1)
 private val LegBase = floatArrayOf(-.95f, -.4f, .15f, .7f)
 private val TuftAngles = floatArrayOf(-.75f, -.25f, .25f, .75f)
@@ -169,7 +164,7 @@ private fun Canvas2D.drawSpider(
         beginPath()
         arc(0f, by, r, 0f, TAU)
         clip()
-        strokeStyle = BallLines
+        strokeStyle = SpiderRefreshScreenColors.BallLines
         lineWidth = .7f
         for (i in 0 until 4) {
             beginPath()
@@ -186,7 +181,7 @@ private fun Canvas2D.drawSpider(
     strokeStyle = c.rim
     lineWidth = 1f
     stroke()
-    fillStyle = Shine
+    fillStyle = SpiderRefreshScreenColors.Shine
     beginPath()
     ellipse(-4.5f, -6f, 4f, 2.2f, -.6f, 0f, TAU)
     fill()
@@ -250,7 +245,7 @@ private fun Canvas2D.drawSpider(
             clip()
             val px = ex + lx * 1.5f
             val py = ey + ly * 1.7f
-            fillStyle = Pupil
+            fillStyle = SpiderRefreshScreenColors.Pupil
             beginPath()
             arc(px, py, 2.4f * wide, 0f, TAU)
             fill()
@@ -262,14 +257,14 @@ private fun Canvas2D.drawSpider(
         }
     }
     // Cheeks and mouth.
-    fillStyle = Cheek
+    fillStyle = SpiderRefreshScreenColors.Cheek
     beginPath()
     ellipse(-8.3f, 4.2f, 2.2f, 1.3f, 0f, 0f, TAU)
     fill()
     beginPath()
     ellipse(8.3f, 4.2f, 2.2f, 1.3f, 0f, 0f, TAU)
     fill()
-    strokeStyle = Mouth
+    strokeStyle = SpiderRefreshScreenColors.Mouth
     lineWidth = 1.1f
     beginPath()
     when {

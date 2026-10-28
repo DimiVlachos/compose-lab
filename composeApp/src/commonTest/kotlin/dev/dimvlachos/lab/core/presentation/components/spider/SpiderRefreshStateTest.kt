@@ -200,6 +200,18 @@ class SpiderRefreshStateTest {
     }
 
     @Test
+    fun aScreenReaderScrollsWithinTheList() {
+        val s = state()
+        assertTrue(s.scrollBy(150f))
+        assertEquals(150f, s.scroll)
+        assertTrue(s.scrollBy(1000f))
+        assertEquals(s.maxScroll, s.scroll)
+        assertFalse(s.scrollBy(10f))
+        s.refreshButton()
+        assertFalse(s.scrollBy(-50f))
+    }
+
+    @Test
     fun resetBringsBackTheFirstFeed() {
         val s = state()
         s.refreshButton()
