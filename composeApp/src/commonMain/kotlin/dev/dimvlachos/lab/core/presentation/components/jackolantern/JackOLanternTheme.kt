@@ -280,8 +280,13 @@ internal fun JackOLanternTheme(
         ) {
             night.content()
         }
-        // The pumpkin and the smoke off its lid.
-        Canvas(Modifier.fillMaxSize()) {
+        // The pumpkin and the smoke off its lid, in a layer of their own as the prototype's canvas
+        // is: its halo and lid glow add light to the pumpkin, not to the screen under it.
+        Canvas(
+            Modifier.fillMaxSize().graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+        ) {
             state.frame
             if (!state.laidOut) return@Canvas
             drawIntoCanvas { canvas ->

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.Gradient2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.cssColor
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.components.jackolantern.JackOLanternState.Companion.Tau
 import dev.dimvlachos.lab.core.presentation.components.jackolantern.JackOLanternState.Companion.smooth
 import kotlin.math.cos
@@ -449,5 +450,6 @@ internal fun bakeProjection(w: Float, h: Float): ImageBitmap {
     c.fill()
     c.restore()
     c.filter = "none"
-    return c.bitmap
+    // Drawn every frame while lit: an unchanging bitmap draws from its own pixels.
+    return c.bitmap.also { it.freeze() }
 }
