@@ -53,6 +53,10 @@ docs(readme): add the paper plane's envelope
 
 Keep a pull request to one change, and describe what a reviewer should look at or try.
 
+## Releases
+
+A release is a pull request that raises `app-versionName` and `app-versionCode` in `gradle/libs.versions.toml` and `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in both `project.yml` files, and turns `[Unreleased]` in `CHANGELOG.md` into the new version's section. Once it is merged, the Release workflow tags the commit and publishes the GitHub release from that section.
+
 ## Code of conduct
 
 This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By taking part, you agree to uphold it.
