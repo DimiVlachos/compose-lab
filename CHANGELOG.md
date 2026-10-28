@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-28
+
+Three Halloween components, and demo clips that show every way in and out.
+
 ### Added
 
 - **Spider refresh** (`spider`): pull to refresh as a little spider on its silk. Pull a feed down and it lowers itself from under the chips, swaying with your finger, its eyes going wide past the threshold; let go and it spins a ball of silk, the ball opens into the new posts hanging below it, and it climbs back up its thread reeling them to the top. Let go early and it scurries home. The list flings, a cancelled touch never fetches, and the app bar's refresh button runs the same sequence. Tiny steps, a silk whisper and warm notes, with a tick felt at the threshold; a live region says how many posts arrived. Its demo is a neighborhood feed.
@@ -20,8 +24,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Rubber band unsend** (`rubberband`): its demo also plucks the band a little after the second send, so it twangs back and wobbles and the message stays sent.
 - **Coin sorter sort** (`coinsorter`): its demo picks every sort, Price: high to low too, and two of them by pressing the chip and sliding onto the option.
 - **Decoder ring translate** (`decoderring`): its demo also lets go of a short twist so the letters spring back, and taps the ring both ways.
-- **Recording**: a clip's sound is shifted 170 ms instead of 200 to meet its picture, re-measured since clips play as media.
-- **Recording**: `scripts/record.py --sound` records the phone's audio output instead of the app's playback capture, which took every sound before its volume: the paint roller's roll played on at full level for up to two seconds after the roller stopped, and quiet clicks were as loud as the rest. Sound is now shifted 50 ms to meet its picture instead of 170, re-measured for the output.
+- **Recording**: `scripts/record.py --sound` records the phone's audio output instead of the app's playback capture, which took every sound before its volume: the paint roller's roll played on at full level for up to two seconds after the roller stopped, and quiet clicks were as loud as the rest. Sound is now shifted 50 ms to meet its picture instead of 200, re-measured for the output.
 - **Recording**: `scripts/record.py --sound` refuses a recording whose opening hold isn't silent. scrcpy records everything the phone plays, and the app plays nothing then, so any sound there means something else was playing.
 - **Recording**: a demo script may run up to 40 s instead of 26, so a clip can show every way in and out of its component, and `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice.
 
@@ -85,6 +88,7 @@ The first release: five components, the apps that demo them, and Moodboard.
 - **Moodboard** (`moodboard/`): a Kotlin Multiplatform app that shares data, logic and ViewModels, with a SwiftUI UI on iOS 26 and a Material 3 Expressive UI on Android.
 - Scripted demos for every component, and tools to record them as clips and GIFs.
 
-[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/DimiVlachos/compose-lab/releases/tag/v0.1.0
