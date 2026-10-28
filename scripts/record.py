@@ -11,9 +11,13 @@ timing errors don't show. Android needs the app installed
 booted simulator with the app installed (scripts/install-ios.sh).
 
 With --sound (Android only) the clip keeps the phone's sound: scrcpy records the screen and
-the audio the app plays instead of screenrecord, which has none, and the sound is raised until
-its loudest moment peaks at PEAK_DB. The ringer setting doesn't matter: the lab's sounds play as
-media, even on silent or vibrate, and record mode always has sound on.
+the phone's audio output instead of screenrecord, which has none, and the sound is raised until
+its loudest moment peaks at PEAK_DB. It records the output, after each sound's volume is applied:
+the app's own playback capture takes its sounds before their volume, so a loop faded to nothing
+and a click played quietly were both recorded at full level. The phone is silent while it records.
+The ringer setting doesn't matter: the lab's sounds play as media, even on silent or vibrate, and
+record mode always has sound on. scrcpy records everything the phone plays, so a clip whose
+opening hold isn't silent is refused: something else was playing.
 """
 import argparse
 import re
@@ -41,12 +45,17 @@ LANDSCAPE_ANIMATION_S = 0.8
 ANDROID_CAPTURE_LEAD_S = 0.08
 # How loud a clip with sound peaks.
 PEAK_DB = -1.0
-# How far behind its picture scrcpy records the sound the app plays: the phone's audio output plus
-# the playback capture. Measured on a Galaxy S23 Ultra since clips play as media (#49): 115-250 ms
-# over eleven sounds (typewriter strikes, the paint roller's dip and one event in each of seven
-# clips), median 170. It jitters by about 50 ms either way, so no constant lands every sound on
-# its frame. The audio is cut this much later, so sounds land on their frames on average.
-ANDROID_AUDIO_LAG_S = 0.17
+# How far behind its picture scrcpy records the phone's audio output. Measured on a Galaxy S23
+# Ultra on 10-28, the raw offset of three sounds against their frames: a typewriter strike against
+# its ribbon lifting (+47 ms), the paint roller's dip against it landing in the tray (about -30)
+# and its set-down (about +50). The app's playback capture, recorded until then, lagged 170. It
+# jitters by about 50 ms either way, so no constant lands every sound on its frame.
+ANDROID_AUDIO_LAG_S = 0.05
+# Every script holds still for at least 600 ms before its first step, and the app plays nothing
+# then. This much of it, less the lag's jitter, must be digital silence in a clip with sound, or
+# the recording caught something else playing on the phone (a video, music, a call).
+QUIET_OPENING_S = 0.45
+QUIET_DB = -70.0
 
 
 def run(cmd):
@@ -197,7 +206,7 @@ def record_android_with_sound(demo_id, label, raw):
     # The demo's warm-up run plays before its start marker, so the recorder is up well before it.
     run(launch)
     recorder = subprocess.Popen(
-        ["scrcpy", "--no-window", "--no-control", "--audio-source=playback", "--audio-dup",
+        ["scrcpy", "--no-window", "--no-control", "--audio-source=output",
          f"--max-size={max(width, height)}", "--video-bit-rate=20M", f"--record={raw}"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -228,13 +237,28 @@ def audio_end(path):
 
 
 def peak_db_of_cut(path, cut, duration):
-    """The loudest sample of the clip's cut of a file's audio, in dB below full scale."""
+    """The loudest sample of the clip's cut of a file's audio, in dB below full scale (-inf when silent)."""
     out = subprocess.run(
         ["ffmpeg", "-hide_banner", "-i", str(path), "-map", "0:a:0", "-af", f"{cut},volumedetect",
          "-t", f"{duration:.3f}", "-f", "null", "-"],
         capture_output=True, text=True, check=True,
     ).stderr
-    return float(re.search(r"max_volume: (-?[\d.]+) dB", out).group(1))
+    return float(re.search(r"max_volume: (-?(?:[\d.]+|inf)) dB", out).group(1))
+
+
+def audio_cut(start):
+    """The clip's cut of a recording's audio: on the video's clock, less the lag it was recorded with."""
+    return f"atrim=start={start + ANDROID_AUDIO_LAG_S:.3f},asetpts=PTS-STARTPTS"
+
+
+def check_quiet_opening(raw, start):
+    """Refuses a recording whose opening hold has sound: only something else on the phone plays then."""
+    peak = peak_db_of_cut(raw, audio_cut(start), QUIET_OPENING_S)
+    if peak > QUIET_DB:
+        sys.exit(
+            f"The demo's opening hold has sound (peaks at {peak:.1f} dB), so something else was playing "
+            "on the phone. Stop it and record again."
+        )
 
 
 def record_ios(demo_id, label, raw):
@@ -283,7 +307,7 @@ def encode(raw, start, done, dest, landscape, tall, sound=False):
     if sound:
         # The audio is cut on the same clock as the video, less the lag it was recorded with, and
         # padded with silence for a still tail.
-        cut = f"atrim=start={start + ANDROID_AUDIO_LAG_S:.3f},asetpts=PTS-STARTPTS,apad"
+        cut = f"{audio_cut(start)},apad"
         gain = PEAK_DB - peak_db_of_cut(raw, cut, done - start)
         audio = ["-map", "0:a:0", "-af", f"{cut},volume={gain:.1f}dB", "-c:a", "aac", "-b:a", "128k"]
     crf = 18
@@ -330,6 +354,7 @@ def main():
     try:
         if args.sound:
             start, done = record_android_with_sound(args.demo_id, args.label, raw)
+            check_quiet_opening(raw, start)
         elif args.platform == "android":
             start, done = record_android(args.demo_id, args.label, raw, args.landscape)
         else:

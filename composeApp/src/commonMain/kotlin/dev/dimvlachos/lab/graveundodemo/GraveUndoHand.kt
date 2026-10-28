@@ -34,15 +34,22 @@ internal class GraveUndoHand(private val list: GraveUndoState) {
     suspend fun play(control: String) {
         list.scripted = true
         when (control) {
-            GraveUndoDemos.Bury -> bury()
+            GraveUndoDemos.Bury -> bury(0)
+            GraveUndoDemos.BurySecond -> bury(1)
             GraveUndoDemos.Undo -> undo()
+            GraveUndoDemos.UndoAtGrave -> undoAtGrave()
         }
     }
 
-    // Down on the first task, three quarters across, and drag it half the row's width left: past
-    // the line, so letting go buries it.
-    private suspend fun bury() {
-        val item = list.items.firstOrNull { !it.gone } ?: return
+    // Once no task is flying, down on the [nth] task still on the list and not in the ground, three
+    // quarters across, and drag it half the row's width left: past the line, so letting go buries
+    // it.
+    private suspend fun bury(nth: Int) {
+        waitFor { list.graves.none { it.phase in Flying } }
+        val item =
+            list.items
+                .filter { item -> !item.gone && list.graves.none { it.item === item } }
+                .getOrNull(nth) ?: return
         val w = list.width
         val sx = w * .74f
         val sy = list.rowTop(item) + list.rowH / 2
@@ -65,11 +72,7 @@ internal class GraveUndoHand(private val list: GraveUndoState) {
 
     // Wait for the hand to be up holding the task, let it be seen, then tap the card in its hand.
     private suspend fun undo() {
-        var waited = 0L
-        while (list.graves.none { it.phase == GravePhase.Held } && waited < 9000L) {
-            delay(40)
-            waited += 40
-        }
+        waitFor { list.graves.any { it.phase == GravePhase.Held } }
         delay(GraveUndoDemos.ShowHandMs)
         val g = list.undoable() ?: return
         list.cardInHand(g, card)
@@ -82,6 +85,33 @@ internal class GraveUndoHand(private val list: GraveUndoState) {
         list.undo()
         move(Offset(at.x + 40, at.y + 90), GraveUndoDemos.UndoAsideMs - 200)
         hide()
+    }
+
+    // Wait for the task to land in the soil, then tap the headstone: the grave takes it back too,
+    // while the hand is still on its way up.
+    private suspend fun undoAtGrave() {
+        waitFor { list.graves.any { it.phase == GravePhase.Rest } }
+        delay(GraveUndoDemos.SeeRestMs)
+        if (list.undoable() == null) return
+        val stone = Offset(list.stoneX, list.soil - 22 * list.u)
+        at = Offset(stone.x + 50, stone.y + 110)
+        animate(200) { shown = it }
+        move(stone, GraveUndoDemos.ToHandMs - 200)
+        down = true
+        delay(GraveUndoDemos.PressMs)
+        down = false
+        list.undo()
+        move(Offset(at.x + 40, at.y + 90), GraveUndoDemos.UndoAsideMs - 200)
+        hide()
+    }
+
+    // Polls [ready] for up to 9 s, the longest a grave takes to get anywhere.
+    private suspend fun waitFor(ready: () -> Boolean) {
+        var waited = 0L
+        while (!ready() && waited < 9000L) {
+            delay(40)
+            waited += 40
+        }
     }
 
     private suspend fun hide() {
@@ -98,6 +128,11 @@ internal class GraveUndoHand(private val list: GraveUndoState) {
     }
 
     private var frameMs = 0.0
+
+    private companion object {
+        // A task on its way into the ground or back out of it: no new swipe while one is.
+        val Flying = setOf(GravePhase.Fly, GravePhase.Undo, GravePhase.Land)
+    }
 
     private fun nowMs() = frameMs
 

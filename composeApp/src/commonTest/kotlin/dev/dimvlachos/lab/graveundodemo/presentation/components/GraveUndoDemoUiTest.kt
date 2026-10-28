@@ -99,6 +99,35 @@ class GraveUndoDemoUiTest {
         assertTrue(list.graves.isEmpty())
     }
 
+    @Test
+    fun theScriptTapsTheGraveMidRiseAndBuriesASecondWhileTheFirstIsHeld() = runComposeUiTest {
+        val state = DemoState()
+        lateinit var list: GraveUndoState
+        lateinit var scope: CoroutineScope
+        setContent {
+            scope = rememberCoroutineScope()
+            list = rememberGraveUndo()
+            Phone { GraveUndoDemo(state, list, reducedMotion = false) }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        scope.launch { state.tapControl(GraveUndoDemos.Bury) }
+        advance(3_000)
+        scope.launch { state.tapControl(GraveUndoDemos.UndoAtGrave) }
+        advance(6_000)
+        assertEquals(7, list.liveCount)
+        assertTrue(list.graves.isEmpty())
+
+        val flour = list.items[0]
+        scope.launch { state.tapControl(GraveUndoDemos.Bury) }
+        advance(7_000)
+        assertEquals(GravePhase.Held, list.graves.single().phase)
+        scope.launch { state.tapControl(GraveUndoDemos.Bury) }
+        advance(9_000)
+        assertTrue(flour.gone)
+        assertEquals(list.items[1], list.undoable()?.item)
+    }
+
     // Real pointer input through the list's gesture: a swipe of five sparse moves that lets go
     // well past where its last move was, so only the lift-off's own position arms it.
     @Test
