@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -255,6 +256,7 @@ private fun JackOLanternScope.Farm(t: FarmTexts) {
                     FontWeight.Bold,
                     Modifier.semantics { heading() },
                     letterSpacing = (-.015).em,
+                    lineHeight = 1.15.em,
                 )
             }
             Box(Modifier.size(64.dp, 60.dp).pumpkinSlot())
@@ -377,6 +379,9 @@ private fun Text(
     modifier: Modifier = Modifier,
     letterSpacing: TextUnit = TextUnit.Unspecified,
     maxLines: Int = Int.MAX_VALUE,
+    // The page's `line-height: 1.55`, which the screen inherits: CSS's half-leading, above and
+    // below.
+    lineHeight: TextUnit = 1.55.em,
 ) {
     BasicText(
         text,
@@ -387,6 +392,9 @@ private fun Text(
                 fontSize = size,
                 fontWeight = weight,
                 letterSpacing = letterSpacing,
+                lineHeight = lineHeight,
+                lineHeightStyle =
+                    LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
             ),
         maxLines = maxLines,
         overflow = if (maxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip,
