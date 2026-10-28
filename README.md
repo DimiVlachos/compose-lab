@@ -896,6 +896,8 @@ PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabe
     Button(Modifier.background(accent, shape).wetPaint(0, shape))
     Column(Modifier.accentSection()) { Trays(names, height = 92.dp) }
 }
+```
+
 ## French press summary (`core/presentation/components/frenchpress/`)
 
 A news story whose Summarize button is a little glass French press in the bottom-right corner. Push its knob down and the story's own words lift off the page, line by line, and pour into the spout, where they swirl as tiny grounds; the plunger pushes back like a rubber band until every word is in. Push past halfway and the empty summary card starts to open; let go and the mesh presses the words into a pile at the bottom, the water above clears to amber, the press tips and three short points pour out of the spout letter by letter into the card. Let go short of halfway and the words fly home. Tap the press and it does the whole thing; tap it again, pull the knob up or tap Full article, and the summary drains back, the plunger rises and every word flies back to its own place.
@@ -912,6 +914,8 @@ The demo, `frenchpress.summary`, is a city hall story from The Harlow Courier. I
 ```kotlin
 val press = remember { FrenchPressState(paragraphs, points) }
 FrenchPressStory(press, paragraphs, points, text, colors, sounds, topBar = { AppBar() }, header = { Headline() })
+```
+
 ## Photocopier duplicate (`core/presentation/components/photocopier/`)
 
 A household lists app whose Duplicate runs the list through a little putty-colored office copier. Long-press a list (or tap its ⋯) and pick Duplicate: the copier rises from the foot of the screen, the list's own card flies down onto the glass and turns face down, leaving a dashed outline in its place, the lid drops with a thunk, Start lights, and the green bar of light runs under the lid and back, leaking out of its seams. A warm copy, still flecked with toner, slides out of the slot at the back and drops into the list right under the original while the list makes room, and the original flips back up into its place. The copy cools to an ordinary card in a couple of seconds; it is a real new list called "(copy)", and a copy of it is "(copy 2)". While the copier's back edge still peeks out, drag the copy down into the slot and the rollers take it back in, or tap Undo; let go anywhere else and it glides back. Pin to top moves a list to the top.
@@ -931,6 +935,8 @@ PhotocopierList(copier, words, colors, dark, sounds) {
     AppBar()
     Search()
 }
+```
+
 ## Pigeonhole move (`core/presentation/components/pigeonhole/`)
 
 A mail app's Move to… as the oak sorting rack from behind a hotel front desk. Press a message and drag: the rack slides up from the bottom of the screen, and the nearer the email gets to it the more it turns into paper, narrowing to a letter page and then folding in thirds, the bottom up and the top down, until only the sender's first name in pen and a stamp in their own colour show on the outside. Hover a cubby and it lights up while the letter waits just above its frame; let go and it slips in behind the rail, the letters behind it shuffle back, the count on the brass plate ticks up and the inbox closes the gap. Let go over the list and it unfolds back into its slot. The rack icon brings the rack up on its own: tap a cubby and its letters lift out one after another and unfold into that folder's rows; Back folds them up and files them away again. Drag a letter out of a cubby onto the list and it unfolds back where it was before it was moved.
@@ -947,6 +953,8 @@ The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its scri
 ```kotlin
 val mail = remember { PigeonholeState(cubbies, messages) }
 PigeonholeMail(mail, text, sounds, colors)
+```
+
 ## CRT picture-in-picture (`core/presentation/components/crtpip/`)
 
 A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe the video down and, as you drag, the picture already starts to squash and brighten under your finger, like a set losing its sweep. Let go past a short distance, or flick, and the TV switches off: the picture collapses to a bright line, the line pulls into a glowing dot, and the dot flies on a curve to the bottom corner. A little walnut set with rabbit ears pops up there, the dot lands on its glass and it warms up, a line first and then the frame opening with a crackle of static, the show still playing, cropped to its 4:3 tube. The space the player used closes as the dot flies, so Up next and the comments slide up into it and scroll under the set. Drag the set anywhere: let go and it springs into the nearest corner, clear of the top bar and the nav bar, and a toss carries it to the corner it was heading for. Flick it off a side edge and the show stops: it switches off into its dot, the dot glows a moment and fades like a set at night, and a toast offers Undo, which brings it back to that corner warming up. Tap the set and it switches off in turn and the dot flies back up into the full player.
@@ -974,6 +982,8 @@ CrtPictureInPicture(
     navBar = { NavBar() },
 )
 CrtPipAnnouncer(pip, labels) // the polite live region for each change
+```
+
 ## Rubber band unsend (`core/presentation/components/rubberband/`)
 
 A chat thread and its composer where, for nine seconds after a message lands, it is still tied back to the text box by a tan rubber band hooked to a little brass eye. Grab the bubble or the band and pull: the band stretches thinner, the bubble leans toward the finger, and past 36 dp of travel from where you grabbed, in any direction, the band turns a darker tan. Let go there and it yanks the bubble back down to the field, where it bursts into its letters and they drop into place, the cursor at the end, ready to fix. Let go short of it and the band twangs back and wobbles. Leave it and the band thins, necks in the middle over its last three seconds and snaps with a twang; the message says Delivered and stays sent. Sending again snaps the last band at once.
@@ -990,6 +1000,8 @@ The demo, `rubberband.unsend`, is a chat with Jess Parker. Its script types "Tab
 ```kotlin
 val chat = remember { RubberBandState(opening) }
 RubberBandChat(chat, rememberTextFieldState(), text, colors, dark, sounds, appBar = { AppBar() })
+```
+
 ## Coin sorter sort (`core/presentation/components/coinsorter/`)
 
 A store's search results whose sort control is a little chrome coin-sorting tray under the toolbar. Pick a sort from the chip's menu (tap the chip or the tray, or press the chip, slide onto an option and let go) and, from the top, each row tips up on its edge and turns into a coin sized by its rank in the new sort, nickel, copper or brass, with its price or rating on its face. The coins rattle into the funnel and leave it one at a time, roll down the sloping rail ticking over the slots too small for them, and drop through the first one they fit with a clink. A moment later each falls out of the bottom of its tube and opens back into a row on its new line, so the list refills as the coins come down.
@@ -1009,6 +1021,8 @@ val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating
 CoinSorterResults(sorter, text, colors, sounds, rowLabel = { "…" }, header = { Header() }) { i ->
     ResultRow(items[i])
 }
+```
+
 ## Decoder ring translate (`core/presentation/components/decoderring/`)
 
 A neighbor posts in Spanish, and the Translate button under her message is a brass cereal-box decoder ring. Twist it round, either way, and the message's own letters lift and spin through the alphabet like the dial, in a wave across the bubble, and click down one by one into English on the English's own lines. Let go past about a quarter turn and it finishes by itself; let go sooner and the Spanish settles back. Twist it again, or tap it, and the letters spin back into her Spanish.
