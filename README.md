@@ -942,7 +942,7 @@ A mail app's Move to… as the oak sorting rack from behind a hotel front desk. 
 - **Screen readers and keys.** Every row has a Move to… action, and Enter picks it up with keys: it folds and waits over the rack, the cubbies are buttons ("Receipts, 4 messages") that post it, and Escape or Done puts it back. The rack icon is an expandable button, the list can be scrolled by a screen reader or a mouse wheel, the system Back puts the rack down or closes the folder, the rows grow with the font setting, and every move is announced politely.
 - **Reduced motion.** The rack, the folds and the folders change at once.
 
-The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
+The demo, `pigeonhole.move`, is Larkspur Mail's inbox with six folders. Its script picks up Dana Whitfield's message, carries it toward the rack and lets go over the list, so it unfolds back into its slot; then carries the Corner Market receipt down to Receipts, opens the rack and taps Receipts so its letters unfold into the folder, goes Back, and pulls the receipt out of its cubby back onto the inbox, where it was.
 
 ```kotlin
 val mail = remember { PigeonholeState(cubbies, messages) }

@@ -40,6 +40,27 @@ internal class PigeonholeHand(private val mail: PigeonholeState) {
     suspend fun play(control: String) {
         settle()
         when (control) {
+            // 0. Pick up the next message, carry it toward the rack, think better of it and let
+            // go over the list: it unfolds back into its slot.
+            PigeonholeDemos.PostCancel -> {
+                val (rx, ry) = mail.rowCenter("m2") ?: return
+                val gx = rx + 30
+                val gy = ry + 4
+                if (shown <= 0f) at = Offset(mail.width * .62f, mail.height * .55f)
+                move(Offset(gx, gy), 560, appear = true)
+                press { mail.rowDown("m2", gx, gy, scripted = true) }
+                wait(200)
+                drag(Offset(gx - 4, gy - 16), 240)
+                val cx = mail.cubCenterX(2)
+                val cy = mail.cubCenterY(2)
+                drag(Offset(lerp(gx, cx, .5f), lerp(gy, cy, .5f)), 650)
+                wait(250)
+                drag(Offset(gx, gy), 600)
+                wait(200)
+                lift()
+                settle()
+                move(Offset(mail.width * .62f, mail.height * .55f), 400)
+            }
             // 1. Carry the Corner Market receipt down to the Receipts cubby.
             PigeonholeDemos.Post -> {
                 val (rx, ry) = mail.rowCenter("m1") ?: return
