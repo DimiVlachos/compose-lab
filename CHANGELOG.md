@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Jack-o’-lantern theme** (`jackolantern`): a theme switch that is a small carved pumpkin in a farm app's top bar. Tap it and the candle catches and the night theme spreads out of its face in a soft-edged circle of candlelight over the whole screen, with the grin cast faintly across the feed; flick across the flame to blow it out, and the smoke curls off the lid as the night draws back in. Either change turns round mid-flight. Haptics and synthesized match, catch, breath and crackle sounds; a switch for screen readers and keys. Its demo is Maple Hollow Farm's Tonight screen.
+
 ### Changed
 
 - **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
