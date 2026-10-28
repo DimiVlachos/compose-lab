@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Pigeonhole move** (`pigeonhole`): its demo first carries a message toward the rack and lets go over the list, so it unfolds back into its slot.
 - **CRT picture-in-picture** (`crtpip`): its demo also flicks the set off the side to stop playback and brings it back with Undo.
 - **Rubber band unsend** (`rubberband`): its demo also plucks the band a little after the second send, so it twangs back and wobbles and the message stays sent.
+- **Coin sorter sort** (`coinsorter`): its demo picks every sort, Price: high to low too, and two of them by pressing the chip and sliding onto the option.
 - **Recording**: `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice and a 30 s script took more than the old minute.
 
 ## [0.2.0] - 2026-10-28

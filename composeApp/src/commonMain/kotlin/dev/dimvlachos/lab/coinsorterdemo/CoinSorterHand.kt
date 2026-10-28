@@ -35,9 +35,11 @@ internal class CoinSorterHand(private val sorter: CoinSorterState) {
         val sort =
             when (control) {
                 CoinSorterDemos.SortLow -> CoinSort.Low
+                CoinSorterDemos.SortHigh -> CoinSort.High
                 CoinSorterDemos.SortTop -> CoinSort.Top
                 else -> CoinSort.Best
             }
+        val slide = control == CoinSorterDemos.SortHigh || control == CoinSorterDemos.SortBest
         // As the prototype's demo awaits idle(): a sort still landing finishes first.
         idle()
         // From the lower middle of the screen, fading in as it moves to the chip.
@@ -47,18 +49,34 @@ internal class CoinSorterHand(private val sorter: CoinSorterState) {
         move(chip, 560, fadeIn = true)
         down = true
         sorter.pressDown(at.x, at.y)
+        val i = sort.ordinal
+        val optX =
+            sorter.menuX +
+                CoinSorterState.MenuPad +
+                (CoinSorterState.MenuW - 2 * CoinSorterState.MenuPad) * .4f
+        if (slide) {
+            // Press the chip and slide onto the option: the menu opens once the finger moves, and
+            // letting go on the option picks it.
+            wait(400)
+            val from = at
+            animate(820) { t ->
+                val e = CoinSorterState.ease(t)
+                // The option's place is read each frame: the menu is laid out once it opens.
+                val to = Offset(optX, sorter.optY(i) + CoinSorterState.OptH / 2)
+                at = Offset(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e)
+                sorter.pressMove(at.x, at.y)
+            }
+            wait(350)
+            down = false
+            sorter.pressUp(at.x, at.y)
+            hide()
+            return
+        }
         wait(ScriptedTouch.TapHoldMs.toInt())
         down = false
         sorter.pressUp(at.x, at.y)
         wait(650)
-        val i = sort.ordinal
-        val opt =
-            Offset(
-                sorter.menuX +
-                    CoinSorterState.MenuPad +
-                    (CoinSorterState.MenuW - 2 * CoinSorterState.MenuPad) * .4f,
-                sorter.optY(i) + CoinSorterState.OptH / 2,
-            )
+        val opt = Offset(optX, sorter.optY(i) + CoinSorterState.OptH / 2)
         move(opt, 460)
         down = true
         sorter.hover(i)

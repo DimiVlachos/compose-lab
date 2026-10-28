@@ -1002,7 +1002,7 @@ A store's search results whose sort control is a little chrome coin-sorting tray
 - **Screen readers and keys.** The chip is a dropdown with its sort, disabled while a sort runs; the options are radio items with Up/Down, Enter and Escape; each row reads its name, price and rating, and the list order is committed when the last row lands. What happens is announced politely.
 - **Reduced motion.** The rows move straight to their new lines.
 
-The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script sorts by Price: low to high, then Top rated, and then back to Best match.
+The demo, `coinsorter.sort`, is a camping store's results for "lantern". Its script picks every sort, two by tapping the chip and an option and two by pressing the chip and sliding onto one: Price: low to high, Price: high to low, Top rated, and then back to Best match.
 
 ```kotlin
 val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating, it.metal) }) }
