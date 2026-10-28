@@ -1021,7 +1021,7 @@ A neighbor posts in Spanish, and the Translate button under her message is a bra
 - **Screen readers and keys.** The bubble reads as the language it shows; the ring is a button labelled Translate to English or Show original Spanish, Enter or Space turns it, and a polite live region says which one landed.
 - **Reduced motion.** The text changes at once.
 
-The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script twists the ring most of a turn and lets go so the post finishes into English, then twists it back to the Spanish.
+The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script first twists the ring a little and lets go too soon, so the letters spring back; then twists it most of a turn and lets go so the post finishes into English, taps it back to the Spanish and again to the English, then twists it back to the Spanish.
 
 ```kotlin
 val ring = remember { DecoderRingState() }

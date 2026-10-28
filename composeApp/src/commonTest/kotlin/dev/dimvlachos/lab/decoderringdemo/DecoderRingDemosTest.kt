@@ -20,17 +20,24 @@ class DecoderRingDemosTest {
     }
 
     @Test
-    fun theClipTwistsIntoEnglishBackAndResets() = runTest {
+    fun theClipTwistsShortThenIntoEnglishTapsTwiceTwistsBackAndResets() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf("tapControl(twist)", "tapControl(twist-back)", "resetFeed()"),
+            listOf(
+                "tapControl(twist-short)",
+                "tapControl(twist)",
+                "tapControl(tap)",
+                "tapControl(tap)",
+                "tapControl(twist-back)",
+                "resetFeed()",
+            ),
             controller.calls.map { it.second },
         )
     }
 
     @Test
-    fun theClipFitsInTwelveSeconds() {
-        assertTrue(demo.script.nominalDuration <= 12.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInTwentyTwoSeconds() {
+        assertTrue(demo.script.nominalDuration <= 22.seconds, "${demo.script.nominalDuration}")
     }
 }
