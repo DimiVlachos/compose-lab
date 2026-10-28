@@ -855,4 +855,36 @@
     <string name="decoderring_show_original">Show original Spanish</string>
     <string name="decoderring_landed_english">Translated from Spanish.</string>
     <string name="decoderring_landed_spanish">Showing the original Spanish.</string>
+    <!-- Jack-o’-lantern theme -->
+    <string name="demo_jackolantern">Jack-o’-lantern theme</string>
+    <string name="demo_jackolantern_description">Light a carved pumpkin and the night theme spreads out of its face; flick the flame to blow it out</string>
+    <string name="jackolantern_farm">Maple Hollow Farm</string>
+    <string name="jackolantern_title">Tonight at the farm</string>
+    <string name="jackolantern_date">Friday, October 31 · Sunset 5:52 PM</string>
+    <string name="jackolantern_hayride">Haunted Hayride</string>
+    <string name="jackolantern_hayride_meta">From the red barn · 6–10 PM</string>
+    <string name="jackolantern_hayride_price">$12</string>
+    <string name="jackolantern_also">Also tonight</string>
+    <string name="jackolantern_maze">Corn maze by lantern light</string>
+    <string name="jackolantern_maze_meta">Flashlights at the gate</string>
+    <string name="jackolantern_maze_when">Till 9</string>
+    <string name="jackolantern_carving">Pumpkin carving tent</string>
+    <string name="jackolantern_carving_meta">Pick one from the patch</string>
+    <string name="jackolantern_carving_price">$6</string>
+    <string name="jackolantern_donuts">Hot cider donuts</string>
+    <string name="jackolantern_donuts_meta">Fresh every half hour</string>
+    <string name="jackolantern_donuts_price">$4</string>
+    <string name="jackolantern_bonfire">Bonfire and s’mores</string>
+    <string name="jackolantern_bonfire_meta">Down by the duck pond</string>
+    <string name="jackolantern_bonfire_when">7:00</string>
+    <string name="jackolantern_cta">Get hayride tickets</string>
+    <string name="jackolantern_tab_tonight">Tonight</string>
+    <string name="jackolantern_tab_map">Map</string>
+    <string name="jackolantern_tab_tickets">Tickets</string>
+    <string name="jackolantern_tab_you">You</string>
+    <string name="jackolantern_switch">Night theme. A jack-o’-lantern: light the candle for the night theme, blow it out for day.</string>
+    <string name="jackolantern_night_said">Night theme. The jack-o’-lantern is lit.</string>
+    <string name="jackolantern_day_said">Day theme. The candle is out.</string>
+    <string name="jackolantern_hint_light">Tap to light the candle</string>
+    <string name="jackolantern_hint_blow">Flick across the flame</string>
 </resources>
