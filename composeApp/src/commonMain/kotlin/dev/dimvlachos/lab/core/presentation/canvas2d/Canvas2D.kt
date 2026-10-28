@@ -806,9 +806,22 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
     fun measureText(text: String): Float =
         layout(text).multiParagraph.getLineWidth(0) / textResolution
 
+    /**
+     * Not the canvas's own: lays [text] out in the current [font] at [textResolution], once, for
+     * [fillText] to draw again and again without laying it out each time. Its positions are in the
+     * resolution's units: divide by [textResolution] for user units.
+     */
+    fun layoutText(text: String): TextLayoutResult = layout(text)
+
     /** Draws [text] at ([x], [y]) in the fill colour, placed by [textAlign] and [textBaseline]. */
-    fun fillText(text: String, x: Float, y: Float) {
-        val l = layout(text)
+    fun fillText(text: String, x: Float, y: Float) = fillText(layout(text), x, y)
+
+    /**
+     * Not the canvas's own: draws a [layout] made by [layoutText] (at the same [textResolution]) as
+     * [fillText] draws its text.
+     */
+    fun fillText(layout: TextLayoutResult, x: Float, y: Float) {
+        val l = layout
         val k = textResolution
         val width = l.multiParagraph.getLineWidth(0) / k
         val dx =

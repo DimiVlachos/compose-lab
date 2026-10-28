@@ -11,6 +11,7 @@ import dev.dimvlachos.lab.resources.demo_bookshelf
 import dev.dimvlachos.lab.resources.demo_cardfile
 import dev.dimvlachos.lab.resources.demo_coinsorter
 import dev.dimvlachos.lab.resources.demo_crtpip
+import dev.dimvlachos.lab.resources.demo_decoderring
 import dev.dimvlachos.lab.resources.demo_fishing
 import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
@@ -87,6 +88,7 @@ class CatalogTest {
                 "crtpip.minimize",
                 "rubberband.unsend",
                 "coinsorter.sort",
+                "decoderring.translate",
             ),
             Catalog.demos.map { it.id },
         )
@@ -125,6 +127,7 @@ class CatalogTest {
                 Res.string.demo_crtpip,
                 Res.string.demo_rubberband,
                 Res.string.demo_coinsorter,
+                Res.string.demo_decoderring,
             ),
             Catalog.demos.map { it.title },
         )
@@ -213,6 +216,7 @@ class CatalogTest {
                 "crtpip.minimize",
                 "rubberband.unsend",
                 "coinsorter.sort",
+                "decoderring.translate",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

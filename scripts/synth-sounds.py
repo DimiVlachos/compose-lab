@@ -1505,6 +1505,42 @@ def coin_thunk(rng, rate):
     knock = mul(lowpass(lowpass(noise(n, rng), 320, rate), 320, rate), soft_env(n, rate, 0.004, 0.03))
     tap = mul(bandpass(noise(n, rng), 1700, 2.0, rate), soft_env(n, rate, 0.002, 0.006))
     return soft_finish(soft_room(soft_tilt(mix(knock, scale(tap, 0.15)), rate, 2400), rate, 0.1), rate, SOFT_PEAK, 0.004, 0.04)
+# ---------- Decoder ring ----------
+
+def decoder_tick(rng, rate):
+    """A letter of the brass dial passing the pointer: a tiny, bright ratchet tick with a faint ring."""
+    n = seconds(0.04, rate)
+    tick = mul(bandpass(noise(n, rng), 4200, 6, rate), soft_env(n, rate, 0.002, 0.006))
+    ring = scale(soft_mode(rng, n, rate, 2900, 30, 0.012, attack=0.002), 0.25)
+    return soft_finish(soft_room(soft_tilt(mix(tick, ring), rate, 5200), rate, 0.08), rate, 0.2, 0.002, 0.01)
+
+
+def decoder_settle(rng, rate):
+    """A letter clicking down into its slot: a soft card-reel click."""
+    n = seconds(0.04, rate)
+    click = mul(bandpass(noise(n, rng), 3000, 4, rate), soft_env(n, rate, 0.002, 0.007))
+    return soft_finish(soft_room(soft_tilt(click, rate, 4800), rate, 0.08), rate, 0.16, 0.002, 0.01)
+
+
+def decoder_done(rng, rate):
+    """Every letter in English: a small brass chime, two partials over a soft click, never a pure tone."""
+    track = [0.0] * seconds(0.6, rate)
+    n = seconds(0.55, rate)
+    place(track, mix(soft_mode(rng, n, rate, 1568, 60, 0.16, 0.004), scale(damped_sine(n, rate, 1564, 0.14), 0.04)), 0)
+    place(track, scale(soft_mode(rng, n, rate, 2349, 60, 0.11, 0.004), 0.5), seconds(0.01, rate))
+    m = seconds(0.04, rate)
+    place(track, scale(mul(bandpass(noise(m, rng), 3000, 3, rate), soft_env(m, rate, 0.002, 0.008)), 0.6), 0)
+    return soft_finish(soft_room(soft_tilt(track, rate, 4200), rate, 0.12), rate, 0.36, 0.004, 0.08)
+
+
+def decoder_back(rng, rate):
+    """Back in Spanish: one lower brass note over a soft click."""
+    track = [0.0] * seconds(0.42, rate)
+    n = seconds(0.4, rate)
+    place(track, mix(soft_mode(rng, n, rate, 1175, 60, 0.11, 0.004), scale(damped_sine(n, rate, 1172, 0.1), 0.04)), 0)
+    m = seconds(0.04, rate)
+    place(track, scale(mul(bandpass(noise(m, rng), 2400, 3, rate), soft_env(m, rate, 0.002, 0.008)), 0.6), 0)
+    return soft_finish(soft_room(soft_tilt(track, rate, 3800), rate, 0.12), rate, 0.3, 0.004, 0.06)
 
 
 def main():
@@ -1633,6 +1669,11 @@ def main():
     write("coin_tip", coin_tip(coins, fast), fast)
     write("coin_out", coin_out(coins, fast), fast)
     write("coin_thunk", coin_thunk(coins, fast), fast)
+    ring = random.Random(1027)
+    write("decoder_tick", decoder_tick(ring, fast), fast)
+    write("decoder_settle", decoder_settle(ring, fast), fast)
+    write("decoder_done", decoder_done(ring, fast), fast)
+    write("decoder_back", decoder_back(ring, fast), fast)
 
 
 if __name__ == "__main__":

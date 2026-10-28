@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A decoder ring: an outer band with ticks round an inner wheel, its pointer at the top. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M12,3.5a8.5,8.5 0 1,1 0,17a8.5,8.5 0 1,1 0,-17zM12,5.5a6.5,6.5 0 1,0 0,13a6.5,6.5 0 1,0 0,-13zM12,8.5a3.5,3.5 0 1,1 0,7a3.5,3.5 0 1,1 0,-7z" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M9.3,0.8h5.4L12,5.2z" />
+  <path
+      android:strokeColor="#FF000000"
+      android:strokeWidth="1.2"
+      android:strokeLineCap="round"
+      android:pathData="M12,6.6v1.2M17.4,12h-1.2M12,17.4v-1.2M6.6,12h1.2M15.8,8.2l-0.8,0.8M15.8,15.8l-0.8,-0.8M8.2,15.8l0.8,-0.8M8.2,8.2l0.8,0.8" />
+</vector>

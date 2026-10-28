@@ -55,6 +55,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip) | `crtpip` | `crtpip.minimize` | A video's mini player as an old TV: swipe the video down and it switches off into a glowing dot that flies to the corner, where a little rabbit-ear set warms up with the show still playing |
 | [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband) | `rubberband` | `rubberband.unsend` | A chat composer where the message you just sent stays tied to the text box by a rubber band: pull it back and its letters drop into the field to edit |
 | [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter) | `coinsorter` | `coinsorter.sort` | A results list whose sort control is a chrome coin-sorting tray: every row tips up into a coin sized by its rank, rolls down the rail, drops through its slot and opens back into its new place |
+| [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring) | `decoderring` | `decoderring.translate` | A message's Translate button as a brass cereal-box decoder ring: twist it and the letters spin through the alphabet in a wave and click down into English |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -94,6 +95,7 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [CRT picture-in-picture](#crt-picture-in-picture-corepresentationcomponentscrtpip)
 - [Rubber band unsend](#rubber-band-unsend-corepresentationcomponentsrubberband)
 - [Coin sorter sort](#coin-sorter-sort-corepresentationcomponentscoinsorter)
+- [Decoder ring translate](#decoder-ring-translate-corepresentationcomponentsdecoderring)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -1007,6 +1009,25 @@ val sorter = remember { CoinSorterState(items.map { CoinItem(it.cents, it.rating
 CoinSorterResults(sorter, text, colors, sounds, rowLabel = { "…" }, header = { Header() }) { i ->
     ResultRow(items[i])
 }
+## Decoder ring translate (`core/presentation/components/decoderring/`)
+
+A neighbor posts in Spanish, and the Translate button under her message is a brass cereal-box decoder ring. Twist it round, either way, and the message's own letters lift and spin through the alphabet like the dial, in a wave across the bubble, and click down one by one into English on the English's own lines. Let go past about a quarter turn and it finishes by itself; let go sooner and the Spanish settles back. Twist it again, or tap it, and the letters spin back into her Spanish.
+
+- **Real glyph positions.** Both texts are wrapped at the bubble's width with `TextMeasurer`, each character measured within its word, so every letter knows where it starts and where it lands at any width or font scale. A letter that stays on its line slides sideways to its slot while it spins; one that changes line rolls up and out where it stands and rolls in at its English slot, so nothing flies across the bubble.
+- **One progress.** A single number from 0 to 1 drives the whole wave and the dial: each letter runs over its own window of it, staggered by its place, through a short reel of four to seven steps that starts from its own character and eases onto the target. Glyphs are laid out once and drawn on the shared `canvas2d` adapter, so the wave lays out no text while it runs.
+- **The bubble re-flows.** It is as tall as the lowest line a letter is on right now, growing at once and shrinking at 220 dp/s once a line empties, so the messages below glide and no letter is clipped before it moves.
+- **Gesture.** Each move adds the change of angle round the ring's centre, unwrapped, so a fast twist with few samples still counts its full angle; grabbing it mid-wave carries on from where it was, and a tap mid-wave reverses it.
+- **Feel and sound.** A ratchet tick for every letter of the band that passes the red pointer, soft clicks as letters land, a small chime when the English lands and a lower note when the Spanish does.
+- **Screen readers and keys.** The bubble reads as the language it shows; the ring is a button labelled Translate to English or Show original Spanish, Enter or Space turns it, and a polite live region says which one landed.
+- **Reduced motion.** The text changes at once.
+
+The demo, `decoderring.translate`, is the Maple Court Neighbors chat. Its script twists the ring most of a turn and lets go so the post finishes into English, then twists it back to the Spanish.
+
+```kotlin
+val ring = remember { DecoderRingState() }
+DecoderRingEffects(ring, sounds)
+DecoderMessage(ring, spanish, english, ink, dark, Modifier.fillMaxWidth(.86f), Modifier.background(card, shape))
+DecoderRingButton(ring, label = "Translate to English", description = "Spanish", focusRing = accent)
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)
@@ -1162,6 +1183,7 @@ The sticky notes keep the prototype's fixed list of six: rows grow from 54 to 96
 The French press shows one story: the words that fly are those on the screen, the rest of the article stays still under the fade above the press, and the story doesn't scroll. The summary is fixed text, not generated. The layout is not mirrored for right-to-left.
 The rubber band ties only the newest message, from a composer on one line; a long message comes back scrolled to its end. The window is nine seconds of the screen's own clock, paused while the band is held and not saved, and the thread is a plain column, not a lazy list, and is not mirrored for right-to-left.
 The coin sorter sends every row through the tray, which suits a short list like its eight results: a long list would need only the rows on screen to become coins. Its tray is 120 dp tall over the list, the list itself doesn't scroll (on a screen too short for every row the whole screen scrolls instead), a sort can't be interrupted once it starts, and the layout is not mirrored for right-to-left.
+The decoder ring maps character i of the original to character i of the translation, as the prototype does: it is a reveal for a translation already in hand, not a word aligner, and a very long post still runs its wave in 1.5 s. The ring's band shows the Latin alphabet, and the layout is not mirrored for right-to-left.
 
 ## Contributing
 

@@ -115,7 +115,11 @@ internal enum class Sound(val file: String) {
     CoinTick("coin_tick"),
     CoinTip("coin_tip"),
     CoinOut("coin_out"),
-    CoinThunk("coin_thunk");
+    CoinThunk("coin_thunk"),
+    DecoderTick("decoder_tick"),
+    DecoderSettle("decoder_settle"),
+    DecoderDone("decoder_done"),
+    DecoderBack("decoder_back");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
