@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Grave undo** (`graveundo`): delete with undo as a tiny moonlit graveyard where the snackbar goes. Swipe a task away and its row arcs down and sinks into the soil under a headstone carved with its name; a skeleton hand pushes up holding it, and tapping the hand or the grave flies it back to its place. Left alone, the hand sinks and the task is gone. Haptics and synthesized soil, crumble and knuckle sounds; Delete actions and keys, and the grave as an Undo button for screen readers. Its demo is Maple Street Bakery's list the day before Halloween.
+
 ### Changed
 
 - **Paint roller accent** (`paintroller`): its demo also taps Evergreen, which the roller paints in two strokes, and undoes it, so the clip shows both ways to pick a paint and still ends on Blue Ridge.
