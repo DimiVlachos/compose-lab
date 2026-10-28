@@ -12,9 +12,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal object GraveUndoDemos {
-    // The script's moves, by name.
+    // The script's moves, by name: bury the first task (or the second) still on the list, take a
+    // task back by tapping the hand or by tapping the grave.
     const val Bury = "bury"
+    const val BurySecond = "bury-second"
     const val Undo = "undo"
+    const val UndoAtGrave = "undo-at-grave"
 
     // The prototype's finger, about 1.3 times slower as the rest of the motion is: to the first
     // task in 800 ms, held 195, dragged half the row's width left over 1070, held 180, let go and
@@ -25,25 +28,37 @@ internal object GraveUndoDemos {
     const val HoldMs = 180L
     const val AsideMs = 545L
 
-    // The undo: once the hand is up, it is left showing 1.5 s, then the finger comes to the card
+    // The undo: once the hand is up, it is left showing 0.6 s, then the finger comes to the card
     // in 830 ms, presses 170, and goes aside in 680.
-    const val ShowHandMs = 1500L
+    const val ShowHandMs = 600L
     const val ToHandMs = 830L
     const val PressMs = 170L
     const val UndoAsideMs = 680L
 
+    // The undo at the grave: once the task lands in the soil, 300 ms, then the finger comes to the
+    // headstone and presses as the undo by the hand does, so the task comes back mid-rise.
+    const val SeeRestMs = 300L
+
     val BuryTakes = (ToRowMs + GripMs + DragMs + HoldMs + AsideMs).milliseconds
     val UndoTakes = (ShowHandMs + ToHandMs + PressMs + UndoAsideMs).milliseconds
+    val UndoAtGraveTakes = (SeeRestMs + ToHandMs + PressMs + UndoAsideMs).milliseconds
 
-    // The prototype's runDemo(): swipe the first task (Order 50 lb of flour) away; it flies into
-    // the grave and the hand comes up holding it; then tap the hand and it flies home. The undo
-    // waits for the hand to be up, so on a slow device it simply starts later. The list ends as
-    // it began, so the clip loops.
+    // Every way in and out. A swipe waits until no task is flying, and an undo until its grave is
+    // ready, so on a slow device a step simply starts later. Bury Order 50 lb of flour and tap the
+    // grave while the hand is still rising: it flies home. Bury it again and, while the hand holds
+    // it up, bury Pick up pumpkin purée: the flour's name clears off the stone and it is gone for
+    // good, then the purée's hand comes up and a tap on the hand brings it back. Last, bury Frost
+    // 4 dozen ghost cookies and leave it: the hand sinks after its 6.5 s and the grave slides
+    // away. The script then puts every task back, so the clip loops.
     private val undo =
-        demoScript(holdStart = 1300.milliseconds) {
+        demoScript(holdStart = 800.milliseconds) {
             at(0.seconds, lasts = BuryTakes) { tapControl(Bury) }
-            at(6.5.seconds, lasts = UndoTakes) { tapControl(Undo) }
-            at(12.8.seconds, lasts = 200.milliseconds) { resetFeed() }
+            at(4.seconds, lasts = UndoAtGraveTakes) { tapControl(UndoAtGrave) }
+            at(6.8.seconds, lasts = BuryTakes) { tapControl(Bury) }
+            at(12.8.seconds, lasts = BuryTakes) { tapControl(Bury) }
+            at(17.5.seconds, lasts = UndoTakes) { tapControl(Undo) }
+            at(21.5.seconds, lasts = BuryTakes) { tapControl(BurySecond) }
+            at(38.3.seconds, lasts = 200.milliseconds) { resetFeed() }
         }
 
     val all =
