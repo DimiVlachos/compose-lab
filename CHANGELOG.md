@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **Coin sorter sort** (`coinsorter`): its demo picks every sort, Price: high to low too, and two of them by pressing the chip and sliding onto the option.
 - **Decoder ring translate** (`decoderring`): its demo also lets go of a short twist so the letters spring back, and taps the ring both ways.
 - **Recording**: a clip's sound is shifted 170 ms instead of 200 to meet its picture, re-measured since clips play as media.
+- **Recording**: `scripts/record.py --sound` refuses a recording whose opening hold isn't silent. scrcpy records everything the phone plays, and the app plays nothing then, so any sound there means something else was playing.
 - **Recording**: a demo script may run up to 40 s instead of 26, so a clip can show every way in and out of its component, and `scripts/record.py` waits two minutes for a demo to finish, since it plays the script twice.
 
 ## [0.2.0] - 2026-10-28
