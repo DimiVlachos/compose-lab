@@ -733,6 +733,8 @@ Padlock(lock, onToggle = { lock.showPassword(it) }, label = "Show password", sou
 
 ## Pencil cup FAB (`core/presentation/components/pencilcup/`)
 
+![](docs/media/pencilcup.fab.gif)
+
 A notes app whose floating + button is a little cobalt-glazed pencil cup in the corner of the screen, under a warm lamp. Tap it and the four tools inside leap out one after another and fan up and to the left, each with its label: a pencil for a new note, a highlighter for a checklist, scissors to clip from the web, a loupe to scan a page. Pick one and it flies up and slips into a pocket at the top corner of a new sheet, riding there half out, while the others fall back into the cup, bounce and rattle; type a title (or a first item, or a link) and tap Done, and it joins the list under what you typed as the tool lifts out of its pocket and arcs back into the cup while the sheet slides away under it. Done with nothing typed cancels. While the keyboard is up, the sheet rides on it, frame by frame, with the tool in its pocket. Back, Escape or a tap outside the sheet cancels it: the tool goes home and nothing is added. Or in one move: press the cup, slide up onto a tool and let go.
 
 - **Drawn as the prototype draws it.** The cup and tools are ported call by call from the HTML prototype onto the shared `canvas2d` adapter: the dark inside and back rim first, then the tools, each a few paths in its own frame, then the glazed front wall with its drips, speckles and slip-painted plus, so whatever is below the rim is hidden. The tool on the sheet draws on its own layer above it, clipped at the sheet's top edge so its lower half is tucked behind it, with a soft shade where it goes in.
@@ -754,6 +756,8 @@ PencilCupFab(cup, labels, cupLabel = "Create new", colors, dark, sounds) {
 
 ## Locket avatar (`core/presentation/components/locket/`)
 
+![](docs/media/locket.avatar.gif)
+
 An edit-profile screen where the profile photo lives in a small gold locket hanging on a fine chain under a warm lamp. Outside, only an engraved script initial shows. Tap the catch and the lid springs open on its hinge, swings a little past and settles, showing the photo behind its glass and the inside of the lid engraved with the owner's initials and a date. Drag a photo up from Recent and, as you let go over the locket, it shrinks and trims itself from a rounded square to the oval, with a sweep of light across the glass. Tap the locket, or push the lid across with a finger, and it snaps shut with a glint, and the chain swings. Grab the closed locket to swing it on its chain.
 
 - **Drawn as the prototype draws it.** The locket is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: three ellipses for the rim, the cup and the bezel, and a lid drawn under `scale(cos angle, 1)` about its hinge, so it reads as a 3D turn, with its mirrored inside face past 90°. The four photos are drawn in code from fixed seeds, once.
@@ -773,6 +777,8 @@ Locket(locket, photos, labels, muted = muted, accent = accent, sounds = sounds)
 
 ## Birdcage (`core/presentation/components/birdcage/`)
 
+![](docs/media/birdcage.mute.gif)
+
 A group chat's notification switch as a little brass birdcage with a canary inside, hanging in the window light. Each new message makes the canary hop on its perch and sing, with notes rising from its beak. To mute the chat, take the rolled hem of the linen cover on top of the cage and pull it down, the way you'd put a bird to bed: let go past halfway, or with a flick, and it falls like weighted linen, faster as it goes, lands softly on the base and its hem ripples once; let go early and it is drawn back up, easing into the top, where the linen gathers for a moment at the crown. Under the cover the canary tucks its head into its shoulder and sleeps, and new messages only stir the cloth while a grey count collects on the Latest row. Push the hem up and it blinks awake and lifts its head smoothly out of its shoulder. A tap on the cage toggles it too.
 
 - **Drawn as the prototype draws it.** The cage is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: dome ribs and rings stroked three times each (a dark edge, the brass and a highlight toward the window), the back half dimmed behind the bird; the cover is one path that follows the dome down to its scalloped hem, filled with a linen weave baked once from a fixed seed, with pleats drawn on their own layer and faded in at their tops, and a rolled hem stroked as a tube.
@@ -791,6 +797,8 @@ Birdcage(cage, label = "Mute this chat", sounds = sounds)
 ```
 
 ## Zipper scrollbar (`core/presentation/components/zipper/`)
+
+![](docs/media/zipper.scrollbar.gif)
 
 A contacts list whose fast-scroll thumb is the brass pull of a zipper sewn down its right edge. At the top the list is zipped shut; as you go down it opens behind the pull, the teeth prised apart over a red flannel lining, so you can see how far you've come. Put a finger on the pull and its tab stands up off the tape while a cotton tag swings out with the letter you're on; drag it and the list races along with a rasp of teeth, the tag swaying with the speed and changing letter at each section. Let go and the tab drops flat with a clack and a small bounce. A tap on the tape glides the pull there; scrolling the list itself moves the pull without the tag, and a hard stop of a fling makes the tab hop.
 
@@ -814,6 +822,8 @@ Box {
 
 ## Key hook sign-out (`core/presentation/components/keyhook/`)
 
+![](docs/media/keyhook.signout.gif)
+
 A family streaming app's account switcher as the key rack by the front door. Everyone's keys hang on their own brass hook on a walnut board under a name plate, and whoever is signed in has their set on a smaller brass hook under the account card. Pick that set up and drop it anywhere on the rack: it flies to its owner's hook, catches with a clack and swings, and the app asks who's home. Take someone else's set off its hook and carry it up toward the card: the keys stay right under your finger and swing as you move, and let go above the rack, the ring rises past the card hook's tip and drops into its curl, and that person's shows load below. Take a set while someone else's keys are on the card and the old set flies home to its own hook. A tap toggles a set without dragging.
 
 - **Drawn as the prototype draws it.** The rack is ported call by call from its HTML prototype onto the shared `canvas2d` adapter: the walnut grain is baked once per size from a fixed seed; hooks, the card's among them, are each one path stroked in five passes so they read as round brass rod; the ring is drawn over the hook and the hook's front curl again over the ring, so the keys look threaded on.
@@ -832,6 +842,8 @@ KeyRack(rack, labels, sounds, Modifier.fillMaxSize())
 
 ## Paper fan (`core/presentation/components/paperfan/`)
 
+![](docs/media/paperfan.faq.gif)
+
 A store's help page where the expand arrow on each question is a little folded paper fan resting in the row. Tap a question and the fan drops out of the row, slides over, turns and grows, then flicks open across the card with a fwap; the leading guard clicks home and the inner ribs flutter as the paper catches up. The answer is printed on its pleats in a serif, with an indigo band along the rim, a pine sprig and the shop's red seal, so you watch it unfold as the paper spreads. Tap another question and the open fan folds itself away first, then the new one lifts, so only one answer is out at a time; tap again, or sweep the open fan shut with a finger, and it folds back into the row.
 
 - **Drawn as the prototype draws it.** Ported call by call from its HTML prototype onto the shared `canvas2d` adapter. Each fan's print is baked once in its open pose, and every pleat draws its slice of it through a rotate-and-squeeze transform, so the print compresses as the fan folds; pleats alternate lit and shaded, more so as they steepen, and the lacquered guards, bamboo ribs, brass rivet, the fan's soft shadow and the lamp's pool of light on the card are drawn over and under it.
@@ -849,6 +861,8 @@ PaperFanFaq(entries, fans, sounds, colors, expanded = "Expanded", collapsed = "C
 ```
 
 ## Sticky note swipe (`core/presentation/components/stickynote/`)
+
+![](docs/media/stickynote.swipe.gif)
 
 A reminders list where every row is a sticky note pressed onto the screen along its glue strip. Swipe one and it peels up from the corner like paper, curling toward the finger, with Archive or Snooze underneath and its shadow growing as it comes away. Pull it past about 42 % of its width, or flick it, and it comes off, flies onto the Done or Later pad under the list and sticks there at a slight angle; let go early and it presses back flat with a small flutter. Tap a pad to put its top note back where it came from, or tap a note to see its corner lift. When every note is gone, a handwritten "All clear" fades in where the list was, and fades out again as a pad puts one back.
 
@@ -877,6 +891,8 @@ StickyNoteList(
 
 ## Paint roller accent (`core/presentation/components/paintroller/`)
 
+![](docs/media/paintroller.accent.gif)
+
 A running app's Appearance settings whose accent colours are five little plastic paint trays with a roller resting in one. Press a tray and drag up: the roller dips, comes up off the tray full size above your finger, and paints wherever you roll it. Every button, chip, switch, route line and link it passes over takes the new colour, glossy and wet for a moment, then dries flat; half of Start run can be orange while the other half is still blue. Let go whenever you like and the roller finishes the wall by itself, rolling the strips you missed, then goes back to rest in its new tray, and a snackbar offers Undo. Or just tap a tray: the roller hops over, dips, and paints the screen in two strokes, up the left and down the right. Undo, the old tray or Reset to default rolls the old colour back on.
 
 - **Two coats.** The screen is real Compose UI, composed twice in a `Box` from one `PaintRollerScope` lambda: the base coat in the current accent and, over it, the new coat in the roller's colour, opaque so the old colour never fringes the new text, drawn through a clip of the rectangles the roller has swept. A straight run up, down or sideways grows one rectangle and going back over fresh paint adds none, so the clip `Path` stays small; it is rebuilt only when the paint changes and read in the draw phase, so painting never recomposes.
@@ -900,6 +916,8 @@ PaintRollerAccent(roller, colors, dark, sounds, names, snackText, said, undoLabe
 
 ## French press summary (`core/presentation/components/frenchpress/`)
 
+![](docs/media/frenchpress.summary.gif)
+
 A news story whose Summarize button is a little glass French press in the bottom-right corner. Push its knob down and the story's own words lift off the page, line by line, and pour into the spout, where they swirl as tiny grounds; the plunger pushes back like a rubber band until every word is in. Push past halfway and the empty summary card starts to open; let go and the mesh presses the words into a pile at the bottom, the water above clears to amber, the press tips and three short points pour out of the spout letter by letter into the card. Let go short of halfway and the words fly home. Tap the press and it does the whole thing; tap it again, pull the knob up or tap Full article, and the summary drains back, the plunger rises and every word flies back to its own place.
 
 - **Real text.** The story is laid out with `TextMeasurer`, as the browser wraps it, and each word's box comes from its layout; each word is laid out on its own too, so the page is drawn word by word from those boxes, and a word in flight is drawn from the same glyphs, on the same baseline, so it lifts from and lands on exactly its place. The summary's letters are laid out the same way.
@@ -917,6 +935,8 @@ FrenchPressStory(press, paragraphs, points, text, colors, sounds, topBar = { App
 ```
 
 ## Photocopier duplicate (`core/presentation/components/photocopier/`)
+
+![](docs/media/photocopier.duplicate.gif)
 
 A household lists app whose Duplicate runs the list through a little putty-colored office copier. Long-press a list (or tap its ⋯) and pick Duplicate: the copier rises from the foot of the screen, the list's own card flies down onto the glass and turns face down, leaving a dashed outline in its place, the lid drops with a thunk, Start lights, and the green bar of light runs under the lid and back, leaking out of its seams. A warm copy, still flecked with toner, slides out of the slot at the back and drops into the list right under the original while the list makes room, and the original flips back up into its place. The copy cools to an ordinary card in a couple of seconds; it is a real new list called "(copy)", and a copy of it is "(copy 2)". While the copier's back edge still peeks out, drag the copy down into the slot and the rollers take it back in, or tap Undo; let go anywhere else and it glides back. Pin to top moves a list to the top.
 
@@ -939,6 +959,8 @@ PhotocopierList(copier, words, colors, dark, sounds) {
 
 ## Pigeonhole move (`core/presentation/components/pigeonhole/`)
 
+![](docs/media/pigeonhole.move.gif)
+
 A mail app's Move to… as the oak sorting rack from behind a hotel front desk. Press a message and drag: the rack slides up from the bottom of the screen, and the nearer the email gets to it the more it turns into paper, narrowing to a letter page and then folding in thirds, the bottom up and the top down, until only the sender's first name in pen and a stamp in their own colour show on the outside. Hover a cubby and it lights up while the letter waits just above its frame; let go and it slips in behind the rail, the letters behind it shuffle back, the count on the brass plate ticks up and the inbox closes the gap. Let go over the list and it unfolds back into its slot. The rack icon brings the rack up on its own: tap a cubby and its letters lift out one after another and unfold into that folder's rows; Back folds them up and files them away again. Drag a letter out of a cubby onto the list and it unfolds back where it was before it was moved.
 
 - **Drawn as the prototype draws it.** The rack and the letters are ported call by call from their HTML prototype onto the shared `canvas2d` adapter: the oak body, the walnut cubby holes and the rails are baked once into images, and a letter's outer thirds turn about their creases with `scale(1, cos θ)`, so the text on them foreshortens, switching to the paper's back past the edge. One number, the fold, drives the whole change, and it comes from how near the finger is to the rack, never from time. Only the card's turn to paper runs on its own 70 ms clock, so in dark mode it never rests on a grey card.
@@ -956,6 +978,8 @@ PigeonholeMail(mail, text, sounds, colors)
 ```
 
 ## CRT picture-in-picture (`core/presentation/components/crtpip/`)
+
+![](docs/media/crtpip.minimize.gif)
 
 A cooking-video app, Skillet, playing Marlow Kitchen's honey cornbread. Swipe the video down and, as you drag, the picture already starts to squash and brighten under your finger, like a set losing its sweep. Let go past a short distance, or flick, and the TV switches off: the picture collapses to a bright line, the line pulls into a glowing dot, and the dot flies on a curve to the bottom corner. A little walnut set with rabbit ears pops up there, the dot lands on its glass and it warms up, a line first and then the frame opening with a crackle of static, the show still playing, cropped to its 4:3 tube. The space the player used closes as the dot flies, so Up next and the comments slide up into it and scroll under the set. Drag the set anywhere: let go and it springs into the nearest corner, clear of the top bar and the nav bar, and a toss carries it to the corner it was heading for. Flick it off a side edge and the show stops: it switches off into its dot, the dot glows a moment and fades like a set at night, and a toast offers Undo, which brings it back to that corner warming up. Tap the set and it switches off in turn and the dot flies back up into the full player.
 
@@ -986,6 +1010,8 @@ CrtPipAnnouncer(pip, labels) // the polite live region for each change
 
 ## Rubber band unsend (`core/presentation/components/rubberband/`)
 
+![](docs/media/rubberband.unsend.gif)
+
 A chat thread and its composer where, for nine seconds after a message lands, it is still tied back to the text box by a tan rubber band hooked to a little brass eye. Grab the bubble or the band and pull: the band stretches thinner, the bubble leans toward the finger, and past 36 dp of travel from where you grabbed, in any direction, the band turns a darker tan. Let go there and it yanks the bubble back down to the field, where it bursts into its letters and they drop into place, the cursor at the end, ready to fix. Let go short of it and the band twangs back and wobbles. Leave it and the band thins, necks in the middle over its last three seconds and snaps with a twang; the message says Delivered and stays sent. Sending again snaps the last band at once.
 
 - **Drawn as the prototype draws it.** The band, its knot, the brass eye, the snapped halves curling home and the burst bubble's shell are ported call by call from the HTML prototype onto the shared `canvas2d` adapter. The band is the rest curve split at the grabbed point, each half bending with the pull, filled as a ribbon whose width follows its stretch and the time left.
@@ -1003,6 +1029,8 @@ RubberBandChat(chat, rememberTextFieldState(), text, colors, dark, sounds, appBa
 ```
 
 ## Coin sorter sort (`core/presentation/components/coinsorter/`)
+
+![](docs/media/coinsorter.sort.gif)
 
 A store's search results whose sort control is a little chrome coin-sorting tray under the toolbar. Pick a sort from the chip's menu (tap the chip or the tray, or press the chip, slide onto an option and let go) and, from the top, each row tips up on its edge and turns into a coin sized by its rank in the new sort, nickel, copper or brass, with its price or rating on its face. The coins rattle into the funnel and leave it one at a time, roll down the sloping rail ticking over the slots too small for them, and drop through the first one they fit with a clink. A moment later each falls out of the bottom of its tube and opens back into a row on its new line, so the list refills as the coins come down.
 
@@ -1024,6 +1052,8 @@ CoinSorterResults(sorter, text, colors, sounds, rowLabel = { "…" }, header = {
 ```
 
 ## Decoder ring translate (`core/presentation/components/decoderring/`)
+
+![](docs/media/decoderring.translate.gif)
 
 A neighbor posts in Spanish, and the Translate button under her message is a brass cereal-box decoder ring. Twist it round, either way, and the message's own letters lift and spin through the alphabet like the dial, in a wave across the bubble, and click down one by one into English on the English's own lines. Let go past about a quarter turn and it finishes by itself; let go sooner and the Spanish settles back. Twist it again, or tap it, and the letters spin back into her Spanish.
 
