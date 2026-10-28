@@ -1097,6 +1097,8 @@ The demo, `spider.refresh`, is the Elm Hollow neighbors' feed. Its script pulls 
 val spider = remember { SpiderRefreshState() }
 SpiderRefreshEffects(spider, sounds)
 SpiderRefreshFeed(spider, colors, accent, label = "Neighborhood feed. Pull down to refresh.") { id -> Post(id) }
+```
+
 ## Grave undo (`core/presentation/components/graveundo/`)
 
 ![](docs/media/graveundo.undo.gif)
