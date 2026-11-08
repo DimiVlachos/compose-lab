@@ -1152,6 +1152,8 @@ JackOLanternTheme(lantern, sounds, switchLabel = "Night theme", nightSaid, daySa
 
 ## Sand mandala clear history (`core/presentation/components/sandmandala/`)
 
+![](docs/media/sandmandala.history.gif)
+
 A browser's History screen. Clear it and every row crumbles into coloured sand, its site's colour and its own words, and the grains flow together into a sand mandala: a week of browsing made into one artwork. Nothing is gone yet; Keep history sends every grain home. Then, like the monks who make them, you sweep it away: the sand under your finger smears and piles up, and a sweep of about the mandala's width lets it go. Everything spirals the way you swept into a single grey heap, which pours off the bottom. Undo plays it all backwards.
 
 - **Grains with homes.** About 20,000 grains on a jittered hex grid inside the mandala, in flat `FloatArray`s. Each has a home in a row: a favicon in its site's colour, or one of the pixels of the row's own words, drawn once at 1 px per dp and read back. A seeded Park–Miller generator lays the same sand every time.
