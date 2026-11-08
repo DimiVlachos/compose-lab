@@ -102,6 +102,26 @@ class Canvas2DTest {
     }
 
     @Test
+    fun aBoundedLayerLandsOnlyInsideItsBoxUnderTheTransform() {
+        val c = Canvas2D.create(8, 4)
+        c.fillStyle = "#0000ff"
+        c.fillRect(0f, 0f, 8f, 4f)
+        c.scale(2f, 2f)
+        c.beginLayer(1f, 0f, 1f, 2f)
+        c.fillStyle = "#ff0000"
+        c.fillRect(0f, 0f, 4f, 2f)
+        c.globalCompositeOperation = "destination-out"
+        c.fillStyle = "#000000"
+        c.fillRect(1.5f, 0f, 1f, 2f)
+        c.endLayer()
+        val px = c.bitmap.toPixelMap()
+        near(Color.Blue, px[0, 1])
+        near(Color.Red, px[2, 1])
+        near(Color.Blue, px[3, 1])
+        near(Color.Blue, px[5, 1])
+    }
+
+    @Test
     fun aFilledRectLandsUnderTheTransform() {
         val c = Canvas2D.create(8, 8)
         c.setTransform(4f, 0f, 0f, 4f, 4f, 4f) // [-1, 1] across the bitmap, as the prototype paints

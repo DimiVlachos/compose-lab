@@ -140,7 +140,15 @@ internal enum class Sound(val file: String) {
     LanternStrike("lantern_strike"),
     LanternCatch("lantern_catch"),
     LanternBlow("lantern_blow"),
-    LanternCrackle("lantern_crackle");
+    LanternCrackle("lantern_crackle"),
+
+    // Frost freeze card.
+    FrostFreeze("frost_freeze"),
+    FrostTick("frost_tick"),
+    FrostHiss("frost_hiss"),
+    FrostDrip("frost_drip"),
+    FrostSet("frost_set"),
+    FrostThawed("frost_thawed");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

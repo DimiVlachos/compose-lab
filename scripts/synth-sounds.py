@@ -1697,6 +1697,62 @@ def grave_clips(rng, rate):
     }
     return {name: soft_finish(soft_room(soft_tilt(clip, rate, 3200), rate, 0.1), rate, peak, 0.002, 0.03)
             for name, (clip, peak) in clips.items()}
+# ---------- Frost freeze card ----------
+# A card freezing and thawing, heard close and small: a bright little chime as the switch flips,
+# dry ticks as the ice grows, a glassy shimmer when it has set, a soft hiss of melt under the thumb,
+# a drip off the card's edge, and a warm rising note when it is clear. The prototype's WebAudio:
+# filtered noise and gliding tones, through the soft toolkit.
+
+
+def frost_tone(rate, f0, f1, gain, dur, kind="sine", delay=0.0):
+    """The prototype's tone(): a sine or triangle gliding from f0 to f1 over dur, rising to gain in
+    6 ms and falling to nothing at dur."""
+    n = seconds(delay + dur + 0.03, rate)
+    out, phase = [], 0.0
+    for i in range(n):
+        t = i / rate - delay
+        if t < 0:
+            out.append(0.0)
+            continue
+        f = f0 * (f1 / f0) ** min(1.0, t / dur)
+        phase += f / rate
+        if t < 0.006:
+            env = 0.0001 * (gain / 0.0001) ** (t / 0.006)
+        elif t < dur:
+            env = gain * (0.0001 / gain) ** ((t - 0.006) / (dur - 0.006))
+        else:
+            env = 0.0
+        p = phase % 1.0
+        wave = math.sin(2 * math.pi * phase) if kind == "sine" else 4 * abs(p - 0.5) - 1
+        out.append(wave * env)
+    return out
+
+
+def frost_clips(rng, rate):
+    """The card's clips, from the prototype's snd('freeze'|'set'|'thawed'|'drip'), crackle() and hiss()."""
+    clips = {
+        "frost_freeze": (frost_tone(rate, 1800, 1500, 0.015, 0.12, "triangle"), 0.18),
+        "frost_tick": (grave_shot(rng, rate, "bandpass", 5000, 5000, 0.03, 0.001, 0.02, 1.2), 0.12),
+        "frost_drip": (frost_tone(rate, 1100, 2090, 0.05, 0.07), 0.2),
+        "frost_set": (band_mix((1.0, frost_tone(rate, 2400, 2300, 0.012, 0.5, "triangle")), (0.66, frost_tone(rate, 3200, 3150, 0.008, 0.45, "triangle", 0.05))), 0.16),
+        "frost_thawed": (frost_tone(rate, 520, 640, 0.03, 0.18), 0.22),
+    }
+    out = {name: soft_finish(soft_room(soft_tilt(clip, rate, 4200), rate, 0.08), rate, peak, 0.002, 0.02)
+           for name, (clip, peak) in clips.items()}
+    return out
+
+
+def frost_hiss(rng, rate):
+    """The melt under the thumb: noise through the prototype's 900 Hz low-pass, a seamless loop whose
+    end is cross-faded into its start; the app sets its volume as the thaw goes."""
+    n = seconds(1.4, rate)
+    x = seconds(0.2, rate)
+    raw = lowpass(noise(n + x, rng), 900, rate)
+    loop = raw[:n]
+    for i in range(x):
+        w = i / x
+        loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.3)
 # ---------- Jack-o'-lantern ----------
 # A candle in a carved pumpkin: the prototype's air() bursts, noise through a filter whose
 # frequency glides exponentially, in an exponential rise and fall, as WebAudio's ramps. Built with
@@ -1913,6 +1969,10 @@ def main():
     write("lantern_catch", lantern_catch(lantern, fast), fast)
     write("lantern_blow", lantern_blow(lantern, fast), fast)
     write("lantern_crackle", lantern_crackle(lantern, fast), fast)
+    frost = random.Random(1108)
+    for name, clip in frost_clips(frost, fast).items():
+        write(name, clip, fast)
+    write("frost_hiss", frost_hiss(frost, soft), soft)
 
 
 if __name__ == "__main__":
