@@ -43,7 +43,7 @@ internal class SandRowText(
 /**
  * Draws the History list as the prototype does: the rows and their headings, which crumble behind a
  * soft front while the sand gathers, the chalk outline under the mandala, and every grain, written
- * a pixel at a time into a [PixelSurface] at the screen's full density, as its render() writes an
+ * a pixel at a time into a [PixelSurface] at up to 2 px per dp, as its render() writes an
  * ImageData: a shadow pass, then each grain a tiny block lit from the top left.
  */
 internal class SandMandalaPainter {
