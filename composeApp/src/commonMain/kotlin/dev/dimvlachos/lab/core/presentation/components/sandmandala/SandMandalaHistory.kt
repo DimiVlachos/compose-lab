@@ -485,7 +485,13 @@ private fun Empty(
         Box(
             Modifier.padding(top = 8.dp)
                 .graphicsLayer { alpha = restoreAlpha }
-                .clickable(enabled = cleared && state.restoreOn, role = Role.Button) {
+                // A text button: no ripple.
+                .clickable(
+                    interactionSource = null,
+                    indication = null,
+                    enabled = cleared && state.restoreOn,
+                    role = Role.Button,
+                ) {
                     onTouch()
                     state.undo()
                 }
@@ -550,7 +556,13 @@ private fun Snackbar(
             )
             Box(
                 Modifier.heightIn(min = 40.dp)
-                    .clickable(enabled = on, role = Role.Button) {
+                    // A text button: no ripple.
+                    .clickable(
+                        interactionSource = null,
+                        indication = null,
+                        enabled = on,
+                        role = Role.Button,
+                    ) {
                         onTouch()
                         state.undo()
                     }
