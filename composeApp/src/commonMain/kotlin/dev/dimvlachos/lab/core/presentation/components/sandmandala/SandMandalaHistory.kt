@@ -1,5 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.sandmandala
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -241,7 +242,8 @@ internal fun SandMandalaHistory(
         }
     }
 
-    val clearAlpha by animateFloatAsState(if (state.clearEnabled) 1f else .35f, fade(state, 250))
+    val clearAlpha by
+        animateFloatAsState(if (state.clearEnabled) 1f else .35f, softFade(state, 400))
     val root = remember { RootHolder() }
     fun centreOf(it: LayoutCoordinates): Offset {
         val r = root.coords ?: return Offset.Zero
@@ -286,12 +288,16 @@ internal fun SandMandalaHistory(
                         .semantics { testTag = "clear" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    BasicText(
-                        if (state.keeps) text.keep else text.clear,
-                        style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight(650)),
-                        color = { colors.accent },
-                        maxLines = 1,
-                    )
+                    // Clear history and Keep history crossfade, so the label never jumps.
+                    Crossfade(state.keeps, animationSpec = softFade(state, 450), label = "clear") {
+                        keeps ->
+                        BasicText(
+                            if (keeps) text.keep else text.clear,
+                            style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight(650)),
+                            color = { colors.accent },
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
             if (!short) SearchField(text.search, colors)
@@ -750,6 +756,13 @@ private fun rowText(
         sections = sections,
     )
 }
+
+// Eased in and out, for changes in the bar that should read as one soft move.
+private fun softFade(
+    state: SandMandalaState,
+    ms: Int,
+): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
+    if (state.reducedMotion) snap() else tween(ms, easing = CubicBezierEasing(.4f, 0f, .2f, 1f))
 
 // Under reduced motion, as the prototype's CSS drops its transitions, things show at once.
 private fun fade(
