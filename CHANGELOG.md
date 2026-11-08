@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-08
+
+Two components where the UI becomes a real material: a sand mandala and a frozen card.
+
 ### Added
 
 - **Sand mandala clear history** (`sandmandala`): clear browsing history as a sand mandala. Clear history and every row crumbles into coloured sand, its site's colour and its own words, which flows into a mandala built from the centre out; Keep history sends every grain home. Sweep across it and the sand smears and piles up under your finger; a full sweep spirals it all into one grey heap that pours away, and Undo plays it backwards. About 20,000 grains drawn a pixel at a time, at 2 px per dp; a sand hiss and singing bowls; buttons, announcements and Clear now for screen readers. Its demo is a week of browsing on nine sites.
@@ -93,7 +97,8 @@ The first release: five components, the apps that demo them, and Moodboard.
 - **Moodboard** (`moodboard/`): a Kotlin Multiplatform app that shares data, logic and ViewModels, with a SwiftUI UI on iOS 26 and a Material 3 Expressive UI on Android.
 - Scripted demos for every component, and tools to record them as clips and GIFs.
 
-[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/DimiVlachos/compose-lab/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/DimiVlachos/compose-lab/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/DimiVlachos/compose-lab/releases/tag/v0.1.0
