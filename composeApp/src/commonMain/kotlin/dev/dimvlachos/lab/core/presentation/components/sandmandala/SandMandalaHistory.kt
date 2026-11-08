@@ -1,6 +1,5 @@
 package dev.dimvlachos.lab.core.presentation.components.sandmandala
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -86,6 +85,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.presentation.ui.SandMandalaScreenColors
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
@@ -243,6 +243,7 @@ internal fun SandMandalaHistory(
         }
     }
 
+    val keepT by animateFloatAsState(if (state.keeps) 1f else 0f, softFade(state, 450))
     val clearAlpha by
         animateFloatAsState(if (state.clearEnabled) 1f else .35f, softFade(state, 400))
     val root = remember { RootHolder() }
@@ -283,25 +284,26 @@ internal fun SandMandalaHistory(
                 Box(
                     Modifier.heightIn(min = 40.dp)
                         .graphicsLayer { alpha = clearAlpha }
-                        .clickable(enabled = state.clearEnabled, role = Role.Button) {
+                        // A text button: no ripple.
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            enabled = state.clearEnabled,
+                            role = Role.Button,
+                        ) {
                             onTouch()
                             state.tapClear()
                         }
                         .onGloballyPositioned { places.clear = centreOf(it) }
                         .padding(horizontal = 10.dp)
                         .semantics { testTag = "clear" },
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.CenterEnd,
                 ) {
-                    // Clear history and Keep history crossfade, so the label never jumps.
-                    Crossfade(state.keeps, animationSpec = softFade(state, 450), label = "clear") {
-                        keeps ->
-                        BasicText(
-                            if (keeps) text.keep else text.clear,
-                            style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight(650)),
-                            color = { colors.accent },
-                            maxLines = 1,
-                        )
-                    }
+                    // Both labels are always laid out, right-aligned, so the button keeps the
+                    // longer one's width and neither label moves as they crossfade.
+                    val keeps = state.keeps
+                    BarLabel(text.clear, { keepT }, show = 0f, shown = !keeps, colors)
+                    BarLabel(text.keep, { keepT }, show = 1f, shown = keeps, colors)
                 }
             }
             if (!short) SearchField(text.search, colors)
@@ -417,7 +419,13 @@ private fun Hint(
         BasicText(text.hint, style = TextStyle(fontSize = 13.sp), color = { colors.muted })
         Box(
             Modifier.heightIn(min = 32.dp)
-                .clickable(enabled = on, role = Role.Button) {
+                // A text button: no ripple.
+                .clickable(
+                    interactionSource = null,
+                    indication = null,
+                    enabled = on,
+                    role = Role.Button,
+                ) {
                     onTouch()
                     state.commit(1)
                 }
@@ -758,6 +766,26 @@ private fun rowText(
                 line(SandSiteInitials[it.site].toString(), letter, Constraints.Infinity)
             },
         sections = sections,
+    )
+}
+
+/** One of the bar button's two labels, faded while drawing: fully shown when [t] is [show]. */
+@Composable
+private fun BarLabel(
+    label: String,
+    t: () -> Float,
+    show: Float,
+    shown: Boolean,
+    colors: SandMandalaScreenColors,
+) {
+    BasicText(
+        label,
+        Modifier.graphicsLayer { alpha = 1f - abs(t() - show) }
+            // Only the label showing is read out.
+            .then(if (shown) Modifier else Modifier.clearAndSetSemantics {}),
+        style = TextStyle(fontSize = 14.5.sp, fontWeight = FontWeight(650)),
+        color = { colors.accent },
+        maxLines = 1,
     )
 }
 
