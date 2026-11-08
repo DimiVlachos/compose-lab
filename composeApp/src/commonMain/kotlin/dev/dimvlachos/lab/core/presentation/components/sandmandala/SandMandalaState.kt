@@ -204,6 +204,9 @@ internal class SandMandalaState(
     internal var hpy = FloatArray(0)
     internal var hsh = FloatArray(0)
 
+    /** Each grain's place in the heap, its distance from the centre: [heapR], worked out once. */
+    internal var hq = FloatArray(0)
+
     /** Home, target and grey colours, three channels each, 0 to 255. */
     internal var cH = IntArray(0)
     internal var cT = IntArray(0)
@@ -308,6 +311,7 @@ internal class SandMandalaState(
         hpx = FloatArray(n)
         hpy = FloatArray(n)
         hsh = FloatArray(n)
+        hq = FloatArray(n)
         cH = IntArray(n * 3)
         cT = IntArray(n * 3)
         cG = IntArray(n * 3)
@@ -467,6 +471,7 @@ internal class SandMandalaState(
             th0[i] = atan2(y, x)
             val th = th0[i] + spin * (1.7f + 1.1f * rn)
             val rq = heapR(i)
+            hq[i] = rq
             hpx[i] = cx + rq * cos(th)
             hpy[i] = cy + rq * sin(th)
             // A cone of sand, lit from the top left.
@@ -831,9 +836,18 @@ internal class SandMandalaState(
         /** As a Uint8ClampedArray stores a number: rounded, held to 0..255. */
         fun byte(v: Double): Int = v.roundToInt().coerceIn(0, 255)
 
-        fun ease(t: Float) = if (t < .5f) 2 * t * t else 1 - (-2 * t + 2).pow(2) / 2
+        // Without pow: these run for every grain, every frame.
+        fun ease(t: Float): Float {
+            if (t < .5f) return 2 * t * t
+            val u = -2 * t + 2
+            return 1 - u * u / 2
+        }
 
-        fun ease3(t: Float) = if (t < .5f) 4 * t * t * t else 1 - (-2 * t + 2).pow(3) / 2
+        fun ease3(t: Float): Float {
+            if (t < .5f) return 4 * t * t * t
+            val u = -2 * t + 2
+            return 1 - u * u * u / 2
+        }
 
         fun smooth(a: Float, b: Float, x: Float): Float {
             val t = ((x - a) / (b - a)).coerceIn(0f, 1f)

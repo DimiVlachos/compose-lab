@@ -200,7 +200,11 @@ internal class SandMandalaPainter {
         if (state.n == 0) return
         // At rest in the rows, or swept away, there is no sand to draw.
         if (state.ph == null && (state.at == SandAt.Rows || state.at == SandAt.Cleared)) return
-        val dpr = density
+        // The prototype's scale: its canvas caps the device pixel ratio at 2, and the browser shows
+        // it scaled up. Every pixel is cleared, written and uploaded each frame, so a 3× screen at
+        // full density would move 2.25 times as many; drawn unfiltered, the grains keep their
+        // crisp lit blocks.
+        val dpr = min(density, MaxScale)
         val bw = max(1, (state.width * dpr).roundToInt())
         val bh = max(1, (state.height * dpr).roundToInt())
         var s = surface
@@ -222,10 +226,15 @@ internal class SandMandalaPainter {
             drawnFrame = state.frame
             drawnSurface = s
         }
+        val img = s.commitIfNeeded()
         drawImage(
-            s.commitIfNeeded(),
+            img,
             dstOffset = IntOffset.Zero,
-            dstSize = IntSize(bw, bh),
+            dstSize =
+                IntSize(
+                    (state.width * density).roundToInt(),
+                    (state.height * density).roundToInt(),
+                ),
             filterQuality = FilterQuality.None,
         )
     }
@@ -249,6 +258,30 @@ internal class SandMandalaPainter {
         colors: SandMandalaScreenColors,
     ) {
         val buf = surface.pixels
+        // The grains' arrays, read once.
+        val sTx = state.tx
+        val sTy = state.ty
+        val sDx = state.dx
+        val sDy = state.dy
+        val sHx = state.hx
+        val sHy = state.hy
+        val sCcx = state.ccx
+        val sCcy = state.ccy
+        val sRel = state.rel
+        val sGd = state.gd
+        val sSd = state.sd
+        val sSdur = state.sdur
+        val sR0 = state.r0
+        val sTh0 = state.th0
+        val sHsh = state.hsh
+        val sHpx = state.hpx
+        val sHpy = state.hpy
+        val sPd = state.pd
+        val sRnd = state.rnd
+        val sCH = state.cH
+        val sCT = state.cT
+        val sCG = state.cG
+        val sHq = state.hq
         buf.fill(0)
         val bw = surface.width
         val n = state.n
@@ -281,15 +314,15 @@ internal class SandMandalaPainter {
             var shade = 1f
             var vis = true
             if (ph == SandPhase.Gather || (ph == null && at == SandAt.Rows)) {
-                val u = if (ph != null) ((t - state.rel[i]) / state.gd[i]).coerceIn(0f, 1f) else 0f
+                val u = if (ph != null) ((t - sRel[i]) / sGd[i]).coerceIn(0f, 1f) else 0f
                 if (u <= 0f) vis = false
                 else {
                     val e = ease3(u)
                     val a = 1 - e
-                    val ex = state.tx[i] + state.dx[i]
-                    val ey = state.ty[i] + state.dy[i]
-                    x = a * a * state.hx[i] + 2 * a * e * state.ccx[i] + e * e * ex
-                    y = a * a * state.hy[i] + 2 * a * e * state.ccy[i] + e * e * ey
+                    val ex = sTx[i] + sDx[i]
+                    val ey = sTy[i] + sDy[i]
+                    x = a * a * sHx[i] + 2 * a * e * sCcx[i] + e * e * ex
+                    y = a * a * sHy[i] + 2 * a * e * sCcy[i] + e * e * ey
                     // A first little drop as the grain crumbles off the letter.
                     y += sin(min(1f, u * 5) * PI.toFloat()) * 2.2f * (1 - u)
                     lift = sin(PI.toFloat() * u) * 7
@@ -300,45 +333,45 @@ internal class SandMandalaPainter {
                 ph == SandPhase.Sweep || at == SandAt.Heap || (ph == null && at == SandAt.Mandala)
             ) {
                 val u =
-                    if (ph == SandPhase.Sweep) ((t - state.sd[i]) / state.sdur[i]).coerceIn(0f, 1f)
+                    if (ph == SandPhase.Sweep) ((t - sSd[i]) / sSdur[i]).coerceIn(0f, 1f)
                     else if (at == SandAt.Heap) 1f else 0f
                 m1 = 1f
                 if (u <= 0f) {
-                    x = state.tx[i] + state.dx[i]
-                    y = state.ty[i] + state.dy[i]
+                    x = sTx[i] + sDx[i]
+                    y = sTy[i] + sDy[i]
                 } else {
                     val e = ease(u)
-                    val rn = min(1.2f, state.r0[i] / state.r)
-                    val rq = state.heapR(i)
-                    val rr2 = state.r0[i] + (rq - state.r0[i]) * e
-                    val th = state.th0[i] + state.spin * (1.7f + 1.1f * rn) * e
+                    val rn = min(1.2f, sR0[i] / state.r)
+                    val rq = sHq[i]
+                    val rr2 = sR0[i] + (rq - sR0[i]) * e
+                    val th = sTh0[i] + state.spin * (1.7f + 1.1f * rn) * e
                     x = cx + rr2 * cos(th)
                     y = cy + rr2 * sin(th)
                     lift = sin(PI.toFloat() * u) * 2.5f
                     m2 = smooth(.25f, 1f, u) * .97f
-                    shade = 1f + (state.hsh[i] - 1f) * smooth(.5f, 1f, u)
+                    shade = 1f + (sHsh[i] - 1f) * smooth(.5f, 1f, u)
                     if (u < 1) mov++
                 }
             } else if (ph == SandPhase.Pour || at == SandAt.Cleared) {
-                val tau = if (ph == SandPhase.Pour) t - state.pd[i] else 99f
+                val tau = if (ph == SandPhase.Pour) t - sPd[i] else 99f
                 m1 = 1f
                 m2 = 1f
-                shade = state.hsh[i]
+                shade = sHsh[i]
                 if (tau <= 0f) {
-                    x = state.hpx[i]
-                    y = state.hpy[i]
+                    x = sHpx[i]
+                    y = sHpy[i]
                 } else {
                     if (tau < Lip) {
                         val e = ease(tau / Lip)
-                        x = state.hpx[i] + (cx + (state.rnd[i] - .5f) * 9 - state.hpx[i]) * e
-                        y = state.hpy[i] + (lipY - state.hpy[i]) * e
+                        x = sHpx[i] + (cx + (sRnd[i] - .5f) * 9 - sHpx[i]) * e
+                        y = sHpy[i] + (lipY - sHpy[i]) * e
                     } else {
                         val f = tau - Lip
                         y = lipY + 40 * f + .5f * Pa * f * f
                         x =
                             cx +
-                                (state.rnd[i] - .5f) * (9 + f * 26) +
-                                sin(f * 9 + state.rnd[i] * 6) * 1.2f
+                                (sRnd[i] - .5f) * (9 + f * 26) +
+                                sin(f * 9 + sRnd[i] * 6) * 1.2f
                     }
                     lift = min(4f, tau * 16)
                     shade *= 1 + min(.1f, tau * .25f)
@@ -353,9 +386,9 @@ internal class SandMandalaPainter {
             val i3 = i * 3
             for (c in 0 until 3) {
                 var v =
-                    if (m1 < 1f) state.cH[i3 + c] + (state.cT[i3 + c] - state.cH[i3 + c]) * m1
-                    else state.cT[i3 + c].toFloat()
-                if (m2 > 0f) v += (state.cG[i3 + c] - v) * m2
+                    if (m1 < 1f) sCH[i3 + c] + (sCT[i3 + c] - sCH[i3 + c]) * m1
+                    else sCT[i3 + c].toFloat()
+                if (m2 > 0f) v += (sCG[i3 + c] - v) * m2
                 // As a Uint8ClampedArray stores it.
                 pc[i3 + c] = (v * shade).roundToInt().coerceIn(0, 255)
             }
@@ -403,6 +436,9 @@ internal class SandMandalaPainter {
          * Where the rows' words start: past the 20 dp margin, the 30 dp favicon and a 14 dp gap.
          */
         const val TextX = 64f
+
+        /** The sand's pixels per dp at most, as the prototype's DPR cap. */
+        const val MaxScale = 2f
         const val TitleLine = 14.5f * 1.3f
         const val SubLine = 12f * 1.35f
 
@@ -431,3 +467,4 @@ internal class SandMandalaPainter {
             }
     }
 }
+
