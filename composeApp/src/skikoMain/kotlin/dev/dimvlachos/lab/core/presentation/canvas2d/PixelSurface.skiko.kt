@@ -4,10 +4,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeImageBitmap
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
+import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.ImageInfo
 
-// Skia's N32 is BGRA here, unpremultiplied, so each pixel is written byte by byte, into one buffer
-// kept for the surface's life.
+// BGRA, unpremultiplied, set explicitly rather than the platform's N32, so each pixel is written
+// byte by byte into a buffer kept for the surface's life; installPixels copies it into the bitmap.
 internal actual class PixelSurface
 actual constructor(actual val width: Int, actual val height: Int) {
     actual val pixels = IntArray(width * height)
@@ -16,7 +17,7 @@ actual constructor(actual val width: Int, actual val height: Int) {
     private val bitmap = Bitmap()
 
     init {
-        bitmap.allocPixels(ImageInfo.makeN32(width, height, ColorAlphaType.UNPREMUL))
+        bitmap.allocPixels(ImageInfo(width, height, ColorType.BGRA_8888, ColorAlphaType.UNPREMUL))
     }
 
     private val image = bitmap.asComposeImageBitmap()

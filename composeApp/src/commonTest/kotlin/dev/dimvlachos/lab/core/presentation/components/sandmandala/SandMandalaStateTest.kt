@@ -66,7 +66,7 @@ class SandMandalaStateTest {
     @Test
     fun theRngIsTheProtoypesParkMiller() {
         val rr = SandMandalaState.parkMiller(1234)
-        assertEquals(20739838.0 / 2147483647.0, rr(), 1e-12)
+        assertEquals(20739838.0 / 2147483647.0, rr.next(), 1e-12)
     }
 
     @Test
@@ -168,5 +168,29 @@ class SandMandalaStateTest {
         s.undo()
         assertEquals(SandAt.Rows, s.at)
         assertEquals(SandEvent.Restored, events.last())
+    }
+
+    @Test
+    fun aScriptTakenOverCannotEndARealStroke() {
+        val s = history()
+        s.clearHistory()
+        s.run(s.gt + .1f)
+        s.brushDown(s.cx - s.r * .8f, s.cy)
+        s.brushMove(s.cx - s.r * .2f, s.cy)
+        // A stopped script's late moves and lift belong to no stroke.
+        s.brushMove(s.cx + s.r, s.cy + 40f, scripted = true)
+        s.brushUp(scripted = true)
+        s.brushCancel(scripted = true)
+        assertTrue(s.brushing)
+        assertEquals(SandAt.Mandala, s.at)
+    }
+
+    @Test
+    fun reducedMotionClearsWithoutTheSweepsSound() {
+        val s = history(reduced = true)
+        s.clearHistory()
+        s.commit(1)
+        assertFalse(SandEvent.Swept in events)
+        assertEquals(SandEvent.Cleared, events.last())
     }
 }

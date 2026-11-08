@@ -151,9 +151,9 @@ internal class SandMandalaState(
      * Lays the list out at [w] × [h] dp, [dark] or light, and places the mandala as the prototype
      * does. Returns true when the rows' text must be drawn again and handed to [build].
      */
-    fun layout(w: Float, h: Float, dark: Boolean, short: Boolean): Boolean {
+    fun layout(w: Float, h: Float, dark: Boolean, short: Boolean, fontScale: Float = 1f): Boolean {
         if (w <= 0f || h <= 0f) return false
-        val k = "$w,$h,$dark,$short"
+        val k = "$w,$h,$dark,$short,$fontScale"
         if (k == key) return false
         key = k
         width = w
@@ -267,8 +267,8 @@ internal class SandMandalaState(
         while (yy <= rd) {
             var xx = -rd + (row and 1) * sp / 2
             while (xx <= rd) {
-                val jx = xx + (rr() - .5) * sp * .7
-                val jy = yy + (rr() - .5) * sp * .7
+                val jx = xx + (rr.next() - .5) * sp * .7
+                val jy = yy + (rr.next() - .5) * sp * .7
                 if (hypot(jx, jy) <= rd) pts.add(jx, jy)
                 xx += sp
             }
@@ -280,7 +280,7 @@ internal class SandMandalaState(
         val p = pts.data
         // Shuffled, so where grains overlap (the heap) no drawing order shows through as a seam.
         for (i in count2 - 1 downTo 1) {
-            val j = (rr() * (i + 1)).toInt()
+            val j = (rr.next() * (i + 1)).toInt()
             val ax = p[i * 2]
             val ay = p[i * 2 + 1]
             p[i * 2] = p[j * 2]
@@ -329,16 +329,16 @@ internal class SandMandalaState(
             val rn = if (rd != 0.0) hypot(x, y) / rd else 0.0
             tx[i] = (cxd + x).toFloat()
             ty[i] = (cyd + y).toFloat()
-            rnd[i] = rr().toFloat()
-            q[i] = rr().toFloat()
+            rnd[i] = rr.next().toFloat()
+            q[i] = rr.next().toFloat()
             val hc: IntArray
             val gRow: Int
             if (cat == Line && textPx.isNotEmpty()) {
-                val px0 = textPx[(rr() * textPx.size).toInt()]
+                val px0 = textPx[(rr.next() * textPx.size).toInt()]
                 val px = px0 % textW
                 val py = px0 / textW
-                home[0] = px + rr() - .5
-                home[1] = py + rr() - .5
+                home[0] = px + rr.next() - .5
+                home[1] = py + rr.next() - .5
                 val c = text[px0]
                 hc = intArrayOf((c shr 16) and 255, (c shr 8) and 255, c and 255)
                 gRow = textRow[py]
@@ -346,9 +346,9 @@ internal class SandMandalaState(
                 val opts = favs[if (cat == Line) 0 else cat]
                 val f =
                     if (opts.isEmpty()) floatArrayOf(20f, 20f, 30f, 30f, 0f)
-                    else opts[(rr() * opts.size).toInt()]
-                home[0] = f[0] + 1 + rr() * (f[2] - 2)
-                home[1] = f[1] + 1 + rr() * (f[3] - 2)
+                    else opts[(rr.next() * opts.size).toInt()]
+                home[0] = f[0] + 1 + rr.next() * (f[2] - 2)
+                home[1] = f[1] + 1 + rr.next() * (f[3] - 2)
                 hc = pig[if (cat == Line) 0 else cat]
                 gRow = f[4].toInt()
             }
@@ -356,8 +356,8 @@ internal class SandMandalaState(
             hy[i] = home[1].toFloat()
             val tcol = if (cat == Line) cream else pig[cat]
             // Each grain is its own tone: a little lighter or darker, a little warmer.
-            val j = .84 + rr() * .3
-            val warm = (rr() - .5) * 10
+            val j = .84 + rr.next() * .3
+            val warm = (rr.next() - .5) * 10
             for (c in 0 until 3) {
                 cH[i * 3 + c] = byte(hc[c] * (.94 + (j - .99) * .5))
                 cT[i * 3 + c] =
@@ -375,13 +375,13 @@ internal class SandMandalaState(
             // The flight bends round the centre, so the sand swirls in.
             val mx = (hx[i] + tx[i]) / 2.0 - cxd
             val my = (hy[i] + ty[i]) / 2.0 - cyd
-            val sw = .7 + rr() * .5
+            val sw = .7 + rr.next() * .5
             val cs = cos(sw)
             val sn = sin(sw)
             ccx[i] = (cxd + (mx * cs - my * sn) * 1.08).toFloat()
             ccy[i] = (cyd + (mx * sn + my * cs) * 1.08).toFloat()
-            sd[i] = (.5 * (1 - min(1.0, rn)) + .06 * rr()).toFloat()
-            sdur[i] = (1.15 + .35 * rn + .12 * rr()).toFloat()
+            sd[i] = (.5 * (1 - min(1.0, rn)) + .06 * rr.next()).toFloat()
+            sdur[i] = (1.15 + .35 * rn + .12 * rr.next()).toFloat()
         }
         gt = gtMax.toFloat()
         var stMax = 0f
@@ -570,12 +570,12 @@ internal class SandMandalaState(
         this.spin = if (spin == 0) 1 else spin
         undoing = false
         prepS()
-        onEvent?.invoke(SandEvent.Swept)
         if (reducedMotion) {
             at = SandAt.Cleared
             arrived(SandPhase.Pour, 1)
             return
         }
+        onEvent?.invoke(SandEvent.Swept)
         go(SandPhase.Sweep, 1)
     }
 
@@ -698,7 +698,7 @@ internal class SandMandalaState(
     }
 
     // ---------- Brush ----------
-    private class Brush(var x: Float, var y: Float) {
+    private class Brush(var x: Float, var y: Float, val scripted: Boolean) {
         var path = 0f
         var cross = 0f
     }
@@ -708,16 +708,20 @@ internal class SandMandalaState(
     val brushing: Boolean
         get() = brush != null
 
-    /** A finger (or the script's) comes down at [x], [y] in the list. */
-    fun brushDown(x: Float, y: Float) {
-        brush = Brush(x, y)
+    /**
+     * A finger comes down at [x], [y] in the list, or the script's if [scripted]. Moves and lifts
+     * count only from whoever holds the brush, so a script taken over can't end a real stroke.
+     */
+    fun brushDown(x: Float, y: Float, scripted: Boolean = false) {
+        brush = Brush(x, y, scripted)
     }
 
     /**
      * It moves to [x], [y]: across the rows it may start the clear; across the mandala it ploughs.
      */
-    fun brushMove(x: Float, y: Float) {
+    fun brushMove(x: Float, y: Float, scripted: Boolean = false) {
         val b = brush ?: return
+        if (b.scripted != scripted) return
         val sx = x - b.x
         val sy = y - b.y
         val l = hypot(sx, sy)
@@ -753,12 +757,12 @@ internal class SandMandalaState(
                 // Pushed along the stroke, ploughed a little to either side.
                 val side = if ((wx * uy - wy * ux) > 0) 1f else -1f
                 dx[i] +=
-                    ux * push * ff * (.55f + rg().toFloat() * .5f) - uy * side * ff * 3.5f +
-                        (rg().toFloat() - .5f) * 3 * f
+                    ux * push * ff * (.55f + rg.next().toFloat() * .5f) - uy * side * ff * 3.5f +
+                        (rg.next().toFloat() - .5f) * 3 * f
                 dy[i] +=
-                    uy * push * ff * (.55f + rg().toFloat() * .5f) +
+                    uy * push * ff * (.55f + rg.next().toFloat() * .5f) +
                         ux * side * ff * 3.5f +
-                        (rg().toFloat() - .5f) * 3 * f
+                        (rg.next().toFloat() - .5f) * 3 * f
             }
             val mx = (b.x + x) / 2 - cx
             val my = (b.y + y) / 2 - cy
@@ -780,15 +784,16 @@ internal class SandMandalaState(
     }
 
     /** The finger lifts: a sweep of over half a mandala's width lets it go. */
-    fun brushUp() {
+    fun brushUp(scripted: Boolean = false) {
         val b = brush ?: return
+        if (b.scripted != scripted) return
         brush = null
         if (inMandala && next == null && b.path > r * .55f) commit(if (b.cross >= 0) 1 else -1)
     }
 
     /** Drops a stroke without letting it count, as a cancelled touch or a stopped script. */
-    fun brushCancel() {
-        brush = null
+    fun brushCancel(scripted: Boolean = false) {
+        if (brush?.scripted == scripted) brush = null
     }
 
     /** Back to the rows at once, as the prototype's reset(). */
@@ -836,13 +841,7 @@ internal class SandMandalaState(
         }
 
         /** The prototype's rng(): Park–Miller, so the same seed lays the same sand. */
-        fun parkMiller(seed: Int): () -> Double {
-            var s = seed.toLong()
-            return {
-                s = (s * 16807L) % 2147483647L
-                s.toDouble() / 2147483647.0
-            }
-        }
+        fun parkMiller(seed: Int) = ParkMiller(seed)
 
         /**
          * The mandala's design: [x], [y] in units of the radius; a site's pigment, or [Line] for
@@ -914,5 +913,15 @@ private class DoubleList {
         if (size + 2 > data.size) data = data.copyOf(data.size * 2)
         data[size++] = a
         data[size++] = b
+    }
+}
+
+/** The prototype's rng(): Park–Miller, as a class so a draw boxes nothing. */
+internal class ParkMiller(seed: Int) {
+    private var s = seed.toLong()
+
+    fun next(): Double {
+        s = (s * 16807L) % 2147483647L
+        return s.toDouble() / 2147483647.0
     }
 }

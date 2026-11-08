@@ -2,6 +2,7 @@ package dev.dimvlachos.lab.core.presentation.components.sandmandala
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -193,23 +194,29 @@ internal fun SandMandalaHistory(
     LaunchedEffect(state, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last = 0L
-            while (true) {
-                // At rest the loop sleeps, until a touch, a button or the script moves something.
-                if (state.settled) {
-                    hiss.setVolume(0f)
-                    val seenFrame = state.frame
-                    val seenVersion = state.version
-                    snapshotFlow { state.frame to state.version }
-                        .first { it.first != seenFrame || it.second != seenVersion }
-                    last = 0L
+            // Paused mid-move, the hiss stops with the loop.
+            try {
+                while (true) {
+                    // At rest the loop sleeps, until a touch, a button or the script moves
+                    // something.
+                    if (state.settled) {
+                        hiss.setVolume(0f)
+                        val seenFrame = state.frame
+                        val seenVersion = state.version
+                        snapshotFlow { state.frame to state.version }
+                            .first { it.first != seenFrame || it.second != seenVersion }
+                        last = 0L
+                    }
+                    withFrameNanos { now ->
+                        // The first frame moves nothing, so a stall can't jump the sand.
+                        val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
+                        last = now
+                        state.step(dt)
+                    }
+                    hiss.setVolume(state.hiss / .16f)
                 }
-                withFrameNanos { now ->
-                    // The first frame moves nothing, so a stall can't jump the sand.
-                    val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
-                    last = now
-                    state.step(dt)
-                }
-                hiss.setVolume(state.hiss / .16f)
+            } finally {
+                hiss.setVolume(0f)
             }
         }
     }
@@ -224,9 +231,9 @@ internal fun SandMandalaHistory(
             if (listW <= 0f) null else rowText(measurer, state, colors, listW, density)
         }
     // Lays the list out, then draws the rows' words at 1 px per dp for the sand to sample.
-    LaunchedEffect(listW, listH, dark, short, state) {
+    LaunchedEffect(listW, listH, dark, short, density.fontScale, state) {
         if (listW <= 0f || listH <= 0f) return@LaunchedEffect
-        state.layout(listW, listH, dark, short)
+        state.layout(listW, listH, dark, short, density.fontScale)
         if (state.needsText) {
             val w = listW.roundToInt()
             val h = listH.roundToInt()
@@ -234,7 +241,7 @@ internal fun SandMandalaHistory(
         }
     }
 
-    val clearAlpha by animateFloatAsState(if (state.clearEnabled) 1f else .35f, tween(250))
+    val clearAlpha by animateFloatAsState(if (state.clearEnabled) 1f else .35f, fade(state, 250))
     val root = remember { RootHolder() }
     fun centreOf(it: LayoutCoordinates): Offset {
         val r = root.coords ?: return Offset.Zero
@@ -339,21 +346,27 @@ private suspend fun PointerInputScope.brushGesture(state: SandMandalaState, onTo
         state.brushDown(down.position.x / density, down.position.y / density)
         down.consume()
         var pointer = down.id
-        while (true) {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == pointer } ?: break
-            if (change.positionChange() != Offset.Zero)
-                state.brushMove(change.position.x / density, change.position.y / density)
-            if (!change.pressed) {
-                state.brushMove(change.position.x / density, change.position.y / density)
-                state.brushUp()
+        // Cancelled mid-stroke (the list left the screen), the stroke is dropped, so the loop
+        // can sleep.
+        try {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == pointer } ?: break
+                if (change.positionChange() != Offset.Zero)
+                    state.brushMove(change.position.x / density, change.position.y / density)
+                if (!change.pressed) {
+                    state.brushMove(change.position.x / density, change.position.y / density)
+                    state.brushUp()
+                    change.consume()
+                    return@awaitEachGesture
+                }
                 change.consume()
-                return@awaitEachGesture
+                pointer = change.id
             }
-            change.consume()
-            pointer = change.id
+            state.brushUp()
+        } finally {
+            state.brushCancel()
         }
-        state.brushUp()
     }
 }
 
@@ -384,7 +397,7 @@ private fun Hint(
 ) {
     state.version
     val on = state.hintOn
-    val alpha by animateFloatAsState(if (on) 1f else 0f, tween(500))
+    val alpha by animateFloatAsState(if (on) 1f else 0f, fade(state, 500))
     if (alpha <= 0f || state.width <= 0f) return
     Column(
         Modifier.fillMaxWidth().offset(y = state.hintTop.dp).graphicsLayer { this.alpha = alpha },
@@ -421,7 +434,7 @@ private fun Empty(
 ) {
     state.version
     if (state.width <= 0f) return
-    val restoreAlpha by animateFloatAsState(if (state.restoreOn) 1f else 0f, tween(400))
+    val restoreAlpha by animateFloatAsState(if (state.restoreOn) 1f else 0f, fade(state, 400))
     val cleared = state.at == SandAt.Cleared
     Column(
         Modifier.fillMaxWidth()
@@ -459,6 +472,8 @@ private fun Empty(
                     state.undo()
                 }
                 .padding(horizontal = 10.dp, vertical = 8.dp)
+                // Hidden from screen readers too until it shows, as the prototype's tabindex.
+                .then(if (state.restoreOn) Modifier else Modifier.clearAndSetSemantics {})
                 .semantics { testTag = "restore" },
         ) {
             BasicText(
@@ -484,9 +499,10 @@ private fun Snackbar(
     val rise by
         animateFloatAsState(
             if (on) 0f else 16f,
-            tween(350, easing = CubicBezierEasing(.3f, .7f, .3f, 1f)),
+            if (state.reducedMotion) snap()
+            else tween(350, easing = CubicBezierEasing(.3f, .7f, .3f, 1f)),
         )
-    val alpha by animateFloatAsState(if (on) 1f else 0f, tween(300))
+    val alpha by animateFloatAsState(if (on) 1f else 0f, fade(state, 300))
     if (alpha <= 0f) return
     Box(
         Modifier.fillMaxSize().padding(start = 12.dp, end = 12.dp, bottom = 64.dp),
@@ -499,6 +515,8 @@ private fun Snackbar(
                     this.alpha = alpha
                 }
                 .heightIn(min = 48.dp)
+                // Its body takes a touch, so it doesn't brush the sand under it.
+                .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } }
                 .background(colors.snack, RoundedCornerShape(12.dp))
                 .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -732,6 +750,13 @@ private fun rowText(
         sections = sections,
     )
 }
+
+// Under reduced motion, as the prototype's CSS drops its transitions, things show at once.
+private fun fade(
+    state: SandMandalaState,
+    ms: Int,
+): androidx.compose.animation.core.AnimationSpec<Float> =
+    if (state.reducedMotion) snap() else tween(ms)
 
 /** The History screen's own layout, for placing the script's fingertip within it. */
 private class RootHolder {

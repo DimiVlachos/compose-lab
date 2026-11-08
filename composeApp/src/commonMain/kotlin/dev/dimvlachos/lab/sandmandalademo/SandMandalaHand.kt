@@ -37,8 +37,13 @@ internal class SandMandalaHand(
 
     private var brushing = false
 
+    // Set when a real finger or the script's end takes over: the steps still running do nothing
+    // more.
+    private var stopped = false
+
     /** Plays the scripted step [control], one of [SandMandalaDemos]'. */
     suspend fun play(control: String) {
+        stopped = false
         history.scripted = true
         when (control) {
             SandMandalaDemos.Clear -> clear()
@@ -50,9 +55,11 @@ internal class SandMandalaHand(
     // From the middle of the screen to Clear history, a press, and aside to the top right.
     private suspend fun clear() {
         waitFor { history.at == SandAt.Rows && history.n > 0 }
+        if (history.at != SandAt.Rows || history.n == 0) return
         at = Offset(screenW * .62f, screenH * .55f)
         show()
         tap(places.clear)
+        if (stopped) return
         history.clearHistory()
         move(Offset(screenW * .84f, screenH * .2f), SandMandalaDemos.AsideMs)
         hide()
@@ -71,16 +78,17 @@ internal class SandMandalaHand(
         at = Offset(o.x + cx - r * .78f, o.y + cy - r * .5f)
         show()
         delay(SandMandalaDemos.RestMs)
+        if (stopped) return
         down = true
         brushing = true
-        history.brushDown(at.x - o.x, at.y - o.y)
+        history.brushDown(at.x - o.x, at.y - o.y, scripted = true)
         delay(SandMandalaDemos.GripMs)
         move(Offset(o.x + cx - r * .3f, o.y + cy - r * .08f), SandMandalaDemos.LegMs)
         move(Offset(o.x + cx + r * .25f, o.y + cy + r * .12f), SandMandalaDemos.LegMs)
         move(Offset(o.x + cx + r * .8f, o.y + cy + r * .42f), SandMandalaDemos.LegMs)
         down = false
         brushing = false
-        history.brushUp()
+        history.brushUp(scripted = true)
         move(Offset(screenW * .82f, o.y + cy + r * .9f), SandMandalaDemos.SweepAsideMs)
         hide()
     }
@@ -93,6 +101,7 @@ internal class SandMandalaHand(
         at = Offset(screenW * .5f, screenH * .6f)
         show()
         tap(places.undo)
+        if (stopped) return
         history.undo()
         move(Offset(screenW * .5f, screenH * .78f), SandMandalaDemos.UndoAsideMs)
         hide()
@@ -125,7 +134,8 @@ internal class SandMandalaHand(
 
     /** Lets go and vanishes at once, when the script is stopped or a real finger comes down. */
     fun stop() {
-        if (brushing) history.brushCancel()
+        stopped = true
+        if (brushing) history.brushCancel(scripted = true)
         brushing = false
         down = false
         history.scripted = false
@@ -138,7 +148,8 @@ internal class SandMandalaHand(
         animate(ms) {
             val p = SandMandalaState.ease(it)
             at = Offset(from.x + (to.x - from.x) * p, from.y + (to.y - from.y) * p)
-            if (brushing) history.brushMove(at.x - places.list.x, at.y - places.list.y)
+            if (brushing)
+                history.brushMove(at.x - places.list.x, at.y - places.list.y, scripted = true)
         }
     }
 

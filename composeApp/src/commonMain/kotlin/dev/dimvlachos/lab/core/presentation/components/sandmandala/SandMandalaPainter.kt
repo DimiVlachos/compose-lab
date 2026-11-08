@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.IntOffset
@@ -119,8 +121,8 @@ internal class SandMandalaPainter {
                     drawText(text.subs[i], topLeft = Offset(TextX * d, subTop(state, i) * d))
                     if (gathering) {
                         // The crumbling front: the list's own paper drawn over what has gone, then
-                        // a
-                        // 30 dp fade, as the prototype's mask.
+                        // a 30 dp fade, as the prototype's mask. The fade is one brush, kept, and
+                        // moved along the row.
                         val p = ((t - state.frontT0[i]) / Front).coerceIn(0f, 1f)
                         if (p > 0f) {
                             val a = p * (state.width + 30f) - 30f
@@ -130,16 +132,12 @@ internal class SandMandalaPainter {
                                     topLeft = Offset(0f, top * d),
                                     size = Size(a * d, state.rowH * d),
                                 )
-                            drawRect(
-                                Brush.horizontalGradient(
-                                    0f to colors.background,
-                                    1f to colors.background.copy(alpha = 0f),
-                                    startX = a * d,
-                                    endX = (a + 30f) * d,
-                                ),
-                                topLeft = Offset(max(0f, a) * d, top * d),
-                                size = Size((a + 30f - max(0f, a)) * d, state.rowH * d),
-                            )
+                            val fade = fadeBrush(colors.background, d)
+                            clipRect(0f, top * d, size.width, (top + state.rowH) * d) {
+                                translate(left = a * d, top = top * d) {
+                                    drawRect(fade, size = Size(30f * d, state.rowH * d))
+                                }
+                            }
                         }
                     }
                 }
@@ -153,7 +151,7 @@ internal class SandMandalaPainter {
         if (ch <= 0f) return
         val d = density
         val color = colors.chalk.copy(alpha = colors.chalk.alpha * ch)
-        val stroke = Stroke(.8f * d)
+        val stroke = chalkStroke(d)
         val c = Offset(state.cx * d, state.cy * d)
         val r = state.r * d
         for (k in ChalkRings) drawCircle(color, r * k, c, style = stroke)
@@ -168,9 +166,40 @@ internal class SandMandalaPainter {
         drawLine(color, Offset(c.x + k, c.y - k), Offset(c.x - k, c.y + k), .8f * d)
     }
 
+    private var fade: Brush? = null
+    private var fadeColor = Color.Unspecified
+    private var fadeDensity = 0f
+
+    // The crumbling front's 30 dp fade from the list's paper to nothing, made once per colour.
+    private fun fadeBrush(paper: Color, d: Float): Brush {
+        val f = fade
+        if (f != null && fadeColor == paper && fadeDensity == d) return f
+        val made =
+            Brush.horizontalGradient(
+                0f to paper,
+                1f to paper.copy(alpha = 0f),
+                startX = 0f,
+                endX = 30f * d,
+            )
+        fade = made
+        fadeColor = paper
+        fadeDensity = d
+        return made
+    }
+
+    private var stroke: Stroke? = null
+
+    private fun chalkStroke(d: Float): Stroke {
+        val s = stroke
+        if (s != null && s.width == .8f * d) return s
+        return Stroke(.8f * d).also { stroke = it }
+    }
+
     /** The grains, rendered when the state has moved since the last frame. */
     fun DrawScope.drawGrains(state: SandMandalaState, colors: SandMandalaScreenColors) {
         if (state.n == 0) return
+        // At rest in the rows, or swept away, there is no sand to draw.
+        if (state.ph == null && (state.at == SandAt.Rows || state.at == SandAt.Cleared)) return
         val dpr = density
         val bw = max(1, (state.width * dpr).roundToInt())
         val bh = max(1, (state.height * dpr).roundToInt())
@@ -185,6 +214,8 @@ internal class SandMandalaPainter {
                 lit[y * gs + x] = 1.2f - .42f * dd
             }
             drawnFrame = -1
+            committed = null
+            committedFrame = -2
         }
         if (state.frame != drawnFrame || drawnSurface !== s) {
             render(state, s, dpr, colors)
