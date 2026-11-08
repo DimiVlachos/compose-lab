@@ -107,7 +107,34 @@ internal fun rememberSandMandala(): SandMandalaState {
             add(SandEntry.Section(yesterday))
             visits.drop(5).forEach { add(SandEntry.Visit(it)) }
         }
-        SandMandalaState(entries, SandMandalaScreenColors.Sites)
+        val key = buildString {
+            append(today).append('|').append(yesterday)
+            visits.forEach { append('|').append(it.site).append(it.title).append(it.sub) }
+        }
+        KeptSand.take(key)
+            ?: SandMandalaState(entries, SandMandalaScreenColors.Sites).also {
+                KeptSand.keep(key, it)
+            }
+    }
+}
+
+/**
+ * Watch starts the demo afresh, and building 20,000 grains again would leave the screen blank for a
+ * few frames: a flash. So the next run takes over the sand already built, back at its rows.
+ */
+private object KeptSand {
+    private var key: String? = null
+    private var state: SandMandalaState? = null
+
+    fun take(key: String): SandMandalaState? {
+        val kept = state?.takeIf { this.key == key } ?: return null
+        if (kept.at != SandAt.Rows) kept.reset()
+        return kept
+    }
+
+    fun keep(key: String, state: SandMandalaState) {
+        this.key = key
+        this.state = state
     }
 }
 

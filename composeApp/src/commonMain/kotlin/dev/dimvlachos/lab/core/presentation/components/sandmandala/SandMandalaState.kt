@@ -92,6 +92,9 @@ internal class SandMandalaState(
 
     var reducedMotion = false
 
+    /** The screen's height in dp, last measured, for a screen that lays this state out again. */
+    var screenH = 0f
+
     /** Called with what happened; the screen plays its sound and says its words. */
     var onEvent: ((SandEvent) -> Unit)? = null
 

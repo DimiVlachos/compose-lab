@@ -222,9 +222,10 @@ internal fun SandMandalaHistory(
         }
     }
 
-    var listW by remember { mutableFloatStateOf(0f) }
-    var listH by remember { mutableFloatStateOf(0f) }
-    var screenH by remember { mutableFloatStateOf(0f) }
+    // A state laid out before (a demo run again) starts at its size, so the rows draw at once.
+    var listW by remember { mutableFloatStateOf(state.width) }
+    var listH by remember { mutableFloatStateOf(state.height) }
+    var screenH by remember { mutableFloatStateOf(state.screenH) }
     val short = screenH in 1f..639.99f
     val dark = colors === SandMandalaScreenColors.Dark
     val rowText =
@@ -253,7 +254,10 @@ internal fun SandMandalaHistory(
     }
     Box(
         modifier
-            .onSizeChanged { screenH = it.height / density.density }
+            .onSizeChanged {
+                screenH = it.height / density.density
+                state.screenH = screenH
+            }
             .onGloballyPositioned { root.coords = it },
     ) {
         Column(Modifier.fillMaxSize().background(colors.background)) {
