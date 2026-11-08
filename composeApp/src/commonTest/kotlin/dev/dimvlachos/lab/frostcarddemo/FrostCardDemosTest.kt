@@ -20,21 +20,39 @@ class FrostCardDemosTest {
     }
 
     @Test
-    fun theClipFreezesTheCardThenThawsItAndEndsAsItBegan() = runTest {
+    fun theClipGoesEveryWayInAndOutThenEndsAsItBegan() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf("tapControl(freeze)", "tapControl(thaw)", "resetFeed()"),
+            listOf(
+                "tapControl(hold)",
+                "tapControl(peek)",
+                "tapControl(thaw)",
+                "tapControl(freeze)",
+                "tapControl(unfreeze)",
+                "resetFeed()",
+            ),
             controller.calls.map { it.second },
         )
     }
 
     @Test
-    fun theThumbComesOnlyOnceTheFrostHasCoveredTheCard() {
-        // The switch flips once the finger reaches it and presses, and the frost takes 2.8 s to
-        // cover the card; the thumb starts a moment after that.
-        val flip = (FrostCardDemos.ToSwitchMs + FrostCardDemos.PressMs) / 1000.0
-        assertTrue(flip + 2.8 < 5.4, "the thaw starts at 5.4 s")
-        assertTrue(demo.script.nominalDuration <= 20.seconds)
+    fun theCardIsWarmAgainBeforeTheReset() {
+        // The hold freezes the card 450 ms after the thumb lands, and the frost then takes 2.8 s;
+        // a peek's hole closes in about 2 s; a held thumb clears the card in about 1.5 s; switched
+        // off, the card thaws from the middle in about 1.5 s, and the melt runs off in about 2.
+        val d = FrostCardDemos
+        val frozen = .9 + (200 + d.ToCardMs) / 1000.0 + .45 + d.FrostSeconds
+        val closed = frozen + (200 + d.ToCardMs + d.PeekMs) / 1000.0 + d.CloseSeconds
+        val clear = closed + (d.SeeClosedMs + 200 + d.ToCardMs) / 1000.0 + 1.5
+        val lifted = clear + d.LiftAsideMs / 1000.0
+        val refrozen = lifted + (200 + d.ToSwitchMs + d.PressMs) / 1000.0 + d.FrostSeconds
+        val warm = refrozen + (d.SeeFrozenMs + 200 + d.ToSwitchMs + d.PressMs) / 1000.0 + 1.5 + 2
+        assertTrue(warm < .9 + 22, "$warm")
+    }
+
+    @Test
+    fun theClipFitsInFortySeconds() {
+        assertTrue(demo.script.nominalDuration <= 40.seconds, "${demo.script.nominalDuration}")
     }
 }

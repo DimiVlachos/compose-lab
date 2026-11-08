@@ -20,45 +20,48 @@ class SandMandalaDemosTest {
     }
 
     @Test
-    fun theClipClearsSweepsAndUndoesThenEndsAsItBegan() = runTest {
+    fun theClipGoesEveryWayInAndOutThenEndsAsItBegan() = runTest {
         val controller = FakeController { testScheduler.currentTime }
         demo.script.play(controller)
         assertEquals(
-            listOf("tapControl(clear)", "tapControl(sweep)", "tapControl(undo)", "resetFeed()"),
+            listOf(
+                "tapControl(clear)",
+                "tapControl(keep)",
+                "tapControl(brush)",
+                "tapControl(smear)",
+                "tapControl(sweep)",
+                "tapControl(undo)",
+                "resetFeed()",
+            ),
             controller.calls.map { it.second },
         )
     }
 
     @Test
     fun theSandIsBackInItsRowsBeforeTheReset() {
-        // On a phone the gather takes about 3.3 s, the sweep's spiral 2.2, the heap's hold 0.45,
-        // the pour 2.6 and the mandala's hold on the way back 0.75. The sweep lets go about 2.3 s
-        // into its strokes, and Undo is tapped 1.4 s after the history is cleared.
-        val formed =
-            .9 +
-                (SandMandalaDemos.ShowMs + SandMandalaDemos.ToButtonMs + SandMandalaDemos.PressMs) /
-                    1000.0 +
-                3.3
-        val letGo =
-            formed +
-                (SandMandalaDemos.SeeMandalaMs +
-                    SandMandalaDemos.ShowMs +
-                    SandMandalaDemos.RestMs +
-                    SandMandalaDemos.GripMs +
-                    3 * SandMandalaDemos.LegMs) / 1000.0
+        // On the S23 the gather takes about 2.6 s either way (2.8 here, for slower phones), the
+        // sweep's spiral 2.2, the heap's
+        // hold 0.45, the pour 2.6 and the mandala's hold on the way back 0.75. The brush clears
+        // about a third of the way across its row; the sweep lets go about 2.3 s into its strokes.
+        val d = SandMandalaDemos
+        val gather = 2.8
+        val formed = .9 + (d.ShowMs + d.ToButtonMs + d.PressMs) / 1000.0 + gather
+        val kept = formed + (d.SeeKeepMs + d.ShowMs + d.ToButtonMs + d.PressMs) / 1000.0 + gather
+        val brushed = kept + (d.SeeRowsMs + d.ShowMs + d.RestMs + d.BrushMs / 3) / 1000.0
+        val reformed = brushed + gather
+        val smeared =
+            reformed +
+                (d.SeeMandalaMs + d.ShowMs + d.RestMs + d.GripMs + d.LegMs + d.SweepAsideMs) /
+                    1000.0
+        val letGo = smeared + (d.SeeSmearMs + d.RestMs + d.GripMs + 3 * d.LegMs) / 1000.0
         val cleared = letGo + 2.2 + .45 + 2.6
-        val undone =
-            cleared +
-                (SandMandalaDemos.SeeClearedMs +
-                    SandMandalaDemos.ShowMs +
-                    SandMandalaDemos.ToButtonMs +
-                    SandMandalaDemos.PressMs) / 1000.0
-        val rows = undone + 2.6 + 2.2 + .75 + 3.3
-        assertTrue(rows < .9 + 27, "$rows")
+        val undone = cleared + (d.SeeClearedMs + d.ShowMs + d.ToButtonMs + d.PressMs) / 1000.0
+        val rows = undone + 2.6 + 2.2 + .75 + gather
+        assertTrue(rows < .9 + 36, "$rows")
     }
 
     @Test
-    fun theClipFitsInThirtySeconds() {
-        assertTrue(demo.script.nominalDuration <= 30.seconds, "${demo.script.nominalDuration}")
+    fun theClipFitsInFortySeconds() {
+        assertTrue(demo.script.nominalDuration <= 40.seconds, "${demo.script.nominalDuration}")
     }
 }
