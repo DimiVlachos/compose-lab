@@ -368,10 +368,7 @@ internal class SandMandalaPainter {
                     } else {
                         val f = tau - Lip
                         y = lipY + 40 * f + .5f * Pa * f * f
-                        x =
-                            cx +
-                                (sRnd[i] - .5f) * (9 + f * 26) +
-                                sin(f * 9 + sRnd[i] * 6) * 1.2f
+                        x = cx + (sRnd[i] - .5f) * (9 + f * 26) + sin(f * 9 + sRnd[i] * 6) * 1.2f
                     }
                     lift = min(4f, tau * 16)
                     shade *= 1 + min(.1f, tau * .25f)
@@ -467,4 +464,3 @@ internal class SandMandalaPainter {
             }
     }
 }
-
