@@ -1822,6 +1822,61 @@ def lantern_crackle(rng, rate):
     return soft_finish(soft_room(soft_tilt(clip, rate, 6000), rate, 0.06), rate, 0.12, 0.002, 0.01)
 
 
+# ---------- Sand mandala ----------
+# Fine sand and a singing bowl, as the prototype's WebAudio: a loop of sparse crackle through a high
+# band-pass, whose level follows how much sand moves, and bowls of slowly beating sines.
+
+
+def sand_hiss(rng, rate):
+    """The prototype's hiss: sparse crackle rather than smooth noise, as grains are single, through a
+    5.2 kHz band-pass of Q 0.7; its two ends cross-faded so it loops cleanly."""
+    n = seconds(2.0, rate)
+    x = seconds(0.25, rate)
+    total = n + x
+    raw = [(1.0 if rng.random() < 0.35 else 0.2) * rng.uniform(-1.0, 1.0) for _ in range(total)]
+    raw = bandpass(raw, 5200, 0.7, rate)
+    loop = raw[:n]
+    for i in range(x):
+        w = i / x
+        loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.5)
+
+
+def sand_bowl_tone(rate, f, gain, dur):
+    """The prototype's bowl(): a sine rising to gain in 40 ms and dying away exponentially by dur."""
+    out = []
+    for i in range(seconds(dur + 0.05, rate)):
+        t = i / rate
+        if t < 0.04:
+            env = 0.0001 * (gain / 0.0001) ** (t / 0.04)
+        elif t < dur:
+            env = gain * (0.0001 / gain) ** ((t - 0.04) / (dur - 0.04))
+        else:
+            env = 0.0
+        out.append(math.sin(2 * math.pi * f * t) * env)
+    return out
+
+
+def sand_bowl(rate, *partials):
+    return band_mix(*[(1.0, sand_bowl_tone(rate, f, g, d)) for f, g, d in partials])
+
+
+def sand_clips(rng, rate):
+    """The mandala's clips: its hiss, the bowl when it is complete, the low bowl as the history is
+    cleared and the light one as the sweep lets go. The bowls keep the prototype's levels against
+    each other, scaled so the loudest peaks at 0.6."""
+    bowl = sand_bowl(rate, (220, 0.05, 3.6), (221.6, 0.04, 3.4), (587, 0.018, 2.4), (1046, 0.006, 1.6))
+    settle = sand_bowl(rate, (147, 0.04, 2.6), (392, 0.012, 1.8))
+    sweep = sand_bowl(rate, (330, 0.012, 1.2))
+    k = 0.6 / max(abs(v) for v in bowl)
+    return {
+        "sand_hiss": sand_hiss(rng, rate),
+        "sand_bowl": [v * k for v in bowl],
+        "sand_settle": [v * k for v in settle],
+        "sand_sweep": [v * k for v in sweep],
+    }
+
+
 def main():
     rng = random.Random(2026)
     fast, soft = 44100, 22050
@@ -1964,6 +2019,10 @@ def main():
     write("spider_empty", spider_empty(spider, fast), fast)
     for name, clip in grave_clips(random.Random(1028), fast).items():
         write(name, clip, fast)
+    # At 22050 Hz: the hiss sits at 5.2 kHz and the bowls under 1.1 kHz, and the bowl's 3.6 s stay
+    # under the clip size limit.
+    for name, clip in sand_clips(random.Random(1108), soft).items():
+        write(name, clip, soft)
     lantern = random.Random(1028)
     write("lantern_strike", lantern_strike(lantern, fast), fast)
     write("lantern_catch", lantern_catch(lantern, fast), fast)

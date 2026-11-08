@@ -37,6 +37,7 @@ import dev.dimvlachos.lab.resources.demo_pigeonhole
 import dev.dimvlachos.lab.resources.demo_popup
 import dev.dimvlachos.lab.resources.demo_pull_cord
 import dev.dimvlachos.lab.resources.demo_rubberband
+import dev.dimvlachos.lab.resources.demo_sandmandala
 import dev.dimvlachos.lab.resources.demo_smoke
 import dev.dimvlachos.lab.resources.demo_snowglobe
 import dev.dimvlachos.lab.resources.demo_spider
@@ -96,6 +97,7 @@ class CatalogTest {
                 "spider.refresh",
                 "graveundo.undo",
                 "jackolantern.theme",
+                "sandmandala.history",
                 "frostcard.freeze",
             ),
             Catalog.demos.map { it.id },
@@ -139,6 +141,7 @@ class CatalogTest {
                 Res.string.demo_spider,
                 Res.string.demo_graveundo,
                 Res.string.demo_jackolantern,
+                Res.string.demo_sandmandala,
                 Res.string.demo_frostcard,
             ),
             Catalog.demos.map { it.title },
@@ -234,6 +237,7 @@ class CatalogTest {
                 "spider.refresh",
                 "graveundo.undo",
                 "jackolantern.theme",
+                "sandmandala.history",
                 "frostcard.freeze",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },

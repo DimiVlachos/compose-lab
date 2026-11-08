@@ -142,6 +142,12 @@ internal enum class Sound(val file: String) {
     LanternBlow("lantern_blow"),
     LanternCrackle("lantern_crackle"),
 
+    // Sand mandala.
+    SandHiss("sand_hiss"),
+    SandBowl("sand_bowl"),
+    SandSettle("sand_settle"),
+    SandSweep("sand_sweep"),
+
     // Frost freeze card.
     FrostFreeze("frost_freeze"),
     FrostTick("frost_tick"),

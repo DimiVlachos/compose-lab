@@ -59,6 +59,7 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Spider refresh](#spider-refresh-corepresentationcomponentsspider) | `spider` | `spider.refresh` | Pull to refresh on a neighborhood feed: a little spider lowers itself on its silk, spins the new posts up in a ball of silk and climbs back up its thread, reeling them in to the top |
 | [Grave undo](#grave-undo-corepresentationcomponentsgraveundo) | `graveundo` | `graveundo.undo` | Delete with undo as a tiny moonlit graveyard where the snackbar goes: a swiped task sinks under a headstone carved with its name, and a skeleton hand rises holding it; tap the hand to bring it back |
 | [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern) | `jackolantern` | `jackolantern.theme` | A theme switch that is a carved pumpkin: light its candle and the night theme spreads out of its face over the whole screen; flick across the flame to blow it out |
+| [Sand mandala clear history](#sand-mandala-clear-history-corepresentationcomponentssandmandala) | `sandmandala` | `sandmandala.history` | Clear browsing history as a sand mandala: every row crumbles into coloured sand that flows into a mandala; sweep it and it spirals into one grey heap that pours away, and Undo brings it all back |
 | [Frost freeze card](#frost-freeze-card-corepresentationcomponentsfrostcard) | `frostcard` | `frostcard.freeze` | A bank card's Freeze card switch that really freezes it: fern frost grows in from the edges; hold your thumb on the card and it melts into beads that run off |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
@@ -103,6 +104,8 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Spider refresh](#spider-refresh-corepresentationcomponentsspider)
 - [Grave undo](#grave-undo-corepresentationcomponentsgraveundo)
 - [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern)
+- [Sand mandala clear history](#sand-mandala-clear-history-corepresentationcomponentssandmandala)
+
 - [Frost freeze card](#frost-freeze-card-corepresentationcomponentsfrostcard)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
@@ -1148,6 +1151,28 @@ JackOLanternTheme(lantern, sounds, switchLabel = "Night theme", nightSaid, daySa
     // Composed by day and by night: style it with colors, and mark the top bar's slot.
     MyScreen(colors, Modifier.pumpkinSlot())
 }
+```
+
+## Sand mandala clear history (`core/presentation/components/sandmandala/`)
+
+![](docs/media/sandmandala.history.gif)
+
+A browser's History screen. Clear it and every row crumbles into coloured sand, its site's colour and its own words, and the grains flow together into a sand mandala: a week of browsing made into one artwork. Nothing is gone yet; Keep history sends every grain home. Then, like the monks who make them, you sweep it away: the sand under your finger smears and piles up, and a sweep of about the mandala's width lets it go. Everything spirals the way you swept into a single grey heap, which pours off the bottom. Undo plays it all backwards.
+
+- **Grains with homes.** About 20,000 grains on a jittered hex grid inside the mandala, in flat `FloatArray`s. Each has a home in a row: a favicon in its site's colour, or one of the pixels of the row's own words, drawn once at 1 px per dp and read back. A seeded Park–Miller generator lays the same sand every time.
+- **One clock per move.** Every grain's place is a function of its phase's clock: released as its row's crumbling front passes, swirling round the centre on a curved flight, settling from the centre out; spiralling into the heap; draining over the heap's lip. Reversing a move is running its clock backwards.
+- **The mandala.** A function from polar coordinates to a pigment: an outer fire ring, vajra dots, lotus petals, a square palace with four gates and four coloured quarters, and a lotus at the centre, with cream lines between, the cream of the rows' words.
+- **Drawn a pixel at a time.** Each frame writes every grain into an `IntArray` at 2 px per dp (the prototype's own cap, drawn up unfiltered) instead of the screen's full density, a shadow pass and then a tiny block lit from the top left, and hands it to a reused bitmap (`canvas2d/PixelSurface`).
+- **Brush.** A sideways brush across the rows starts the clear. On the mandala, each piece of a stroke pushes the grains within reach along it and ploughs them to either side; they stay where they are pushed. The stroke's length decides when it lets go and its turning sets the spiral's direction, so it works from a fast swipe's few samples.
+- **Feel and sound.** A fine sand hiss that follows how much sand is moving, a singing bowl when the mandala is complete, a lighter one as the sweep lets go and a low one as the history is cleared; a tick felt as a brush starts the clear.
+- **Screen readers.** Clear history, Clear now (which sweeps for you), Undo and the restore link are buttons, the rows are read while they are shown, and each stage is announced.
+- **Reduced motion.** Each move jumps to where it ends.
+
+The demo, `sandmandala.history`, is a week of browsing on nine sites. Its script taps Clear history, sweeps the finished mandala away through the same brush a finger makes, and taps Undo, so it ends as it began.
+
+```kotlin
+val history = remember { SandMandalaState(entries, sitePigments) }
+SandMandalaHistory(history, text, colors, sounds)
 ```
 
 ## Frost freeze card (`core/presentation/components/frostcard/`)
