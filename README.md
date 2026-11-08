@@ -1152,6 +1152,8 @@ JackOLanternTheme(lantern, sounds, switchLabel = "Night theme", nightSaid, daySa
 
 ## Frost freeze card (`core/presentation/components/frostcard/`)
 
+![](docs/media/frostcard.freeze.gif)
+
 A bank's card screen with the usual Freeze card switch. Flip it and the card really freezes: fern frost creeps in from the edges, corners first, branching across the plastic until the colour drains to a cold blue-white and the numbers mist over, and the switch's knob frosts too. To unfreeze it, hold your thumb on the card: a warm circle opens under it and grows faster the longer you hold, the ice melts back into beads of water, and they run down and drip off the bottom edge. Let go early and the frost closes back in.
 
 - **Grown once.** The frost is grown once per card size: ferns seeded round the edges that branch at about 55° and stop where they meet ice another fern laid, a few loose crystals, and thousands of needles of fur, several thousand segments in all, each born when the freezing front reaches it. Freezing draws only the segments born since the last frame into a cached layer.
