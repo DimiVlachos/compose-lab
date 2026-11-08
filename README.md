@@ -60,6 +60,8 @@ Each component lives in its own package under `composeApp/src/commonMain/kotlin/
 | [Grave undo](#grave-undo-corepresentationcomponentsgraveundo) | `graveundo` | `graveundo.undo` | Delete with undo as a tiny moonlit graveyard where the snackbar goes: a swiped task sinks under a headstone carved with its name, and a skeleton hand rises holding it; tap the hand to bring it back |
 | [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern) | `jackolantern` | `jackolantern.theme` | A theme switch that is a carved pumpkin: light its candle and the night theme spreads out of its face over the whole screen; flick across the flame to blow it out |
 | [Sand mandala clear history](#sand-mandala-clear-history-corepresentationcomponentssandmandala) | `sandmandala` | `sandmandala.history` | Clear browsing history as a sand mandala: every row crumbles into coloured sand that flows into a mandala; sweep it and it spirals into one grey heap that pours away, and Undo brings it all back |
+
+| [Frost freeze card](#frost-freeze-card-corepresentationcomponentsfrostcard) | `frostcard` | `frostcard.freeze` | A bank card's Freeze card switch that really freezes it: fern frost grows in from the edges; hold your thumb on the card and it melts into beads that run off |
 | [Moodboard](#moodboard-native-on-both-platforms-moodboard) | `moodboard/` | showcase | A KMP app that shares logic and keeps each platform's UI native |
 
 The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
@@ -104,6 +106,8 @@ The scripted fingertip in every clip is `touch/ScriptedTouch.kt`.
 - [Grave undo](#grave-undo-corepresentationcomponentsgraveundo)
 - [Jack-o’-lantern theme](#jack-o-lantern-theme-corepresentationcomponentsjackolantern)
 - [Sand mandala clear history](#sand-mandala-clear-history-corepresentationcomponentssandmandala)
+
+- [Frost freeze card](#frost-freeze-card-corepresentationcomponentsfrostcard)
 - [Moodboard: native on both platforms](#moodboard-native-on-both-platforms-moodboard)
 - [App shell](#app-shell)
 - [Project structure](#project-structure)
@@ -1170,6 +1174,27 @@ The demo, `sandmandala.history`, is a week of browsing on nine sites. Its script
 ```kotlin
 val history = remember { SandMandalaState(entries, sitePigments) }
 SandMandalaHistory(history, text, colors, sounds)
+```
+
+## Frost freeze card (`core/presentation/components/frostcard/`)
+
+![](docs/media/frostcard.freeze.gif)
+
+A bank's card screen with the usual Freeze card switch. Flip it and the card really freezes: fern frost creeps in from the edges, corners first, branching across the plastic until the colour drains to a cold blue-white and the numbers mist over, and the switch's knob frosts too. To unfreeze it, hold your thumb on the card: a warm circle opens under it and grows faster the longer you hold, the ice melts back into beads of water, and they run down and drip off the bottom edge. Let go early and the frost closes back in.
+
+- **Grown once.** The frost is grown once per card size: ferns seeded round the edges that branch at about 55° and stop where they meet ice another fern laid, a few loose crystals, and thousands of needles of fur, several thousand segments in all, each born when the freezing front reaches it. Freezing draws only the segments born since the last frame into a cached layer.
+- **The haze.** A coarse arrival grid, a pixel per 4 dp, decides where the card has gone pale. It masks a cold copy of the card (the card through a saturate, brightness and contrast colour matrix) with `destination-in`, under a milky film, in one offscreen layer with the frost and the thawed hole punched out with `destination-out`.
+- **The melt.** Beads are a fixed pool of primitive arrays: they stick until big enough, then slide, gather the beads they run into, stop at the ice edge, hang at the card's bottom and drop. Their lenses are drawn once as sprites and scaled, so the water makes no gradient per bead.
+- **The card.** The plum-and-copper card, its chip, guilloché and embossed numbers are drawn once on the shared `canvas2d` adapter, the numbers in JetBrains Mono, three times over for the emboss.
+- **Feel and sound.** A small chime as it starts to freeze, dry ticks as the ice grows, a glassy shimmer and a confirm when it has set, a hiss of melt that follows the thumb, drips, and a warm rising note when it is clear.
+- **Screen readers.** The row is a switch, Freeze card, and "Card frozen" and "Card unfrozen" are announced politely; holding the card is a shortcut, not the only way.
+- **Reduced motion.** The frost appears and clears at once, with no water.
+
+The demo, `frostcard.freeze`, is a Juniper debit card. Its script flips Freeze card, lets the frost grow over the card, then rests a thumb on it until it is clear and the melt runs off.
+
+```kotlin
+val card = remember { FrostCardState() }
+FrostCardScreen(card, layout, colors, sounds, onToggle = { card.toggle() })
 ```
 
 ## Moodboard: native on both platforms (`moodboard/`)

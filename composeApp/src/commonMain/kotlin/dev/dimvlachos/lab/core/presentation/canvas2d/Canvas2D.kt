@@ -740,6 +740,19 @@ internal class Canvas2D(private val canvas: Canvas, val width: Int, val height: 
         canvas.saveLayer(Rect(0f, 0f, width.toFloat(), height.toFloat()), p)
     }
 
+    /**
+     * Not the canvas's own: [beginLayer] over only the box at ([x], [y]) of [w] by [h] in user
+     * space (under the current transform), so a layer for one small thing drawn every frame isn't
+     * the size of the whole canvas. Nothing outside the box lands. [endLayer] lays it down.
+     */
+    fun beginLayer(x: Float, y: Float, w: Float, h: Float, alpha: Float = 1f) {
+        stack.addLast(state.copy())
+        layerPaint.alpha = alpha.coerceIn(0f, 1f)
+        canvas.saveLayer(state.matrix.map(Rect(x, y, x + w, y + h)), layerPaint)
+    }
+
+    private val layerPaint = Paint()
+
     /** Lays down the layer [beginLayer] began, restoring what was saved with it. */
     fun endLayer() = restore()
 

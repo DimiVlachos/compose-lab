@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - **Sand mandala clear history** (`sandmandala`): clear browsing history as a sand mandala. Clear history and every row crumbles into coloured sand, its site's colour and its own words, which flows into a mandala built from the centre out; Keep history sends every grain home. Sweep across it and the sand smears and piles up under your finger; a full sweep spirals it all into one grey heap that pours away, and Undo plays it backwards. About 20,000 grains drawn a pixel at a time at full density; a sand hiss and singing bowls; buttons, announcements and Clear now for screen readers. Its demo is a week of browsing on nine sites.
 
+- **Frost freeze card** (`frostcard`): a bank card's Freeze card switch that really freezes the card. Fern frost grows in from the edges, corners first, until the colour drains to a cold blue-white and the numbers mist over; hold your thumb on the frozen card and a warm circle opens and grows, the ice melts into beads that slide, merge and drip off the bottom edge, and the card is unfrozen. Let go early and the frost closes back in; switching it off thaws it from the middle. Synthesized chime, crackle, hiss and drips, with a confirm felt when it sets and clears; a switch and live announcements for screen readers. Its demo is a Juniper debit card.
+
 ## [0.3.0] - 2026-10-28
 
 Three Halloween components, and demo clips that show every way in and out.

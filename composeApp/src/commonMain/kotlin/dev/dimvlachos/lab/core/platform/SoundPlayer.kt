@@ -146,7 +146,15 @@ internal enum class Sound(val file: String) {
     SandHiss("sand_hiss"),
     SandBowl("sand_bowl"),
     SandSettle("sand_settle"),
-    SandSweep("sand_sweep");
+    SandSweep("sand_sweep"),
+
+    // Frost freeze card.
+    FrostFreeze("frost_freeze"),
+    FrostTick("frost_tick"),
+    FrostHiss("frost_hiss"),
+    FrostDrip("frost_drip"),
+    FrostSet("frost_set"),
+    FrostThawed("frost_thawed");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String

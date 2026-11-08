@@ -11,6 +11,7 @@ import dev.dimvlachos.lab.decoderringdemo.DecoderRingDemos
 import dev.dimvlachos.lab.fishingdemo.FishingDemos
 import dev.dimvlachos.lab.fogdemo.FogDemos
 import dev.dimvlachos.lab.frenchpressdemo.FrenchPressDemos
+import dev.dimvlachos.lab.frostcarddemo.FrostCardDemos
 import dev.dimvlachos.lab.gallerydemo.GalleryDemos
 import dev.dimvlachos.lab.graveundodemo.GraveUndoDemos
 import dev.dimvlachos.lab.jackolanterndemo.JackOLanternDemos
@@ -87,7 +88,8 @@ internal object Catalog {
                     SpiderDemos.all +
                     GraveUndoDemos.all +
                     JackOLanternDemos.all +
-                    SandMandalaDemos.all)
+                    SandMandalaDemos.all +
+                    FrostCardDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
