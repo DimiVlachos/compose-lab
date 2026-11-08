@@ -144,4 +144,21 @@ class FrostCardStateTest {
         assertTrue(a.sparks > 0)
         assertTrue(a.gen.count { it == 0 } > 100, "main spines")
     }
+
+    @Test
+    fun theFernsAreThePrototypes() {
+        // The prototype's growFrost(), run in node for a 328 by 206.8 card (and a wider one): the
+        // same number of segments and glints, and the same segment in the same place, born at the
+        // same moment.
+        val g = FrostGrowth(328f, 206.8f)
+        assertEquals(17667, g.count)
+        assertEquals(152, g.sparks)
+        assertEquals(9.113745f, g.x1[100], 1e-3f)
+        assertEquals(.10255f, g.born[100], 1e-4f)
+        assertEquals(82, g.gw)
+        assertEquals(52, g.gh)
+        val wide = FrostGrowth(380f, 239.6f)
+        assertEquals(20666, wide.count)
+        assertEquals(155, wide.sparks)
+    }
 }

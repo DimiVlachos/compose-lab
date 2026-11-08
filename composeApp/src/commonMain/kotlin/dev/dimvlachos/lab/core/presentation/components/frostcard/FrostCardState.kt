@@ -104,6 +104,10 @@ internal class FrostCardState(private val random: Random = Random(7)) {
     private var px = 0f
     private var py = 0f
 
+    // Whether the press is the script's: a real finger takes over from it, and the script can't
+    // move or end a real one.
+    private var pressScripted = false
+
     /** Whether something is still moving, so the loop needn't sleep. */
     val busy: Boolean
         get() =
@@ -148,7 +152,7 @@ internal class FrostCardState(private val random: Random = Random(7)) {
      * grows the frost again.
      */
     fun layout(w: Float, h: Float, below: Float) {
-        fallLimit = below + 20f
+        floor(below)
         if (w <= 0f || h <= 0f) return
         if (growth == null || cw != w || ch != h) {
             cw = w
@@ -157,6 +161,26 @@ internal class FrostCardState(private val random: Random = Random(7)) {
             frame++
         }
     }
+
+    /** The screen's foot is [below] dp under the card's top: falling beads go as they pass it. */
+    fun floor(below: Float) {
+        fallLimit = below + 20f
+    }
+
+    /**
+     * Frozen over and still: nothing moves but the glints, which the loop can draw at a calmer
+     * rate.
+     */
+    val resting: Boolean
+        get() =
+            frozen &&
+                f >= 1f &&
+                press == PressNone &&
+                !auto &&
+                r == 0f &&
+                drops == 0 &&
+                streaks == 0 &&
+                hissLevel < 1e-4f
 
     /** Flips the switch. */
     fun toggle() = freeze(!frozen)
@@ -207,8 +231,9 @@ internal class FrostCardState(private val random: Random = Random(7)) {
         }
     }
 
-    /** A finger down at ([x], [y]) in the card's dp. */
-    fun pressStart(x: Float, y: Float) {
+    /** A finger down at ([x], [y]) in the card's dp; [scripted] when it is the demo's. */
+    fun pressStart(x: Float, y: Float, scripted: Boolean = false) {
+        pressScripted = scripted
         px = x
         py = y
         pressT = 0f
@@ -226,13 +251,14 @@ internal class FrostCardState(private val random: Random = Random(7)) {
         frame++
     }
 
-    fun pressMove(x: Float, y: Float) {
-        if (press == PressNone) return
+    fun pressMove(x: Float, y: Float, scripted: Boolean = false) {
+        if (press == PressNone || scripted != pressScripted) return
         px = x
         py = y
     }
 
-    fun pressEnd() {
+    fun pressEnd(scripted: Boolean = false) {
+        if (scripted != pressScripted) return
         press = PressNone
         frame++
     }

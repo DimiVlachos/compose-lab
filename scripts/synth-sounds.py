@@ -1730,14 +1730,6 @@ def frost_tone(rate, f0, f1, gain, dur, kind="sine", delay=0.0):
 
 def frost_clips(rng, rate):
     """The card's clips, from the prototype's snd('freeze'|'set'|'thawed'|'drip'), crackle() and hiss()."""
-    hiss_n = seconds(2.0, rate)
-    hiss = lowpass(noise(hiss_n, rng), 900, rate)
-    # A loop: the start faded into the end, so it repeats without a seam.
-    x = seconds(0.1, rate)
-    for i in range(x):
-        k = i / x
-        hiss[i] = hiss[i] * k + hiss[hiss_n - x + i] * (1 - k)
-    hiss = hiss[: hiss_n - x]
     clips = {
         "frost_freeze": (frost_tone(rate, 1800, 1500, 0.015, 0.12, "triangle"), 0.18),
         "frost_tick": (grave_shot(rng, rate, "bandpass", 5000, 5000, 0.03, 0.001, 0.02, 1.2), 0.12),
@@ -1747,8 +1739,20 @@ def frost_clips(rng, rate):
     }
     out = {name: soft_finish(soft_room(soft_tilt(clip, rate, 4200), rate, 0.08), rate, peak, 0.002, 0.02)
            for name, (clip, peak) in clips.items()}
-    out["frost_hiss"] = normalise(hiss, 0.3)
     return out
+
+
+def frost_hiss(rng, rate):
+    """The melt under the thumb: noise through the prototype's 900 Hz low-pass, a seamless loop whose
+    end is cross-faded into its start; the app sets its volume as the thaw goes."""
+    n = seconds(1.4, rate)
+    x = seconds(0.2, rate)
+    raw = lowpass(noise(n + x, rng), 900, rate)
+    loop = raw[:n]
+    for i in range(x):
+        w = i / x
+        loop[i] = raw[n + i] * (1 - w) + loop[i] * w
+    return normalise(loop, 0.3)
 # ---------- Jack-o'-lantern ----------
 # A candle in a carved pumpkin: the prototype's air() bursts, noise through a filter whose
 # frequency glides exponentially, in an exponential rise and fall, as WebAudio's ramps. Built with
@@ -1965,8 +1969,10 @@ def main():
     write("lantern_catch", lantern_catch(lantern, fast), fast)
     write("lantern_blow", lantern_blow(lantern, fast), fast)
     write("lantern_crackle", lantern_crackle(lantern, fast), fast)
-    for name, clip in frost_clips(random.Random(1108), fast).items():
+    frost = random.Random(1108)
+    for name, clip in frost_clips(frost, fast).items():
         write(name, clip, fast)
+    write("frost_hiss", frost_hiss(frost, soft), soft)
 
 
 if __name__ == "__main__":

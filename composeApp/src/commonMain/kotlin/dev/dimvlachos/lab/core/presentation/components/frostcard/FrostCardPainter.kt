@@ -1,7 +1,6 @@
 package dev.dimvlachos.lab.core.presentation.components.frostcard
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -15,6 +14,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
+import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.imageBitmapOf
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -46,6 +46,11 @@ internal class FrostCardPainter(
     private var ch = 0f
     private var cr = 14f
     private var card: ImageBitmap? = null
+    private var shadow: ImageBitmap? = null
+
+    // The frost layer once every segment is in, copied into a frozen bitmap: a changeable one is
+    // copied by Skia each time it is drawn.
+    private var frostDone: ImageBitmap? = null
     private var cold: ImageBitmap? = null
     private var frost: Canvas2D? = null
     private var growth: FrostGrowth? = null
@@ -82,7 +87,30 @@ internal class FrostCardPainter(
         c.textResolution = density
         c.scale(density, density)
         drawCard(c, w, h)
-        card = c.bitmap
+        card = c.bitmap.also { it.freeze() }
+        // The card's box-shadow, 0 14px 26px -12px and then 0 2px 5px, baked once with a margin.
+        val m = ShadowMargin
+        val sh =
+            Canvas2D.create(
+                ((w + 2 * m) * density).roundToInt(),
+                ((h + 2 * m) * density).roundToInt(),
+            )
+        sh.scale(density, density)
+        sh.translate(m, m)
+        // The adapter casts a fill's shadow even when the fill itself is clear.
+        sh.fillStyle = Color.Transparent
+        sh.shadowColor = "rgba(40,20,20,.55)"
+        sh.shadowBlur = 26f
+        sh.shadowOffsetY = 14f
+        sh.beginPath()
+        sh.roundRect(12f, 12f, w - 24f, h - 24f, max(0f, cr - 12f))
+        sh.fill()
+        sh.shadowColor = "rgba(0,0,0,.12)"
+        sh.shadowBlur = 5f
+        sh.shadowOffsetY = 2f
+        cardPath(sh, w, h, cr)
+        sh.fill()
+        shadow = sh.bitmap.also { it.freeze() }
         // The cold card: colour drained, cooled, a little lighter. Frost reveals it where it forms.
         val coldImage = ImageBitmap(pw, ph)
         Canvas(coldImage)
@@ -96,8 +124,10 @@ internal class FrostCardPainter(
         gr.addColorStop(1f, "rgba(120,160,200,.15)")
         k.fillStyle = gr
         k.fillRect(0f, 0f, pw.toFloat(), ph.toFloat())
+        coldImage.freeze()
         cold = coldImage
         frost = Canvas2D.create(pw, ph)
+        frostDone = null
         drawnIdx = 0
         drawnF = -1f
         hazeF = -1f
@@ -117,7 +147,7 @@ internal class FrostCardPainter(
             c.beginPath()
             c.arc(32f, 32f, 32f, 0f, 7f)
             c.fill()
-            glint = c.bitmap
+            glint = c.bitmap.also { it.freeze() }
         }
         // The bead: radius 1 drawn at 32 px, so the gradient's r is 32.
         fun lens(icy: Boolean): ImageBitmap {
@@ -146,7 +176,7 @@ internal class FrostCardPainter(
             c.beginPath()
             c.arc(-r * .36f, -r * .38f, max(.45f, r * .24f), 0f, 7f)
             c.fill()
-            return c.bitmap
+            return c.bitmap.also { it.freeze() }
         }
         bead = lens(false)
         icyBead = lens(true)
@@ -160,7 +190,8 @@ internal class FrostCardPainter(
     }
 
     private fun drawCard(c: Canvas2D, w: Float, h: Float) {
-        val r = ParkMiller(19)
+        val seeded = ParkMiller(19)
+        val r = { seeded.next().toFloat() }
         c.save()
         cardPath(c, w, h, cr)
         c.clip()
@@ -174,11 +205,11 @@ internal class FrostCardPainter(
         c.fillRect(0f, 0f, w, h)
         // Brushed grain.
         repeat(520) {
-            val y = r.next() * h
+            val y = r() * h
             c.fillStyle =
-                if (r.next() < .5f) Color(255, 230, 210).copy(alpha = .02f + r.next() * .035f)
-                else Color(30, 0, 10).copy(alpha = .03f + r.next() * .04f)
-            c.fillRect(0f, y, w, .5f + r.next() * .7f)
+                if (r() < .5f) Color(255, 230, 210).copy(alpha = .02f + r() * .035f)
+                else Color(30, 0, 10).copy(alpha = .03f + r() * .04f)
+            c.fillRect(0f, y, w, .5f + r() * .7f)
         }
         // Guilloché waves, faint.
         c.lineWidth = .6f
@@ -352,6 +383,7 @@ internal class FrostCardPainter(
             c.setTransform(1f, 0f, 0f, 1f, 0f, 0f)
             c.clearRect(0f, 0f, c.width.toFloat(), c.height.toFloat())
             drawnIdx = 0
+            frostDone = null
         }
         drawnF = f
         val i = drawnIdx
@@ -391,6 +423,12 @@ internal class FrostCardPainter(
             c.strokeStyle = SpineCore
             c.stroke()
         }
+        if (drawnIdx == g.count) {
+            val done = ImageBitmap(c.width, c.height)
+            Canvas(done).drawImage(c.bitmap, Offset.Zero, imagePaint.apply { alpha = 1f })
+            done.freeze()
+            frostDone = done
+        }
     }
 
     // The haze: where the front has been the card goes pale, a pixel per 4 dp cell. Remade only
@@ -419,23 +457,10 @@ internal class FrostCardPainter(
         val card = card ?: return
         c.save()
         c.translate(x, y)
-        // The card's box-shadow: 0 14px 26px -12px, then 0 2px 5px.
-        // The adapter casts a fill's shadow even when the fill itself is clear.
-        c.fillStyle = Color.Transparent
-        c.shadowColor = "rgba(40,20,20,.55)"
-        c.shadowBlur = 26f
-        c.shadowOffsetY = 14f
-        c.beginPath()
-        c.roundRect(12f, 12f, cw - 24f, ch - 24f, max(0f, cr - 12f))
-        c.fill()
-        c.shadowColor = "rgba(0,0,0,.12)"
-        c.shadowBlur = 5f
-        c.shadowOffsetY = 2f
-        cardPath(c, cw, ch, cr)
-        c.fill()
-        c.shadowColor = "rgba(0,0,0,0)"
-        c.shadowBlur = 0f
-        c.shadowOffsetY = 0f
+        shadow?.let {
+            val m = ShadowMargin
+            c.drawImage(it, -m, -m, cw + 2 * m, ch + 2 * m)
+        }
         c.drawImage(card, 0f, 0f, cw, ch)
         if (s.f > 0f) drawIce(c, s, g)
         drawWater(c, s)
@@ -447,8 +472,8 @@ internal class FrostCardPainter(
         updateHaze(s.f)
         val cold = cold ?: return
         val haze = haze ?: return
-        val frostImage = frost?.bitmap ?: return
-        c.beginLayer()
+        val frostImage = frostDone ?: frost?.bitmap ?: return
+        c.beginLayer(0f, 0f, cw, ch)
         c.drawImage(cold, 0f, 0f, cw, ch)
         c.globalCompositeOperation = "destination-in"
         c.drawImage(haze, 0f, 0f, cw, ch)
@@ -618,12 +643,10 @@ internal class FrostCardPainter(
                 if (!fall) {
                     fillPaint.color = BeadShadow.copy(alpha = .16f * a)
                     canvas.drawOval(
-                        Rect(
-                            s.dx[i] + (.5f - r * 1.02f) * sx,
-                            s.dy[i] + (r * .35f - r * 1.02f) * sy,
-                            s.dx[i] + (.5f + r * 1.02f) * sx,
-                            s.dy[i] + (r * .35f + r * 1.02f) * sy,
-                        ),
+                        s.dx[i] + (.5f - r * 1.02f) * sx,
+                        s.dy[i] + (r * .35f - r * 1.02f) * sy,
+                        s.dx[i] + (.5f + r * 1.02f) * sx,
+                        s.dy[i] + (r * .35f + r * 1.02f) * sy,
                         fillPaint,
                     )
                 }
@@ -635,6 +658,9 @@ internal class FrostCardPainter(
 
     private companion object {
         const val TwoPi = (2 * PI).toFloat()
+
+        // Room round the card for its baked shadow, in dp.
+        const val ShadowMargin = 40f
         const val HazeRgb = (236 shl 16) or (244 shl 8) or 252
 
         // The four generations' strokes: width, light alpha, shade alpha.

@@ -74,7 +74,7 @@ internal class FrostCardHand(
         move(Offset(hx, hy), FrostCardDemos.ToCardMs - 200)
         down = true
         pressing = true
-        card.pressStart(hx - c.left, hy - c.top)
+        card.pressStart(hx - c.left, hy - c.top, scripted = true)
         move(Offset(hx + c.width * .06f, hy - c.height * .04f), FrostCardDemos.DriftMs)
         var held = 0L
         while (card.frozen && held < FrostCardDemos.HoldMaxMs) {
@@ -88,7 +88,7 @@ internal class FrostCardHand(
     }
 
     private fun release() {
-        if (pressing) card.pressEnd()
+        if (pressing) card.pressEnd(scripted = true)
         pressing = false
     }
 
@@ -110,7 +110,8 @@ internal class FrostCardHand(
         animate(ms) {
             val p = FrostCardState.ease(it)
             at = Offset(from.x + (to.x - from.x) * p, from.y + (to.y - from.y) * p)
-            if (pressing) card.pressMove(at.x - layout.card.left, at.y - layout.card.top)
+            if (pressing)
+                card.pressMove(at.x - layout.card.left, at.y - layout.card.top, scripted = true)
         }
     }
 

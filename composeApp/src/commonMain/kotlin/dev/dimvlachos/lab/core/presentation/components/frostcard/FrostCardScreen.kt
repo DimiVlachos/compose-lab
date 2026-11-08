@@ -1,9 +1,11 @@
 package dev.dimvlachos.lab.core.presentation.components.frostcard
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,9 +41,12 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -68,6 +73,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -82,6 +88,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.dimvlachos.lab.core.platform.Sound
+import dev.dimvlachos.lab.core.platform.SoundLoop
 import dev.dimvlachos.lab.core.platform.SoundPlayer
 import dev.dimvlachos.lab.core.platform.playVaried
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
@@ -209,30 +216,37 @@ internal fun FrostCardScreen(
             if (state.onEvent === listener) state.onEvent = null
         }
     }
-    // The melt's hiss: one loop whose volume follows the thaw.
-    LaunchedEffect(state, sounds) {
-        val loop = sounds.loop(Sound.FrostHiss, 0f)
-        try {
-            snapshotFlow { state.frame }.collect { loop.setVolume(state.hiss) }
-        } finally {
-            loop.stop()
-        }
-    }
-    LaunchedEffect(state, lifecycle) {
+    LaunchedEffect(state, sounds, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            var last = 0L
-            while (true) {
-                // At rest the loop sleeps, until a touch, the switch or the script moves it.
-                if (!state.busy) {
-                    val seen = state.frame
-                    snapshotFlow { state.frame }.first { it != seen }
-                    last = 0L
+            // The melt's hiss: a loop while the thaw runs, its volume following it, and stopped
+            // with the loop when the screen is left.
+            var hiss: SoundLoop? = null
+            try {
+                var last = 0L
+                while (true) {
+                    // At rest the loop sleeps, until a touch, the switch or the script moves it.
+                    if (!state.busy) {
+                        val seen = state.frame
+                        snapshotFlow { state.frame }.first { it != seen }
+                        last = 0L
+                    }
+                    // Frozen over and still, only the glints move: a calmer 30 frames a second.
+                    if (state.resting) delay(33)
+                    withFrameNanos { now ->
+                        val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
+                        last = now
+                        state.step(dt)
+                    }
+                    if (state.hiss > .01f) {
+                        val loop = hiss ?: sounds.loop(Sound.FrostHiss, 0f).also { hiss = it }
+                        loop.setVolume(state.hiss)
+                    } else if (hiss != null) {
+                        hiss?.stop()
+                        hiss = null
+                    }
                 }
-                withFrameNanos { now ->
-                    val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(.15f)
-                    last = now
-                    state.step(dt)
-                }
+            } finally {
+                hiss?.stop()
             }
         }
     }
@@ -272,22 +286,21 @@ internal fun FrostCardScreen(
                     Modifier.fillMaxWidth()
                         .aspectRatio(1.586f)
                         .onGloballyPositioned {
-                            val b = it.boundsInRoot()
+                            // Its own size, not its clipped bounds: a clip or a scale in a
+                            // transition must not grow the frost again.
+                            val at = it.positionInRoot()
                             val d = density.density
-                            layout.card =
-                                Rect(
-                                    (b.left - origin.x) / d,
-                                    (b.top - origin.y) / d,
-                                    (b.right - origin.x) / d,
-                                    (b.bottom - origin.y) / d,
-                                )
-                            state.layout(
-                                b.width / d,
-                                b.height / d,
-                                layout.height - layout.card.top,
-                            )
+                            val w = it.size.width / d
+                            val h = it.size.height / d
+                            val x = (at.x - origin.x) / d
+                            val y = (at.y - origin.y) / d
+                            layout.card = Rect(x, y, x + w, y + h)
+                            state.layout(w, h, layout.height - y)
                         }
-                        .semantics { contentDescription = cardLabel }
+                        .semantics {
+                            contentDescription = cardLabel
+                            role = Role.Image
+                        }
                         .pointerInput(state) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -295,23 +308,27 @@ internal fun FrostCardScreen(
                                     down.position.x / density.density,
                                     down.position.y / density.density,
                                 )
-                                while (true) {
-                                    val e = awaitPointerEvent()
-                                    val ch = e.changes.firstOrNull { it.id == down.id } ?: break
-                                    if (!ch.pressed) break
-                                    state.pressMove(
-                                        ch.position.x / density.density,
-                                        ch.position.y / density.density,
-                                    )
-                                    ch.consume()
+                                // A cancelled gesture lets go too, as a pointercancel does.
+                                try {
+                                    while (true) {
+                                        val e = awaitPointerEvent()
+                                        val ch = e.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!ch.pressed) break
+                                        state.pressMove(
+                                            ch.position.x / density.density,
+                                            ch.position.y / density.density,
+                                        )
+                                        ch.consume()
+                                    }
+                                } finally {
+                                    state.pressEnd()
                                 }
-                                state.pressEnd()
                             }
                         },
                 )
             }
             Account(colors, short)
-            FreezeRow(state, layout, colors, origin, onToggle)
+            FreezeRow(state, layout, colors, origin, state.reducedMotion, onToggle)
             if (!short) Hint(frozen, colors)
             Activity(frozen, colors, Modifier.weight(1f))
             Tabs(colors)
@@ -319,6 +336,7 @@ internal fun FrostCardScreen(
         Canvas(Modifier.fillMaxSize()) {
             state.frame
             if (state.growth == null) return@Canvas
+            state.floor(size.height / density.density - layout.card.top)
             drawIntoCanvas { canvas ->
                 val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
                 c.scale(density.density, density.density)
@@ -414,33 +432,46 @@ private fun FreezeRow(
     layout: FrostCardLayout,
     colors: FrostCardScreenColors,
     origin: Offset,
+    reducedMotion: Boolean,
     onToggle: () -> Unit,
 ) {
     val frozen = state.frozen
-    val slow = tween<Color>(800)
-    val border by
+    // The fades are read while drawing, so they redraw the row without composing it again.
+    val slow: AnimationSpec<Color> = if (reducedMotion) snap() else tween(800)
+    val border =
         animateColorAsState(if (frozen) colors.ice.copy(alpha = .7f) else colors.line, slow)
-    val tile by
+    val tile =
         animateColorAsState(if (frozen) colors.ice.copy(alpha = .3f) else colors.background, slow)
-    val glyph by
+    val glyph =
         animateColorAsState(if (frozen) FrostCardScreenColors.IceInk else colors.muted, slow)
     val label = stringResource(Res.string.frostcard_freeze)
     Row(
         Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp)
             .fillMaxWidth()
-            .background(colors.card, RoundedCornerShape(14.dp))
-            .border(1.dp, border, RoundedCornerShape(14.dp))
+            .drawBehind {
+                val r = CornerRadius(14.dp.toPx())
+                drawRoundRect(colors.card, cornerRadius = r)
+                val w = 1.dp.toPx()
+                drawRoundRect(
+                    border.value,
+                    topLeft = Offset(w / 2, w / 2),
+                    size = Size(size.width - w, size.height - w),
+                    cornerRadius = CornerRadius(r.x - w / 2),
+                    style = Stroke(w),
+                )
+            }
             .toggleable(value = frozen, role = Role.Switch, onValueChange = { onToggle() })
-            .semantics { contentDescription = label }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(34.dp).background(tile, RoundedCornerShape(10.dp)), Alignment.Center) {
-            Canvas(Modifier.size(20.dp)) {
-                val k = size.width / 24f
+        Canvas(Modifier.size(34.dp)) {
+            drawRoundRect(tile.value, cornerRadius = CornerRadius(10.dp.toPx()))
+            val k = 20.dp.toPx() / 24f
+            val o = 7.dp.toPx()
+            translate(o, o) {
                 scale(k, k, pivot = Offset.Zero) {
-                    drawPath(Flake, glyph, style = Stroke(1.7f, cap = StrokeCap.Round))
+                    drawPath(Flake, glyph.value, style = Stroke(1.7f, cap = StrokeCap.Round))
                 }
             }
         }
@@ -464,6 +495,7 @@ private fun FreezeRow(
         Switch(
             frozen,
             colors,
+            reducedMotion,
             Modifier.onGloballyPositioned {
                 val b = it.boundsInRoot()
                 val d = density
@@ -476,16 +508,22 @@ private fun FreezeRow(
 // The switch: a track that turns ice blue, and a knob that slides over with the prototype's
 // cubic-bezier(.65,0,.35,1) (0.42 s, softened to 0.55) and frosts over.
 @Composable
-private fun Switch(on: Boolean, colors: FrostCardScreenColors, modifier: Modifier) {
-    val track by animateColorAsState(if (on) colors.ice else colors.track, tween(700))
+private fun Switch(
+    on: Boolean,
+    colors: FrostCardScreenColors,
+    reducedMotion: Boolean,
+    modifier: Modifier,
+) {
+    fun <T> spec(t: AnimationSpec<T>): AnimationSpec<T> = if (reducedMotion) snap() else t
+    val track by animateColorAsState(if (on) colors.ice else colors.track, spec(tween(700)))
     val x by
         animateFloatAsState(
             if (on) 1f else 0f,
-            tween(550, easing = CubicBezierEasing(.65f, 0f, .35f, 1f)),
+            spec(tween(550, easing = CubicBezierEasing(.65f, 0f, .35f, 1f))),
         )
-    val frost by animateFloatAsState(if (on) 1f else 0f, tween(900, easing = FastOutSlowInEasing))
-    val flake by
-        animateFloatAsState(if (on) 1f else 0f, tween(1200, delayMillis = if (on) 200 else 0))
+    val frost by
+        animateFloatAsState(if (on) 1f else 0f, spec(tween(900, easing = FastOutSlowInEasing)))
+    val flake by animateFloatAsState(if (on) 1f else 0f, spec(tween(1200, delayMillis = 200)))
     Canvas(modifier.size(52.dp, 32.dp).clearAndSetSemantics {}) {
         val d = density
         drawRoundRect(track, cornerRadius = androidx.compose.ui.geometry.CornerRadius(16 * d))
