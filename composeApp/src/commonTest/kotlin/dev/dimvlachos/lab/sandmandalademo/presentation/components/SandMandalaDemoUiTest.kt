@@ -97,6 +97,37 @@ class SandMandalaDemoUiTest {
         assertTrue(!history.snackOn)
     }
 
+    // The other ways in and out: Keep history sends the mandala home, a brush across the rows
+    // clears them again, and a short stroke only smears the mandala, which stays.
+    @Test
+    fun theScriptKeepsBrushesAndSmears() = runComposeUiTest {
+        val state = DemoState()
+        lateinit var history: SandMandalaState
+        lateinit var scope: CoroutineScope
+        setContent {
+            scope = rememberCoroutineScope()
+            history = rememberSandMandala()
+            Phone { SandMandalaDemo(state, history, reducedMotion = false) }
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        scope.launch {
+            state.tapControl(SandMandalaDemos.Clear)
+            state.tapControl(SandMandalaDemos.Keep)
+        }
+        advance(5_000)
+        assertEquals(SandAt.Mandala, history.at)
+        advance(6_000)
+        assertEquals(SandAt.Rows, history.at)
+        scope.launch { state.tapControl(SandMandalaDemos.Brush) }
+        advance(7_000)
+        assertEquals(SandAt.Mandala, history.at)
+        scope.launch { state.tapControl(SandMandalaDemos.Smear) }
+        advance(5_000)
+        assertEquals(SandAt.Mandala, history.at)
+        assertTrue(!history.snackOn)
+    }
+
     // Where the list starts under the bar and the search field: the bar's 52 dp and the field's 46.
     private fun listTop(history: SandMandalaState) = if (history.short) 52f else 98f
 

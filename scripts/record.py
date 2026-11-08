@@ -34,7 +34,9 @@ OUT = ROOT / "out"
 APP_ID = "dev.dimvlachos.lab"
 ACTIVITY = f"{APP_ID}/.MainActivity"
 DEVICE_FILE = "/sdcard/compose-lab-demo.mp4"
-MAX_BYTES = 5 * 1024 * 1024
+# A clip's size cap, raised per clip with --max-mb when its motion can't fit (20,000 grains of sand
+# stay over 11 MB at CRF 34).
+MAX_MB = 5
 # Recording plays the script twice (a warm-up run, then the recorded one), so a 30 s script needs
 # over a minute before its done marker.
 MARKER_TIMEOUT_S = 120
@@ -289,8 +291,8 @@ def record_ios(demo_id, label, raw):
     return start, done
 
 
-def encode(raw, start, done, dest, landscape, tall, sound=False):
-    """Cut [start, done], crop the centred stage (4:5, 9:16 for a tall demo, or 16:9 in landscape) and raise the CRF until the clip fits in MAX_BYTES.
+def encode(raw, start, done, dest, landscape, tall, sound=False, max_mb=MAX_MB):
+    """Cut [start, done], crop the centred stage (4:5, 9:16 for a tall demo, or 16:9 in landscape) and raise the CRF until the clip fits in max_mb.
 
     Recorders only write a frame when the screen changes, so still holds are gaps in the raw file.
     fps=60 runs over the whole stream first to fill those gaps with the frame on screen, then the
@@ -324,10 +326,10 @@ def encode(raw, start, done, dest, landscape, tall, sound=False):
             "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-movflags", "+faststart", str(dest),
         ])
         size = dest.stat().st_size
-        if size <= MAX_BYTES:
+        if size <= max_mb * 1024 * 1024:
             return size
         if crf >= 34:
-            sys.exit(f"{dest.name} is still {size / 1e6:.1f} MB at CRF {crf}; shorten the demo script")
+            sys.exit(f"{dest.name} is still {size / 1e6:.1f} MB at CRF {crf}; shorten the demo script or raise --max-mb")
         crf += 2
 
 
@@ -340,6 +342,7 @@ def main():
     frame.add_argument("--landscape", action="store_true", help="the demo runs in landscape: a 16:9 clip (Android only)")
     frame.add_argument("--tall", action="store_true", help="the demo has a tall stage: a 9:16 clip")
     parser.add_argument("--sound", action="store_true", help="keep the phone's sound, recorded with scrcpy (Android only)")
+    parser.add_argument("--max-mb", type=float, default=MAX_MB, help=f"the clip's size cap in MB (default {MAX_MB})")
     args = parser.parse_args()
     if args.sound and (args.platform == "ios" or args.landscape):
         sys.exit("--sound records on Android only, in portrait")
@@ -362,7 +365,7 @@ def main():
     except SystemExit:
         raw.unlink(missing_ok=True)
         raise
-    size = encode(raw, start, done, dest, args.landscape, args.tall, args.sound)
+    size = encode(raw, start, done, dest, args.landscape, args.tall, args.sound, args.max_mb)
     raw.unlink()
     print(f"{dest.relative_to(ROOT)}  {done - start:.1f}s  {size / 1e6:.1f} MB")
 

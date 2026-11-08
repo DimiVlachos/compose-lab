@@ -13,9 +13,10 @@ import dev.dimvlachos.lab.core.presentation.components.sandmandala.SandPlaces
 import kotlinx.coroutines.delay
 
 /**
- * The script's hand on the History screen, as the prototype's demo moves its finger: it taps Clear
- * history, sweeps the finished mandala through the same brush a finger makes, and taps Undo. Points
- * are in the screen's dp; [at], [shown] and [down] are for drawing the fingertip.
+ * The script's hand on the History screen, every way in and out: it taps Clear history and then
+ * Keep history, clears again by brushing across the rows, smears the mandala with a short stroke,
+ * sweeps it away through the same brush a finger makes, and taps Undo. Points are in the screen's
+ * dp; [at], [shown] and [down] are for drawing the fingertip.
  */
 @Stable
 internal class SandMandalaHand(
@@ -47,6 +48,9 @@ internal class SandMandalaHand(
         history.scripted = true
         when (control) {
             SandMandalaDemos.Clear -> clear()
+            SandMandalaDemos.Keep -> keep()
+            SandMandalaDemos.Brush -> brush()
+            SandMandalaDemos.Smear -> smear()
             SandMandalaDemos.Sweep -> sweep()
             SandMandalaDemos.Undo -> undo()
         }
@@ -65,11 +69,74 @@ internal class SandMandalaHand(
         hide()
     }
 
-    // Once the mandala is finished and seen, one unhurried sweep from its top left to its bottom
-    // right, curving through the centre.
-    private suspend fun sweep() {
+    // Once the mandala is finished and seen, the same button, now Keep history: every grain goes
+    // home into its row.
+    private suspend fun keep() {
+        waitFor { history.at == SandAt.Mandala }
+        delay(SandMandalaDemos.SeeKeepMs)
+        if (history.at != SandAt.Mandala) return
+        at = Offset(screenW * .84f, screenH * .2f)
+        show()
+        tap(places.clear)
+        if (stopped) return
+        history.keep()
+        move(Offset(screenW * .7f, screenH * .5f), SandMandalaDemos.AsideMs)
+        hide()
+    }
+
+    // Back in the rows, a finger brushes across the third one, left to right: past 70 dp the
+    // history clears, as from the button.
+    private suspend fun brush() {
+        waitFor { history.at == SandAt.Rows && history.n > 0 }
+        delay(SandMandalaDemos.SeeRowsMs)
+        if (history.at != SandAt.Rows || history.n == 0) return
+        val o = places.list
+        val y = o.y + history.rowTop(2) + history.rowH / 2
+        at = Offset(o.x + history.width * .18f, y)
+        show()
+        delay(SandMandalaDemos.RestMs)
+        if (stopped) return
+        down = true
+        brushing = true
+        history.brushDown(at.x - o.x, at.y - o.y, scripted = true)
+        move(Offset(o.x + history.width * .82f, y + 6f), SandMandalaDemos.BrushMs)
+        down = false
+        brushing = false
+        history.brushUp(scripted = true)
+        move(Offset(screenW * .84f, screenH * .2f), SandMandalaDemos.AsideMs)
+        hide()
+    }
+
+    // On the new mandala, a short stroke low across it, well under half its width: the sand
+    // smears and piles up along it, and stays.
+    private suspend fun smear() {
         waitFor { history.at == SandAt.Mandala }
         delay(SandMandalaDemos.SeeMandalaMs)
+        if (history.at != SandAt.Mandala) return
+        val o = places.list
+        val cx = history.cx
+        val cy = history.cy
+        val r = history.r
+        at = Offset(o.x + cx - r * .5f, o.y + cy + r * .38f)
+        show()
+        delay(SandMandalaDemos.RestMs)
+        if (stopped) return
+        down = true
+        brushing = true
+        history.brushDown(at.x - o.x, at.y - o.y, scripted = true)
+        delay(SandMandalaDemos.GripMs)
+        move(Offset(o.x + cx - r * .1f, o.y + cy + r * .3f), SandMandalaDemos.LegMs)
+        down = false
+        brushing = false
+        history.brushUp(scripted = true)
+        move(Offset(o.x + cx - r * .7f, o.y + cy - r * .7f), SandMandalaDemos.SweepAsideMs)
+    }
+
+    // Right after the smear, one unhurried sweep from the mandala's top left to its bottom right,
+    // curving through the centre.
+    private suspend fun sweep() {
+        waitFor { history.at == SandAt.Mandala }
+        delay(SandMandalaDemos.SeeSmearMs)
         if (history.at != SandAt.Mandala) return
         val o = places.list
         val cx = history.cx

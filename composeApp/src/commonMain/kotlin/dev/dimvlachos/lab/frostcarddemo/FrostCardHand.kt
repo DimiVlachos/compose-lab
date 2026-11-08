@@ -12,9 +12,10 @@ import dev.dimvlachos.lab.core.presentation.components.frostcard.FrostCardState
 import kotlinx.coroutines.delay
 
 /**
- * The script's finger on the card screen, as the prototype's demo moves it: it taps the Freeze card
- * switch, then rests a thumb on the frozen card, drifting a little, until the card is clear. Points
- * are in the screen's dp; [at], [shown] and [down] are for drawing the fingertip.
+ * The script's finger on the card screen, every way in and out: it holds the warm card until it
+ * freezes, rests a thumb on it and lets go early so the ice closes back in, thaws it for good, then
+ * flips the Freeze card switch on and off, which thaws it from the middle by itself. Points are in
+ * the screen's dp; [at], [shown] and [down] are for drawing the fingertip.
  */
 @Stable
 internal class FrostCardHand(
@@ -36,14 +37,70 @@ internal class FrostCardHand(
     /** Plays the scripted step [control], one of [FrostCardDemos]'. */
     suspend fun play(control: String) {
         when (control) {
-            FrostCardDemos.Freeze -> freeze()
+            FrostCardDemos.Hold -> hold()
+            FrostCardDemos.Peek -> peek()
             FrostCardDemos.Thaw -> thaw()
+            FrostCardDemos.Freeze -> freeze()
+            FrostCardDemos.Unfreeze -> unfreeze()
         }
+    }
+
+    // From low on the screen to the warm card, held past the half second that freezes it, and
+    // aside as the frost grows.
+    private suspend fun hold() {
+        if (card.frozen) return
+        val c = layout.card
+        val hx = c.left + c.width * .62f
+        val hy = c.top + c.height * .5f
+        at = Offset(layout.width * .62f, layout.height * .9f)
+        animate(200) { shown = it }
+        move(Offset(hx, hy), FrostCardDemos.ToCardMs - 200)
+        down = true
+        pressing = true
+        card.pressStart(hx - c.left, hy - c.top, scripted = true)
+        delay(FrostCardDemos.HoldFreezeMs)
+        down = false
+        release()
+        move(Offset(layout.width * .74f, layout.height * .86f), FrostCardDemos.LiftAsideMs)
+        hide()
+    }
+
+    // Once it has frozen over, a thumb on the card long enough to open a warm hole, then lifted
+    // early: the ice closes back in.
+    private suspend fun peek() {
+        if (!waitFrozen()) return
+        val c = layout.card
+        val hx = c.left + c.width * .3f
+        val hy = c.top + c.height * .45f
+        at = Offset(layout.width * .74f, layout.height * .86f)
+        animate(200) { shown = it }
+        move(Offset(hx, hy), FrostCardDemos.ToCardMs - 200)
+        down = true
+        pressing = true
+        card.pressStart(hx - c.left, hy - c.top, scripted = true)
+        delay(FrostCardDemos.PeekMs)
+        down = false
+        release()
+        move(Offset(layout.width * .74f, layout.height * .86f), FrostCardDemos.LiftAsideMs)
+        hide()
     }
 
     // From low on the screen to the switch, a press, the flip, and aside.
     private suspend fun freeze() {
         if (card.frozen) return
+        flip()
+    }
+
+    // Once the switched frost has covered the card and been seen, the switch again: it thaws from
+    // the middle by itself.
+    private suspend fun unfreeze() {
+        if (!waitFrozen()) return
+        delay(FrostCardDemos.SeeFrozenMs)
+        if (!card.frozen) return
+        flip()
+    }
+
+    private suspend fun flip() {
         val w = layout.width
         val h = layout.height
         at = Offset(w * .62f, h * .9f)
@@ -57,14 +114,17 @@ internal class FrostCardHand(
         hide()
     }
 
-    // Once the card has frozen over, the thumb comes to rest on it at (.4, .56) and drifts a
-    // little, held until the card is clear, then lifts and goes aside.
+    // Once the ice has closed back in, the thumb comes to rest on the card at (.4, .56) and
+    // drifts a little, held until the card is clear, then lifts and goes aside.
     private suspend fun thaw() {
+        if (!waitFrozen()) return
+        // After the early lift, the hole has closed up again and been seen.
         var waited = 0L
-        while (card.frozen && card.f < 1f && waited < 6000L) {
+        while (card.r > 0f && waited < 5000L) {
             delay(40)
             waited += 40
         }
+        delay(FrostCardDemos.SeeClosedMs)
         if (!card.frozen) return
         val c = layout.card
         val hx = c.left + c.width * .4f
@@ -85,6 +145,16 @@ internal class FrostCardHand(
         release()
         move(Offset(layout.width * .74f, layout.height * .86f), FrostCardDemos.LiftAsideMs)
         hide()
+    }
+
+    // Waits up to 6 s for the card to be frozen all over, and says whether it is.
+    private suspend fun waitFrozen(): Boolean {
+        var waited = 0L
+        while (!(card.frozen && card.f >= 1f) && waited < 6000L) {
+            delay(40)
+            waited += 40
+        }
+        return card.frozen && card.f >= 1f
     }
 
     private fun release() {

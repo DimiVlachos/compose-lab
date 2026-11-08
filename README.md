@@ -1304,6 +1304,7 @@ scripts/gif.sh navbar.all                          # docs/media/navbar.all.gif
 scripts/record.py android book.turn --landscape    # a landscape demo: 1920×1080 (Android only)
 scripts/record.py android feed.fishing --tall      # a tall demo: 1080×1920
 scripts/record.py android smoke.delete --tall --sound   # keeps the phone's sound, through scrcpy (Android, portrait; any ringer setting; refused if anything else plays)
+scripts/record.py android sandmandala.history --tall --sound --max-mb 15   # a clip whose motion can't fit in 5 MB
 ```
 
 Needs Python 3 and ffmpeg.
