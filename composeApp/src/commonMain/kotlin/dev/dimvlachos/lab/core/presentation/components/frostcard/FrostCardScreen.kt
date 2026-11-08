@@ -496,6 +496,8 @@ private fun FreezeRow(
                     style = Stroke(w),
                 )
             }
+            // The ripple stays inside the row's rounded corners.
+            .clip(RoundedCornerShape(14.dp))
             .toggleable(value = frozen, role = Role.Switch, onValueChange = { onToggle() })
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
