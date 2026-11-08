@@ -1963,8 +1963,10 @@ def main():
     write("spider_empty", spider_empty(spider, fast), fast)
     for name, clip in grave_clips(random.Random(1028), fast).items():
         write(name, clip, fast)
-    for name, clip in sand_clips(random.Random(1108), fast).items():
-        write(name, clip, fast)
+    # At 22050 Hz: the hiss sits at 5.2 kHz and the bowls under 1.1 kHz, and the bowl's 3.6 s stay
+    # under the clip size limit.
+    for name, clip in sand_clips(random.Random(1108), soft).items():
+        write(name, clip, soft)
     lantern = random.Random(1028)
     write("lantern_strike", lantern_strike(lantern, fast), fast)
     write("lantern_catch", lantern_catch(lantern, fast), fast)

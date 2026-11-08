@@ -43,6 +43,9 @@ internal class SandMandalaScreenColors(
                 0xB8325C,
             )
 
+        /** [Sites] as colours, for the favicons. */
+        val SiteColors: List<Color> = Sites.map { Color(0xFF000000 or it.toLong()) }
+
         /** A favicon's letter. */
         val FavInk = Color(0xF2FFFFFF)
 

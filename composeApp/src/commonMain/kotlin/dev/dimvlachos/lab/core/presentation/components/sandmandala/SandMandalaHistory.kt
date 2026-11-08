@@ -144,9 +144,7 @@ internal fun SandMandalaHistory(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val measurer = rememberTextMeasurer(cacheSize = 48)
     val painter = remember { SandMandalaPainter() }
-    val pigments = remember {
-        SandMandalaScreenColors.Sites.map { Color(0xFF000000 or it.toLong()) }
-    }
+    val pigments = SandMandalaScreenColors.SiteColors
 
     // What to say: cleared first, as the prototype's say() does, so the same words twice are heard.
     var said by remember { mutableStateOf("") }
