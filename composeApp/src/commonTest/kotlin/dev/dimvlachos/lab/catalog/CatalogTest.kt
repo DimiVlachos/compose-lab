@@ -17,6 +17,7 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_bathroom
 import dev.dimvlachos.lab.resources.demo_fog_reflection
 import dev.dimvlachos.lab.resources.demo_frenchpress
+import dev.dimvlachos.lab.resources.demo_frostcard
 import dev.dimvlachos.lab.resources.demo_graveundo
 import dev.dimvlachos.lab.resources.demo_jackolantern
 import dev.dimvlachos.lab.resources.demo_keyhook
@@ -95,6 +96,7 @@ class CatalogTest {
                 "spider.refresh",
                 "graveundo.undo",
                 "jackolantern.theme",
+                "frostcard.freeze",
             ),
             Catalog.demos.map { it.id },
         )
@@ -137,6 +139,7 @@ class CatalogTest {
                 Res.string.demo_spider,
                 Res.string.demo_graveundo,
                 Res.string.demo_jackolantern,
+                Res.string.demo_frostcard,
             ),
             Catalog.demos.map { it.title },
         )
@@ -231,6 +234,7 @@ class CatalogTest {
                 "spider.refresh",
                 "graveundo.undo",
                 "jackolantern.theme",
+                "frostcard.freeze",
             ),
             Catalog.entries.filterIsInstance<CatalogEntry.Single>().map { it.demo.id },
         )

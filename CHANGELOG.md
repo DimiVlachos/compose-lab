@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Frost freeze card** (`frostcard`): a bank card's Freeze card switch that really freezes the card. Fern frost grows in from the edges, corners first, until the colour drains to a cold blue-white and the numbers mist over; hold your thumb on the frozen card and a warm circle opens and grows, the ice melts into beads that slide, merge and drip off the bottom edge, and the card is unfrozen. Let go early and the frost closes back in; switching it off thaws it from the middle. Synthesized chime, crackle, hiss and drips, with a confirm felt when it sets and clears; a switch and live announcements for screen readers. Its demo is a Juniper debit card.
+
 ## [0.3.0] - 2026-10-28
 
 Three Halloween components, and demo clips that show every way in and out.
