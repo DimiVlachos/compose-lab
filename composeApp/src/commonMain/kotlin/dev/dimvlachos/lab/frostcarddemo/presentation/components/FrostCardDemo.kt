@@ -17,6 +17,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import dev.dimvlachos.lab.core.demo.DemoState
@@ -95,7 +96,7 @@ internal fun FrostCardDemo(
                 .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
     Box(Modifier.fillMaxSize().windowInsetsPadding(insets)) {
         FrostCardScreen(card, layout, colors, sounds, toggle, Modifier.fillMaxSize())
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             val a = hand.shown
             if (a <= 0f) return@Canvas
             val at = hand.at * density

@@ -1,6 +1,9 @@
 package dev.dimvlachos.lab.core.presentation.components.frostcard
 
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -13,12 +16,16 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import dev.dimvlachos.lab.core.presentation.canvas2d.Canvas2D
 import dev.dimvlachos.lab.core.presentation.canvas2d.freeze
 import dev.dimvlachos.lab.core.presentation.canvas2d.imageBitmapOf
 import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -48,14 +55,15 @@ internal class FrostCardPainter(
     private var card: ImageBitmap? = null
     private var shadow: ImageBitmap? = null
 
-    // The frost layer once every segment is in, copied into a frozen bitmap: a changeable one is
-    // copied by Skia each time it is drawn.
-    private var frostDone: ImageBitmap? = null
+    // The whole frost, every segment drawn once; when each spot of it is born, a dp to a pixel
+    // (alpha is the moment the front reaches it); and the finished ice, baked whole.
+    private var frostFull: ImageBitmap? = null
+    private var bornMap: ImageBitmap? = null
+    private var ice: ImageBitmap? = null
+    private val revealPaint = Paint().apply { blendMode = BlendMode.DstIn }
+    private val revealMatrix = FloatArray(20)
     private var cold: ImageBitmap? = null
-    private var frost: Canvas2D? = null
     private var growth: FrostGrowth? = null
-    private var drawnIdx = 0
-    private var drawnF = -1f
     private var hazeF = -1f
     private var haze: ImageBitmap? = null
     private var hazePixels = IntArray(0)
@@ -72,6 +80,7 @@ internal class FrostCardPainter(
         }
     private val imagePaint = Paint()
     private val hole = Path()
+    private val clip = Path()
 
     /** Bakes the card and its cold copy and makes the frost layer, for a card of [w] by [h] dp. */
     private fun build(w: Float, h: Float, g: FrostGrowth) {
@@ -110,6 +119,8 @@ internal class FrostCardPainter(
         sh.shadowOffsetY = 2f
         cardPath(sh, w, h, cr)
         sh.fill()
+        // The card itself on its shadow, so the two are one image drawn once a frame.
+        sh.drawImage(c.bitmap, 0f, 0f, w, h)
         shadow = sh.bitmap.also { it.freeze() }
         // The cold card: colour drained, cooled, a little lighter. Frost reveals it where it forms.
         val coldImage = ImageBitmap(pw, ph)
@@ -126,13 +137,11 @@ internal class FrostCardPainter(
         k.fillRect(0f, 0f, pw.toFloat(), ph.toFloat())
         coldImage.freeze()
         cold = coldImage
-        frost = Canvas2D.create(pw, ph)
-        frostDone = null
-        drawnIdx = 0
-        drawnF = -1f
         hazeF = -1f
         hazePixels = IntArray(g.gw * g.gh)
         if (glint == null) bakeSprites()
+        bakeFrost(g, pw, ph)
+        bakeIce(g, pw, ph)
     }
 
     // A glint's glow, and a bead's lens (warm and on ice), each drawn once at 64 px and then
@@ -374,61 +383,124 @@ internal class FrostCardPainter(
         c.endLayer()
     }
 
-    // ---------- The frost, drawn as it arrives ----------
+    // ---------- The frost, grown once and revealed as it arrives ----------
 
-    private fun updateFrostLayer(f: Float) {
-        val c = frost ?: return
-        val g = growth ?: return
-        if (f < drawnF || drawnF < 0f) {
-            c.setTransform(1f, 0f, 0f, 1f, 0f, 0f)
-            c.clearRect(0f, 0f, c.width.toFloat(), c.height.toFloat())
-            drawnIdx = 0
-            frostDone = null
-        }
-        drawnF = f
-        val i = drawnIdx
-        var j = i
-        while (j < g.count && g.born[j] <= f) j++
-        if (j == i) return
-        drawnIdx = j
+    // Every segment, drawn once in the prototype's passes: a shade under each generation, the
+    // light over it, and the bright core of the main spines.
+    private fun bakeFrost(g: FrostGrowth, pw: Int, ph: Int) {
+        val c = Canvas2D.create(pw, ph)
         c.setTransform(density, 0f, 0f, density, 0f, 0f)
         c.lineCap = "round"
         for (pass in 0 until 2) for (gen in 0 until 4) {
             c.beginPath()
-            var any = false
             val ox = if (pass == 1) 0f else .45f
             val oy = if (pass == 1) 0f else .65f
-            for (k in i until j) {
+            for (k in 0 until g.count) {
                 if (g.gen[k] != gen) continue
-                any = true
                 c.moveTo(g.x1[k] + ox, g.y1[k] + oy)
                 c.lineTo(g.x2[k] + ox, g.y2[k] + oy)
             }
-            if (!any) continue
             c.lineWidth = GenWidth[gen] + if (pass == 1) 0f else .5f
             c.strokeStyle = if (pass == 1) GenLight[gen] else GenShade[gen]
             c.stroke()
         }
-        // The spines catch the light: a brighter core on the main ferns.
         c.beginPath()
-        var any = false
-        for (k in i until j) {
+        for (k in 0 until g.count) {
             if (g.gen[k] != 0) continue
-            any = true
             c.moveTo(g.x1[k] - .2f, g.y1[k] - .2f)
             c.lineTo(g.x2[k] - .2f, g.y2[k] - .2f)
         }
-        if (any) {
-            c.lineWidth = .55f
-            c.strokeStyle = SpineCore
-            c.stroke()
+        c.lineWidth = .55f
+        c.strokeStyle = SpineCore
+        c.stroke()
+        frostFull = c.bitmap.also { it.freeze() }
+        // When each dp of it is born: the earliest segment passing within a dp of it. Drawn with
+        // a colour matrix that turns that moment into how far the front is past it, it reveals
+        // the frost needle by needle, on the GPU, with nothing uploaded per frame.
+        val bw = ceil(cw).toInt()
+        val bh = ceil(ch).toInt()
+        val born = FloatArray(bw * bh) { 1f }
+        for (k in 0 until g.count) {
+            val len = hypot(g.x2[k] - g.x1[k], g.y2[k] - g.y1[k])
+            val n = (len / .5f).toInt() + 1
+            for (j in 0..n) {
+                val t = j.toFloat() / n
+                val x = (g.x1[k] + (g.x2[k] - g.x1[k]) * t).toInt()
+                val y = (g.y1[k] + (g.y2[k] - g.y1[k]) * t).toInt()
+                for (yy in y - 1..y + 1) for (xx in x - 1..x + 1) {
+                    if (xx < 0 || yy < 0 || xx >= bw || yy >= bh) continue
+                    val i = yy * bw + xx
+                    if (g.born[k] < born[i]) born[i] = g.born[k]
+                }
+            }
         }
-        if (drawnIdx == g.count) {
-            val done = ImageBitmap(c.width, c.height)
-            Canvas(done).drawImage(c.bitmap, Offset.Zero, imagePaint.apply { alpha = 1f })
-            done.freeze()
-            frostDone = done
+        val px = IntArray(bw * bh) { (born[it] * 255).roundToInt().coerceIn(0, 255) shl 24 }
+        bornMap = imageBitmapOf(px, bw, bh)
+    }
+
+    // The finished ice, as the frame's composite draws it when the front has reached everywhere,
+    // baked once: a frozen card at rest is then one bitmap.
+    private fun bakeIce(g: FrostGrowth, pw: Int, ph: Int) {
+        val c = Canvas2D.create(pw, ph)
+        c.scale(density, density)
+        updateHaze(1f)
+        composeIce(c, 1f, g)
+        ice = c.bitmap.also { it.freeze() }
+        hazeF = -1f
+    }
+
+    // The ice at front [f]: the cold card where the haze has come, a milky film, the frost revealed
+    // to [f], the rim, all inside the card's shape. Draws into whatever layer [c] is in.
+    private fun composeIce(c: Canvas2D, f: Float, g: FrostGrowth) {
+        val cold = cold ?: return
+        val haze = haze ?: return
+        val frost = frostFull ?: return
+        val born = bornMap ?: return
+        c.drawImage(cold, 0f, 0f, cw, ch)
+        c.globalCompositeOperation = "destination-in"
+        c.drawImage(haze, 0f, 0f, cw, ch)
+        c.globalCompositeOperation = "source-over"
+        c.globalAlpha = .5f
+        c.drawImage(haze, 0f, 0f, cw, ch)
+        c.globalAlpha = 1f
+        if (f >= 1f) {
+            c.drawImage(frost, 0f, 0f, cw, ch)
+        } else {
+            c.beginLayer(0f, 0f, cw, ch)
+            c.drawImage(frost, 0f, 0f, cw, ch)
+            // alpha' = (f - born) / RevealWidth, in the matrix's 0..255 units.
+            val m = revealMatrix
+            m[18] = -1f / RevealWidth
+            m[19] = 255f * f / RevealWidth
+            revealPaint.colorFilter = ColorFilter.colorMatrix(ColorMatrix(m))
+            c.drawUnder { canvas ->
+                canvas.save()
+                canvas.scale(cw / born.width, ch / born.height)
+                canvas.drawImage(born, Offset.Zero, revealPaint)
+                canvas.restore()
+            }
+            c.endLayer()
         }
+        // A thin rim of ice along the edge.
+        val rim = smooth(0f, .25f, f)
+        c.save()
+        cardPath(c, cw, ch, cr)
+        c.clip()
+        c.lineWidth = 3.2f
+        c.strokeStyle = Color(238, 247, 255).copy(alpha = .55f * rim)
+        cardPath(c, cw, ch, cr)
+        c.stroke()
+        c.lineWidth = 1f
+        c.strokeStyle = Color.White.copy(alpha = .8f * rim)
+        c.beginPath()
+        c.roundRect(1.6f, 1.6f, cw - 3.2f, ch - 3.2f, cr - 1.6f)
+        c.stroke()
+        c.restore()
+        c.globalCompositeOperation = "destination-in"
+        c.fillStyle = Color.Black
+        cardPath(c, cw, ch, cr)
+        c.fill()
+        c.globalCompositeOperation = "source-over"
     }
 
     // The haze: where the front has been the card goes pale, a pixel per 4 dp cell. Remade only
@@ -447,56 +519,66 @@ internal class FrostCardPainter(
 
     // ---------- Drawing ----------
 
-    /**
-     * Draws the card at ([x], [y]) on [c] (in dp) with the frost, hole and water [s] holds, and the
-     * card's shadow under it.
-     */
-    fun draw(c: Canvas2D, s: FrostCardState, x: Float, y: Float) {
+    /** The card at ([x], [y]) on [c] (in dp), and its shadow, baking them first if need be. */
+    fun drawBase(c: Canvas2D, s: FrostCardState, x: Float, y: Float) {
         val g = s.growth ?: return
         if (g !== growth || card == null) build(s.cw, s.ch, g)
-        val card = card ?: return
+        if (card == null) return
         c.save()
         c.translate(x, y)
         shadow?.let {
             val m = ShadowMargin
             c.drawImage(it, -m, -m, cw + 2 * m, ch + 2 * m)
         }
-        c.drawImage(card, 0f, 0f, cw, ch)
-        if (s.f > 0f) drawIce(c, s, g)
-        drawWater(c, s)
         c.restore()
     }
 
-    private fun drawIce(c: Canvas2D, s: FrostCardState, g: FrostGrowth) {
-        updateFrostLayer(s.f)
-        updateHaze(s.f)
-        val cold = cold ?: return
-        val haze = haze ?: return
-        val frostImage = frostDone ?: frost?.bitmap ?: return
-        c.beginLayer(0f, 0f, cw, ch)
-        c.drawImage(cold, 0f, 0f, cw, ch)
-        c.globalCompositeOperation = "destination-in"
-        c.drawImage(haze, 0f, 0f, cw, ch)
-        c.globalCompositeOperation = "source-over"
-        c.globalAlpha = .5f
-        c.drawImage(haze, 0f, 0f, cw, ch)
-        c.globalAlpha = 1f
-        c.drawImage(frostImage, 0f, 0f, cw, ch)
-        // A thin rim of ice along the edge.
-        val rim = smooth(0f, .25f, s.f)
+    /**
+     * Whether the ice must be composed this frame, in a layer of its own ([composeLive]): while the
+     * frost grows, and while a hole is open in it. Frozen over and whole, it is the baked bitmap
+     * ([drawStill]).
+     */
+    fun live(s: FrostCardState): Boolean = s.f > 0f && (s.f < 1f || s.r > 0f || ice == null)
+
+    /**
+     * The part of the card the live ice covers, in its dp: all of it while the frost grows, and the
+     * box round the hole while one is open in finished ice, the rest drawn baked.
+     */
+    fun liveBox(s: FrostCardState): Rect {
+        if (s.f < 1f || ice == null) return Rect(0f, 0f, cw, ch)
+        val e = s.r * MaxHole + 8f
+        return Rect(
+            max(0f, floor(s.cx - e)),
+            max(0f, floor(s.cy - e)),
+            min(cw, ceil(s.cx + e)),
+            min(ch, ceil(s.cy + e)),
+        )
+    }
+
+    /**
+     * Pixels per dp the live ice is composed at: the screen's own once the frost has grown, and at
+     * most [GrowingDensity] while it grows, which moves too fast for the difference to show and
+     * costs a phone its frames at full density.
+     */
+    fun liveDensity(s: FrostCardState): Float =
+        if (s.f < 1f || ice == null) min(density, GrowingDensity) else density
+
+    /**
+     * The live ice within [box], drawn on [c] whose origin is the box's top left (in dp): the ice
+     * as far as the front has come, with the warm hole punched out of it. [c] must be a layer of
+     * its own, as the hole and masks take away from what is under them.
+     */
+    fun composeLive(c: Canvas2D, s: FrostCardState, box: Rect) {
+        val g = growth ?: return
         c.save()
-        cardPath(c, cw, ch, cr)
-        c.clip()
-        c.lineWidth = 3.2f
-        c.strokeStyle = Color(238, 247, 255).copy(alpha = .55f * rim)
-        cardPath(c, cw, ch, cr)
-        c.stroke()
-        c.lineWidth = 1f
-        c.strokeStyle = Color.White.copy(alpha = .8f * rim)
-        c.beginPath()
-        c.roundRect(1.6f, 1.6f, cw - 3.2f, ch - 3.2f, cr - 1.6f)
-        c.stroke()
-        c.restore()
+        c.translate(-box.left, -box.top)
+        val baked = ice
+        if (s.f >= 1f && baked != null) {
+            c.drawImage(baked, 0f, 0f, cw, ch)
+        } else {
+            updateHaze(s.f)
+            composeIce(c, s.f, g)
+        }
         if (s.r > 0f) {
             c.globalCompositeOperation = "destination-out"
             val gr = c.createRadialGradient(s.cx, s.cy, max(0f, s.r - 10), s.cx, s.cy, s.r + 7)
@@ -507,16 +589,61 @@ internal class FrostCardPainter(
             c.fill()
             c.globalCompositeOperation = "source-over"
         }
-        c.globalCompositeOperation = "destination-in"
-        c.fillStyle = Color.Black
-        cardPath(c, cw, ch, cr)
-        c.fill()
-        c.globalCompositeOperation = "source-over"
-        c.endLayer()
+        c.restore()
+    }
 
+    /**
+     * The baked ice at ([x], [y]), outside the live [box] if there is one (four strips round it),
+     * so the finished ice is drawn as one image and only the hole's box is composed.
+     */
+    fun drawStill(c: Canvas2D, s: FrostCardState, x: Float, y: Float, box: Rect?) {
+        if (s.f <= 0f) return
+        val baked = ice ?: return
         c.save()
-        cardPath(c, cw, ch, cr)
-        c.clip()
+        c.translate(x, y)
+        if (box == null) {
+            c.drawImage(baked, 0f, 0f, cw, ch)
+        } else if (s.f >= 1f) {
+            strip(c, baked, 0f, 0f, cw, box.top)
+            strip(c, baked, 0f, box.bottom, cw, ch - box.bottom)
+            strip(c, baked, 0f, box.top, box.left, box.height)
+            strip(c, baked, box.right, box.top, cw - box.right, box.height)
+        }
+        c.restore()
+    }
+
+    // The part of [image] (the card at density) at ([x], [y]) of [w] by [h] dp, in place.
+    private fun strip(c: Canvas2D, image: ImageBitmap, x: Float, y: Float, w: Float, h: Float) {
+        if (w <= 0f || h <= 0f) return
+        val k = image.width / cw
+        c.drawImage(image, x * k, y * k, w * k, h * k, x, y, w, h)
+    }
+
+    /** What lies on the ice and the card: the wet lip round the hole, the glints, the water. */
+    fun drawAbove(c: Canvas2D, s: FrostCardState, x: Float, y: Float) {
+        val g = growth ?: return
+        c.save()
+        c.translate(x, y)
+        if (s.f > 0f) drawOnIce(c, s, g)
+        drawWater(c, s)
+        c.restore()
+    }
+
+    private fun drawOnIce(c: Canvas2D, s: FrostCardState, g: FrostGrowth) {
+        // The lip can reach past the card's edge, so it is clipped to it; the glints never do, and
+        // a frozen card at rest is drawn with no clip.
+        // The clip is a plain rounded rectangle, which the GPU clips to cheaply; a path clip
+        // costs a mask every frame.
+        val raw = c.rawCanvas
+        raw.save()
+        if (s.r > 2f) {
+            clip.reset()
+            clip.addRoundRect(RoundRect(0f, 0f, cw, ch, CornerRadius(cr)))
+            // Moved to the canvas's own space: the adapter draws each thing under its matrix.
+            clip.transform(c.currentMatrix)
+            raw.clipPath(clip)
+        }
+        c.save()
         // The meniscus where the ice stops: a bright wet lip and a faint shadow outside it.
         if (s.r > 2f) {
             c.lineWidth = 2.2f
@@ -574,6 +701,7 @@ internal class FrostCardPainter(
             }
         }
         c.restore()
+        raw.restore()
     }
 
     // Draws [sprite] (64 px, centred) over a box of half-width [rx] and half-height [ry] at (x, y).
@@ -608,23 +736,27 @@ internal class FrostCardPainter(
         val bead = bead ?: return
         val icy = icyBead ?: return
         if (s.drops == 0 && s.streaks == 0) return
+        val d = density
         c.drawUnder { canvas ->
+            // In the screen's pixels, so each bead is one image rect drawn with no transform of
+            // its own.
+            canvas.save()
+            canvas.scale(1 / d, 1 / d)
             // Wet streaks left behind by running drops: wet metal reads a touch darker and
-            // richer, with a thin sheen on one side.
-            strokePaint.blendMode = BlendMode.SrcOver
+            // richer, with a thin sheen on one side. A streak is upright, so it is a rect, its
+            // round caps a half width past each end.
+            fillPaint.blendMode = BlendMode.SrcOver
             for (i in 0 until s.streaks) {
                 val a = s.slife[i].coerceIn(0f, 1f)
-                strokePaint.color = StreakDark.copy(alpha = .08f * a)
-                strokePaint.strokeWidth = s.sw[i]
-                canvas.drawLine(Offset(s.sx1[i], s.sy1[i]), Offset(s.sx2[i], s.sy2[i]), strokePaint)
-                strokePaint.color = StreakSheen.copy(alpha = .07f * a)
-                strokePaint.strokeWidth = s.sw[i] * .3f
-                val o = s.sw[i] * .3f
-                canvas.drawLine(
-                    Offset(s.sx1[i] - o, s.sy1[i]),
-                    Offset(s.sx2[i] - o, s.sy2[i]),
-                    strokePaint,
-                )
+                val w = s.sw[i]
+                val x = s.sx1[i]
+                val top = (s.sy1[i] - w / 2) * d
+                val bottom = (s.sy2[i] + w / 2) * d
+                fillPaint.color = StreakDark.copy(alpha = .08f * a)
+                canvas.drawRect((x - w / 2) * d, top, (x + w / 2) * d, bottom, fillPaint)
+                fillPaint.color = StreakSheen.copy(alpha = .07f * a)
+                val sx = x - w * .3f
+                canvas.drawRect((sx - w * .15f) * d, top, (sx + w * .15f) * d, bottom, fillPaint)
             }
             for (i in 0 until s.drops) {
                 val a = s.da[i]
@@ -638,21 +770,36 @@ internal class FrostCardPainter(
                         else -> 1 + (s.dvy[i] / 160f).coerceIn(0f, .45f)
                     }
                 val sx = 1 / sqrt(sy)
+                val x = s.dx[i]
+                val y = s.dy[i]
                 // Soft shadow on the card, then a lens: clear middle, dark lower rim, a bright
                 // caustic, a specular dot.
                 if (!fall) {
                     fillPaint.color = BeadShadow.copy(alpha = .16f * a)
                     canvas.drawOval(
-                        s.dx[i] + (.5f - r * 1.02f) * sx,
-                        s.dy[i] + (r * .35f - r * 1.02f) * sy,
-                        s.dx[i] + (.5f + r * 1.02f) * sx,
-                        s.dy[i] + (r * .35f + r * 1.02f) * sy,
+                        (x + (.5f - r * 1.02f) * sx) * d,
+                        (y + (r * .35f - r * 1.02f) * sy) * d,
+                        (x + (.5f + r * 1.02f) * sx) * d,
+                        (y + (r * .35f + r * 1.02f) * sy) * d,
                         fillPaint,
                     )
                 }
                 imagePaint.alpha = a
-                drawSprite(canvas, if (fr) icy else bead, s.dx[i], s.dy[i], r * sx, r * sy)
+                val hw = r * sx * d
+                val hh = r * sy * d
+                canvas.drawImageRect(
+                    if (fr) icy else bead,
+                    IntOffset.Zero,
+                    SpriteSize,
+                    IntOffset((x * d - hw).roundToInt(), (y * d - hh).roundToInt()),
+                    IntSize(
+                        (2 * hw).roundToInt().coerceAtLeast(1),
+                        (2 * hh).roundToInt().coerceAtLeast(1),
+                    ),
+                    imagePaint,
+                )
             }
+            canvas.restore()
         }
     }
 
@@ -661,6 +808,16 @@ internal class FrostCardPainter(
 
         // Room round the card for its baked shadow, in dp.
         const val ShadowMargin = 40f
+
+        // How far behind the front the frost fades in, in the front's units: about 3 dp.
+        const val RevealWidth = .012f
+        val SpriteSize = IntSize(64, 64)
+
+        // The widest the hole's wobbly edge gets, over its radius: 1 + .05 + .035 + .02.
+        const val MaxHole = 1.105f
+
+        // Pixels per dp the growing frost is composed at.
+        const val GrowingDensity = 2.5f
         const val HazeRgb = (236 shl 16) or (244 shl 8) or 252
 
         // The four generations' strokes: width, light alpha, shade alpha.

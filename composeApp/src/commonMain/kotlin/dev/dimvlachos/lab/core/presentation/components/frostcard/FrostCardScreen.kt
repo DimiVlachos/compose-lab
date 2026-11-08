@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -49,9 +48,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -59,6 +55,10 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.CompositingStrategy
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -82,6 +82,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -130,6 +133,7 @@ import dev.dimvlachos.lab.resources.frostcard_tx_5_when
 import dev.dimvlachos.lab.resources.frostcard_unfrozen_said
 import dev.dimvlachos.lab.resources.jetbrains_mono_semibold
 import dev.dimvlachos.lab.resources.pt_serif_bold_italic
+import kotlin.math.ceil
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -333,14 +337,46 @@ internal fun FrostCardScreen(
             Activity(frozen, colors, Modifier.weight(1f))
             Tabs(colors)
         }
-        Canvas(Modifier.fillMaxSize()) {
+        // In a layer of its own, so the card redrawing every frame leaves the screen's other
+        // drawing recorded as it was.
+        val iceLayer = rememberGraphicsLayer()
+        Canvas(Modifier.fillMaxSize().graphicsLayer()) {
             state.frame
             if (state.growth == null) return@Canvas
-            state.floor(size.height / density.density - layout.card.top)
+            val d = density.density
+            val x = layout.card.left
+            val y = layout.card.top
+            state.floor(size.height / d - y)
             drawIntoCanvas { canvas ->
                 val c = Canvas2D(canvas, size.width.toInt(), size.height.toInt())
-                c.scale(density.density, density.density)
-                painter.draw(c, state, layout.card.left, layout.card.top)
+                c.scale(d, d)
+                painter.drawBase(c, state, x, y)
+                if (painter.live(state)) {
+                    // The ice that changes this frame is composed in a layer of its own, the
+                    // size of what changes, at the painter's resolution for it, and laid over
+                    // the card; the finished ice round it is drawn as it was baked.
+                    val box = painter.liveBox(state)
+                    val k = painter.liveDensity(state)
+                    val w = ceil(box.width * k).toInt()
+                    val h = ceil(box.height * k).toInt()
+                    if (w > 0 && h > 0) {
+                        iceLayer.compositingStrategy = CompositingStrategy.Offscreen
+                        iceLayer.record(Density(k), LayoutDirection.Ltr, IntSize(w, h)) {
+                            drawIntoCanvas { lc ->
+                                val l = Canvas2D(lc, w, h)
+                                l.scale(k, k)
+                                painter.composeLive(l, state, box)
+                            }
+                        }
+                        painter.drawStill(c, state, x, y, box)
+                        translate((x + box.left) * d, (y + box.top) * d) {
+                            scale(d / k, d / k, pivot = Offset.Zero) { drawLayer(iceLayer) }
+                        }
+                    }
+                } else {
+                    painter.drawStill(c, state, x, y, null)
+                }
+                painter.drawAbove(c, state, x, y)
             }
         }
         Box(
@@ -617,11 +653,19 @@ private val Purchases =
         ),
     )
 
-// Recent activity, which greys out to half strength while the card is frozen (0.9 s).
+// Recent activity, which greys out to half strength while the card is frozen (0.9 s), as the
+// prototype's `opacity: .5; filter: grayscale(1)`. Done in each colour, read while drawing, rather
+// than with two offscreen layers redrawn every frame.
 @Composable
 private fun Activity(frozen: Boolean, colors: FrostCardScreenColors, modifier: Modifier) {
-    val k by animateFloatAsState(if (frozen) 1f else 0f, tween(900))
-    val grey = remember { Paint() }
+    val grey = animateFloatAsState(if (frozen) 1f else 0f, tween(900))
+    fun dim(c: Color): Color {
+        val k = grey.value
+        if (k <= 0f) return c
+        val l = .2126f * c.red + .7152f * c.green + .0722f * c.blue
+        val g = lerp(c, Color(l, l, l, c.alpha), k)
+        return lerp(colors.background, g, 1f - .5f * k)
+    }
     Column(
         modifier
             .fillMaxWidth()
@@ -634,22 +678,7 @@ private fun Activity(frozen: Boolean, colors: FrostCardScreenColors, modifier: M
             style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight(650)),
             color = { colors.muted },
         )
-        Column(
-            Modifier.graphicsLayer { alpha = 1f - .5f * k }
-                .drawWithContent {
-                    if (k <= 0f) {
-                        drawContent()
-                        return@drawWithContent
-                    }
-                    drawIntoCanvas { c ->
-                        grey.colorFilter =
-                            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1f - k) })
-                        c.saveLayer(Rect(0f, 0f, size.width, size.height), grey)
-                        drawContent()
-                        c.restore()
-                    }
-                },
-        ) {
+        Column {
             Purchases.forEachIndexed { i, tx ->
                 Row(
                     Modifier.fillMaxWidth()
@@ -657,7 +686,7 @@ private fun Activity(frozen: Boolean, colors: FrostCardScreenColors, modifier: M
                             drawContent()
                             if (i < Purchases.size - 1)
                                 drawLine(
-                                    colors.line,
+                                    dim(colors.line),
                                     Offset(0f, size.height - .5f * density),
                                     Offset(size.width, size.height - .5f * density),
                                     1 * density,
@@ -670,28 +699,28 @@ private fun Activity(frozen: Boolean, colors: FrostCardScreenColors, modifier: M
                     val name = stringResource(tx.name)
                     Box(
                         Modifier.size(34.dp)
-                            .background(tx.logo, CircleShape)
+                            .drawBehind { drawCircle(dim(tx.logo)) }
                             .clearAndSetSemantics {},
                         Alignment.Center,
                     ) {
                         BasicText(
                             name.take(1),
                             style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                            color = { Color.White },
+                            color = { dim(Color.White) },
                         )
                     }
                     Column(Modifier.weight(1f)) {
                         BasicText(
                             name,
                             style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                            color = { colors.ink },
+                            color = { dim(colors.ink) },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         BasicText(
                             stringResource(tx.whenText),
                             style = TextStyle(fontSize = 12.sp),
-                            color = { colors.muted },
+                            color = { dim(colors.muted) },
                         )
                     }
                     BasicText(
@@ -702,7 +731,7 @@ private fun Activity(frozen: Boolean, colors: FrostCardScreenColors, modifier: M
                                 fontWeight = FontWeight(650),
                                 fontFeatureSettings = "tnum",
                             ),
-                        color = { if (tx.income) colors.accent else colors.ink },
+                        color = { dim(if (tx.income) colors.accent else colors.ink) },
                         maxLines = 1,
                     )
                 }
