@@ -140,7 +140,13 @@ internal enum class Sound(val file: String) {
     LanternStrike("lantern_strike"),
     LanternCatch("lantern_catch"),
     LanternBlow("lantern_blow"),
-    LanternCrackle("lantern_crackle");
+    LanternCrackle("lantern_crackle"),
+
+    // Sand mandala.
+    SandHiss("sand_hiss"),
+    SandBowl("sand_bowl"),
+    SandSettle("sand_settle"),
+    SandSweep("sand_sweep");
 
     /** The clip's path, as `Res.readBytes` takes it. */
     val path: String
