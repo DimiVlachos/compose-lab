@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- A round mandala: an outer ring, a square palace with its gates, and a dot at the centre. -->
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M12,2a10,10 0 1,1 0,20a10,10 0 1,1 0,-20zM12,3.8a8.2,8.2 0 1,0 0,16.4a8.2,8.2 0 1,0 0,-16.4z" />
+  <path
+      android:fillColor="#FF000000"
+      android:fillType="evenOdd"
+      android:pathData="M7,7h3.6v-1.4h2.8v1.4h3.6v3.6h1.4v2.8h-1.4v3.6h-3.6v1.4h-2.8v-1.4h-3.6v-3.6h-1.4v-2.8h1.4zM8.6,8.6v6.8h6.8v-6.8z" />
+  <path
+      android:fillColor="#FF000000"
+      android:pathData="M12,10.2a1.8,1.8 0 1,1 0,3.6a1.8,1.8 0 1,1 0,-3.6z" />
+</vector>

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- **Sand mandala clear history** (`sandmandala`): clear browsing history as a sand mandala. Clear history and every row crumbles into coloured sand, its site's colour and its own words, which flows into a mandala built from the centre out; Keep history sends every grain home. Sweep across it and the sand smears and piles up under your finger; a full sweep spirals it all into one grey heap that pours away, and Undo plays it backwards. About 20,000 grains drawn a pixel at a time at full density; a sand hiss and singing bowls; buttons, announcements and Clear now for screen readers. Its demo is a week of browsing on nine sites.
+
 ## [0.3.0] - 2026-10-28
 
 Three Halloween components, and demo clips that show every way in and out.

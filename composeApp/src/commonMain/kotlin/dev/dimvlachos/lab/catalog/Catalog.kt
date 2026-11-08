@@ -34,6 +34,7 @@ import dev.dimvlachos.lab.resources.demo_fog
 import dev.dimvlachos.lab.resources.demo_fog_description
 import dev.dimvlachos.lab.resources.ic_demo_fog
 import dev.dimvlachos.lab.rubberbanddemo.RubberBandDemos
+import dev.dimvlachos.lab.sandmandalademo.SandMandalaDemos
 import dev.dimvlachos.lab.smokedemo.SmokeDemos
 import dev.dimvlachos.lab.snowglobedemo.SnowGlobeDemos
 import dev.dimvlachos.lab.spiderdemo.SpiderDemos
@@ -85,7 +86,8 @@ internal object Catalog {
                     DecoderRingDemos.all +
                     SpiderDemos.all +
                     GraveUndoDemos.all +
-                    JackOLanternDemos.all)
+                    JackOLanternDemos.all +
+                    SandMandalaDemos.all)
                 .map {
                     CatalogEntry.Single(it)
                 }
