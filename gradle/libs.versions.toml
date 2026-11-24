@@ -1,9 +1,9 @@
 [versions]
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
-camerax = "1.6.2"
+camerax = "1.7.0"
 mlkit-selfie = "16.0.0-beta6"
-agp = "9.5.0"
+agp = "9.5.2"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "36"
